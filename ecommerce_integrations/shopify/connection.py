@@ -11,13 +11,20 @@ from shopify.session import Session
 
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
-
 API_VERSION = "2021-04"
+
 WEBHOOK_EVENTS = [
 	"orders/create",
 	"orders/paid",
 	"orders/fulfilled",
 ]
+
+# Define update methods
+EVENT_MAPPER = {
+	"orders/create": "ecommerce_integrations.shopify.order.sync_sales_order",
+	"orders/paid" : "ecommerce_integrations.shopify.doctype.orders.create_sales_invoice",
+	"orders/fulfilled": "ecommerce_integrations.shopify.doctype.orders.prepare_delivery_note"
+}
 
 
 def temp_shopify_session(func):
@@ -32,7 +39,7 @@ def temp_shopify_session(func):
 
 
 @temp_shopify_session
-def register_webhooks() -> List[str]:
+def register_webhooks() -> List[Webhook]:
 	""" Register required webhooks with shopify and return registered webhooks.
 	"""
 	new_webhooks = list()
@@ -50,12 +57,11 @@ def register_webhooks() -> List[str]:
 			create_shopify_log(status="Error", response_data=webhook.to_dict(),
 				exception=webhook.errors.full_messages())
 
-
 	return new_webhooks
 
 
 @temp_shopify_session
-def unregister_webhooks():
+def unregister_webhooks() -> None:
 	""" Unregister all webhooks from shopify that correspond to current site url.
 	"""
 
@@ -95,7 +101,13 @@ def store_request_data() -> None:
 
 
 def process_request(data, event):
-	pass
+
+	# create log
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
+
+	# enqueue backround job
+	frappe.enqueue(method=EVENT_MAPPER[event], queue='short', timeout=300, is_async=True,
+		**{"order": data, "request_id": log.name})
 
 
 def _validate_request(req, hmac_header):
@@ -111,4 +123,5 @@ def _validate_request(req, hmac_header):
 		)
 
 	if hmac_header and not sig == bytes(hmac_header.encode()):
+		create_shopify_log(status="Error", request_data=req.data)
 		frappe.throw(_("Unverified Webhook Data"))

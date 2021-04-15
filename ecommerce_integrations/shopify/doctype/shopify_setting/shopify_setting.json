@@ -15,7 +15,9 @@
   "shared_secret",
   "access_token",
   "section_break_4",
-  "webhooks"
+  "webhooks",
+  "customer_settings_section",
+  "customer_group"
  ],
  "fields": [
   {
@@ -81,12 +83,24 @@
    "label": "Webhooks",
    "options": "Shopify Webhooks",
    "read_only": 1
+  },
+  {
+   "fieldname": "customer_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Settings"
+  },
+  {
+   "description": "Customer Group will set to selected group while syncing customers from Shopify",
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-04-13 15:02:41.993615",
+ "modified": "2021-04-19 17:38:40.412270",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",

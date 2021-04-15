@@ -16,7 +16,7 @@ class ShopifySetting(SettingController):
 
 
 	def handle_webhooks(self):
-		if self.is_enabled():
+		if self.is_enabled() and not self.webhooks:
 			new_webhooks = connection.register_webhooks()
 
 			for webhook in new_webhooks:
@@ -29,4 +29,3 @@ class ShopifySetting(SettingController):
 			connection.unregister_webhooks()
 
 			self.webhooks = list()  # remove all webhooks
-

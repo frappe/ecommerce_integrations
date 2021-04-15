@@ -36,14 +36,16 @@ def create_log(module_def=None, status="Queued", response_data=None,
 		request_data = json.dumps(request_data, sort_keys=True, indent=4)
 
 	log.message = __get_message(exception)
-	log.method = method
-	log.response_data = response_data
-	log.request_data = request_data
-	log.traceback = frappe.get_traceback()
+	log.method = log.method or method
+	log.response_data = log.response_data or response_data
+	log.request_data = log.request_data or request_data
+	log.traceback = log.traceback or frappe.get_traceback()
 	log.status = status
 	log.save(ignore_permissions=True)
 
 	frappe.db.commit()
+
+	return log
 
 
 
@@ -56,3 +58,9 @@ def __get_message(exception):
 		message =  _("Something went wrong while syncing")
 
 	return message
+
+@frappe.whitelist()
+def resync(method, name, request_data):
+	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
+	frappe.enqueue(method=method, queue='short', timeout=300, is_async=True,
+		**{"order": json.loads(request_data), "request_id": name})
