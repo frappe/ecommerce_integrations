@@ -68,10 +68,12 @@ def get_callback_url() -> str:
 
 		If developer_mode is enabled and localtunnel_url is set in site config then callback url is set to localtunnel_url.
 	"""
-	url = frappe.request.host
 
 	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
 		url =  frappe.conf.localtunnel_url
+	else:
+		url = frappe.request.host
+
 
 	return f"https://{url}/api/method/ecommerce_integrations.shopify.connection.store_request_data"
 
