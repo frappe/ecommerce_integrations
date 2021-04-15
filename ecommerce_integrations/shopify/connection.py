@@ -9,6 +9,8 @@ from frappe import _
 from shopify.resources import Webhook
 from shopify.session import Session
 
+from ecommerce_integrations.shopify.utils import create_shopify_log
+
 
 API_VERSION = "2021-04"
 WEBHOOK_EVENTS = [
@@ -45,8 +47,9 @@ def register_webhooks() -> List[str]:
 		if webhook.is_valid():
 			new_webhooks.append(webhook)
 		else:
-			# todo: log
-			print(webhook.errors.full_messages())
+			create_shopify_log(status="Error", response_data=webhook.to_dict(),
+				exception=webhook.errors.full_messages())
+
 
 	return new_webhooks
 
