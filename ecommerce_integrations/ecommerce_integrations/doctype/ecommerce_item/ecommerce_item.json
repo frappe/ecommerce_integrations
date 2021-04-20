@@ -10,7 +10,8 @@
   "integration_item_code",
   "has_variants",
   "variant_id",
-  "variant_of"
+  "variant_of",
+  "sku"
  ],
  "fields": [
   {
@@ -19,7 +20,6 @@
    "in_list_view": 1,
    "label": "ERPNext Item Code",
    "options": "Item",
-   "read_only": 1,
    "reqd": 1
   },
   {
@@ -28,7 +28,6 @@
    "in_list_view": 1,
    "label": "Integration",
    "options": "Module Def",
-   "read_only": 1,
    "reqd": 1
   },
   {
@@ -36,15 +35,12 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Integration Item Code",
-   "read_only": 1,
    "reqd": 1
   },
   {
    "fieldname": "variant_id",
    "fieldtype": "Data",
-   "label": "Variant ID",
-   "mandatory_depends_on": "eval:doc.has_variants",
-   "read_only": 1
+   "label": "Variant ID"
   },
   {
    "default": "0",
@@ -57,14 +53,17 @@
    "fieldname": "variant_of",
    "fieldtype": "Link",
    "label": "Variant Of",
-   "mandatory_depends_on": "eval:doc.has_variants",
-   "options": "Item",
-   "read_only": 1
+   "options": "Item"
+  },
+  {
+   "fieldname": "sku",
+   "fieldtype": "Data",
+   "label": "SKU"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-04-20 19:30:38.332983",
+ "modified": "2021-04-22 13:43:27.900325",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",

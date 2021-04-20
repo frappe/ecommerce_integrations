@@ -17,7 +17,9 @@
   "section_break_4",
   "webhooks",
   "customer_settings_section",
-  "customer_group"
+  "customer_group",
+  "inventory_settings_section",
+  "warehouse"
  ],
  "fields": [
   {
@@ -94,13 +96,26 @@
    "fieldname": "customer_group",
    "fieldtype": "Link",
    "label": "Customer Group",
-   "options": "Customer Group"
+   "options": "Customer Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "inventory_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Inventory Settings"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-04-19 17:38:40.412270",
+ "modified": "2021-04-21 12:17:48.406706",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",
