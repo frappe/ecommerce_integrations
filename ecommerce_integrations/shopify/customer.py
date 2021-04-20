@@ -3,12 +3,13 @@ from frappe import _
 from ecommerce_integrations.controllers.customer import EcommerceCustomer
 from typing import Dict, Any
 
+from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, MODULE_NAME, SHOPIFY_CUSTOMER_FIELD
 
 
 class ShopifyCustomer(EcommerceCustomer):
 	def __init__(self, customer_id: str):
-		self.shopify_setting = frappe.get_doc("Shopify Setting")
-		super().__init__(customer_id, "shopify_customer_id", "Shopify")
+		self.shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+		super().__init__(customer_id, SHOPIFY_CUSTOMER_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: Dict[str, Any]) -> None:
 		""" Create Customer in ERPNext using shopify's Customer dict.
@@ -49,5 +50,3 @@ class ShopifyCustomer(EcommerceCustomer):
 
 		except Exception as e:
 			raise e
-
-

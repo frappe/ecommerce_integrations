@@ -10,26 +10,12 @@ from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify.utils import create_shopify_log
-
-API_VERSION = "2021-04"
-
-WEBHOOK_EVENTS = [
-	"orders/create",
-	"orders/paid",
-	"orders/fulfilled",
-]
-
-# Define update methods
-EVENT_MAPPER = {
-	"orders/create": "ecommerce_integrations.shopify.order.sync_sales_order",
-	"orders/paid" : "ecommerce_integrations.shopify.doctype.orders.create_sales_invoice",
-	"orders/fulfilled": "ecommerce_integrations.shopify.doctype.orders.prepare_delivery_note"
-}
+from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, API_VERSION, WEBHOOK_EVENTS, EVENT_MAPPER
 
 
 def temp_shopify_session(func):
 	def wrapper(*args, **kwargs):
-		setting = frappe.get_cached_doc("Shopify Setting")
+		setting = frappe.get_doc(SETTING_DOCTYPE)
 		auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
 
 		with Session.temp(*auth_details):
@@ -111,7 +97,7 @@ def process_request(data, event):
 
 
 def _validate_request(req, hmac_header):
-	settings = frappe.get_doc("Shopify Setting")
+	settings = frappe.get_doc(SETTING_DOCTYPE)
 	secret_key = settings.shared_secret
 
 	sig = base64.b64encode(
