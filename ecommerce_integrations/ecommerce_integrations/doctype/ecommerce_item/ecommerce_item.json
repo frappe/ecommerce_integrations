@@ -7,7 +7,10 @@
  "field_order": [
   "erpnext_item_code",
   "integration",
-  "integration_item_code"
+  "integration_item_code",
+  "has_variants",
+  "variant_id",
+  "variant_of"
  ],
  "fields": [
   {
@@ -35,11 +38,33 @@
    "label": "Integration Item Code",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "variant_id",
+   "fieldtype": "Data",
+   "label": "Variant ID",
+   "mandatory_depends_on": "eval:doc.has_variants",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "has_variants",
+   "fieldtype": "Check",
+   "label": "Has Variants"
+  },
+  {
+   "description": "ERPNext template Item ID",
+   "fieldname": "variant_of",
+   "fieldtype": "Link",
+   "label": "Variant Of",
+   "mandatory_depends_on": "eval:doc.has_variants",
+   "options": "Item",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-04-20 15:33:21.656307",
+ "modified": "2021-04-20 19:30:38.332983",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
