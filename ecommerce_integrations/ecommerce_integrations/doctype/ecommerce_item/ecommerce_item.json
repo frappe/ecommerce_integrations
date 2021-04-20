@@ -1,0 +1,64 @@
+{
+ "actions": [],
+ "creation": "2021-04-20 15:32:47.231689",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "erpnext_item_code",
+  "integration",
+  "integration_item_code"
+ ],
+ "fields": [
+  {
+   "fieldname": "erpnext_item_code",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "ERPNext Item Code",
+   "options": "Item",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "integration",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Integration",
+   "options": "Module Def",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "integration_item_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Integration Item Code",
+   "read_only": 1,
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-04-20 15:33:21.656307",
+ "modified_by": "Administrator",
+ "module": "Ecommerce Integrations",
+ "name": "Ecommerce Item",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
