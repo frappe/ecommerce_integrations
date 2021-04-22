@@ -4,16 +4,19 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import cstr
 
-from typing import Optional
+from erpnext import get_default_company
+
+from typing import Optional, Dict
 
 
 class EcommerceItem(Document):
-	erpnext_item_code: str      # item_code inside ERPNext
+	erpnext_item_code: str      # item_code in ERPNext
 	integration: str            # name of integration
 	integration_item_code: str  # unique id of product on integration
+	variant_id: str             # unique id of product variant on integration
 	has_variants: int           # is the product a template, i.e. does it have varients
-	variant_id: str             # unique id of varient on integration
 	variant_of: str             # template id of ERPNext item
 	sku: str                    # SKU
 
@@ -29,8 +32,10 @@ class EcommerceItem(Document):
 				"erpnext_item_code": self.erpnext_item_code,
 				"integration_item_code": self.integration_item_code
 				}
+
 		if self.variant_id:
 			unique_integration_item_code.update({"variant_id": self.variant_id})
+
 		filters.append(unique_integration_item_code)
 
 		if self.sku:
@@ -48,12 +53,10 @@ def is_synced(integration: str,
 		sku: Optional[str] = None) -> bool:
 	""" Check if item is synced from integration.
 
-		variant_id is optional. Use variant_id to check if particular variant is synced.
 		sku is optional. Use SKU alone with integration to check if it's synced.
 		E.g.
 			integration: shopify,
 			integration_item_code: TSHIRT
-			variant_id: red_t_shirt
 	"""
 
 	if sku:
@@ -63,8 +66,9 @@ def is_synced(integration: str,
 			"integration" : integration,
 			"integration_item_code" : integration_item_code
 		}
+
 	if variant_id:
-		filter.update({ "variant_id": variant_id })
+		filter.update({"variant_id": variant_id})
 
 	return bool(frappe.db.exists("Ecommerce Item", filter))
 
@@ -78,20 +82,72 @@ def get_erpnext_item(integration: str,
 		integration_item_code: str,
 		variant_id: Optional[str] = None,
 		sku: Optional[str] = None):
+	""" Get ERPNext item for specified ecommerce_item.
+
+		Note: If variant_id is not specified then item is assumed to be single OR template.
+	"""
 
 	if sku:
 		item_code = frappe.db.get_value("Ecommerce Item", {"sku": sku}, fieldname="erpnext_item_code")
-		print(item_code)
 	else:
 		filter = {
 				"integration" : integration,
 				"integration_item_code" : integration_item_code
 			}
 		if variant_id:
-			filter.update({ "variant_id": variant_id })
+			filter.update({"variant_id": variant_id})
+
 		item_code = frappe.db.get_value("Ecommerce Item", filter, fieldname="erpnext_item_code")
 
 	if item_code:
 		return frappe.get_doc("Item", item_code)
 
 	return None
+
+
+def create_ecommerce_item(integration: str,
+		integration_item_code: str,
+		item_dict: Dict,
+		variant_id: Optional[str] = None,
+		sku: Optional[str] = None,
+		variant_of: Optional[str] = None,
+		has_variants = 0
+	) -> bool:
+	""" Create Item in erpnext and link it with Ecommerce item doctype.
+
+		item_dict contains fields necessary to populate Item doctype.
+	"""
+
+	if is_synced(integration, integration_item_code, variant_id, sku):
+		return
+
+	# crete default item
+	item = {
+			"doctype": "Item",
+			"is_stock_item": 1,
+			"item_defaults": [
+					{
+						"company": get_default_company()
+					}
+				]
+		}
+
+	item.update(item_dict)
+
+	new_item = frappe.get_doc(item)
+	new_item.insert(ignore_permissions=True, ignore_mandatory=True)
+
+	ecommerce_item = frappe.get_doc({
+		"doctype": "Ecommerce Item",
+		"integration": integration,
+		"erpnext_item_code" : new_item.name,
+		"integration_item_code" : integration_item_code,
+		"has_variants" : has_variants,
+		"variant_id" : cstr(variant_id),
+		"variant_of" : cstr(variant_of),
+		"sku" : cstr(sku),
+	})
+
+	ecommerce_item.insert()
+
+	frappe.db.commit()

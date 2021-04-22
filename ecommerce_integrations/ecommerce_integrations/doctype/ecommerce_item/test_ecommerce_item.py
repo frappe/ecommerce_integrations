@@ -30,7 +30,6 @@ class TestEcommerceItem(unittest.TestCase):
 		self.assertRaises(frappe.DuplicateEntryError, self._create_doc_with_sku)
 
 
-
 	def test_is_synced(self):
 		self._create_doc()
 		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT"))
