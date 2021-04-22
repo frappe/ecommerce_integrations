@@ -7,6 +7,8 @@ import json
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 
+
+
 class TestEcommerceItem(unittest.TestCase):
 
 	def tearDown(self):
@@ -23,6 +25,10 @@ class TestEcommerceItem(unittest.TestCase):
 		self._create_variant_doc()
 		self.assertRaises(frappe.DuplicateEntryError, self._create_variant_doc)
 
+	def test_duplicate_sku(self):
+		self._create_doc_with_sku()
+		self.assertRaises(frappe.DuplicateEntryError, self._create_doc_with_sku)
+
 
 
 	def test_is_synced(self):
@@ -35,6 +41,12 @@ class TestEcommerceItem(unittest.TestCase):
 		self._create_variant_doc()
 		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", "T-SHIRT-RED" ))
 		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", "Unknown variant"))
+
+
+	def test_is_synced_sku(self):
+		self._create_doc_with_sku()
+		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="TEST_ITEM_1"))
+		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="UNKNOWNSKU"))
 
 
 	def test_get_erpnext_item(self):
@@ -51,6 +63,13 @@ class TestEcommerceItem(unittest.TestCase):
 		self._create_variant_doc()
 		a = ecommerce_item.get_erpnext_item("Shopify", "T-SHIRT", "T-SHIRT-RED")
 		b = frappe.get_doc("Item", "Test Item Variant")
+		self.assertEqual(a.name, b.name)
+		self.assertEqual(a.item_code, b.item_code)
+
+	def test_get_erpnext_item_sku(self):
+		self._create_doc_with_sku()
+		a = ecommerce_item.get_erpnext_item("Shopify", "T-SHIRT", sku="TEST_ITEM_1")
+		b = frappe.get_doc("Item", "Test Item")
 		self.assertEqual(a.name, b.name)
 		self.assertEqual(a.item_code, b.item_code)
 
@@ -74,4 +93,13 @@ class TestEcommerceItem(unittest.TestCase):
 				"has_variants": 1,
 				"variant_id": "T-SHIRT-RED",
 				"variant_of": "Test Item",
+			}).insert()
+
+	def _create_doc_with_sku(self):
+		frappe.get_doc({
+				"doctype": "Ecommerce Item",
+				"integration" : "Shopify",
+				"integration_item_code" : "T-SHIRT",
+				"erpnext_item_code" : "Test Item",
+				"sku" : "TEST_ITEM_1"
 			}).insert()
