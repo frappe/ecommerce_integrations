@@ -17,9 +17,26 @@
   "section_break_4",
   "webhooks",
   "customer_settings_section",
+  "default_customer",
+  "column_break_14",
   "customer_group",
+  "company_dependent_settings_section",
+  "company",
+  "cash_bank_account",
+  "column_break_19",
+  "cost_center",
   "inventory_settings_section",
-  "warehouse"
+  "warehouse",
+  "section_break_25",
+  "sales_order_series",
+  "column_break_27",
+  "sync_delivery_note",
+  "delivery_note_series",
+  "sync_sales_invoice",
+  "sales_invoice_series",
+  "section_break_22",
+  "html_16",
+  "taxes"
  ],
  "fields": [
   {
@@ -110,12 +127,102 @@
    "label": "Warehouse",
    "options": "Warehouse",
    "reqd": 1
+  },
+  {
+   "description": "If Shopify does not have a customer in the order, then while syncing the orders, the system will consider the default customer for the order",
+   "fieldname": "default_customer",
+   "fieldtype": "Link",
+   "label": "Default Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "column_break_14",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company_dependent_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Company Dependent settings"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "cash_bank_account",
+   "fieldtype": "Link",
+   "label": "Cash/Bank Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "section_break_25",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Sales Order Series"
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_note",
+   "fieldtype": "Check",
+   "label": "Import Delivery Notes from Shopify on Shipment"
+  },
+  {
+   "depends_on": "eval:doc.sync_delivery_note==1",
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Delivery Note Series"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_sales_invoice",
+   "fieldtype": "Check",
+   "label": "Import Sales Invoice from Shopify if Payment is marked"
+  },
+  {
+   "depends_on": "eval:doc.sync_sales_invoice==1",
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Series"
+  },
+  {
+   "fieldname": "section_break_22",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "html_16",
+   "fieldtype": "HTML",
+   "options": "Map Shopify Taxes / Shipping Charges to ERPNext Account"
+  },
+  {
+   "fieldname": "taxes",
+   "fieldtype": "Table",
+   "label": "Shopify Tax Account",
+   "options": "Shopify Tax Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-04-21 12:17:48.406706",
+ "modified": "2021-04-25 17:39:28.653644",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",
