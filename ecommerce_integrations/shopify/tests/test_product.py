@@ -3,9 +3,22 @@
 
 import unittest
 import json
+import frappe
+
 from ecommerce_integrations.shopify.product import ShopifyProduct
 
 class TestProduct(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(cls):
+		shopify_item_code = []
+		for d in frappe.get_list("Ecommerce Item"):
+			doc = frappe.get_doc("Ecommerce Item", d.name)
+			shopify_item_code.append(doc.erpnext_item_code)
+			doc.delete()
+
+		for name in shopify_item_code:
+			frappe.get_doc("Item", name).delete()
 
 	def test_sync_single_product(self):
 		product_dict = json.loads(single_product_json)
