@@ -26,6 +26,8 @@
   "column_break_19",
   "cost_center",
   "inventory_settings_section",
+  "price_list",
+  "column_break_22",
   "warehouse",
   "section_break_25",
   "sales_order_series",
@@ -217,12 +219,22 @@
    "fieldtype": "Table",
    "label": "Shopify Tax Account",
    "options": "Shopify Tax Account"
+  },
+  {
+   "fieldname": "column_break_22",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_list",
+   "fieldtype": "Link",
+   "label": "Price List",
+   "options": "Price List"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-04-25 17:39:28.653644",
+ "modified": "2021-04-27 17:20:20.475860",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",
