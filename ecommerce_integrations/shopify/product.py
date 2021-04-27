@@ -152,6 +152,7 @@ class ShopifyProduct:
 		if template_item:
 			for variant in product_dict.get("variants"):
 				shopify_item_variant = {
+					"id": product_dict.get("id"),
 					"variant_id": variant.get("id"),
 					"item_code": variant.get("id"),
 					"title": variant.get("title"),
