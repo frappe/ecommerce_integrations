@@ -137,6 +137,9 @@ def create_ecommerce_item(integration: str,
 	new_item = frappe.get_doc(item)
 	new_item.insert(ignore_permissions=True, ignore_mandatory=True)
 
+	# SKU not allowed for template items
+	sku = cstr(sku) if not has_variants else None
+
 	ecommerce_item = frappe.get_doc({
 		"doctype": "Ecommerce Item",
 		"integration": integration,
@@ -145,7 +148,7 @@ def create_ecommerce_item(integration: str,
 		"has_variants" : has_variants,
 		"variant_id" : cstr(variant_id),
 		"variant_of" : cstr(variant_of),
-		"sku" : cstr(sku),
+		"sku" : sku
 	})
 
 	ecommerce_item.insert()

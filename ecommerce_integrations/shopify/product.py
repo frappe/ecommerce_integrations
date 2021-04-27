@@ -15,7 +15,7 @@ from ecommerce_integrations.shopify.connection import temp_shopify_session
 
 class ShopifyProduct:
 	def __init__(self, product_id: str,
-			variant_id: str,
+			variant_id: Optional[str] = None,
 			sku: Optional[str] = None):
 		self.product_id = product_id
 		self.variant_id = variant_id
@@ -257,7 +257,7 @@ def create_items_if_not_exist(order):
 
 		product_id = item["product_id"]
 		sku = item.get("sku")
-		product = ShopifyProduct(product_id, sku)
+		product = ShopifyProduct(product_id, sku=sku)
 
 		if not product.is_synced():
 			product.sync_product()
