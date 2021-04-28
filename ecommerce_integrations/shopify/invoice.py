@@ -1,8 +1,9 @@
 import frappe
 
-from frappe.utils import cstr, cint, nowdate, getdate
+from frappe.utils import cstr, cint, nowdate
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.order import get_sales_order
 
 
 def prepare_sales_invoice(order, request_id=None):
@@ -17,15 +18,6 @@ def prepare_sales_invoice(order, request_id=None):
 			create_shopify_log(status="Success")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
-
-
-def get_sales_order(shopify_order_id):
-	sales_order = frappe.db.get_value(
-		"Sales Order", filters={"shopify_order_id": shopify_order_id}
-	)
-	if sales_order:
-		so = frappe.get_doc("Sales Order", sales_order)
-		return so
 
 
 def create_sales_invoice(shopify_order, shopify_setting, so):

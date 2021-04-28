@@ -285,3 +285,17 @@ def create_items_if_not_exist(order):
 
 		if not product.is_synced():
 			product.sync_product()
+
+
+def get_item_code(shopify_item):
+	"""Get item code using shopify_item dict."""
+
+	# get ecommerce_item  based on variant_id or product_id
+	item = ecommerce_item.get_erpnext_item(
+		integration=MODULE_NAME,
+		integration_item_code=shopify_item.get("product_id"),
+		variant_id=shopify_item.get("variant_id"),
+		sku=shopify_item.get("sku"),
+	)
+	if item:
+		return item.item_code

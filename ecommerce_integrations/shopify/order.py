@@ -4,12 +4,12 @@ from frappe.utils import cstr, nowdate, getdate, flt
 
 from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
-from ecommerce_integrations.shopify.product import create_items_if_not_exist
-from ecommerce_integrations.shopify.invoice import create_sales_invoice
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, MODULE_NAME
-from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
-	ecommerce_item,
+from ecommerce_integrations.shopify.product import (
+	create_items_if_not_exist,
+	get_item_code,
 )
+from ecommerce_integrations.shopify.invoice import create_sales_invoice
+from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
 
 
 def sync_sales_order(order, request_id=None):
@@ -161,19 +161,6 @@ def get_order_taxes(shopify_order, shopify_settings):
 	return taxes
 
 
-def get_item_code(shopify_item):
-
-	# get ecommerce_item  based on variant_id or product_id
-	item = ecommerce_item.get_erpnext_item(
-		integration=MODULE_NAME,
-		integration_item_code=shopify_item.get("product_id"),
-		variant_id=shopify_item.get("variant_id"),
-		sku=shopify_item.get("sku"),
-	)
-	if item:
-		return item.item_code
-
-
 def get_tax_account_head(tax):
 	tax_title = tax.get("title").encode("utf-8")
 
@@ -225,3 +212,12 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_settings):
 			)
 
 	return taxes
+
+
+def get_sales_order(shopify_order_id):
+	sales_order = frappe.db.get_value(
+		"Sales Order", filters={"shopify_order_id": shopify_order_id}
+	)
+	if sales_order:
+		so = frappe.get_doc("Sales Order", sales_order)
+		return so
