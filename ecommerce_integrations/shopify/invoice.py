@@ -3,10 +3,11 @@ import frappe
 from frappe.utils import cstr, cint, nowdate
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 from ecommerce_integrations.shopify.utils import create_shopify_log
-from ecommerce_integrations.shopify.order import get_sales_order
 
 
 def prepare_sales_invoice(order, request_id=None):
+	from ecommerce_integrations.shopify.order import get_sales_order
+
 	frappe.set_user("Administrator")
 	shopify_setting = frappe.get_doc("Shopify Setting")
 	frappe.flags.request_id = request_id

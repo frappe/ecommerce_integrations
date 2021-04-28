@@ -8,7 +8,6 @@ from ecommerce_integrations.shopify.product import (
 	create_items_if_not_exist,
 	get_item_code,
 )
-from ecommerce_integrations.shopify.invoice import create_sales_invoice
 from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
 
 
@@ -37,14 +36,17 @@ def sync_sales_order(order, request_id=None):
 
 
 def create_order(order, shopify_settings, company=None):
+	# local import to avoid circular dependencies
+	from ecommerce_integrations.shopify.invoice import create_sales_invoice
+	from ecommerce_integrations.shopify.fulfillment import create_delivery_note
+
 	so = create_sales_order(order, shopify_settings, company)
 	if so:
 		if order.get("financial_status") == "paid":
 			create_sales_invoice(order, shopify_settings, so)
 
 		if order.get("fulfillments"):
-			# create_delivery_note(order, shopify_settings, so)
-			pass  # TODO
+			create_delivery_note(order, shopify_settings, so)
 
 
 def create_sales_order(shopify_order, shopify_settings, company=None):
