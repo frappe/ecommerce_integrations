@@ -5,6 +5,7 @@ from frappe.utils import cstr,nowdate, getdate, flt
 from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
 from ecommerce_integrations.shopify.product import create_items_if_not_exist
+from ecommerce_integrations.shopify.invoice import create_sales_invoice
 from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, MODULE_NAME
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 
@@ -35,8 +36,7 @@ def create_order(order, shopify_settings, company=None):
 	so = create_sales_order(order, shopify_settings, company)
 	if so:
 		if order.get("financial_status") == "paid":
-			#create_sales_invoice(order, shopify_settings, so)
-			pass # TODO
+			create_sales_invoice(order, shopify_settings, so)
 
 		if order.get("fulfillments"):
 			# create_delivery_note(order, shopify_settings, so)
