@@ -7,8 +7,8 @@ import frappe
 
 from ecommerce_integrations.shopify.product import ShopifyProduct
 
-class TestProduct(unittest.TestCase):
 
+class TestProduct(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		shopify_item_code = []
@@ -24,8 +24,7 @@ class TestProduct(unittest.TestCase):
 		product_dict = json.loads(single_product_json)
 
 		product = ShopifyProduct(product_dict["id"])
-		product._make_item(product_dict)   # to use JSON
-
+		product._make_item(product_dict)  # to use JSON
 
 	def test_sync_product_with_variants(self):
 		product_dict = json.loads(product_with_variants_json)
@@ -116,7 +115,6 @@ single_product_json = """
 	}
 }
 """
-
 
 
 product_with_variants_json = """

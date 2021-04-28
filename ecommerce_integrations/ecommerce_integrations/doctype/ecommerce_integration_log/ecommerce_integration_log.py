@@ -13,18 +13,24 @@ class EcommerceIntegrationLog(Document):
 	pass
 
 
-def create_log(module_def=None, status="Queued", response_data=None,
-		request_data=None, exception=None, rollback=False, method=None):
+def create_log(
+	module_def=None,
+	status="Queued",
+	response_data=None,
+	request_data=None,
+	exception=None,
+	rollback=False,
+	method=None,
+):
 	make_new = not bool(frappe.flags.request_id)
 
 	if rollback:
 		frappe.db.rollback()
 
 	if make_new:
-		log = frappe.get_doc({
-				"doctype":"Ecommerce Integration Log",
-				"integration": cstr(module_def)
-			})
+		log = frappe.get_doc(
+			{"doctype": "Ecommerce Integration Log", "integration": cstr(module_def)}
+		)
 		log.insert(ignore_permissions=True)
 	else:
 		log = frappe.get_doc("Ecommerce Integration Log", frappe.flags.request_id)
@@ -48,19 +54,26 @@ def create_log(module_def=None, status="Queued", response_data=None,
 	return log
 
 
-
 def __get_message(exception):
-	if hasattr(exception, 'message'):
+	if hasattr(exception, "message"):
 		message = exception.message
-	elif hasattr(exception, '__str__'):
+	elif hasattr(exception, "__str__"):
 		message = exception.__str__()
 	else:
-		message =  _("Something went wrong while syncing")
+		message = _("Something went wrong while syncing")
 
 	return message
 
+
 @frappe.whitelist()
 def resync(method, name, request_data):
-	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
-	frappe.enqueue(method=method, queue='short', timeout=300, is_async=True,
-		**{"order": json.loads(request_data), "request_id": name})
+	frappe.db.set_value(
+		"Ecommerce Integration Log", name, "status", "Queued", update_modified=False
+	)
+	frappe.enqueue(
+		method=method,
+		queue="short",
+		timeout=300,
+		is_async=True,
+		**{"order": json.loads(request_data), "request_id": name}
+	)

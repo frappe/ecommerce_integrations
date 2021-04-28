@@ -3,7 +3,11 @@ from frappe import _
 from ecommerce_integrations.controllers.customer import EcommerceCustomer
 from typing import Dict, Any
 
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, MODULE_NAME, SHOPIFY_CUSTOMER_FIELD
+from ecommerce_integrations.shopify.constants import (
+	SETTING_DOCTYPE,
+	MODULE_NAME,
+	SHOPIFY_CUSTOMER_FIELD,
+)
 
 
 class ShopifyCustomer(EcommerceCustomer):
@@ -12,8 +16,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		super().__init__(customer_id, SHOPIFY_CUSTOMER_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: Dict[str, Any]) -> None:
-		""" Create Customer in ERPNext using shopify's Customer dict.
-		"""
+		"""Create Customer in ERPNext using shopify's Customer dict."""
 
 		customer_name = customer.get("first_name", "") + " " + customer.get("last_name", "")
 		if len(customer_name.strip()) == 0:
@@ -24,17 +27,17 @@ class ShopifyCustomer(EcommerceCustomer):
 
 		self.create_customer_address(customer_name, customer)
 
-
-	def create_customer_address(self, customer_name, customer_dict: Dict[str, Any]) -> None:
-		""" Create customer address(es) using Customer dict provided by shopify.
-		"""
+	def create_customer_address(
+		self, customer_name, customer_dict: Dict[str, Any]
+	) -> None:
+		"""Create customer address(es) using Customer dict provided by shopify."""
 		try:
 			shppify_address = customer_dict.get("default_address", {})
 
 			# map shopify address fields to ERPNext
 			address_fields = {
 				"address_title": customer_name,
-				"address_type":  _("Billing"),
+				"address_type": _("Billing"),
 				"shopify_address_id": shppify_address.get("id"),
 				"address_line1": shppify_address.get("address1") or "Address 1",
 				"address_line2": shppify_address.get("address2"),

@@ -5,6 +5,7 @@ import unittest
 from ecommerce_integrations.shopify import connection
 from shopify.resources import Webhook
 
+
 class TestShopifyConnection(unittest.TestCase):
 
 	# TODO: mock out dependency on Shopify settings
@@ -17,9 +18,6 @@ class TestShopifyConnection(unittest.TestCase):
 		wh_topics = [wh.topic for wh in webhooks]
 		self.assertEqual(sorted(wh_topics), sorted(connection.WEBHOOK_EVENTS))
 
-
-
-
 	@connection.temp_shopify_session
 	def test_unregister_webhooks(self):
 
@@ -29,5 +27,3 @@ class TestShopifyConnection(unittest.TestCase):
 
 		for wh in Webhook.find():
 			self.assertNotEqual(wh.address, callback_url)
-
-

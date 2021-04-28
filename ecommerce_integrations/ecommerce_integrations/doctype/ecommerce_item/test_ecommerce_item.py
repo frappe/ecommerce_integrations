@@ -5,21 +5,19 @@ import frappe
 import unittest
 import json
 
-from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
-
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
+	ecommerce_item,
+)
 
 
 class TestEcommerceItem(unittest.TestCase):
-
 	def tearDown(self):
 		for d in frappe.get_list("Ecommerce Item"):
 			frappe.get_doc("Ecommerce Item", d.name).delete()
 
-
 	def test_duplicate(self):
 		self._create_doc()
 		self.assertRaises(frappe.DuplicateEntryError, self._create_doc)
-
 
 	def test_duplicate_variants(self):
 		self._create_variant_doc()
@@ -29,24 +27,20 @@ class TestEcommerceItem(unittest.TestCase):
 		self._create_doc_with_sku()
 		self.assertRaises(frappe.DuplicateEntryError, self._create_doc_with_sku)
 
-
 	def test_is_synced(self):
 		self._create_doc()
 		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT"))
 		self.assertFalse(ecommerce_item.is_synced("Shopify", "UNKNOWN ITEM"))
 
-
 	def test_is_synced_variant(self):
 		self._create_variant_doc()
-		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", "T-SHIRT-RED" ))
+		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", "T-SHIRT-RED"))
 		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", "Unknown variant"))
-
 
 	def test_is_synced_sku(self):
 		self._create_doc_with_sku()
 		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="TEST_ITEM_1"))
 		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="UNKNOWNSKU"))
-
 
 	def test_get_erpnext_item(self):
 		self._create_doc()
@@ -72,33 +66,38 @@ class TestEcommerceItem(unittest.TestCase):
 		self.assertEqual(a.name, b.name)
 		self.assertEqual(a.item_code, b.item_code)
 
-
 	def _create_doc(self):
 		"""basic test for creation of ecommerce item"""
-		frappe.get_doc({
+		frappe.get_doc(
+			{
 				"doctype": "Ecommerce Item",
-				"integration" : "Shopify",
-				"integration_item_code" : "T-SHIRT",
-				"erpnext_item_code" : "Test Item",
-			}).insert()
+				"integration": "Shopify",
+				"integration_item_code": "T-SHIRT",
+				"erpnext_item_code": "Test Item",
+			}
+		).insert()
 
 	def _create_variant_doc(self):
 		"""basic test for creation of ecommerce item"""
-		frappe.get_doc({
+		frappe.get_doc(
+			{
 				"doctype": "Ecommerce Item",
-				"integration" : "Shopify",
-				"integration_item_code" : "T-SHIRT",
-				"erpnext_item_code" : "Test Item Variant",
+				"integration": "Shopify",
+				"integration_item_code": "T-SHIRT",
+				"erpnext_item_code": "Test Item Variant",
 				"has_variants": 1,
 				"variant_id": "T-SHIRT-RED",
 				"variant_of": "Test Item",
-			}).insert()
+			}
+		).insert()
 
 	def _create_doc_with_sku(self):
-		frappe.get_doc({
+		frappe.get_doc(
+			{
 				"doctype": "Ecommerce Item",
-				"integration" : "Shopify",
-				"integration_item_code" : "T-SHIRT",
-				"erpnext_item_code" : "Test Item",
-				"sku" : "TEST_ITEM_1"
-			}).insert()
+				"integration": "Shopify",
+				"integration_item_code": "T-SHIRT",
+				"erpnext_item_code": "Test Item",
+				"sku": "TEST_ITEM_1",
+			}
+		).insert()
