@@ -3,7 +3,6 @@
 
 import frappe
 import unittest
-import json
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
 	ecommerce_item,
@@ -68,6 +67,7 @@ class TestEcommerceItem(unittest.TestCase):
 
 	def _create_doc(self):
 		"""basic test for creation of ecommerce item"""
+		# TODO: patch / add record for item
 		frappe.get_doc(
 			{
 				"doctype": "Ecommerce Item",
