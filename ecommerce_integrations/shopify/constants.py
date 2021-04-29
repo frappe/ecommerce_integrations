@@ -5,8 +5,6 @@
 MODULE_NAME = "Shopify"
 SETTING_DOCTYPE = "Shopify Setting"
 
-SHOPIFY_CUSTOMER_FIELD = "shopify_customer_id"
-
 API_VERSION = "2021-04"
 
 WEBHOOK_EVENTS = [
@@ -22,3 +20,12 @@ EVENT_MAPPER = {
 }
 
 SHOPIFY_VARIANTS_ATTR_LIST = ["option1", "option2", "option3"]
+
+# custom fields
+
+CUSTOMER_ID_FIELD = "shopify_customer_id"
+ORDER_ID_FIELD = "shopify_order_id"
+ORDER_NUMBER_FIELD = "shopify_order_number"
+FULLFILLMENT_ID_FIELD = "shopify_fulfillment_id"
+SUPPLIER_ID_FIELD = "shopify_supplier_id"
+ADDRESS_ID_FIELD = "shopify_address_id"

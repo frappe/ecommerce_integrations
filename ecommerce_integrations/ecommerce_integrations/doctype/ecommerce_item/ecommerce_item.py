@@ -23,7 +23,7 @@ class EcommerceItem(Document):
 	def validate(self):
 		self.check_unique_constraints()
 
-	def check_unique_constraints(self):
+	def check_unique_constraints(self) -> None:
 		filters = list()
 
 		unique_integration_item_code = {
@@ -114,7 +114,7 @@ def create_ecommerce_item(
 	sku: Optional[str] = None,
 	variant_of: Optional[str] = None,
 	has_variants=0,
-) -> bool:
+) -> None:
 	"""Create Item in erpnext and link it with Ecommerce item doctype.
 
 	item_dict contains fields necessary to populate Item doctype.

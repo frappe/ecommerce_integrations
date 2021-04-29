@@ -6,14 +6,15 @@ from typing import Dict, Any
 from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 	MODULE_NAME,
-	SHOPIFY_CUSTOMER_FIELD,
+	CUSTOMER_ID_FIELD,
+	ADDRESS_ID_FIELD,
 )
 
 
 class ShopifyCustomer(EcommerceCustomer):
 	def __init__(self, customer_id: str):
 		self.shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
-		super().__init__(customer_id, SHOPIFY_CUSTOMER_FIELD, MODULE_NAME)
+		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: Dict[str, Any]) -> None:
 		"""Create Customer in ERPNext using shopify's Customer dict."""
@@ -38,7 +39,7 @@ class ShopifyCustomer(EcommerceCustomer):
 			address_fields = {
 				"address_title": customer_name,
 				"address_type": _("Billing"),
-				"shopify_address_id": shppify_address.get("id"),
+				ADDRESS_ID_FIELD: shppify_address.get("id"),
 				"address_line1": shppify_address.get("address1") or "Address 1",
 				"address_line2": shppify_address.get("address2"),
 				"city": shppify_address.get("city"),

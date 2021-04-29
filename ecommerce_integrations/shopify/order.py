@@ -8,16 +8,19 @@ from ecommerce_integrations.shopify.product import (
 	create_items_if_not_exist,
 	get_item_code,
 )
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
+from ecommerce_integrations.shopify.constants import (
+	SETTING_DOCTYPE,
+	ORDER_ID_FIELD,
+	ORDER_NUMBER_FIELD,
+	SETTING_DOCTYPE,
+)
 
 
 def sync_sales_order(order, request_id=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
-	if not frappe.db.get_value(
-		"Sales Order", filters={"shopify_order_id": cstr(order["id"])}
-	):
+	if not frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		try:
 			shopify_customer = order.get("customer", {})
 			customer = ShopifyCustomer(customer_id=shopify_customer.get("id"))
@@ -35,21 +38,21 @@ def sync_sales_order(order, request_id=None):
 			create_shopify_log(status="Success")
 
 
-def create_order(order, shopify_settings, company=None):
+def create_order(order, shopify_setting, company=None):
 	# local import to avoid circular dependencies
 	from ecommerce_integrations.shopify.invoice import create_sales_invoice
 	from ecommerce_integrations.shopify.fulfillment import create_delivery_note
 
-	so = create_sales_order(order, shopify_settings, company)
+	so = create_sales_order(order, shopify_setting, company)
 	if so:
 		if order.get("financial_status") == "paid":
-			create_sales_invoice(order, shopify_settings, so)
+			create_sales_invoice(order, shopify_setting, so)
 
 		if order.get("fulfillments"):
-			create_delivery_note(order, shopify_settings, so)
+			create_delivery_note(order, shopify_setting, so)
 
 
-def create_sales_order(shopify_order, shopify_settings, company=None):
+def create_sales_order(shopify_order, shopify_setting, company=None):
 	product_not_exists = []
 	customer = frappe.db.get_value(
 		"Customer",
@@ -57,13 +60,13 @@ def create_sales_order(shopify_order, shopify_settings, company=None):
 		"name",
 	)
 	so = frappe.db.get_value(
-		"Sales Order", {"shopify_order_id": shopify_order.get("id")}, "name"
+		"Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name"
 	)
 
 	if not so:
 		items = get_order_items(
 			shopify_order.get("line_items"),
-			shopify_settings,
+			shopify_setting,
 			getdate(shopify_order.get("created_at")),
 		)
 
@@ -81,17 +84,17 @@ def create_sales_order(shopify_order, shopify_settings, company=None):
 		so = frappe.get_doc(
 			{
 				"doctype": "Sales Order",
-				"naming_series": shopify_settings.sales_order_series or "SO-Shopify-",
-				"shopify_order_id": shopify_order.get("id"),
-				"shopify_order_number": shopify_order.get("name"),
-				"customer": customer or shopify_settings.default_customer,
+				"naming_series": shopify_setting.sales_order_series or "SO-Shopify-",
+				ORDER_ID_FIELD: shopify_order.get("id"),
+				ORDER_NUMBER_FIELD: shopify_order.get("name"),
+				"customer": customer or shopify_setting.default_customer,
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
-				"company": shopify_settings.company,
-				"selling_price_list": shopify_settings.price_list,
+				"company": shopify_setting.company,
+				"selling_price_list": shopify_setting.price_list,
 				"ignore_pricing_rule": 1,
 				"items": items,
-				"taxes": get_order_taxes(shopify_order, shopify_settings),
+				"taxes": get_order_taxes(shopify_order, shopify_setting),
 				"apply_discount_on": "Grand Total",
 				"discount_amount": get_discounted_amount(shopify_order),
 			}
@@ -119,7 +122,7 @@ def get_order_items(order_items, shopify_settings, delivery_date):
 		if not shopify_item.get("product_exists"):
 			all_product_exists = False
 			product_not_exists.append(
-				{"title": shopify_item.get("title"), "shopify_order_id": shopify_item.get("id")}
+				{"title": shopify_item.get("title"), ORDER_ID_FIELD: shopify_item.get("id")}
 			)
 			continue
 
@@ -168,7 +171,7 @@ def get_tax_account_head(tax):
 
 	tax_account = frappe.db.get_value(
 		"Shopify Tax Account",
-		{"parent": "Shopify Setting", "shopify_tax": tax_title},
+		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
 		"tax_account",
 	)
 
@@ -187,7 +190,7 @@ def get_discounted_amount(order):
 	return discounted_amount
 
 
-def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_settings):
+def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_setting):
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
 	for shipping_charge in shipping_lines:
@@ -198,7 +201,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_settings):
 					"account_head": get_tax_account_head(shipping_charge),
 					"description": shipping_charge["title"],
 					"tax_amount": shipping_charge["price"],
-					"cost_center": shopify_settings.cost_center,
+					"cost_center": shopify_setting.cost_center,
 				}
 			)
 
@@ -209,7 +212,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_settings):
 					"account_head": get_tax_account_head(tax),
 					"description": tax["title"],
 					"tax_amount": tax["price"],
-					"cost_center": shopify_settings.cost_center,
+					"cost_center": shopify_setting.cost_center,
 				}
 			)
 
@@ -218,7 +221,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, shopify_settings):
 
 def get_sales_order(shopify_order_id):
 	sales_order = frappe.db.get_value(
-		"Sales Order", filters={"shopify_order_id": shopify_order_id}
+		"Sales Order", filters={ORDER_ID_FIELD: shopify_order_id}
 	)
 	if sales_order:
 		so = frappe.get_doc("Sales Order", sales_order)

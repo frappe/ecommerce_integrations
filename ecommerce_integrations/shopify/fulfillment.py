@@ -4,11 +4,17 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 from frappe.utils import cstr, getdate, cint
 from ecommerce_integrations.shopify.order import get_sales_order
 from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+from ecommerce_integrations.shopify.constants import (
+	SETTING_DOCTYPE,
+	ORDER_ID_FIELD,
+	ORDER_NUMBER_FIELD,
+	FULLFILLMENT_ID_FIELD,
+)
 
 
 def prepare_delivery_note(order, request_id=None):
 	frappe.set_user("Administrator")
-	shopify_setting = frappe.get_doc("Shopify Setting")
+	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	try:
@@ -27,17 +33,17 @@ def create_delivery_note(shopify_order, shopify_setting, so):
 	for fulfillment in shopify_order.get("fulfillments"):
 		if (
 			not frappe.db.get_value(
-				"Delivery Note", {"shopify_fulfillment_id": fulfillment.get("id")}, "name"
+				"Delivery Note", {FULLFILLMENT_ID_FIELD: fulfillment.get("id")}, "name"
 			)
 			and so.docstatus == 1
 		):
 
 			dn = make_delivery_note(so.name)
-			dn.shopify_order_id = fulfillment.get("order_id")
-			dn.shopify_order_number = shopify_order.get("name")
+			dn[ORDER_ID_FIELD] = fulfillment.get("order_id")
+			dn[ORDER_NUMBER_FIELD] = shopify_order.get("name")
+			dn[FULLFILLMENT_ID_FIELD] = fulfillment.get("id")
 			dn.set_posting_time = 1
 			dn.posting_date = getdate(fulfillment.get("created_at"))
-			dn.shopify_fulfillment_id = fulfillment.get("id")
 			dn.naming_series = shopify_setting.delivery_note_series or "DN-Shopify-"
 			dn.items = get_fulfillment_items(dn.items, fulfillment.get("line_items"))
 			dn.flags.ignore_mandatory = True

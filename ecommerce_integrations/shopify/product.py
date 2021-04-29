@@ -10,6 +10,7 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 	MODULE_NAME,
 	SHOPIFY_VARIANTS_ATTR_LIST,
+	SUPPLIER_ID_FIELD,
 )
 
 from shopify.resources import Product
@@ -69,7 +70,6 @@ class ShopifyProduct:
 
 	def _create_attribute(self, product_dict):
 		attribute = []
-		# shopify item dict
 		for attr in product_dict.get("options"):
 			if not frappe.db.get_value("Item Attribute", attr.get("name"), "name"):
 				frappe.get_doc(
@@ -229,7 +229,7 @@ class ShopifyProduct:
 					{
 						"doctype": "Supplier",
 						"supplier_name": product_dict.get("vendor"),
-						"shopify_supplier_id": product_dict.get("vendor").lower(),
+						SUPPLIER_ID_FIELD: product_dict.get("vendor").lower(),
 						"supplier_group": self._get_supplier_group(),
 					}
 				).insert()
