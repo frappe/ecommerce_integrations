@@ -1,6 +1,7 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 from ecommerce_integrations.controllers.setting import SettingController
@@ -35,6 +36,15 @@ class ShopifySetting(SettingController):
 			connection.unregister_webhooks()
 
 			self.webhooks = list()  # remove all webhooks
+
+
+@frappe.whitelist()
+def get_series():
+	return {
+		"sales_order_series" : frappe.get_meta("Sales Order").get_options("naming_series") or "SO-Shopify-",
+		"sales_invoice_series" : frappe.get_meta("Sales Invoice").get_options("naming_series")  or "SI-Shopify-",
+		"delivery_note_series" : frappe.get_meta("Delivery Note").get_options("naming_series")  or "DN-Shopify-"
+	}
 
 
 def setup_custom_fields():
