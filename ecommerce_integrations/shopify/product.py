@@ -11,6 +11,7 @@ from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
+	WEIGHT_TO_ERPNEXT_UOM_MAP
 )
 
 from shopify.resources import Product
@@ -134,7 +135,7 @@ class ShopifyProduct:
 			"sku": product_dict.get("sku") or _get_sku(product_dict),
 			"default_warehouse": warehouse,
 			"image": _get_item_image(product_dict),
-			"weight_uom": product_dict.get("weight_unit"),
+			"weight_uom": WEIGHT_TO_ERPNEXT_UOM_MAP[product_dict.get("weight_unit")],
 			"weight_per_unit": product_dict.get("weight"),
 			"default_supplier": self._get_supplier(product_dict),
 		}
