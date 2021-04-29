@@ -115,8 +115,8 @@
    "fieldname": "customer_group",
    "fieldtype": "Link",
    "label": "Customer Group",
-   "options": "Customer Group",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.enable_shopify",
+   "options": "Customer Group"
   },
   {
    "fieldname": "inventory_settings_section",
@@ -127,8 +127,8 @@
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
-   "options": "Warehouse",
-   "reqd": 1
+   "mandatory_depends_on": "eval:doc.enable_shopify",
+   "options": "Warehouse"
   },
   {
    "description": "If Shopify does not have a customer in the order, then while syncing the orders, the system will consider the default customer for the order",
@@ -150,12 +150,14 @@
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
+   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Company"
   },
   {
    "fieldname": "cash_bank_account",
    "fieldtype": "Link",
    "label": "Cash/Bank Account",
+   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Account"
   },
   {
@@ -166,6 +168,7 @@
    "fieldname": "cost_center",
    "fieldtype": "Link",
    "label": "Cost Center",
+   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Cost Center"
   },
   {
@@ -175,7 +178,8 @@
   {
    "fieldname": "sales_order_series",
    "fieldtype": "Select",
-   "label": "Sales Order Series"
+   "label": "Sales Order Series",
+   "mandatory_depends_on": "eval:doc.enable_shopify"
   },
   {
    "fieldname": "column_break_27",
@@ -191,7 +195,8 @@
    "depends_on": "eval:doc.sync_delivery_note==1",
    "fieldname": "delivery_note_series",
    "fieldtype": "Select",
-   "label": "Delivery Note Series"
+   "label": "Delivery Note Series",
+   "mandatory_depends_on": "eval:doc.sync_delivery_note"
   },
   {
    "default": "0",
@@ -203,7 +208,8 @@
    "depends_on": "eval:doc.sync_sales_invoice==1",
    "fieldname": "sales_invoice_series",
    "fieldtype": "Select",
-   "label": "Sales Invoice Series"
+   "label": "Sales Invoice Series",
+   "mandatory_depends_on": "eval:doc.sync_sales_invoice"
   },
   {
    "fieldname": "section_break_22",
@@ -218,6 +224,7 @@
    "fieldname": "taxes",
    "fieldtype": "Table",
    "label": "Shopify Tax Account",
+   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Shopify Tax Account"
   },
   {
@@ -228,13 +235,14 @@
    "fieldname": "price_list",
    "fieldtype": "Link",
    "label": "Price List",
+   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Price List"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-04-27 17:20:20.475860",
+ "modified": "2021-04-29 16:27:20.663738",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",
