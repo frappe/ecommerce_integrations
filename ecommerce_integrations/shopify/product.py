@@ -1,5 +1,5 @@
 import frappe
-from frappe import _
+from frappe import _, msgprint
 from frappe.utils import cstr, cint
 from frappe.utils.nestedset import get_root_of
 
@@ -11,13 +11,17 @@ from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
-	WEIGHT_TO_ERPNEXT_UOM_MAP
+	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
 
 from shopify.resources import Product
 
 from typing import Optional
-from ecommerce_integrations.shopify.connection import temp_shopify_session
+from ecommerce_integrations.shopify.connection import (
+	temp_shopify_session,
+	get_current_domain_name,
+)
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 class ShopifyProduct:
@@ -299,3 +303,105 @@ def get_item_code(shopify_item):
 	)
 	if item:
 		return item.item_code
+
+
+@temp_shopify_session
+def upload_erpnext_item(doc, method=None):
+	"""This hook is called new inserting new or updating existing `Item`.
+
+	New items are pushed to shopify and changes to existing items are
+	updated depending on what is configured in "Shopify Setting" doctype.
+	"""
+	item = doc
+	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+
+	if not shopify_setting.upload_erpnext_items:
+		return
+
+	if doc.has_variants or doc.variant_of:
+		# TODO: not supported yet
+		msgprint(_("Item with variants or template items can not be uploaded to Shopify."))
+		return
+
+	product_id = frappe.db.get_value(
+		"Ecommerce Item", {"erpnext_item_code": item.name}, "integration_item_code"
+	)
+	is_new_product = not bool(product_id)
+
+	# TODO: rate limit / retry / bg job?
+	if is_new_product:
+
+		product = Product()
+		product.published = False
+		product.status = "draft"
+		product.sku = item.item_code
+
+		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
+		is_successful = product.save()
+
+		if is_successful:
+			ecom_item = frappe.get_doc(
+				{
+					"doctype": "Ecommerce Item",
+					"erpnext_item_code": item.name,
+					"integration": MODULE_NAME,
+					"integration_item_code": str(product.id),
+					"variant_id": str(product.variants[0].id),
+					"sku": str(product.variants[0].sku),
+				}
+			)
+			ecom_item.insert()
+
+		write_upload_log(status=is_successful, product=product, item=item)
+	else:
+		product = Product.find(product_id)
+		if product:
+			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
+			is_successful = product.save()
+			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+
+
+def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
+	"""Map erpnext fields to shopify, called both when updating and creating new products."""
+
+	shopify_product.title = erpnext_item.item_name
+	shopify_product.body_html = erpnext_item.description
+	shopify_product.product_type = erpnext_item.item_group
+	shopify_product.price = erpnext_item.standard_rate
+
+	if erpnext_item.weight_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.values():
+		# reverse lookup for key
+		uom = get_shopify_weight_uom(erpnext_weight_uom=erpnext_item.weight_uom)
+		shopify_product.weight = erpnext_item.weight_per_unit
+		shopify_product.weight_unit = uom
+
+	if erpnext_item.image and "/private/" not in erpnext_item.image:
+		img_url = f"https://{get_current_domain_name()}{erpnext_item.image}"
+		shopify_product.images = [{"src": img_url}]
+
+
+def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
+	for shopify_uom, erpnext_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.items():
+		if erpnext_uom == erpnext_weight_uom:
+			return shopify_uom
+
+
+def write_upload_log(status, product, item, action="Created"):
+	if not status:
+		msg = _("Failed to upload item to Shopify") + "<br>"
+		msg += _("Shopify reported errors:") + " " + ", ".join(product.errors.full_messages())
+		msgprint(msg, title="Note", indicator="orange")
+
+		create_shopify_log(
+			status="Error",
+			request_data=product.to_dict(),
+			message=msg,
+			method="upload_erpnext_item",
+		)
+	else:
+		create_shopify_log(
+			status="Success",
+			request_data=product.to_dict(),
+			message=f"{action} Item: {item.name}, shopify product: {product.id}",
+			method="upload_erpnext_item",
+		)

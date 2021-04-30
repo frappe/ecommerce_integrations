@@ -62,16 +62,25 @@ def unregister_webhooks() -> None:
 			webhook.destroy()
 
 
+def get_current_domain_name() -> str:
+	"""Get current site domain name. E.g. test.erpnext.com
+
+	If developer_mode is enabled and localtunnel_url is set in site config then domain  is set to localtunnel_url.
+	"""
+	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
+		domain = frappe.conf.localtunnel_url
+	else:
+		domain = frappe.request.host
+
+	return domain
+
+
 def get_callback_url() -> str:
 	"""Shopify calls this url when new events occur to subscribed webhooks.
 
 	If developer_mode is enabled and localtunnel_url is set in site config then callback url is set to localtunnel_url.
 	"""
-
-	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
-		url = frappe.conf.localtunnel_url
-	else:
-		url = frappe.request.host
+	url = get_current_domain_name()
 
 	return f"https://{url}/api/method/ecommerce_integrations.shopify.connection.store_request_data"
 

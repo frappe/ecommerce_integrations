@@ -89,13 +89,12 @@ app_license = "GNU GPL v3.0"
 # ---------------
 # Hook on document methods and events
 
-# doc_events = {
-# 	"*": {
-# 		"on_update": "method",
-# 		"on_cancel": "method",
-# 		"on_trash": "method"
-#	}
-# }
+doc_events = {
+	"Item": {
+		"after_insert": "ecommerce_integrations.shopify.product.upload_erpnext_item",
+		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item"
+	}
+}
 
 # Scheduled Tasks
 # ---------------

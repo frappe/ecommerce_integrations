@@ -21,6 +21,7 @@ def create_log(
 	exception=None,
 	rollback=False,
 	method=None,
+	message=None,
 ):
 	make_new = not bool(frappe.flags.request_id)
 
@@ -41,7 +42,7 @@ def create_log(
 	if not isinstance(request_data, str):
 		request_data = json.dumps(request_data, sort_keys=True, indent=4)
 
-	log.message = __get_message(exception)
+	log.message = message or __get_message(exception)
 	log.method = log.method or method
 	log.response_data = log.response_data or response_data
 	log.request_data = log.request_data or request_data
