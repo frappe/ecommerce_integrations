@@ -95,6 +95,8 @@ def get_erpnext_item(
 		filter = {"integration": integration, "integration_item_code": integration_item_code}
 		if variant_id:
 			filter.update({"variant_id": variant_id})
+		else:
+			filter.update({"has_variants": 1})
 
 		item_code = frappe.db.get_value(
 			"Ecommerce Item", filter, fieldname="erpnext_item_code"
