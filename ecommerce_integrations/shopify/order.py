@@ -12,7 +12,6 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	SETTING_DOCTYPE,
 )
 
 

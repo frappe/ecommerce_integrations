@@ -170,7 +170,6 @@ class ShopifyProduct:
 					"sku": variant.get("sku"),
 					"uom": template_item.stock_uom or _("Nos"),
 					"item_price": variant.get("price"),
-					"variant_id": variant.get("id"),
 					"weight_unit": variant.get("weight_unit"),
 					"weight": variant.get("weight"),
 				}

@@ -11,7 +11,6 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
 	FULLFILLMENT_ID_FIELD,
-	FULLFILLMENT_ID_FIELD,
 	ADDRESS_ID_FIELD,
 	SUPPLIER_ID_FIELD,
 )
