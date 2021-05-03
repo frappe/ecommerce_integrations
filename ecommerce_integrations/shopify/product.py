@@ -353,7 +353,7 @@ def upload_erpnext_item(doc, method=None):
 			ecom_item.insert()
 
 		write_upload_log(status=is_successful, product=product, item=item)
-	else:
+	elif shopify_setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
