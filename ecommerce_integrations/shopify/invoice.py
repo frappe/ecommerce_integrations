@@ -39,8 +39,8 @@ def create_sales_invoice(shopify_order, shopify_setting, so):
 		posting_date = nowdate()
 
 		sales_invoice = make_sales_invoice(so.name, ignore_permissions=True)
-		sales_invoice[ORDER_ID_FIELD] = shopify_order.get("id")
-		sales_invoice[ORDER_NUMBER_FIELD] = shopify_order.get("name")
+		setattr(sales_invoice, ORDER_ID_FIELD, shopify_order.get("id"))
+		setattr(sales_invoice, ORDER_NUMBER_FIELD, shopify_order.get("name"))
 		sales_invoice.set_posting_time = 1
 		sales_invoice.posting_date = posting_date
 		sales_invoice.due_date = posting_date

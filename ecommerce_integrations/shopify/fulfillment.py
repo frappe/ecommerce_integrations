@@ -39,9 +39,9 @@ def create_delivery_note(shopify_order, shopify_setting, so):
 		):
 
 			dn = make_delivery_note(so.name)
-			dn[ORDER_ID_FIELD] = fulfillment.get("order_id")
-			dn[ORDER_NUMBER_FIELD] = shopify_order.get("name")
-			dn[FULLFILLMENT_ID_FIELD] = fulfillment.get("id")
+			setattr(dn, ORDER_ID_FIELD, fulfillment.get("order_id"))
+			setattr(dn, ORDER_NUMBER_FIELD, shopify_order.get("name"))
+			setattr(dn, FULLFILLMENT_ID_FIELD, fulfillment.get("id"))
 			dn.set_posting_time = 1
 			dn.posting_date = getdate(fulfillment.get("created_at"))
 			dn.naming_series = shopify_setting.delivery_note_series or "DN-Shopify-"
