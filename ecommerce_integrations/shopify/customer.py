@@ -13,7 +13,7 @@ from ecommerce_integrations.shopify.constants import (
 
 class ShopifyCustomer(EcommerceCustomer):
 	def __init__(self, customer_id: str):
-		self.shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+		self.setting = frappe.get_doc(SETTING_DOCTYPE)
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: Dict[str, Any]) -> None:
@@ -23,7 +23,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		if len(customer_name.strip()) == 0:
 			customer_name = customer.get("email")
 
-		customer_group = self.shopify_setting.customer_group
+		customer_group = self.setting.customer_group
 		super().sync_customer(customer_name, customer_group)
 
 		self.create_customer_address(customer_name, customer)

@@ -31,9 +31,9 @@ class ShopifyProduct:
 		self.product_id = product_id
 		self.variant_id = variant_id
 		self.sku = sku
-		self.shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+		self.setting = frappe.get_doc(SETTING_DOCTYPE)
 
-		if not self.shopify_setting.is_enabled():
+		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
 
 	def is_synced(self) -> bool:
@@ -62,7 +62,7 @@ class ShopifyProduct:
 	def _make_item(self, product_dict):
 		_add_weight_details(product_dict)
 
-		warehouse = self.shopify_setting.warehouse
+		warehouse = self.setting.warehouse
 
 		if _has_variants(product_dict):
 			attributes = self._create_attribute(product_dict)
@@ -313,9 +313,9 @@ def upload_erpnext_item(doc, method=None):
 	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
 	item = doc
-	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	setting = frappe.get_doc(SETTING_DOCTYPE)
 
-	if not shopify_setting.upload_erpnext_items:
+	if not setting.upload_erpnext_items:
 		return
 
 	if doc.has_variants or doc.variant_of:
@@ -353,7 +353,7 @@ def upload_erpnext_item(doc, method=None):
 			ecom_item.insert()
 
 		write_upload_log(status=is_successful, product=product, item=item)
-	elif shopify_setting.update_shopify_item_on_update:
+	elif setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)

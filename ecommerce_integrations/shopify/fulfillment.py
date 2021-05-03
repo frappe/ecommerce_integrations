@@ -14,20 +14,20 @@ from ecommerce_integrations.shopify.constants import (
 
 def prepare_delivery_note(order, request_id=None):
 	frappe.set_user("Administrator")
-	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
 		if sales_order:
-			create_delivery_note(order, shopify_setting, sales_order)
+			create_delivery_note(order, setting, sales_order)
 		create_shopify_log(status="Success")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
-def create_delivery_note(shopify_order, shopify_setting, so):
-	if not cint(shopify_setting.sync_delivery_note):
+def create_delivery_note(shopify_order, setting, so):
+	if not cint(setting.sync_delivery_note):
 		return
 
 	for fulfillment in shopify_order.get("fulfillments"):
@@ -44,7 +44,7 @@ def create_delivery_note(shopify_order, shopify_setting, so):
 			setattr(dn, FULLFILLMENT_ID_FIELD, fulfillment.get("id"))
 			dn.set_posting_time = 1
 			dn.posting_date = getdate(fulfillment.get("created_at"))
-			dn.naming_series = shopify_setting.delivery_note_series or "DN-Shopify-"
+			dn.naming_series = setting.delivery_note_series or "DN-Shopify-"
 			dn.items = get_fulfillment_items(dn.items, fulfillment.get("line_items"))
 			dn.flags.ignore_mandatory = True
 			dn.save()

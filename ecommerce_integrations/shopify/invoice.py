@@ -14,26 +14,26 @@ def prepare_sales_invoice(order, request_id=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	frappe.set_user("Administrator")
-	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
 		if sales_order:
-			create_sales_invoice(order, shopify_setting, sales_order)
+			create_sales_invoice(order, setting, sales_order)
 			create_shopify_log(status="Success")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
-def create_sales_invoice(shopify_order, shopify_setting, so):
+def create_sales_invoice(shopify_order, setting, so):
 	if (
 		not frappe.db.get_value(
 			"Sales Invoice", {ORDER_ID_FIELD: shopify_order.get("id")}, "name"
 		)
 		and so.docstatus == 1
 		and not so.per_billed
-		and cint(shopify_setting.sync_sales_invoice)
+		and cint(setting.sync_sales_invoice)
 	):
 
 		posting_date = nowdate()
@@ -44,14 +44,12 @@ def create_sales_invoice(shopify_order, shopify_setting, so):
 		sales_invoice.set_posting_time = 1
 		sales_invoice.posting_date = posting_date
 		sales_invoice.due_date = posting_date
-		sales_invoice.naming_series = shopify_setting.sales_invoice_series or "SI-Shopify-"
+		sales_invoice.naming_series = setting.sales_invoice_series or "SI-Shopify-"
 		sales_invoice.flags.ignore_mandatory = True
-		set_cost_center(sales_invoice.items, shopify_setting.cost_center)
+		set_cost_center(sales_invoice.items, setting.cost_center)
 		sales_invoice.insert(ignore_mandatory=True)
 		sales_invoice.submit()
-		make_payament_entry_against_sales_invoice(
-			sales_invoice, shopify_setting, posting_date
-		)
+		make_payament_entry_against_sales_invoice(sales_invoice, setting, posting_date)
 		frappe.db.commit()
 
 
@@ -60,11 +58,11 @@ def set_cost_center(items, cost_center):
 		item.cost_center = cost_center
 
 
-def make_payament_entry_against_sales_invoice(doc, shopify_setting, posting_date=None):
+def make_payament_entry_against_sales_invoice(doc, setting, posting_date=None):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 	payment_entry = get_payment_entry(
-		doc.doctype, doc.name, bank_account=shopify_setting.cash_bank_account
+		doc.doctype, doc.name, bank_account=setting.cash_bank_account
 	)
 	payment_entry.flags.ignore_mandatory = True
 	payment_entry.reference_no = doc.name
