@@ -11,12 +11,14 @@ WEBHOOK_EVENTS = [
 	"orders/create",
 	"orders/paid",
 	"orders/fulfilled",
+	"orders/cancelled",
 ]
 
 EVENT_MAPPER = {
 	"orders/create": "ecommerce_integrations.shopify.order.sync_sales_order",
 	"orders/paid": "ecommerce_integrations.shopify.invoice.prepare_sales_invoice",
 	"orders/fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
+	"orders/cancelled": "ecommerce_integrations.shopify.order.cancel_order",
 }
 
 SHOPIFY_VARIANTS_ATTR_LIST = ["option1", "option2", "option3"]
@@ -26,6 +28,7 @@ SHOPIFY_VARIANTS_ATTR_LIST = ["option1", "option2", "option3"]
 CUSTOMER_ID_FIELD = "shopify_customer_id"
 ORDER_ID_FIELD = "shopify_order_id"
 ORDER_NUMBER_FIELD = "shopify_order_number"
+ORDER_STATUS_FIELD = "shopify_order_status"
 FULLFILLMENT_ID_FIELD = "shopify_fulfillment_id"
 SUPPLIER_ID_FIELD = "shopify_supplier_id"
 ADDRESS_ID_FIELD = "shopify_address_id"

@@ -13,6 +13,7 @@ from ecommerce_integrations.shopify.constants import (
 	FULLFILLMENT_ID_FIELD,
 	ADDRESS_ID_FIELD,
 	SUPPLIER_ID_FIELD,
+	ORDER_STATUS_FIELD,
 )
 
 
@@ -40,9 +41,9 @@ class ShopifySetting(SettingController):
 @frappe.whitelist()
 def get_series():
 	return {
-		"sales_order_series" : frappe.get_meta("Sales Order").get_options("naming_series") or "SO-Shopify-",
-		"sales_invoice_series" : frappe.get_meta("Sales Invoice").get_options("naming_series")  or "SI-Shopify-",
-		"delivery_note_series" : frappe.get_meta("Delivery Note").get_options("naming_series")  or "DN-Shopify-"
+		"sales_order_series": frappe.get_meta("Sales Order").get_options("naming_series") or "SO-Shopify-",
+		"sales_invoice_series": frappe.get_meta("Sales Invoice").get_options("naming_series") or "SI-Shopify-",
+		"delivery_note_series": frappe.get_meta("Delivery Note").get_options("naming_series") or "DN-Shopify-",
 	}
 
 
@@ -91,7 +92,15 @@ def setup_custom_fields():
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
 				fieldtype="Data",
-				insert_after="shopify_order_id",
+				insert_after=ORDER_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname=ORDER_STATUS_FIELD,
+				label="Shopify Order Status",
+				fieldtype="Data",
+				insert_after=ORDER_NUMBER_FIELD,
 				read_only=1,
 				print_hide=1,
 			),
@@ -109,7 +118,15 @@ def setup_custom_fields():
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
 				fieldtype="Data",
-				insert_after="shopify_order_id",
+				insert_after=ORDER_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname=ORDER_STATUS_FIELD,
+				label="Shopify Order Status",
+				fieldtype="Data",
+				insert_after=ORDER_NUMBER_FIELD,
 				read_only=1,
 				print_hide=1,
 			),
@@ -135,7 +152,15 @@ def setup_custom_fields():
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
 				fieldtype="Data",
-				insert_after="shopify_order_id",
+				insert_after=ORDER_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname=ORDER_STATUS_FIELD,
+				label="Shopify Order Status",
+				fieldtype="Data",
+				insert_after=ORDER_ID_FIELD,
 				read_only=1,
 				print_hide=1,
 			),

@@ -12,6 +12,7 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
+	ORDER_STATUS_FIELD,
 )
 
 
@@ -227,3 +228,39 @@ def get_sales_order(shopify_order_id):
 	if sales_order:
 		so = frappe.get_doc("Sales Order", sales_order)
 		return so
+
+
+def cancel_order(order, request_id=None):
+	"""Called by order/cancelled event.
+
+	When shopify order is cancelled there could be many different someone handles it.
+
+	Updates document with custom field showing order status.
+
+	IF sales invoice / delivery notes are not generated against an order, then cancel it.
+	"""
+	frappe.set_user("Administrator")
+	frappe.flags.request_id = request_id
+
+	try:
+		shopify_order_id = order["id"]
+		shopify_order_status = order["financial_status"]
+
+		sales_order = get_sales_order(shopify_order_id)
+		sales_invoice = frappe.db.get_value("Sales Invoice", filters={ORDER_ID_FIELD: shopify_order_id})
+		delivery_notes = frappe.db.get_list("Delivery Note", filters={ORDER_ID_FIELD: shopify_order_id})
+
+		frappe.db.set_value("Sales Order", sales_order.name, ORDER_STATUS_FIELD, shopify_order_status)
+		if sales_invoice:
+			frappe.db.set_value("Sales Invoice", sales_invoice, ORDER_STATUS_FIELD, shopify_order_status)
+
+		for dn in delivery_notes:
+			frappe.db.set_value("Delivery Note", dn.name, ORDER_STATUS_FIELD, shopify_order_status)
+
+		if not (sales_invoice or delivery_notes) and sales_order.docstatus == 1:
+			sales_order.cancel()
+
+	except Exception as e:
+		create_shopify_log(status="Error", exception=e)
+	else:
+		create_shopify_log(status="Success")
