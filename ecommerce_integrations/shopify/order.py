@@ -35,6 +35,8 @@ def sync_sales_order(order, request_id=None):
 			create_shopify_log(status="Error", exception=e)
 		else:
 			create_shopify_log(status="Success")
+	else:
+		create_shopify_log(status="Success", message="Already exists, not synced")
 
 
 def create_order(order, shopify_setting, company=None):
