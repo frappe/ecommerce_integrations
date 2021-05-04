@@ -375,11 +375,6 @@ def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
 		shopify_product.weight = erpnext_item.weight_per_unit
 		shopify_product.weight_unit = uom
 
-	if erpnext_item.image and "/private/" not in erpnext_item.image:
-		img_url = f"https://{get_current_domain_name()}{erpnext_item.image}"
-		shopify_product.images = [{"src": img_url}]
-
-
 def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 	for shopify_uom, erpnext_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.items():
 		if erpnext_uom == erpnext_weight_uom:
