@@ -38,7 +38,7 @@ def sync_sales_order(order, request_id=None):
 		else:
 			create_shopify_log(status="Success")
 	else:
-		create_shopify_log(status="Success", message="Already exists, not synced")
+		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
 
 
 def create_order(order, setting, company=None):
