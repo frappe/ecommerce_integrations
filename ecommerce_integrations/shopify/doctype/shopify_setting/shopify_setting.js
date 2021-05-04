@@ -17,6 +17,16 @@ frappe.ui.form.on("Shopify Setting", {
 
 		ecommerce_integrations.shopify.shopify_setting.setup_queries(frm);
 	},
+
+	fetch_shopify_locations: function(frm) {
+		frappe.call({
+			doc: frm.doc,
+			method: "update_location_table",
+			callback: (r) => {
+				if (!r.exc) refresh_field("shopify_warehouse_mapping");
+			}
+		});
+	},
 });
 
 $.extend(ecommerce_integrations.shopify.shopify_setting, {

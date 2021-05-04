@@ -41,7 +41,9 @@
   "taxes",
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
-  "update_shopify_item_on_update"
+  "update_shopify_item_on_update",
+  "fetch_shopify_locations",
+  "shopify_warehouse_mapping"
  ],
  "fields": [
   {
@@ -258,12 +260,23 @@
    "fieldname": "update_shopify_item_on_update",
    "fieldtype": "Check",
    "label": "Update Shopify Item after updating ERPNext item"
+  },
+  {
+   "fieldname": "shopify_warehouse_mapping",
+   "fieldtype": "Table",
+   "label": "Shopify Warehouse Mapping",
+   "options": "Shopify Warehouse Mapping"
+  },
+  {
+   "fieldname": "fetch_shopify_locations",
+   "fieldtype": "Button",
+   "label": "Fetch Shopify Locations"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-04 13:55:54.124968",
+ "modified": "2021-05-04 19:07:34.743401",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",

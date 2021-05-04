@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 from ecommerce_integrations.controllers.setting import SettingController
@@ -16,15 +17,20 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_STATUS_FIELD,
 )
 
+from shopify.resources import Location
+
 
 class ShopifySetting(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
-	def validate(self):
-		self.handle_webhooks()
 
-	def handle_webhooks(self):
+	def validate(self):
+		self._handle_webhooks()
+		self._validate_warehouse_links()
+
+
+	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
 			setup_custom_fields()
 			new_webhooks = connection.register_webhooks()
@@ -36,6 +42,28 @@ class ShopifySetting(SettingController):
 			connection.unregister_webhooks()
 
 			self.webhooks = list()  # remove all webhooks
+
+
+	def _validate_warehouse_links(self):
+		for wh_map in self.shopify_warehouse_mapping:
+			if not wh_map.erpnext_warehouse:
+				frappe.throw(_("ERPNext warehouse required in warehouse map table."))
+
+
+	@frappe.whitelist()
+	@connection.temp_shopify_session
+	def update_location_table(self):
+		"""Fetch locations from shopify and add it to child table so user can
+		map it with correct ERPNext warehouse."""
+		# get all locations
+		locations = Location.find()
+
+		# populate them in item table
+		for location in locations:
+			self.append(
+				"shopify_warehouse_mapping",
+				{"shopify_location_id": location.id, "shopify_location_name": location.name},
+			)
 
 
 @frappe.whitelist()
