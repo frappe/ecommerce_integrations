@@ -250,10 +250,11 @@
    "default": "0",
    "fieldname": "upload_erpnext_items",
    "fieldtype": "Check",
-   "label": "Upload ERPNext Items to Shopify"
+   "label": "Upload new ERPNext Items to Shopify"
   },
   {
    "default": "0",
+   "depends_on": "eval:doc.upload_erpnext_items",
    "fieldname": "update_shopify_item_on_update",
    "fieldtype": "Check",
    "label": "Update Shopify Item after updating ERPNext item"
@@ -262,7 +263,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-03 11:19:05.471422",
+ "modified": "2021-05-04 13:55:54.124968",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",
