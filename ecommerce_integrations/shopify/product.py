@@ -318,6 +318,10 @@ def upload_erpnext_item(doc, method=None):
 	if not setting.upload_erpnext_items:
 		return
 
+	# a new item recieved from ecommerce_integrations is being inserted
+	if frappe.flags.creating_ecommerce_item:
+		return
+
 	if doc.has_variants or doc.variant_of:
 		# TODO: not supported yet
 		msgprint(_("Item with variants or template items can not be uploaded to Shopify."))

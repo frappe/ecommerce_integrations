@@ -135,6 +135,7 @@ def create_ecommerce_item(
 	item.update(item_dict)
 
 	new_item = frappe.get_doc(item)
+	frappe.flags.creating_ecommerce_item = True
 	new_item.insert(ignore_permissions=True, ignore_mandatory=True)
 
 	# SKU not allowed for template items
@@ -155,4 +156,5 @@ def create_ecommerce_item(
 
 	ecommerce_item.insert()
 
+	frappe.flags.creating_ecommerce_item = False
 	frappe.db.commit()
