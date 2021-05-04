@@ -3,7 +3,7 @@
 
 frappe.ui.form.on('Ecommerce Integration Log', {
 	refresh: function(frm) {
-		if (frm.doc.request_data && frm.doc.status=='Error' || true){
+		if (frm.doc.request_data && frm.doc.status=='Error'){
 			frm.add_custom_button('Resync', function() {
 				frappe.call({
 					method:"ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log.resync",
@@ -13,7 +13,7 @@ frappe.ui.form.on('Ecommerce Integration Log', {
 						request_data: frm.doc.request_data
 					},
 					callback: function(r){
-						frappe.msgprint(__("Retrying"))
+						frappe.msgprint(__("Reattempting to sync"))
 					}
 				})
 			}).addClass('btn-primary');
