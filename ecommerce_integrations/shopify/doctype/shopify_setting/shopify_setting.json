@@ -42,6 +42,8 @@
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
+  "inventory_sync_section",
+  "update_erpnext_stock_levels_to_shopify",
   "fetch_shopify_locations",
   "shopify_warehouse_mapping"
  ],
@@ -262,21 +264,35 @@
    "label": "Update Shopify Item after updating ERPNext item"
   },
   {
+   "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "fieldname": "shopify_warehouse_mapping",
    "fieldtype": "Table",
    "label": "Shopify Warehouse Mapping",
+   "mandatory_depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "options": "Shopify Warehouse Mapping"
   },
   {
+   "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "fieldname": "fetch_shopify_locations",
    "fieldtype": "Button",
    "label": "Fetch Shopify Locations"
+  },
+  {
+   "fieldname": "inventory_sync_section",
+   "fieldtype": "Section Break",
+   "label": "Inventory Sync"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_erpnext_stock_levels_to_shopify",
+   "fieldtype": "Check",
+   "label": "Update ERPNext stock levels to Shopify"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-04 19:07:34.743401",
+ "modified": "2021-05-05 15:08:32.913518",
  "modified_by": "Administrator",
  "module": "Shopify",
  "name": "Shopify Setting",

@@ -4,7 +4,7 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cstr
+from frappe.utils import cstr, get_datetime
 
 from erpnext import get_default_company
 
@@ -22,6 +22,7 @@ class EcommerceItem(Document):
 
 	def validate(self):
 		self.check_unique_constraints()
+		self.set_defaults()
 
 	def check_unique_constraints(self) -> None:
 		filters = list()
@@ -45,6 +46,10 @@ class EcommerceItem(Document):
 			doc = frappe.db.get_value("Ecommerce Item", filters=filter, fieldname="name")
 			if doc != self.name:
 				frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
+	def set_defaults(self):
+		if not self.inventory_synced_on:
+			# set to start of epoch time i.e. not synced
+			self.inventory_synced_on = get_datetime("1970-01-01")
 
 
 def is_synced(

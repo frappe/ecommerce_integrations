@@ -11,7 +11,8 @@
   "has_variants",
   "variant_id",
   "variant_of",
-  "sku"
+  "sku",
+  "inventory_synced_on"
  ],
  "fields": [
   {
@@ -59,11 +60,17 @@
    "fieldname": "sku",
    "fieldtype": "Data",
    "label": "SKU"
+  },
+  {
+   "fieldname": "inventory_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Inventory Synced On",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-04-22 13:43:27.900325",
+ "modified": "2021-05-05 15:11:56.588071",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",

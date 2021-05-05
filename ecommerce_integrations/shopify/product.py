@@ -17,10 +17,7 @@ from ecommerce_integrations.shopify.constants import (
 from shopify.resources import Product
 
 from typing import Optional
-from ecommerce_integrations.shopify.connection import (
-	temp_shopify_session,
-	get_current_domain_name,
-)
+from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
