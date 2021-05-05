@@ -55,10 +55,10 @@ class ShopifySetting(SettingController):
 	def update_location_table(self):
 		"""Fetch locations from shopify and add it to child table so user can
 		map it with correct ERPNext warehouse."""
-		# get all locations
+
 		locations = Location.find()
 
-		# populate them in item table
+		self.shopify_warehouse_mapping = list()
 		for location in locations:
 			self.append(
 				"shopify_warehouse_mapping",

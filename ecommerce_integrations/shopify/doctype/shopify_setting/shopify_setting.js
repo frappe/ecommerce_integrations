@@ -79,5 +79,17 @@ $.extend(ecommerce_integrations.shopify.shopify_setting, {
 				},
 			};
 		};
+
+		frm.fields_dict["shopify_warehouse_mapping"].grid.get_field(
+			"erpnext_warehouse"
+		).get_query = function (doc) {
+			return {
+				filters: {
+					"is_group": 0,
+					"company": doc.company,
+					"disabled": 0,
+				},
+			};
+		};
 	},
 });
