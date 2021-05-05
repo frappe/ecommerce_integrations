@@ -42,7 +42,8 @@ class EcommerceItem(Document):
 			filters.append(unique_sku)
 
 		for filter in filters:
-			if frappe.db.exists("Ecommerce Item", filter):
+			doc = frappe.db.get_value("Ecommerce Item", filters=filter, fieldname="name")
+			if doc != self.name:
 				frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
 
 
