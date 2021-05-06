@@ -23,6 +23,7 @@ def update_inventory_on_shopify() -> None:
 		return
 
 	warehous_map = _get_warehouse_map(setting)
+	synced_on = now()
 	inventory_levels = _get_inventory_levels(warehouses=tuple(warehous_map.keys()))
 
 	for d in inventory_levels:
@@ -37,7 +38,7 @@ def update_inventory_on_shopify() -> None:
 				inventory_item_id=inventory_id,
 				available=cint(d.actual_qty),  # shopify doesn't support fractional quantity
 			)
-			frappe.db.set_value("Ecommerce Item", d.ecom_item, "inventory_synced_on", now())
+			frappe.db.set_value("Ecommerce Item", d.ecom_item, "inventory_synced_on", synced_on)
 			d.status = "Success"
 		except Exception as e:
 			create_shopify_log(method="update_inventory_on_shopify", status="Error", exception=e)
