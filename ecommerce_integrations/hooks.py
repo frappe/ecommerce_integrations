@@ -99,23 +99,15 @@ doc_events = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"ecommerce_integrations.tasks.all"
-# 	],
-# 	"daily": [
-# 		"ecommerce_integrations.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"ecommerce_integrations.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"ecommerce_integrations.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"ecommerce_integrations.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	"all": [ ],
+	"daily": [ ],
+	"hourly": [
+		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"
+	],
+	"weekly": [ ],
+	"monthly": [ ],
+}
 
 # Testing
 # -------
@@ -144,24 +136,23 @@ doc_events = {
 # User Data Protection
 # --------------------
 
-user_data_fields = [
-	{
-		"doctype": "{doctype_1}",
-		"filter_by": "{filter_by}",
-		"redact_fields": ["{field_1}", "{field_2}"],
-		"partial": 1,
-	},
-	{
-		"doctype": "{doctype_2}",
-		"filter_by": "{filter_by}",
-		"partial": 1,
-	},
-	{
-		"doctype": "{doctype_3}",
-		"strict": False,
-	},
-	{
-		"doctype": "{doctype_4}"
-	}
-]
-
+# user_data_fields = [
+# 	{
+# 		"doctype": "{doctype_1}",
+# 		"filter_by": "{filter_by}",
+# 		"redact_fields": ["{field_1}", "{field_2}"],
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_2}",
+# 		"filter_by": "{filter_by}",
+# 		"partial": 1,
+# 	},
+# 	{
+# 		"doctype": "{doctype_3}",
+# 		"strict": False,
+# 	},
+# 	{
+# 		"doctype": "{doctype_4}"
+# 	}
+# ]
