@@ -19,6 +19,8 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def temp_shopify_session(func):
+	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
+
 	def wrapper(*args, **kwargs):
 		setting = frappe.get_doc(SETTING_DOCTYPE)
 		auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
