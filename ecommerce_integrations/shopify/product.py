@@ -1,23 +1,22 @@
+from typing import Optional
+
 import frappe
 from frappe import _, msgprint
-from frappe.utils import cstr, cint
+from frappe.utils import cint, cstr
 from frappe.utils.nestedset import get_root_of
+from shopify.resources import Product
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
 	ecommerce_item,
 )
+from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
 	MODULE_NAME,
+	SETTING_DOCTYPE,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
 	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
-
-from shopify.resources import Product
-
-from typing import Optional
-from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
@@ -375,6 +374,7 @@ def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
 		uom = get_shopify_weight_uom(erpnext_weight_uom=erpnext_item.weight_uom)
 		shopify_product.weight = erpnext_item.weight_per_unit
 		shopify_product.weight_unit = uom
+
 
 def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 	for shopify_uom, erpnext_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.items():

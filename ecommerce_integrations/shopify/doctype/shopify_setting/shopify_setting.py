@@ -4,20 +4,19 @@
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from shopify.resources import Location
 
 from ecommerce_integrations.controllers.setting import SettingController
 from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import (
+	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
+	FULLFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	FULLFILLMENT_ID_FIELD,
-	ADDRESS_ID_FIELD,
-	SUPPLIER_ID_FIELD,
 	ORDER_STATUS_FIELD,
+	SUPPLIER_ID_FIELD,
 )
-
-from shopify.resources import Location
 
 
 class ShopifySetting(SettingController):

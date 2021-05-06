@@ -9,13 +9,13 @@ from frappe import _
 from shopify.resources import Webhook
 from shopify.session import Session
 
-from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
 	API_VERSION,
-	WEBHOOK_EVENTS,
 	EVENT_MAPPER,
+	SETTING_DOCTYPE,
+	WEBHOOK_EVENTS,
 )
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def temp_shopify_session(func):

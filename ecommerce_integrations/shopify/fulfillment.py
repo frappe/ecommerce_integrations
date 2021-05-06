@@ -1,15 +1,15 @@
 import frappe
-
-from ecommerce_integrations.shopify.utils import create_shopify_log
-from frappe.utils import cstr, getdate, cint
-from ecommerce_integrations.shopify.order import get_sales_order
 from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+from frappe.utils import cint, cstr, getdate
+
 from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
+	FULLFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	FULLFILLMENT_ID_FIELD,
+	SETTING_DOCTYPE,
 )
+from ecommerce_integrations.shopify.order import get_sales_order
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def prepare_delivery_note(order, request_id=None):

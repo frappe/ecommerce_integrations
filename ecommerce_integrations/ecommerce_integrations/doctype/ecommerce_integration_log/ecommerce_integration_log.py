@@ -5,8 +5,8 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils.data import cstr
 from frappe.model.document import Document
+from frappe.utils.data import cstr
 
 
 class EcommerceIntegrationLog(Document):

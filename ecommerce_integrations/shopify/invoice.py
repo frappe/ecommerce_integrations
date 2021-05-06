@@ -1,13 +1,13 @@
 import frappe
-
-from frappe.utils import cstr, cint, nowdate
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from frappe.utils import cint, cstr, nowdate
+
 from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
+	SETTING_DOCTYPE,
 )
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def prepare_sales_invoice(order, request_id=None):

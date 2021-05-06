@@ -4,7 +4,6 @@
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log import (
 	create_log,
 )
-
 from ecommerce_integrations.shopify.constants import MODULE_NAME
 
 

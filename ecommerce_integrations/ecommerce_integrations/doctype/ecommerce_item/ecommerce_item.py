@@ -1,14 +1,13 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+from typing import Dict, Optional
+
 import frappe
+from erpnext import get_default_company
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_datetime
-
-from erpnext import get_default_company
-
-from typing import Optional, Dict
 
 
 class EcommerceItem(Document):

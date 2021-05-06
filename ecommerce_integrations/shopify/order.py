@@ -1,20 +1,20 @@
 import frappe
 from frappe import _
-from frappe.utils import cstr, nowdate, getdate, flt
+from frappe.utils import cstr, flt, getdate, nowdate
 
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.constants import (
+	CUSTOMER_ID_FIELD,
+	ORDER_ID_FIELD,
+	ORDER_NUMBER_FIELD,
+	ORDER_STATUS_FIELD,
+	SETTING_DOCTYPE,
+)
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
 from ecommerce_integrations.shopify.product import (
 	create_items_if_not_exist,
 	get_item_code,
 )
-from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
-	ORDER_ID_FIELD,
-	ORDER_NUMBER_FIELD,
-	ORDER_STATUS_FIELD,
-	CUSTOMER_ID_FIELD,
-)
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def sync_sales_order(order, request_id=None):
@@ -43,8 +43,8 @@ def sync_sales_order(order, request_id=None):
 
 def create_order(order, setting, company=None):
 	# local import to avoid circular dependencies
-	from ecommerce_integrations.shopify.invoice import create_sales_invoice
 	from ecommerce_integrations.shopify.fulfillment import create_delivery_note
+	from ecommerce_integrations.shopify.invoice import create_sales_invoice
 
 	so = create_sales_order(order, setting, company)
 	if so:

@@ -1,13 +1,14 @@
+from typing import Any, Dict
+
 import frappe
 from frappe import _
-from ecommerce_integrations.controllers.customer import EcommerceCustomer
-from typing import Dict, Any
 
+from ecommerce_integrations.controllers.customer import EcommerceCustomer
 from ecommerce_integrations.shopify.constants import (
-	SETTING_DOCTYPE,
-	MODULE_NAME,
-	CUSTOMER_ID_FIELD,
 	ADDRESS_ID_FIELD,
+	CUSTOMER_ID_FIELD,
+	MODULE_NAME,
+	SETTING_DOCTYPE,
 )
 
 
