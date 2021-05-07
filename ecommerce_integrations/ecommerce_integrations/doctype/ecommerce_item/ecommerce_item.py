@@ -20,8 +20,10 @@ class EcommerceItem(Document):
 	sku: str  # SKU
 
 	def validate(self):
-		self.check_unique_constraints()
 		self.set_defaults()
+
+	def before_insert(self):
+		self.check_unique_constraints()
 
 	def check_unique_constraints(self) -> None:
 		filters = list()
@@ -44,6 +46,7 @@ class EcommerceItem(Document):
 		for filter in filters:
 			if frappe.db.exists("Ecommerce Item", filter):
 				frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
+
 	def set_defaults(self):
 		if not self.inventory_synced_on:
 			# set to start of epoch time i.e. not synced
