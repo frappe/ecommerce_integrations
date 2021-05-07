@@ -337,12 +337,13 @@ def upload_erpnext_item(doc, method=None):
 		is_successful = product.save()
 
 		if is_successful:
-			update_default_variant_properties(
+			product = update_default_variant_properties(
 				product,
 				sku=item.item_code,
 				price=item.standard_rate,
 				is_stock_item=item.is_stock_item,
 			)
+			product.save()  # push variant
 
 			ecom_item = frappe.get_doc(
 				{
@@ -387,7 +388,7 @@ def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 
 def update_default_variant_properties(
 	shopify_product: Product, sku: str, price: float, is_stock_item: bool
-) -> bool:
+) -> Product:
 	"""Shopify creates default variant upon saving the product.
 
 	Some item properties are supposed to be updated on the default variant.
@@ -398,10 +399,11 @@ def update_default_variant_properties(
 	# this will create Inventory item and qty will be updated by scheduled job.
 	if is_stock_item:
 		default_variant.inventory_management = "shopify"
-	default_variant.price = price
-	default_variant.sku = default_variant.sku or sku
 
-	return shopify_product.save()
+	default_variant.price = price
+	default_variant.sku = sku
+
+	return shopify_product
 
 
 def write_upload_log(status, product, item, action="Created"):
