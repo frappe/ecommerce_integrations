@@ -4,7 +4,7 @@ import frappe
 from frappe import _, msgprint
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import get_root_of
-from shopify.resources import Product
+from shopify.resources import Product, Variant
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
 	ecommerce_item,
@@ -319,7 +319,6 @@ def upload_erpnext_item(doc, method=None):
 		return
 
 	if doc.has_variants or doc.variant_of:
-		# TODO: not supported yet
 		msgprint(_("Item with variants or template items can not be uploaded to Shopify."))
 		return
 
@@ -328,18 +327,18 @@ def upload_erpnext_item(doc, method=None):
 	)
 	is_new_product = not bool(product_id)
 
-	# TODO: rate limit / retry / bg job?
 	if is_new_product:
 
 		product = Product()
 		product.published = False
 		product.status = "draft"
-		product.sku = item.item_code
 
 		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
 		is_successful = product.save()
 
 		if is_successful:
+			update_default_variant_properties(product, sku=item.item_code, price=item.standard_rate)
+
 			ecom_item = frappe.get_doc(
 				{
 					"doctype": "Ecommerce Item",
@@ -367,7 +366,6 @@ def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
 	shopify_product.title = erpnext_item.item_name
 	shopify_product.body_html = erpnext_item.description
 	shopify_product.product_type = erpnext_item.item_group
-	shopify_product.price = erpnext_item.standard_rate
 
 	if erpnext_item.weight_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.values():
 		# reverse lookup for key
@@ -380,6 +378,22 @@ def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 	for shopify_uom, erpnext_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.items():
 		if erpnext_uom == erpnext_weight_uom:
 			return shopify_uom
+
+
+def update_default_variant_properties(shopify_product: Product, sku: str, price: float) -> bool:
+	"""Shopify creates default variant upon saving the product.
+
+	Some item properties are supposed to be updated on the default variant.
+	Input: saved shopify_product, sku and price
+	"""
+	default_variant: Variant = shopify_product.variants[0]
+
+	# this will create Inventory item and qty will be updated by scheduled job.
+	default_variant.inventory_management = "shopify"
+	default_variant.price = price
+	default_variant.sku = default_variant.sku or sku
+
+	return shopify_product.save()
 
 
 def write_upload_log(status, product, item, action="Created"):
