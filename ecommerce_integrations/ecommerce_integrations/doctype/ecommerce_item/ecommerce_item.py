@@ -42,8 +42,7 @@ class EcommerceItem(Document):
 			filters.append(unique_sku)
 
 		for filter in filters:
-			doc = frappe.db.get_value("Ecommerce Item", filters=filter, fieldname="name")
-			if doc != self.name:
+			if frappe.db.exists("Ecommerce Item", filter):
 				frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
 	def set_defaults(self):
 		if not self.inventory_synced_on:
