@@ -21,24 +21,24 @@ def sync_sales_order(order, request_id=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
-	if not frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
-		try:
-			shopify_customer = order.get("customer", {})
-			customer = ShopifyCustomer(customer_id=shopify_customer.get("id"))
-
-			if not customer.is_synced():
-				customer.sync_customer(customer=shopify_customer)
-
-			create_items_if_not_exist(order)
-
-			setting = frappe.get_doc(SETTING_DOCTYPE)
-			create_order(order, setting)
-		except Exception as e:
-			create_shopify_log(status="Error", exception=e)
-		else:
-			create_shopify_log(status="Success")
-	else:
+	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
+		return
+	try:
+		shopify_customer = order.get("customer", {})
+		customer = ShopifyCustomer(customer_id=shopify_customer.get("id"))
+
+		if not customer.is_synced():
+			customer.sync_customer(customer=shopify_customer)
+
+		create_items_if_not_exist(order)
+
+		setting = frappe.get_doc(SETTING_DOCTYPE)
+		create_order(order, setting)
+	except Exception as e:
+		create_shopify_log(status="Error", exception=e)
+	else:
+		create_shopify_log(status="Success")
 
 
 def create_order(order, setting, company=None):
@@ -56,7 +56,6 @@ def create_order(order, setting, company=None):
 
 
 def create_sales_order(shopify_order, setting, company=None):
-	product_not_exists = []
 	customer = frappe.db.get_value(
 		"Customer", {CUSTOMER_ID_FIELD: shopify_order.get("customer", {}).get("id")}, "name",
 	)
@@ -74,6 +73,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"Following items exists in the shopify order but relevant records were"
 				" not found in the shopify Product master"
 			)
+			product_not_exists = []  # TODO: fix missing items
 			message += "\n" + ", ".join(product_not_exists)
 
 			create_shopify_log(status="Error", exception=message, rollback=True)
@@ -222,8 +222,7 @@ def get_sales_order(order_id):
 	"""Get ERPNext sales order using shopify order id."""
 	sales_order = frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: order_id})
 	if sales_order:
-		so = frappe.get_doc("Sales Order", sales_order)
-		return so
+		return frappe.get_doc("Sales Order", sales_order)
 
 
 def cancel_order(order, request_id=None):
@@ -257,7 +256,7 @@ def cancel_order(order, request_id=None):
 		for dn in delivery_notes:
 			frappe.db.set_value("Delivery Note", dn.name, ORDER_STATUS_FIELD, order_status)
 
-		if not (sales_invoice or delivery_notes) and sales_order.docstatus == 1:
+		if not sales_invoice and not delivery_notes and sales_order.docstatus == 1:
 			sales_order.cancel()
 
 	except Exception as e:

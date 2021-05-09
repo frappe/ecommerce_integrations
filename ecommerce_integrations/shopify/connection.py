@@ -32,7 +32,7 @@ def temp_shopify_session(func):
 @temp_shopify_session
 def register_webhooks() -> List[Webhook]:
 	"""Register required webhooks with shopify and return registered webhooks."""
-	new_webhooks = list()
+	new_webhooks = []
 
 	for topic in WEBHOOK_EVENTS:
 		webhook = Webhook.create(
@@ -68,11 +68,9 @@ def get_current_domain_name() -> str:
 	If developer_mode is enabled and localtunnel_url is set in site config then domain  is set to localtunnel_url.
 	"""
 	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
-		domain = frappe.conf.localtunnel_url
+		return frappe.conf.localtunnel_url
 	else:
-		domain = frappe.request.host
-
-	return domain
+		return frappe.request.host
 
 
 def get_callback_url() -> str:
@@ -121,6 +119,6 @@ def _validate_request(req, hmac_header):
 		hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest()
 	)
 
-	if hmac_header and not sig == bytes(hmac_header.encode()):
+	if hmac_header and sig != bytes(hmac_header.encode()):
 		create_shopify_log(status="Error", request_data=req.data)
 		frappe.throw(_("Unverified Webhook Data"))

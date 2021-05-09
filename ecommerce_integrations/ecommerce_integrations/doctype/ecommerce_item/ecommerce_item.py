@@ -26,7 +26,7 @@ class EcommerceItem(Document):
 		self.check_unique_constraints()
 
 	def check_unique_constraints(self) -> None:
-		filters = list()
+		filters = []
 
 		unique_integration_item_code = {
 			"integration": self.integration,

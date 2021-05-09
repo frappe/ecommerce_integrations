@@ -57,13 +57,11 @@ def create_log(
 
 def __get_message(exception):
 	if hasattr(exception, "message"):
-		message = exception.message
+		return exception.message
 	elif hasattr(exception, "__str__"):
-		message = exception.__str__()
+		return exception.__str__()
 	else:
-		message = _("Something went wrong while syncing")
-
-	return message
+		return _("Something went wrong while syncing")
 
 
 @frappe.whitelist()

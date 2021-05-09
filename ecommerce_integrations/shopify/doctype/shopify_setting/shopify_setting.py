@@ -57,7 +57,7 @@ class ShopifySetting(SettingController):
 
 		locations = Location.find()
 
-		self.shopify_warehouse_mapping = list()
+		self.shopify_warehouse_mapping = []
 		for location in locations:
 			self.append(
 				"shopify_warehouse_mapping",

@@ -199,21 +199,20 @@ class ShopifyProduct:
 	def _get_item_group(self, product_type=None):
 		parent_item_group = get_root_of("Item Group")
 
-		if product_type:
-			if not frappe.db.get_value("Item Group", product_type, "name"):
-				item_group = frappe.get_doc(
-					{
-						"doctype": "Item Group",
-						"item_group_name": product_type,
-						"parent_item_group": parent_item_group,
-						"is_group": "No",
-					}
-				).insert()
-				return item_group.name
-			else:
-				return product_type
-		else:
+		if not product_type:
 			return parent_item_group
+
+		if frappe.db.get_value("Item Group", product_type, "name"):
+			return product_type
+		item_group = frappe.get_doc(
+			{
+				"doctype": "Item Group",
+				"item_group_name": product_type,
+				"parent_item_group": parent_item_group,
+				"is_group": "No",
+			}
+		).insert()
+		return item_group.name
 
 	def _get_supplier(self, product_dict):
 		if product_dict.get("vendor"):
@@ -224,18 +223,17 @@ class ShopifyProduct:
 				as_list=1,
 			)
 
-			if not supplier:
-				supplier = frappe.get_doc(
-					{
-						"doctype": "Supplier",
-						"supplier_name": product_dict.get("vendor"),
-						SUPPLIER_ID_FIELD: product_dict.get("vendor").lower(),
-						"supplier_group": self._get_supplier_group(),
-					}
-				).insert()
-				return supplier.name
-			else:
+			if supplier:
 				return product_dict.get("vendor")
+			supplier = frappe.get_doc(
+				{
+					"doctype": "Supplier",
+					"supplier_name": product_dict.get("vendor"),
+					SUPPLIER_ID_FIELD: product_dict.get("vendor").lower(),
+					"supplier_group": self._get_supplier_group(),
+				}
+			).insert()
+			return supplier.name
 		else:
 			return ""
 
@@ -258,9 +256,7 @@ def _add_weight_details(product_dict):
 
 def _has_variants(product_dict) -> bool:
 	options = product_dict.get("options")
-	if options and "Default Title" not in options[0]["values"]:
-		return True
-	return False
+	return bool(options and "Default Title" not in options[0]["values"])
 
 
 def _get_sku(product_dict):

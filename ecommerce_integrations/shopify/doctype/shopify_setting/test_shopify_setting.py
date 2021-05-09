@@ -44,6 +44,6 @@ class TestShopifySetting(unittest.TestCase):
 		)
 
 		self.assertEqual(len(created_fields), 10)
-		created_fields_set = set(d[0] for d in created_fields)
+		created_fields_set = {d[0] for d in created_fields}
 
 		self.assertEqual(created_fields_set, required_fields)

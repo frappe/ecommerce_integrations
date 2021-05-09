@@ -8,5 +8,4 @@ from ecommerce_integrations.shopify.constants import MODULE_NAME
 
 
 def create_shopify_log(**kwargs):
-	log = create_log(module_def=MODULE_NAME, **kwargs)
-	return log
+	return create_log(module_def=MODULE_NAME, **kwargs)
