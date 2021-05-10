@@ -1,48 +1,39 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See license.txt
 
-import unittest
 import frappe
 
 from ecommerce_integrations.shopify.product import ShopifyProduct
-from .utils import load_json
+
+from .utils import TestCase
 
 
-class TestProduct(unittest.TestCase):
-	@classmethod
-	def setUpClass(cls):
-		# clean up all existing Ecommerce Items and related item docs
-		for d in frappe.get_list("Ecommerce Item"):
-			try:
-				doc = frappe.get_doc("Ecommerce Item", d.name)
-				item_code = doc.erpnext_item_code
-				doc.delete()
-				frappe.get_doc("Item", item_code).delete()
-			except frappe.exceptions.LinkExistsError:
-				# TODO: better way to handle links
-				continue
-
+class TestProduct(TestCase):
 	def test_sync_single_product(self):
-		product_dict = load_json("single_product.json")
+		self.fake("products/6732194021530", body=self.load_fixture("single_product"))
 
-		product = ShopifyProduct(product_dict["id"])
-		product._make_item(product_dict)  # can't hit API in tests, hence using stored reponse
+		product = ShopifyProduct(product_id="6732194021530", variant_id="39933951901850")
+
+		product.sync_product()
 
 		self.assertTrue(product.is_synced())
 
 		item = product.get_erpnext_item()
 
+		self.assertEqual(frappe.get_last_doc("Item").item_code, item.item_code)
+
 		ecommerce_item_exists = frappe.db.exists(
 			"Ecommerce Item", {"erpnext_item_code": item.name}
 		)
-		self.assertTrue(ecommerce_item_exists)
+		self.assertTrue(bool(ecommerce_item_exists))
+
 
 	def test_sync_product_with_variants(self):
-		product_dict = load_json("variant_product.json")
+		self.fake("products/6704435495065", body=self.load_fixture("variant_product"))
 
-		product = ShopifyProduct(product_dict["id"])
+		product = ShopifyProduct(product_id="6704435495065")
 
-		product._make_item(product_dict)
+		product.sync_product()
 
 		self.assertTrue(product.is_synced())
 
@@ -50,11 +41,26 @@ class TestProduct(unittest.TestCase):
 		self.assertTrue(bool(item.has_variants))
 		self.assertEqual(item.name, str(product.product_id))
 
-
-		required_variants = [str(v["id"]) for v in  product_dict["variants"]]
+		required_variants = [
+			"39845261443225",
+			"39845261475993",
+			"39845261508761",
+			"39845261541529",
+			"39845261574297",
+			"39845261607065",
+			"39845261639833",
+			"39845261672601",
+			"39845261705369",
+		]
 
 		variants = frappe.db.get_list("Item", filters={"variant_of": item.name})
+		ecom_variants = frappe.db.get_list("Ecommerce Item", filters={"variant_of": item.name}, fields="erpnext_item_code")
+
 		created_variants = [v.name for v in variants]
+		created_ecom_variants = [e.erpnext_item_code for e in ecom_variants]
 
 		self.assertEqual(len(variants), 9)  # 3 * 3
 		self.assertEqual(sorted(required_variants), sorted(created_variants))
+
+		self.assertEqual(len(created_ecom_variants), 9)
+		self.assertEqual(sorted(required_variants), sorted(created_ecom_variants))

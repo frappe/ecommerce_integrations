@@ -1,5 +1,5 @@
 {
-	"id": 6732194021529,
+	"id": 6732194021530,
 	"title": "Orange MePhone",
 	"body_html": "Best Phone in the World",
 	"vendor": "frappetest",
@@ -12,13 +12,13 @@
 	"status": "active",
 	"published_scope": "web",
 	"tags": "",
-	"admin_graphql_api_id": "gid://shopify/Product/6732194021529",
+	"admin_graphql_api_id": "gid://shopify/Product/6732194021530",
 	"variants": [
 		{
-			"id": 39933951901849,
+			"id": 39933951901850,
 			"title": "Default Title",
 			"price": "44000.00",
-			"sku": "MePHONE-001",
+			"sku": "MePHONE-002",
 			"position": 1,
 			"inventory_policy": "deny",
 			"compare_at_price": "100.00",
@@ -39,13 +39,13 @@
 			"inventory_quantity": 99,
 			"old_inventory_quantity": 99,
 			"requires_shipping": true,
-			"admin_graphql_api_id": "gid://shopify/ProductVariant/39933951901849"
+			"admin_graphql_api_id": "gid://shopify/ProductVariant/39933951901850"
 		}
 	],
 	"options": [
 		{
 			"id": 8626779324569,
-			"product_id": 6732194021529,
+			"product_id": 6732194021530,
 			"name": "Title",
 			"position": 1,
 			"values": ["Default Title"]

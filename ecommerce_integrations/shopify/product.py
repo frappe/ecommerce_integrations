@@ -24,9 +24,9 @@ class ShopifyProduct:
 	def __init__(
 		self, product_id: str, variant_id: Optional[str] = None, sku: Optional[str] = None
 	):
-		self.product_id = product_id
-		self.variant_id = variant_id
-		self.sku = sku
+		self.product_id = str(product_id)
+		self.variant_id = str(variant_id) if variant_id else None
+		self.sku = str(sku) if sku else None
 		self.setting = frappe.get_doc(SETTING_DOCTYPE)
 
 		if not self.setting.is_enabled():
@@ -284,9 +284,10 @@ def create_items_if_not_exist(order):
 
 
 def get_item_code(shopify_item):
-	"""Get item code using shopify_item dict."""
+	"""Get item code using shopify_item dict.
 
-	# get ecommerce_item  based on variant_id or product_id
+	Item should contain both product_id and variant_id."""
+
 	item = ecommerce_item.get_erpnext_item(
 		integration=MODULE_NAME,
 		integration_item_code=shopify_item.get("product_id"),
