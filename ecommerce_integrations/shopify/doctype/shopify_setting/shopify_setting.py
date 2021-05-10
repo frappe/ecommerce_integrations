@@ -23,7 +23,6 @@ class ShopifySetting(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
-
 	def validate(self):
 		self._handle_webhooks()
 		self._validate_warehouse_links()
@@ -32,7 +31,9 @@ class ShopifySetting(SettingController):
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
 			setup_custom_fields()
-			new_webhooks = connection.register_webhooks()
+			new_webhooks = connection.register_webhooks(
+				self.shopify_url, self.get_password("password")
+			)
 
 			for webhook in new_webhooks:
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
@@ -42,12 +43,10 @@ class ShopifySetting(SettingController):
 
 			self.webhooks = list()  # remove all webhooks
 
-
 	def _validate_warehouse_links(self):
 		for wh_map in self.shopify_warehouse_mapping:
 			if not wh_map.erpnext_warehouse:
 				frappe.throw(_("ERPNext warehouse required in warehouse map table."))
-
 
 	@frappe.whitelist()
 	@connection.temp_shopify_session
