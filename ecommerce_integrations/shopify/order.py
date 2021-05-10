@@ -26,10 +26,11 @@ def sync_sales_order(order, request_id=None):
 		return
 	try:
 		shopify_customer = order.get("customer", {})
-		customer = ShopifyCustomer(customer_id=shopify_customer.get("id"))
-
-		if not customer.is_synced():
-			customer.sync_customer(customer=shopify_customer)
+		customer_id = shopify_customer.get("id")
+		if customer_id:
+			customer = ShopifyCustomer(customer_id=customer_id)
+			if not customer.is_synced():
+				customer.sync_customer(customer=shopify_customer)
 
 		create_items_if_not_exist(order)
 
