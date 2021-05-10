@@ -27,10 +27,11 @@ class ShopifySetting(SettingController):
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 
+		if self.is_enabled():
+			setup_custom_fields()
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			setup_custom_fields()
 			new_webhooks = connection.register_webhooks(
 				self.shopify_url, self.get_password("password")
 			)
