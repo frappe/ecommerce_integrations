@@ -31,11 +31,11 @@ def temp_shopify_session(func):
 	return wrapper
 
 
-def register_webhooks(shopify_url: str, passowrd: str) -> List[Webhook]:
+def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 	"""Register required webhooks with shopify and return registered webhooks."""
 	new_webhooks = []
 
-	with Session.temp(shopify_url, API_VERSION, passowrd):
+	with Session.temp(shopify_url, API_VERSION, password):
 		for topic in WEBHOOK_EVENTS:
 			webhook = Webhook.create(
 				{"topic": topic, "address": get_callback_url(), "format": "json"}

@@ -4,6 +4,7 @@
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from pyactiveresource.connection import UnauthorizedAccess
 from shopify.resources import Location
 
 from ecommerce_integrations.controllers.setting import SettingController
@@ -32,9 +33,17 @@ class ShopifySetting(SettingController):
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			new_webhooks = connection.register_webhooks(
-				self.shopify_url, self.get_password("password")
-			)
+			try:
+				new_webhooks = connection.register_webhooks(
+					self.shopify_url, self.get_password("password")
+				)
+			except UnauthorizedAccess:
+				new_webhooks = []
+
+			if not new_webhooks:
+				msg = _("Failed to register webhooks with Shopify.")
+				msg += _("Please check credentials and retry.")
+				frappe.throw(msg)
 
 			for webhook in new_webhooks:
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
