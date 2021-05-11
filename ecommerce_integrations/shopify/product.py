@@ -308,7 +308,7 @@ def upload_erpnext_item(doc, method=None):
 	item = doc
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
-	if not setting.upload_erpnext_items:
+	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
 	# a new item recieved from ecommerce_integrations is being inserted
