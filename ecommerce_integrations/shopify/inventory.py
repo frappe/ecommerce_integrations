@@ -11,7 +11,6 @@ from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-@temp_shopify_session
 def update_inventory_on_shopify() -> None:
 	"""Upload stock levels from ERPNext to Shopify.
 
@@ -23,8 +22,15 @@ def update_inventory_on_shopify() -> None:
 		return
 
 	warehous_map = _get_warehouse_map(setting)
-	synced_on = now()
 	inventory_levels = _get_inventory_levels(warehouses=tuple(warehous_map.keys()))
+
+	if inventory_levels:
+		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
+
+
+@temp_shopify_session
+def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
+	synced_on = now()
 
 	for d in inventory_levels:
 		d.shopify_location_id = warehous_map[d.warehouse]
