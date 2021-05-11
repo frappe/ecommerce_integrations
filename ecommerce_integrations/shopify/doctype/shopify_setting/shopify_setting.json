@@ -45,7 +45,8 @@
   "inventory_sync_section",
   "update_erpnext_stock_levels_to_shopify",
   "fetch_shopify_locations",
-  "shopify_warehouse_mapping"
+  "shopify_warehouse_mapping",
+  "is_old_data_migrated"
  ],
  "fields": [
   {
@@ -287,14 +288,21 @@
    "fieldname": "update_erpnext_stock_levels_to_shopify",
    "fieldtype": "Check",
    "label": "Update ERPNext stock levels to Shopify"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_old_data_migrated",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is old data migrated"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-05 15:08:32.913518",
+ "modified": "2021-05-11 15:32:27.508306",
  "modified_by": "Administrator",
- "module": "Shopify",
+ "module": "shopify",
  "name": "Shopify Setting",
  "owner": "Administrator",
  "permissions": [
