@@ -10,8 +10,10 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_sales_invoice(order, request_id=None):
+def prepare_sales_invoice(payload, request_id=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
+
+	order = payload
 
 	frappe.set_user("Administrator")
 	setting = frappe.get_doc(SETTING_DOCTYPE)
