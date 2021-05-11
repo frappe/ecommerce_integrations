@@ -17,7 +17,8 @@ from ecommerce_integrations.shopify.product import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def sync_sales_order(order, request_id=None):
+def sync_sales_order(payload, request_id=None):
+	order = payload
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
@@ -226,7 +227,7 @@ def get_sales_order(order_id):
 		return frappe.get_doc("Sales Order", sales_order)
 
 
-def cancel_order(order, request_id=None):
+def cancel_order(payload, request_id=None):
 	"""Called by order/cancelled event.
 
 	When shopify order is cancelled there could be many different someone handles it.
@@ -237,6 +238,8 @@ def cancel_order(order, request_id=None):
 	"""
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
+
+	order = payload
 
 	try:
 		order_id = order["id"]

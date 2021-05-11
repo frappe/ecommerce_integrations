@@ -76,5 +76,5 @@ def resync(method, name, request_data):
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"order": json.loads(request_data), "request_id": name}
+		**{"payload": json.loads(request_data), "request_id": name}
 	)

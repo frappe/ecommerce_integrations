@@ -12,10 +12,12 @@ from ecommerce_integrations.shopify.order import get_sales_order
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_delivery_note(order, request_id=None):
+def prepare_delivery_note(payload, request_id=None):
 	frappe.set_user("Administrator")
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
+
+	order = payload
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
