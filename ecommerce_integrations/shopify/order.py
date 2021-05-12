@@ -153,7 +153,7 @@ def get_order_taxes(shopify_order, setting):
 			{
 				"charge_type": _("On Net Total"),
 				"account_head": get_tax_account_head(tax),
-				"description": "{0} - {1}%".format(tax.get("title"), tax.get("rate") * 100.0),
+				"description": f"{tax.get('title')} - {tax.get('rate') * 100.0}%",
 				"rate": tax.get("rate") * 100.00,
 				"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
 				"cost_center": setting.cost_center,

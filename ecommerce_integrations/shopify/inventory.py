@@ -75,7 +75,7 @@ def _get_inventory_levels(warehouses: Tuple[str]) -> List[_dict]:
 			FROM `tabEcommerce Item` ei
 				JOIN tabBin bin
 				ON ei.erpnext_item_code = bin.item_code
-			WHERE bin.warehouse in ({','.join(['%s' for _ in warehouses])})
+			WHERE bin.warehouse in ({', '.join('%s' for _ in warehouses)})
 				AND bin.modified > ei.inventory_synced_on
 				AND integration = 'Shopify'
 		""",

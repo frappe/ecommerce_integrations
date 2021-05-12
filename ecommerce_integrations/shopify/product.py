@@ -217,8 +217,8 @@ class ShopifyProduct:
 	def _get_supplier(self, product_dict):
 		if product_dict.get("vendor"):
 			supplier = frappe.db.sql(
-				"""select name from tabSupplier
-				where name = %s or shopify_supplier_id = %s """,
+				f"""select name from tabSupplier
+				where name = %s or {SUPPLIER_ID_FIELD} = %s """,
 				(product_dict.get("vendor"), product_dict.get("vendor").lower()),
 				as_list=1,
 			)
@@ -300,7 +300,7 @@ def get_item_code(shopify_item):
 
 @temp_shopify_session
 def upload_erpnext_item(doc, method=None):
-	"""This hook is called new inserting new or updating existing `Item`.
+	"""This hook is called when inserting new or updating existing `Item`.
 
 	New items are pushed to shopify and changes to existing items are
 	updated depending on what is configured in "Shopify Setting" doctype.
@@ -414,7 +414,7 @@ def update_default_variant_properties(
 	return shopify_product
 
 
-def write_upload_log(status, product, item, action="Created"):
+def write_upload_log(status: bool, product: Product, item, action="Created") -> None:
 	if not status:
 		msg = _("Failed to upload item to Shopify") + "<br>"
 		msg += _("Shopify reported errors:") + " " + ", ".join(product.errors.full_messages())
