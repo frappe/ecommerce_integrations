@@ -305,7 +305,7 @@ def upload_erpnext_item(doc, method=None):
 	New items are pushed to shopify and changes to existing items are
 	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
-	item = doc
+	item = doc  # alias for readability
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
@@ -323,7 +323,9 @@ def upload_erpnext_item(doc, method=None):
 		return
 
 	product_id = frappe.db.get_value(
-		"Ecommerce Item", {"erpnext_item_code": item.name}, "integration_item_code"
+		"Ecommerce Item",
+		{"erpnext_item_code": item.name, "integration": MODULE_NAME},
+		"integration_item_code",
 	)
 	is_new_product = not bool(product_id)
 
@@ -362,6 +364,7 @@ def upload_erpnext_item(doc, method=None):
 		product = Product.find(product_id)
 		if product:
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
+			update_default_variant_properties(product, is_stock_item=item.is_stock_item)
 			is_successful = product.save()
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
 
@@ -387,7 +390,10 @@ def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 
 
 def update_default_variant_properties(
-	shopify_product: Product, sku: str, price: float, is_stock_item: bool
+	shopify_product: Product,
+	is_stock_item: bool,
+	sku: Optional[str] = None,
+	price: Optional[float] = None,
 ) -> Product:
 	"""Shopify creates default variant upon saving the product.
 
@@ -400,8 +406,10 @@ def update_default_variant_properties(
 	if is_stock_item:
 		default_variant.inventory_management = "shopify"
 
-	default_variant.price = price
-	default_variant.sku = sku
+	if price is not None:
+		default_variant.price = price
+	if sku is not None:
+		default_variant.sku = sku
 
 	return shopify_product
 

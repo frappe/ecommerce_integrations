@@ -248,7 +248,7 @@ def cancel_order(payload, request_id=None):
 		sales_order = get_sales_order(order_id)
 
 		if not sales_order:
-			create_shopify_log(status="Invalid")
+			create_shopify_log(status="Invalid", message="Sales Order does not exist")
 			return
 
 		sales_invoice = frappe.db.get_value(
