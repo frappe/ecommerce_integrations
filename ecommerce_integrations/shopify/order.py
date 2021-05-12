@@ -246,6 +246,11 @@ def cancel_order(payload, request_id=None):
 		order_status = order["financial_status"]
 
 		sales_order = get_sales_order(order_id)
+
+		if not sales_order:
+			create_shopify_log(status="Invalid")
+			return
+
 		sales_invoice = frappe.db.get_value(
 			"Sales Invoice", filters={ORDER_ID_FIELD: order_id}
 		)
