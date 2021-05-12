@@ -258,7 +258,6 @@ def cancel_order(payload, request_id=None):
 			"Delivery Note", filters={ORDER_ID_FIELD: order_id}
 		)
 
-		frappe.db.set_value("Sales Order", sales_order.name, ORDER_STATUS_FIELD, order_status)
 		if sales_invoice:
 			frappe.db.set_value("Sales Invoice", sales_invoice, ORDER_STATUS_FIELD, order_status)
 
@@ -266,6 +265,7 @@ def cancel_order(payload, request_id=None):
 			frappe.db.set_value("Delivery Note", dn.name, ORDER_STATUS_FIELD, order_status)
 
 		if not sales_invoice and not delivery_notes and sales_order.docstatus == 1:
+			setattr(sales_order, ORDER_STATUS_FIELD, order_status)
 			sales_order.cancel()
 
 	except Exception as e:
