@@ -114,7 +114,7 @@ def process_request(data, event):
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"order": data, "request_id": log.name},
+		**{"payload": data, "request_id": log.name},
 	)
 
 
