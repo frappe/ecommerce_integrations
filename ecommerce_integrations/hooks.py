@@ -109,6 +109,10 @@ scheduler_events = {
 	"monthly": [ ],
 }
 
+
+# bootinfo - hide old doctypes
+extend_bootinfo = "ecommerce_integrations.boot.boot_session"
+
 # Testing
 # -------
 
