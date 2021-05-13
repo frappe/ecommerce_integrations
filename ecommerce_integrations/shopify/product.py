@@ -144,15 +144,16 @@ class ShopifyProduct:
 		variant_id = product_dict.get("variant_id", "")  # shopify variant_id if has variants
 		sku = item_dict["sku"]
 
-		ecommerce_item.create_ecommerce_item(
-			MODULE_NAME,
-			integration_item_code,
-			item_dict,
-			variant_id=variant_id,
-			sku=sku,
-			variant_of=variant_of,
-			has_variants=has_variant,
-		)
+		if not _match_sku_and_link_item(item_dict, integration_item_code, variant_id, variant_of=variant_of):
+			ecommerce_item.create_ecommerce_item(
+				MODULE_NAME,
+				integration_item_code,
+				item_dict,
+				variant_id=variant_id,
+				sku=sku,
+				variant_of=variant_of,
+				has_variants=has_variant,
+			)
 
 	def _create_item_variants(self, product_dict, warehouse, attributes):
 		template_item = ecommerce_item.get_erpnext_item(
@@ -269,6 +270,38 @@ def _get_item_image(product_dict):
 	if product_dict.get("image"):
 		return product_dict.get("image").get("src")
 	return None
+
+
+def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None) -> bool:
+	"""Tries to match new item with existing item using Shopify SKU == item_code.
+
+	Returns true if matched and linked.
+	"""
+	sku = item_dict["sku"]
+	if not sku or variant_of:
+		return False
+
+	item_name = frappe.db.get_value("Item", {"item_code": sku})
+	if item_name:
+		item_doc = frappe.get_doc("Item", item_name)
+
+		try:
+			ecommerce_item = frappe.get_doc(
+				{
+					"doctype": "Ecommerce Item",
+					"integration": MODULE_NAME,
+					"erpnext_item_code": item_name,
+					"integration_item_code": product_id,
+					"has_variants": 0,
+					"variant_id": cstr(variant_id),
+					"sku": sku,
+				}
+			)
+
+			ecommerce_item.insert()
+			return True
+		except Exception:
+			return False
 
 
 def create_items_if_not_exist(order):
