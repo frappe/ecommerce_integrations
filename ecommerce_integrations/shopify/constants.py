@@ -4,6 +4,7 @@
 
 MODULE_NAME = "Shopify"
 SETTING_DOCTYPE = "Shopify Setting"
+OLD_SETTINGS_DOCTYPE = "Shopify Settings"
 
 API_VERSION = "2021-04"
 
