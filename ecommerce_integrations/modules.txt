@@ -1,2 +1,3 @@
 Ecommerce Integrations
 shopify
+woocommerce
