@@ -2,7 +2,7 @@
 # For license information, please see license.txt
 
 
-MODULE_NAME = "Shopify"
+MODULE_NAME = "shopify"
 SETTING_DOCTYPE = "Shopify Setting"
 OLD_SETTINGS_DOCTYPE = "Shopify Settings"
 
