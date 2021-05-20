@@ -307,8 +307,8 @@ def sync_old_orders():
 def _fetch_old_orders(from_time, to_time):
 	"""Fetch all shopify orders in specified range and return an iterator on fetched orders."""
 
-	from_time = get_datetime(from_time)
-	to_time = get_datetime(to_time)
+	from_time = get_datetime(from_time).astimezone().isoformat()
+	to_time = get_datetime(to_time).astimezone().isoformat()
 	orders_iterator = PaginatedIterator(Order.find(created_at_min=from_time, created_at_max=to_time, limit=250))
 
 	for orders in orders_iterator:
