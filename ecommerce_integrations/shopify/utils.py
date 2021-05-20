@@ -8,10 +8,11 @@ from frappe import _, _dict
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log import (
 	create_log,
 )
-from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
-
-
-OLD_SETTINGS = "Shopify Settings"
+from ecommerce_integrations.shopify.constants import (
+	MODULE_NAME,
+	SETTING_DOCTYPE,
+	OLD_SETTINGS_DOCTYPE,
+)
 
 
 def create_shopify_log(**kwargs):
@@ -36,9 +37,10 @@ def migrate_from_old_connector(payload=None, request_id=None):
 
 
 def _check_old_connector_status():
+	old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
 
-	if frappe.db.get_value(OLD_SETTINGS, fieldname="enable_shopify"):
-		link = frappe.utils.get_link_to_form(OLD_SETTINGS, OLD_SETTINGS)
+	if old_setting.enable_shopify:
+		link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)
 		msg = _("Please disable old Shopify integration from {0} to proceed.").format(link)
 		frappe.throw(msg)
 
