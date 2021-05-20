@@ -1,6 +1,6 @@
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from frappe.utils import cint, cstr, nowdate
+from frappe.utils import cint, cstr, getdate, nowdate
 
 from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
@@ -40,7 +40,7 @@ def create_sales_invoice(shopify_order, setting, so):
 		and cint(setting.sync_sales_invoice)
 	):
 
-		posting_date = nowdate()
+		posting_date = getdate(shopify_order.get("created_at")) or nowdate()
 
 		sales_invoice = make_sales_invoice(so.name, ignore_permissions=True)
 		setattr(sales_invoice, ORDER_ID_FIELD, shopify_order.get("id"))
