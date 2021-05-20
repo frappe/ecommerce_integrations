@@ -22,8 +22,9 @@ def create_log(
 	rollback=False,
 	method=None,
 	message=None,
+	make_new=False
 ):
-	make_new = not bool(frappe.flags.request_id)
+	make_new = make_new or not bool(frappe.flags.request_id)
 
 	if rollback:
 		frappe.db.rollback()

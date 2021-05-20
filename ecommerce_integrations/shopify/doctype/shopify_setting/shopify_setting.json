@@ -46,7 +46,12 @@
   "update_erpnext_stock_levels_to_shopify",
   "fetch_shopify_locations",
   "shopify_warehouse_mapping",
-  "is_old_data_migrated"
+  "is_old_data_migrated",
+  "sync_old_orders_section",
+  "sync_old_orders",
+  "column_break_45",
+  "old_orders_from",
+  "old_orders_to"
  ],
  "fields": [
   {
@@ -295,12 +300,41 @@
    "fieldtype": "Check",
    "hidden": 1,
    "label": "Is old data migrated"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_old_orders",
+   "fieldtype": "Check",
+   "label": "Sync Old Orders"
+  },
+  {
+   "fieldname": "sync_old_orders_section",
+   "fieldtype": "Section Break",
+   "label": "Sync Old Orders"
+  },
+  {
+   "depends_on": "eval:doc.sync_old_orders",
+   "fieldname": "old_orders_from",
+   "fieldtype": "Datetime",
+   "label": "From",
+   "mandatory_depends_on": "eval:doc.sync_old_orders"
+  },
+  {
+   "depends_on": "eval:doc.sync_old_orders",
+   "fieldname": "old_orders_to",
+   "fieldtype": "Datetime",
+   "label": "To",
+   "mandatory_depends_on": "eval:doc.sync_old_orders"
+  },
+  {
+   "fieldname": "column_break_45",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-11 15:32:27.508306",
+ "modified": "2021-05-20 13:47:40.636720",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

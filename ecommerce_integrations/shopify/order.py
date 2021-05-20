@@ -1,9 +1,15 @@
+import json
+
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, getdate, nowdate
+from frappe.utils import cstr, flt, get_datetime, getdate, nowdate
+from shopify.collection import PaginatedIterator
+from shopify.resources import Order
 
+from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
 	CUSTOMER_ID_FIELD,
+	EVENT_MAPPER,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
@@ -272,3 +278,41 @@ def cancel_order(payload, request_id=None):
 		create_shopify_log(status="Error", exception=e)
 	else:
 		create_shopify_log(status="Success")
+
+
+@temp_shopify_session
+def sync_old_orders():
+	frappe.set_user("Administrator")
+
+	if not frappe.db.get_value(SETTING_DOCTYPE, fieldname="sync_old_orders"):
+		return
+
+	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+
+	try:
+		orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
+
+		for order in orders:
+			log = create_shopify_log(method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True)
+			sync_sales_order(order, request_id=log.name)
+
+		shopify_setting.db_set("sync_sales_order", 0)
+
+		create_shopify_log(status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders")
+	except Exception as e:
+		create_shopify_log(status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders")
+		raise e
+
+
+def _fetch_old_orders(from_time, to_time):
+	"""Fetch all shopify orders in specified range and return an iterator on fetched orders."""
+
+	from_time = get_datetime(from_time)
+	to_time = get_datetime(to_time)
+	orders_iterator = PaginatedIterator(Order.find(created_at_min=from_time, created_at_max=to_time, limit=250))
+
+	for orders in orders_iterator:
+		for order in orders:
+			# Using generator instead of fetching all at once is better for
+			# avoiding rate limits and reducing resource usage.
+			yield order.to_dict()
