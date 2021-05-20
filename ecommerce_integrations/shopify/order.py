@@ -67,9 +67,7 @@ def create_sales_order(shopify_order, setting, company=None):
 	customer = frappe.db.get_value(
 		"Customer", {CUSTOMER_ID_FIELD: shopify_order.get("customer", {}).get("id")}, "name",
 	)
-	so = frappe.db.get_value(
-		"Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name"
-	)
+	so = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name")
 
 	if not so:
 		items = get_order_items(
@@ -166,9 +164,7 @@ def get_order_taxes(shopify_order, setting):
 			}
 		)
 
-	taxes = update_taxes_with_shipping_lines(
-		taxes, shopify_order.get("shipping_lines"), setting
-	)
+	taxes = update_taxes_with_shipping_lines(taxes, shopify_order.get("shipping_lines"), setting)
 
 	return taxes
 
@@ -177,15 +173,11 @@ def get_tax_account_head(tax):
 	tax_title = tax.get("title").encode("utf-8")
 
 	tax_account = frappe.db.get_value(
-		"Shopify Tax Account",
-		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
-		"tax_account",
+		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_account",
 	)
 
 	if not tax_account:
-		frappe.throw(
-			_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title"))
-		)
+		frappe.throw(_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title")))
 
 	return tax_account
 
@@ -257,12 +249,8 @@ def cancel_order(payload, request_id=None):
 			create_shopify_log(status="Invalid", message="Sales Order does not exist")
 			return
 
-		sales_invoice = frappe.db.get_value(
-			"Sales Invoice", filters={ORDER_ID_FIELD: order_id}
-		)
-		delivery_notes = frappe.db.get_list(
-			"Delivery Note", filters={ORDER_ID_FIELD: order_id}
-		)
+		sales_invoice = frappe.db.get_value("Sales Invoice", filters={ORDER_ID_FIELD: order_id})
+		delivery_notes = frappe.db.get_list("Delivery Note", filters={ORDER_ID_FIELD: order_id})
 
 		if sales_invoice:
 			frappe.db.set_value("Sales Invoice", sales_invoice, ORDER_STATUS_FIELD, order_status)
@@ -293,12 +281,16 @@ def sync_old_orders():
 		orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
 
 		for order in orders:
-			log = create_shopify_log(method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True)
+			log = create_shopify_log(
+				method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
+			)
 			sync_sales_order(order, request_id=log.name)
 
 		shopify_setting.db_set("sync_sales_order", 0)
 
-		create_shopify_log(status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders")
+		create_shopify_log(
+			status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders"
+		)
 	except Exception as e:
 		create_shopify_log(status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders")
 		raise e
@@ -309,7 +301,9 @@ def _fetch_old_orders(from_time, to_time):
 
 	from_time = get_datetime(from_time).astimezone().isoformat()
 	to_time = get_datetime(to_time).astimezone().isoformat()
-	orders_iterator = PaginatedIterator(Order.find(created_at_min=from_time, created_at_max=to_time, limit=250))
+	orders_iterator = PaginatedIterator(
+		Order.find(created_at_min=from_time, created_at_max=to_time, limit=250)
+	)
 
 	for orders in orders_iterator:
 		for order in orders:

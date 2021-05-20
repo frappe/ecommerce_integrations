@@ -22,11 +22,8 @@ class TestProduct(TestCase):
 
 		self.assertEqual(frappe.get_last_doc("Item").item_code, item.item_code)
 
-		ecommerce_item_exists = frappe.db.exists(
-			"Ecommerce Item", {"erpnext_item_code": item.name}
-		)
+		ecommerce_item_exists = frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name})
 		self.assertTrue(bool(ecommerce_item_exists))
-
 
 	def test_sync_product_with_variants(self):
 		self.fake("products/6704435495065", body=self.load_fixture("variant_product"))
@@ -54,7 +51,9 @@ class TestProduct(TestCase):
 		]
 
 		variants = frappe.db.get_list("Item", filters={"variant_of": item.name})
-		ecom_variants = frappe.db.get_list("Ecommerce Item", filters={"variant_of": item.name}, fields="erpnext_item_code")
+		ecom_variants = frappe.db.get_list(
+			"Ecommerce Item", filters={"variant_of": item.name}, fields="erpnext_item_code"
+		)
 
 		created_variants = [v.name for v in variants]
 		created_ecom_variants = [e.erpnext_item_code for e in ecom_variants]

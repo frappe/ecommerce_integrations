@@ -22,7 +22,7 @@ def create_log(
 	rollback=False,
 	method=None,
 	message=None,
-	make_new=False
+	make_new=False,
 ):
 	make_new = make_new or not bool(frappe.flags.request_id)
 
@@ -30,9 +30,7 @@ def create_log(
 		frappe.db.rollback()
 
 	if make_new:
-		log = frappe.get_doc(
-			{"doctype": "Ecommerce Integration Log", "integration": cstr(module_def)}
-		)
+		log = frappe.get_doc({"doctype": "Ecommerce Integration Log", "integration": cstr(module_def)})
 		log.insert(ignore_permissions=True)
 	else:
 		log = frappe.get_doc("Ecommerce Integration Log", frappe.flags.request_id)
@@ -67,11 +65,9 @@ def __get_message(exception):
 
 @frappe.whitelist()
 def resync(method, name, request_data):
-	frappe.only_for('System Manager')
+	frappe.only_for("System Manager")
 
-	frappe.db.set_value(
-		"Ecommerce Integration Log", name, "status", "Queued", update_modified=False
-	)
+	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
 	frappe.enqueue(
 		method=method,
 		queue="short",

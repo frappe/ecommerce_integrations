@@ -29,9 +29,7 @@ class ShopifyCustomer(EcommerceCustomer):
 
 		self.create_customer_address(customer_name, customer)
 
-	def create_customer_address(
-		self, customer_name, customer_dict: Dict[str, Any]
-	) -> None:
+	def create_customer_address(self, customer_name, customer_dict: Dict[str, Any]) -> None:
 		"""Create customer address(es) using Customer dict provided by shopify."""
 		try:
 			shppify_address = customer_dict.get("default_address", {})

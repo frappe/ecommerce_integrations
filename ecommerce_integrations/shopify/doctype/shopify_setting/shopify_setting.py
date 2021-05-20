@@ -38,9 +38,7 @@ class ShopifySetting(SettingController):
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
 			try:
-				new_webhooks = connection.register_webhooks(
-					self.shopify_url, self.get_password("password")
-				)
+				new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
 			except UnauthorizedAccess:
 				new_webhooks = []
 
@@ -81,9 +79,12 @@ class ShopifySetting(SettingController):
 @frappe.whitelist()
 def get_series():
 	return {
-		"sales_order_series": frappe.get_meta("Sales Order").get_options("naming_series") or "SO-Shopify-",
-		"sales_invoice_series": frappe.get_meta("Sales Invoice").get_options("naming_series") or "SI-Shopify-",
-		"delivery_note_series": frappe.get_meta("Delivery Note").get_options("naming_series") or "DN-Shopify-",
+		"sales_order_series": frappe.get_meta("Sales Order").get_options("naming_series")
+		or "SO-Shopify-",
+		"sales_invoice_series": frappe.get_meta("Sales Invoice").get_options("naming_series")
+		or "SI-Shopify-",
+		"delivery_note_series": frappe.get_meta("Delivery Note").get_options("naming_series")
+		or "DN-Shopify-",
 	}
 
 

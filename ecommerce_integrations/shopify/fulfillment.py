@@ -34,9 +34,7 @@ def create_delivery_note(shopify_order, setting, so):
 
 	for fulfillment in shopify_order.get("fulfillments"):
 		if (
-			not frappe.db.get_value(
-				"Delivery Note", {FULLFILLMENT_ID_FIELD: fulfillment.get("id")}, "name"
-			)
+			not frappe.db.get_value("Delivery Note", {FULLFILLMENT_ID_FIELD: fulfillment.get("id")}, "name")
 			and so.docstatus == 1
 		):
 
@@ -47,7 +45,9 @@ def create_delivery_note(shopify_order, setting, so):
 			dn.set_posting_time = 1
 			dn.posting_date = getdate(fulfillment.get("created_at"))
 			dn.naming_series = setting.delivery_note_series or "DN-Shopify-"
-			dn.items = get_fulfillment_items(dn.items, fulfillment.get("line_items"), fulfillment.get("location_id"))
+			dn.items = get_fulfillment_items(
+				dn.items, fulfillment.get("line_items"), fulfillment.get("location_id")
+			)
 			dn.flags.ignore_mandatory = True
 			dn.save()
 			dn.submit()

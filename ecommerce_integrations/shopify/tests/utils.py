@@ -35,15 +35,11 @@ from ecommerce_integrations.shopify.constants import API_VERSION
 
 
 class TestCase(unittest.TestCase):
-
 	@classmethod
 	def setUpClass(cls):
 		setting = frappe.get_doc("Shopify Settings")
 
-		setting.update({
-			"shopify_url": "frappetest.myshopify.com",
-		}).save(ignore_permissions=True)
-
+		setting.update({"shopify_url": "frappetest.myshopify.com",}).save(ignore_permissions=True)
 
 	def setUp(self):
 		ActiveResource.site = None
@@ -90,9 +86,13 @@ class TestCase(unittest.TestCase):
 		except KeyError:
 			pass
 
-
 		code = kwargs.pop("code", 200)
 
 		self.http.respond_to(
-			method, url, headers, body=body, code=code, response_headers=kwargs.pop("response_headers", None)
+			method,
+			url,
+			headers,
+			body=body,
+			code=code,
+			response_headers=kwargs.pop("response_headers", None),
 		)

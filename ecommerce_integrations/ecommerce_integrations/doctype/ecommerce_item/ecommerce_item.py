@@ -95,9 +95,7 @@ def get_erpnext_item(
 	"""
 
 	if sku:
-		item_code = frappe.db.get_value(
-			"Ecommerce Item", {"sku": sku}, fieldname="erpnext_item_code"
-		)
+		item_code = frappe.db.get_value("Ecommerce Item", {"sku": sku}, fieldname="erpnext_item_code")
 	else:
 		filter = {"integration": integration, "integration_item_code": integration_item_code}
 		if variant_id:
@@ -105,9 +103,7 @@ def get_erpnext_item(
 		else:
 			filter.update({"has_variants": 1})
 
-		item_code = frappe.db.get_value(
-			"Ecommerce Item", filter, fieldname="erpnext_item_code"
-		)
+		item_code = frappe.db.get_value("Ecommerce Item", filter, fieldname="erpnext_item_code")
 
 	if item_code:
 		return frappe.get_doc("Item", item_code)

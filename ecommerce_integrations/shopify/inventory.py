@@ -56,10 +56,7 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 def _get_warehouse_map(setting) -> Dict[str, str]:
 	"""Get mapping from ERPNext warehouse to shopify location id."""
 
-	return {
-		wh.erpnext_warehouse: wh.shopify_location_id
-		for wh in setting.shopify_warehouse_mapping
-	}
+	return {wh.erpnext_warehouse: wh.shopify_location_id for wh in setting.shopify_warehouse_mapping}
 
 
 def _get_inventory_levels(warehouses: Tuple[str]) -> List[_dict]:
@@ -107,6 +104,4 @@ def _log_inventory_update_status(inventory_levels) -> None:
 
 	log_message = f"Updated {percent_successful * 100}% items\n\n" + log_message
 
-	create_shopify_log(
-		method="update_inventory_on_shopify", status=status, message=log_message
-	)
+	create_shopify_log(method="update_inventory_on_shopify", status=status, message=log_message)

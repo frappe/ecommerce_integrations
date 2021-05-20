@@ -6,9 +6,7 @@ from frappe.utils import cint, cstr
 from frappe.utils.nestedset import get_root_of
 from shopify.resources import Product, Variant
 
-from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
-	ecommerce_item,
-)
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
@@ -21,9 +19,7 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 class ShopifyProduct:
-	def __init__(
-		self, product_id: str, variant_id: Optional[str] = None, sku: Optional[str] = None
-	):
+	def __init__(self, product_id: str, variant_id: Optional[str] = None, sku: Optional[str] = None):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
@@ -34,18 +30,12 @@ class ShopifyProduct:
 
 	def is_synced(self) -> bool:
 		return ecommerce_item.is_synced(
-			MODULE_NAME,
-			integration_item_code=self.product_id,
-			variant_id=self.variant_id,
-			sku=self.sku,
+			MODULE_NAME, integration_item_code=self.product_id, variant_id=self.variant_id, sku=self.sku,
 		)
 
 	def get_erpnext_item(self):
 		return ecommerce_item.get_erpnext_item(
-			MODULE_NAME,
-			integration_item_code=self.product_id,
-			variant_id=self.variant_id,
-			sku=self.sku,
+			MODULE_NAME, integration_item_code=self.product_id, variant_id=self.variant_id, sku=self.sku,
 		)
 
 	@temp_shopify_session
@@ -78,8 +68,7 @@ class ShopifyProduct:
 						"doctype": "Item Attribute",
 						"attribute_name": attr.get("name"),
 						"item_attribute_values": [
-							{"attribute_value": attr_value, "abbr": attr_value}
-							for attr_value in attr.get("values")
+							{"attribute_value": attr_value, "abbr": attr_value} for attr_value in attr.get("values")
 						],
 					}
 				).insert()
@@ -109,19 +98,12 @@ class ShopifyProduct:
 	def _set_new_attribute_values(self, item_attr, values):
 		for attr_value in values:
 			if not any(
-				(
-					d.abbr.lower() == attr_value.lower()
-					or d.attribute_value.lower() == attr_value.lower()
-				)
+				(d.abbr.lower() == attr_value.lower() or d.attribute_value.lower() == attr_value.lower())
 				for d in item_attr.item_attribute_values
 			):
-				item_attr.append(
-					"item_attribute_values", {"attribute_value": attr_value, "abbr": attr_value}
-				)
+				item_attr.append("item_attribute_values", {"attribute_value": attr_value, "abbr": attr_value})
 
-	def _create_item(
-		self, product_dict, warehouse, has_variant=0, attributes=None, variant_of=None
-	):
+	def _create_item(self, product_dict, warehouse, has_variant=0, attributes=None, variant_of=None):
 		item_dict = {
 			"variant_of": variant_of,
 			"is_stock_item": 1,
@@ -144,7 +126,9 @@ class ShopifyProduct:
 		variant_id = product_dict.get("variant_id", "")  # shopify variant_id if has variants
 		sku = item_dict["sku"]
 
-		if not _match_sku_and_link_item(item_dict, integration_item_code, variant_id, variant_of=variant_of):
+		if not _match_sku_and_link_item(
+			item_dict, integration_item_code, variant_id, variant_of=variant_of
+		):
 			ecommerce_item.create_ecommerce_item(
 				MODULE_NAME,
 				integration_item_code,
@@ -178,15 +162,9 @@ class ShopifyProduct:
 				for i, variant_attr in enumerate(SHOPIFY_VARIANTS_ATTR_LIST):
 					if variant.get(variant_attr):
 						attributes[i].update(
-							{
-								"attribute_value": self._get_attribute_value(
-									variant.get(variant_attr), attributes[i]
-								)
-							}
+							{"attribute_value": self._get_attribute_value(variant.get(variant_attr), attributes[i])}
 						)
-				self._create_item(
-					shopify_item_variant, warehouse, 0, attributes, template_item.name
-				)
+				self._create_item(shopify_item_variant, warehouse, 0, attributes, template_item.name)
 
 	def _get_attribute_value(self, variant_attr_val, attribute):
 		attribute_value = frappe.db.sql(
@@ -374,10 +352,7 @@ def upload_erpnext_item(doc, method=None):
 
 		if is_successful:
 			product = update_default_variant_properties(
-				product,
-				sku=item.item_code,
-				price=item.standard_rate,
-				is_stock_item=item.is_stock_item,
+				product, sku=item.item_code, price=item.standard_rate, is_stock_item=item.is_stock_item,
 			)
 			product.save()  # push variant
 
@@ -455,10 +430,7 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 		msgprint(msg, title="Note", indicator="orange")
 
 		create_shopify_log(
-			status="Error",
-			request_data=product.to_dict(),
-			message=msg,
-			method="upload_erpnext_item",
+			status="Error", request_data=product.to_dict(), message=msg, method="upload_erpnext_item",
 		)
 	else:
 		create_shopify_log(

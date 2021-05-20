@@ -21,9 +21,7 @@ class EcommerceCustomer:
 	def get_customer_doc(self):
 		"""Get ERPNext customer document."""
 		if self.is_synced():
-			doc: Customer = frappe.get_last_doc(
-				"Customer", {self.customer_id_field: self.customer_id}
-			)
+			doc: Customer = frappe.get_last_doc("Customer", {self.customer_id_field: self.customer_id})
 			return doc
 		else:
 			raise frappe.DoesNotExistError()

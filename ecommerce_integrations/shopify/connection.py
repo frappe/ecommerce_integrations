@@ -42,17 +42,13 @@ def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 
 	with Session.temp(shopify_url, API_VERSION, password):
 		for topic in WEBHOOK_EVENTS:
-			webhook = Webhook.create(
-				{"topic": topic, "address": get_callback_url(), "format": "json"}
-			)
+			webhook = Webhook.create({"topic": topic, "address": get_callback_url(), "format": "json"})
 
 			if webhook.is_valid():
 				new_webhooks.append(webhook)
 			else:
 				create_shopify_log(
-					status="Error",
-					response_data=webhook.to_dict(),
-					exception=webhook.errors.full_messages(),
+					status="Error", response_data=webhook.to_dict(), exception=webhook.errors.full_messages(),
 				)
 
 	return new_webhooks
@@ -122,9 +118,7 @@ def _validate_request(req, hmac_header):
 	settings = frappe.get_doc(SETTING_DOCTYPE)
 	secret_key = settings.shared_secret
 
-	sig = base64.b64encode(
-		hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest()
-	)
+	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if hmac_header and sig != bytes(hmac_header.encode()):
 		create_shopify_log(status="Error", request_data=req.data)

@@ -4,9 +4,7 @@
 import frappe
 import unittest
 
-from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import (
-	ecommerce_item,
-)
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 
 
 class TestEcommerceItem(unittest.TestCase):
