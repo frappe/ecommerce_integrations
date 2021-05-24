@@ -100,7 +100,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": get_order_taxes(shopify_order, setting),
-				"apply_discount_on": "Grand Total",
+				"apply_discount_on": "Net Total",
 				"discount_amount": get_discounted_amount(shopify_order),
 			}
 		)
