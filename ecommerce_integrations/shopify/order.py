@@ -2,7 +2,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, get_datetime, getdate, nowdate
+from frappe.utils import cstr, flt, get_datetime, getdate, nowdate, cint
 from shopify.collection import PaginatedIterator
 from shopify.resources import Order
 
@@ -272,10 +272,9 @@ def cancel_order(payload, request_id=None):
 def sync_old_orders():
 	frappe.set_user("Administrator")
 
-	if not frappe.db.get_value(SETTING_DOCTYPE, fieldname="sync_old_orders"):
-		return
-
 	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	if not cint(shopify_setting.sync_old_orders):
+		return
 
 	try:
 		orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
@@ -286,14 +285,16 @@ def sync_old_orders():
 			)
 			sync_sales_order(order, request_id=log.name)
 
-		shopify_setting.db_set("sync_sales_order", 0)
+
+		shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+		shopify_setting.sync_old_orders = 0
+		shopify_setting.save()
 
 		create_shopify_log(
 			status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders"
 		)
 	except Exception as e:
-		create_shopify_log(status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders")
-		raise e
+		create_shopify_log(status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders", exception=e)
 
 
 def _fetch_old_orders(from_time, to_time):

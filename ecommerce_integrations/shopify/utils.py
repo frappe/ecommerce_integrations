@@ -32,7 +32,7 @@ def migrate_from_old_connector(payload=None, request_id=None):
 		)
 
 	frappe.enqueue(
-		method=_migrate_items_to_ecommerce_item, queue="short", timeout=600, is_async=True, log=log,
+		method=_migrate_items_to_ecommerce_item, queue="long", is_async=True, log=log,
 	)
 
 
