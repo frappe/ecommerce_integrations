@@ -259,8 +259,9 @@ def cancel_order(payload, request_id=None):
 			frappe.db.set_value("Delivery Note", dn.name, ORDER_STATUS_FIELD, order_status)
 
 		if not sales_invoice and not delivery_notes and sales_order.docstatus == 1:
-			setattr(sales_order, ORDER_STATUS_FIELD, order_status)
 			sales_order.cancel()
+		else:
+			frappe.db.set_value("Sales Order", sales_order.name, ORDER_STATUS_FIELD, order_status)
 
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e)
