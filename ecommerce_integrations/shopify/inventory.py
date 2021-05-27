@@ -42,7 +42,7 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			result = InventoryLevel.set(
 				location_id=d.shopify_location_id,
 				inventory_item_id=inventory_id,
-				available=cint(d.actual_qty),  # shopify doesn't support fractional quantity TODO: docs
+				available=cint(d.actual_qty),  # shopify doesn't support fractional quantity
 			)
 			frappe.db.set_value("Ecommerce Item", d.ecom_item, "inventory_synced_on", synced_on)
 			d.status = "Success"
