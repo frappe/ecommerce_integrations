@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from frappe import _
 
 def get_data():
