@@ -5,13 +5,14 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "erpnext_item_code",
   "integration",
+  "erpnext_item_code",
   "integration_item_code",
+  "sku",
+  "column_break_5",
   "has_variants",
   "variant_id",
   "variant_of",
-  "sku",
   "inventory_synced_on"
  ],
  "fields": [
@@ -19,58 +20,76 @@
    "fieldname": "erpnext_item_code",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "ERPNext Item Code",
    "options": "Item",
-   "reqd": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "integration",
    "fieldtype": "Link",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Integration",
    "options": "Module Def",
-   "reqd": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "integration_item_code",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Integration Item Code",
-   "reqd": 1
+   "read_only": 1,
+   "reqd": 1,
+   "search_index": 1
   },
   {
    "fieldname": "variant_id",
    "fieldtype": "Data",
-   "label": "Variant ID"
+   "label": "Variant ID",
+   "read_only": 1
   },
   {
    "default": "0",
    "fieldname": "has_variants",
    "fieldtype": "Check",
-   "label": "Has Variants"
+   "label": "Has Variants",
+   "read_only": 1
   },
   {
    "description": "ERPNext template Item ID",
    "fieldname": "variant_of",
    "fieldtype": "Link",
    "label": "Variant Of",
-   "options": "Item"
+   "options": "Item",
+   "read_only": 1
   },
   {
    "fieldname": "sku",
    "fieldtype": "Data",
-   "label": "SKU"
+   "label": "SKU",
+   "read_only": 1,
+   "search_index": 1
   },
   {
    "fieldname": "inventory_synced_on",
    "fieldtype": "Datetime",
    "label": "Inventory Synced On",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
   }
  ],
+ "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-05-05 15:11:56.588071",
+ "modified": "2021-05-28 16:23:08.839942",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
