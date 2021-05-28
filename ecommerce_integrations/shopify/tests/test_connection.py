@@ -2,28 +2,37 @@
 # See license.txt
 
 import unittest
-from ecommerce_integrations.shopify import connection
+
+import frappe
 from shopify.resources import Webhook
+from shopify.session import Session
+
+from ecommerce_integrations.shopify import connection
+from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, API_VERSION
 
 
 class TestShopifyConnection(unittest.TestCase):
-
-	# TODO: mock out dependency on Shopify settings
+	@classmethod
+	def setUpClass(cls):
+		cls.setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	def test_register_webhooks(self):
-		webhooks = connection.register_webhooks()
+
+		webhooks = connection.register_webhooks(
+			self.setting.shopify_url, self.setting.get_password("password")
+		)
 
 		self.assertEqual(len(webhooks), len(connection.WEBHOOK_EVENTS))
 
 		wh_topics = [wh.topic for wh in webhooks]
 		self.assertEqual(sorted(wh_topics), sorted(connection.WEBHOOK_EVENTS))
 
-	@connection.temp_shopify_session
 	def test_unregister_webhooks(self):
 
-		connection.unregister_webhooks()
+		connection.unregister_webhooks(self.setting.shopify_url, self.setting.get_password("password"))
 
 		callback_url = connection.get_callback_url()
 
-		for wh in Webhook.find():
-			self.assertNotEqual(wh.address, callback_url)
+		with Session.temp(self.setting.shopify_url, API_VERSION, self.setting.get_password("password")):
+			for wh in Webhook.find():
+				self.assertNotEqual(wh.address, callback_url)

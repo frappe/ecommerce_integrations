@@ -51,7 +51,7 @@ class ShopifySetting(SettingController):
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
 
 		elif not self.is_enabled():
-			connection.unregister_webhooks()
+			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
 
 			self.webhooks = list()  # remove all webhooks
 
