@@ -43,8 +43,8 @@ class ShopifySetting(SettingController):
 				new_webhooks = []
 
 			if not new_webhooks:
-				msg = _("Failed to register webhooks with Shopify.")
-				msg += _("Please check credentials and retry.")
+				msg = _("Failed to register webhooks with Shopify.") + "<br>"
+				msg += _("Please check credentials and retry. Disabling and re-enabling the integration might also help.")
 				frappe.throw(msg)
 
 			for webhook in new_webhooks:
