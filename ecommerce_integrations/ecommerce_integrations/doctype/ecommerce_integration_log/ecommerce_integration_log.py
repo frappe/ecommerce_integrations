@@ -7,10 +7,26 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils.data import cstr
+from frappe.utils import strip_html
 
 
 class EcommerceIntegrationLog(Document):
-	pass
+
+	def validate(self):
+		self._set_title()
+
+	def _set_title(self):
+		title = None
+		if self.message != "None":
+			title = self.message
+
+		if not title and self.method:
+			method = self.method.split(".")[-1]
+			title = method
+
+		if title:
+			title = strip_html(title)
+			self.title = title if len(title) < 100 else title[:100] + "..."
 
 
 def create_log(
@@ -41,7 +57,7 @@ def create_log(
 	if not isinstance(request_data, str):
 		request_data = json.dumps(request_data, sort_keys=True, indent=4)
 
-	log.message = message or __get_message(exception)
+	log.message = message or _get_message(exception)
 	log.method = log.method or method
 	log.response_data = log.response_data or response_data
 	log.request_data = log.request_data or request_data
@@ -54,11 +70,11 @@ def create_log(
 	return log
 
 
-def __get_message(exception):
+def _get_message(exception):
 	if hasattr(exception, "message"):
-		return exception.message
+		return strip_html(exception.message)
 	elif hasattr(exception, "__str__"):
-		return exception.__str__()
+		return strip_html(exception.__str__())
 	else:
 		return _("Something went wrong while syncing")
 
