@@ -9,7 +9,7 @@ from shopify.resources import Location
 
 from ecommerce_integrations.controllers.setting import SettingController
 from ecommerce_integrations.shopify import connection
-from ecommerce_integrations.shopify.utils import migrate_from_old_connector
+from ecommerce_integrations.shopify.utils import migrate_from_old_connector, ensure_old_connector_is_disabled
 from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
@@ -26,6 +26,8 @@ class ShopifySetting(SettingController):
 		return bool(self.enable_shopify)
 
 	def validate(self):
+		ensure_old_connector_is_disabled()
+
 		if not self.is_old_data_migrated:
 			migrate_from_old_connector()
 
