@@ -11,7 +11,6 @@ from frappe.utils import strip_html
 
 
 class EcommerceIntegrationLog(Document):
-
 	def validate(self):
 		self._set_title()
 

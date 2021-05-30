@@ -427,7 +427,6 @@ def update_default_variant_properties(
 		default_variant.sku = sku
 
 
-
 def write_upload_log(status: bool, product: Product, item, action="Created") -> None:
 	if not status:
 		msg = _("Failed to upload item to Shopify") + "<br>"
