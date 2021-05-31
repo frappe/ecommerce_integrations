@@ -318,14 +318,15 @@ def upload_erpnext_item(doc, method=None):
 	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
 	item = doc  # alias for readability
+	# a new item recieved from ecommerce_integrations is being inserted
+	if item.flags.from_integration:
+		return
+
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
-	# a new item recieved from ecommerce_integrations is being inserted
-	if frappe.flags.creating_ecommerce_item:
-		return
 
 	if frappe.flags.in_import:
 		return
@@ -391,6 +392,11 @@ def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
 		shopify_product.weight = erpnext_item.weight_per_unit
 		shopify_product.weight_unit = uom
 
+	if erpnext_item.disabled:
+		shopify_product.status = "draft"
+		shopify_product.published = False
+		msgprint(_("Status of linked Shopify product is changed to Draft."))
+
 
 def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 	for shopify_uom, erpnext_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.items():
@@ -403,7 +409,7 @@ def update_default_variant_properties(
 	is_stock_item: bool,
 	sku: Optional[str] = None,
 	price: Optional[float] = None,
-) -> Product:
+):
 	"""Shopify creates default variant upon saving the product.
 
 	Some item properties are supposed to be updated on the default variant.
@@ -419,8 +425,6 @@ def update_default_variant_properties(
 		default_variant.price = price
 	if sku is not None:
 		default_variant.sku = sku
-
-	return shopify_product
 
 
 def write_upload_log(status: bool, product: Product, item, action="Created") -> None:

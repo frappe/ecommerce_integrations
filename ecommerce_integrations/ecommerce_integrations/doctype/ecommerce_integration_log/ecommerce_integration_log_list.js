@@ -1,4 +1,5 @@
 frappe.listview_settings["Ecommerce Integration Log"] = {
+	hide_name_column: true,
 	add_fields: ["status"],
 	get_indicator: function(doc) {
 		if(doc.status==="Success"){

@@ -42,7 +42,7 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			result = InventoryLevel.set(
 				location_id=d.shopify_location_id,
 				inventory_item_id=inventory_id,
-				available=cint(d.actual_qty),  # shopify doesn't support fractional quantity TODO: docs
+				available=cint(d.actual_qty) - cint(d.reserved_qty),  # shopify doesn't support fractional quantity
 			)
 			frappe.db.set_value("Ecommerce Item", d.ecom_item, "inventory_synced_on", synced_on)
 			d.status = "Success"
@@ -68,7 +68,7 @@ def _get_inventory_levels(warehouses: Tuple[str]) -> List[_dict]:
 	"""
 	data = frappe.db.sql(
 		f"""
-			SELECT ei.name as ecom_item, bin.item_code as item_code, variant_id, actual_qty, warehouse
+			SELECT ei.name as ecom_item, bin.item_code as item_code, variant_id, actual_qty, warehouse, reserved_qty
 			FROM `tabEcommerce Item` ei
 				JOIN tabBin bin
 				ON ei.erpnext_item_code = bin.item_code

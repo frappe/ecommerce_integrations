@@ -22,8 +22,6 @@ def create_shopify_log(**kwargs):
 def migrate_from_old_connector(payload=None, request_id=None):
 	"""This function is called to migrate data from old connector to new connector."""
 
-	_check_old_connector_status()
-
 	if request_id:
 		log = frappe.get_doc("Ecommerce Integration Log", request_id)
 	else:
@@ -36,7 +34,7 @@ def migrate_from_old_connector(payload=None, request_id=None):
 	)
 
 
-def _check_old_connector_status():
+def ensure_old_connector_is_disabled():
 	old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
 
 	if old_setting.enable_shopify:

@@ -7,7 +7,7 @@ import shopify
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
 
-from ecommerce_integrations.shopify.constants import API_VERSION
+from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
 
 
 # Following code is adapted from Shopify python api under MIT license with minor changes.
@@ -37,7 +37,7 @@ from ecommerce_integrations.shopify.constants import API_VERSION
 class TestCase(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
-		setting = frappe.get_doc("Shopify Settings")
+		setting = frappe.get_doc(SETTING_DOCTYPE)
 
 		setting.update({"shopify_url": "frappetest.myshopify.com",}).save(ignore_permissions=True)
 

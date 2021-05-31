@@ -9,7 +9,10 @@ from shopify.resources import Location
 
 from ecommerce_integrations.controllers.setting import SettingController
 from ecommerce_integrations.shopify import connection
-from ecommerce_integrations.shopify.utils import migrate_from_old_connector
+from ecommerce_integrations.shopify.utils import (
+	migrate_from_old_connector,
+	ensure_old_connector_is_disabled,
+)
 from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
@@ -26,14 +29,17 @@ class ShopifySetting(SettingController):
 		return bool(self.enable_shopify)
 
 	def validate(self):
-		if not self.is_old_data_migrated:
-			migrate_from_old_connector()
+		ensure_old_connector_is_disabled()
 
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 
 		if self.is_enabled():
 			setup_custom_fields()
+
+	def on_update(self):
+		if not self.is_old_data_migrated:
+			migrate_from_old_connector()
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
@@ -43,15 +49,15 @@ class ShopifySetting(SettingController):
 				new_webhooks = []
 
 			if not new_webhooks:
-				msg = _("Failed to register webhooks with Shopify.")
-				msg += _("Please check credentials and retry.")
+				msg = _("Failed to register webhooks with Shopify.") + "<br>"
+				msg += _("Please check credentials and retry. Disabling and re-enabling the integration might also help.")
 				frappe.throw(msg)
 
 			for webhook in new_webhooks:
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
 
 		elif not self.is_enabled():
-			connection.unregister_webhooks()
+			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
 
 			self.webhooks = list()  # remove all webhooks
 

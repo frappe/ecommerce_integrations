@@ -54,15 +54,15 @@ def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 	return new_webhooks
 
 
-@temp_shopify_session
-def unregister_webhooks() -> None:
+def unregister_webhooks(shopify_url: str, password: str) -> None:
 	"""Unregister all webhooks from shopify that correspond to current site url."""
-
 	callback_url = get_callback_url()
 
-	for webhook in Webhook.find():
-		if webhook.address == callback_url:
-			webhook.destroy()
+	with Session.temp(shopify_url, API_VERSION, password):
+
+		for webhook in Webhook.find():
+			if webhook.address == callback_url:
+				webhook.destroy()
 
 
 def get_current_domain_name() -> str:
