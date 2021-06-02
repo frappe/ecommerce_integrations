@@ -1,13 +1,16 @@
 from collections import Counter
-from typing import Dict, List, Tuple
+from typing import Dict
 
 import frappe
-from frappe import _dict
 from frappe.utils import cint, now
 from shopify.resources import InventoryLevel, Variant
 
+from ecommerce_integrations.controllers.inventory import (
+	get_inventory_levels,
+	update_inventory_sync_status,
+)
 from ecommerce_integrations.shopify.connection import temp_shopify_session
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
+from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
@@ -22,7 +25,7 @@ def update_inventory_on_shopify() -> None:
 		return
 
 	warehous_map = _get_warehouse_map(setting)
-	inventory_levels = _get_inventory_levels(warehouses=tuple(warehous_map.keys()))
+	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
 
 	if inventory_levels:
 		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
@@ -39,12 +42,13 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			variant = Variant.find(d.variant_id)
 			inventory_id = variant.inventory_item_id
 
-			result = InventoryLevel.set(
+			InventoryLevel.set(
 				location_id=d.shopify_location_id,
 				inventory_item_id=inventory_id,
-				available=cint(d.actual_qty) - cint(d.reserved_qty),  # shopify doesn't support fractional quantity
+				# shopify doesn't support fractional quantity
+				available=cint(d.actual_qty) - cint(d.reserved_qty),
 			)
-			frappe.db.set_value("Ecommerce Item", d.ecom_item, "inventory_synced_on", synced_on)
+			update_inventory_sync_status(d.ecom_item, time=synced_on)
 			d.status = "Success"
 		except Exception as e:
 			create_shopify_log(method="update_inventory_on_shopify", status="Error", exception=e)
@@ -57,30 +61,6 @@ def _get_warehouse_map(setting) -> Dict[str, str]:
 	"""Get mapping from ERPNext warehouse to shopify location id."""
 
 	return {wh.erpnext_warehouse: wh.shopify_location_id for wh in setting.shopify_warehouse_mapping}
-
-
-def _get_inventory_levels(warehouses: Tuple[str]) -> List[_dict]:
-	"""
-	Get list of dict containing items that need to be updated on Shopify.
-
-	returns: ecom_item, item_code, variant_id, actual_qty, warehouse
-
-	"""
-	data = frappe.db.sql(
-		f"""
-			SELECT ei.name as ecom_item, bin.item_code as item_code, variant_id, actual_qty, warehouse, reserved_qty
-			FROM `tabEcommerce Item` ei
-				JOIN tabBin bin
-				ON ei.erpnext_item_code = bin.item_code
-			WHERE bin.warehouse in ({', '.join('%s' for _ in warehouses)})
-				AND bin.modified > ei.inventory_synced_on
-				AND integration = 'Shopify'
-		""",
-		warehouses,
-		as_dict=1,
-	)
-
-	return data
 
 
 def _log_inventory_update_status(inventory_levels) -> None:
