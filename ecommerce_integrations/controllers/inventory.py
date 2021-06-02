@@ -13,11 +13,11 @@ def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict
 	so ensure that if you sync the inventory with integration, you have also
 	updated `inventory_synced_on` field in related Ecommerce Item.
 
-	returns: list of _dict containing ecom_item, item_code, variant_id, actual_qty, warehouse, reserved_qty
+	returns: list of _dict containing ecom_item, item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
 	"""
 	data = frappe.db.sql(
 		f"""
-			SELECT ei.name as ecom_item, bin.item_code as item_code, variant_id, actual_qty, warehouse, reserved_qty
+			SELECT ei.name as ecom_item, bin.item_code as item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
 			FROM `tabEcommerce Item` ei
 				JOIN tabBin bin
 				ON ei.erpnext_item_code = bin.item_code
