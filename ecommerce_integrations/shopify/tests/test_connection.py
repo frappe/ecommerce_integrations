@@ -16,6 +16,7 @@ class TestShopifyConnection(unittest.TestCase):
 	def setUpClass(cls):
 		cls.setting = frappe.get_doc(SETTING_DOCTYPE)
 
+	@unittest.skip("Can't run these tests in CI")
 	def test_register_webhooks(self):
 
 		webhooks = connection.register_webhooks(
@@ -27,6 +28,7 @@ class TestShopifyConnection(unittest.TestCase):
 		wh_topics = [wh.topic for wh in webhooks]
 		self.assertEqual(sorted(wh_topics), sorted(connection.WEBHOOK_EVENTS))
 
+	@unittest.skip("Can't run these tests in CI")
 	def test_unregister_webhooks(self):
 
 		connection.unregister_webhooks(self.setting.shopify_url, self.setting.get_password("password"))
