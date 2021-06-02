@@ -24,7 +24,7 @@ def update_inventory_on_shopify() -> None:
 	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
 		return
 
-	warehous_map = _get_warehouse_map(setting)
+	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
 
 	if inventory_levels:
@@ -55,12 +55,6 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			d.status = "Failed"
 
 	_log_inventory_update_status(inventory_levels)
-
-
-def _get_warehouse_map(setting) -> Dict[str, str]:
-	"""Get mapping from ERPNext warehouse to shopify location id."""
-
-	return {wh.erpnext_warehouse: wh.shopify_location_id for wh in setting.shopify_warehouse_mapping}
 
 
 def _log_inventory_update_status(inventory_levels) -> None:
