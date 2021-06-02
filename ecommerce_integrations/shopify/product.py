@@ -327,7 +327,6 @@ def upload_erpnext_item(doc, method=None):
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
-
 	if frappe.flags.in_import:
 		return
 
@@ -352,7 +351,7 @@ def upload_erpnext_item(doc, method=None):
 		is_successful = product.save()
 
 		if is_successful:
-			product = update_default_variant_properties(
+			update_default_variant_properties(
 				product, sku=item.item_code, price=item.standard_rate, is_stock_item=item.is_stock_item,
 			)
 			product.save()  # push variant
