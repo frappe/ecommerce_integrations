@@ -1,19 +1,21 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See license.txt
 
-import frappe
 import unittest
 
+import frappe
 
-from .shopify_setting import setup_custom_fields
 from ecommerce_integrations.shopify.constants import (
+	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
+	FULLFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	FULLFILLMENT_ID_FIELD,
+	ORDER_STATUS_FIELD,
 	SUPPLIER_ID_FIELD,
-	ADDRESS_ID_FIELD,
 )
+
+from .shopify_setting import setup_custom_fields
 
 
 class TestShopifySetting(unittest.TestCase):
@@ -34,16 +36,17 @@ class TestShopifySetting(unittest.TestCase):
 
 		required_fields = set(
 			[
+				ADDRESS_ID_FIELD,
 				CUSTOMER_ID_FIELD,
+				FULLFILLMENT_ID_FIELD,
 				ORDER_ID_FIELD,
 				ORDER_NUMBER_FIELD,
-				FULLFILLMENT_ID_FIELD,
+				ORDER_STATUS_FIELD,
 				SUPPLIER_ID_FIELD,
-				ADDRESS_ID_FIELD,
 			]
 		)
 
-		self.assertEqual(len(created_fields), 10)
+		self.assertEqual(len(created_fields), 13)
 		created_fields_set = {d[0] for d in created_fields}
 
 		self.assertEqual(created_fields_set, required_fields)

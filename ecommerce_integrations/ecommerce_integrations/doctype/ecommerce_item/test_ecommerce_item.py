@@ -26,52 +26,51 @@ class TestEcommerceItem(unittest.TestCase):
 
 	def test_is_synced(self):
 		self._create_doc()
-		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT"))
-		self.assertFalse(ecommerce_item.is_synced("Shopify", "UNKNOWN ITEM"))
+		self.assertTrue(ecommerce_item.is_synced("shopify", "T-SHIRT"))
+		self.assertFalse(ecommerce_item.is_synced("shopify", "UNKNOWN ITEM"))
 
 	def test_is_synced_variant(self):
 		self._create_variant_doc()
-		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", "T-SHIRT-RED"))
-		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", "Unknown variant"))
+		self.assertTrue(ecommerce_item.is_synced("shopify", "T-SHIRT", "T-SHIRT-RED"))
+		self.assertFalse(ecommerce_item.is_synced("shopify", "T-SHIRT", "Unknown variant"))
 
 	def test_is_synced_sku(self):
 		self._create_doc_with_sku()
-		self.assertTrue(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="TEST_ITEM_1"))
-		self.assertFalse(ecommerce_item.is_synced("Shopify", "T-SHIRT", sku="UNKNOWNSKU"))
+		self.assertTrue(ecommerce_item.is_synced("shopify", "T-SHIRT", sku="TEST_ITEM_1"))
+		self.assertFalse(ecommerce_item.is_synced("shopify", "T-SHIRT", sku="UNKNOWNSKU"))
 
 	def test_get_erpnext_item(self):
 		self._create_doc()
-		a = ecommerce_item.get_erpnext_item("Shopify", "T-SHIRT")
-		b = frappe.get_doc("Item", "Test Item")
+		a = ecommerce_item.get_erpnext_item("shopify", "T-SHIRT")
+		b = frappe.get_doc("Item", "_Test Item")
 		self.assertEqual(a.name, b.name)
 		self.assertEqual(a.item_code, b.item_code)
 
-		unknown = ecommerce_item.get_erpnext_item("Shopify", "Unknown item")
+		unknown = ecommerce_item.get_erpnext_item("shopify", "Unknown item")
 		self.assertEqual(unknown, None)
 
 	def test_get_erpnext_item_variant(self):
 		self._create_variant_doc()
-		a = ecommerce_item.get_erpnext_item("Shopify", "T-SHIRT", "T-SHIRT-RED")
-		b = frappe.get_doc("Item", "Test Item Variant")
+		a = ecommerce_item.get_erpnext_item("shopify", "T-SHIRT", "T-SHIRT-RED")
+		b = frappe.get_doc("Item", "_Test Item 2")
 		self.assertEqual(a.name, b.name)
 		self.assertEqual(a.item_code, b.item_code)
 
 	def test_get_erpnext_item_sku(self):
 		self._create_doc_with_sku()
-		a = ecommerce_item.get_erpnext_item("Shopify", "T-SHIRT", sku="TEST_ITEM_1")
-		b = frappe.get_doc("Item", "Test Item")
+		a = ecommerce_item.get_erpnext_item("shopify", "T-SHIRT", sku="TEST_ITEM_1")
+		b = frappe.get_doc("Item", "_Test Item")
 		self.assertEqual(a.name, b.name)
 		self.assertEqual(a.item_code, b.item_code)
 
 	def _create_doc(self):
 		"""basic test for creation of ecommerce item"""
-		# TODO: patch / add record for item
 		frappe.get_doc(
 			{
 				"doctype": "Ecommerce Item",
-				"integration": "Shopify",
+				"integration": "shopify",
 				"integration_item_code": "T-SHIRT",
-				"erpnext_item_code": "Test Item",
+				"erpnext_item_code": "_Test Item",
 			}
 		).insert()
 
@@ -80,12 +79,12 @@ class TestEcommerceItem(unittest.TestCase):
 		frappe.get_doc(
 			{
 				"doctype": "Ecommerce Item",
-				"integration": "Shopify",
+				"integration": "shopify",
 				"integration_item_code": "T-SHIRT",
-				"erpnext_item_code": "Test Item Variant",
-				"has_variants": 1,
+				"erpnext_item_code": "_Test Item 2",
+				"has_variants": 0,
 				"variant_id": "T-SHIRT-RED",
-				"variant_of": "Test Item",
+				"variant_of": "_Test Variant Item",
 			}
 		).insert()
 
@@ -93,9 +92,9 @@ class TestEcommerceItem(unittest.TestCase):
 		frappe.get_doc(
 			{
 				"doctype": "Ecommerce Item",
-				"integration": "Shopify",
+				"integration": "shopify",
 				"integration_item_code": "T-SHIRT",
-				"erpnext_item_code": "Test Item",
+				"erpnext_item_code": "_Test Item",
 				"sku": "TEST_ITEM_1",
 			}
 		).insert()
