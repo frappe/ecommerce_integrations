@@ -1,6 +1,12 @@
 name: CI
 
-on: [pull_request, workflow_dispatch, push]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - develop
 
 jobs:
   test:
@@ -9,13 +15,7 @@ jobs:
     strategy:
       fail-fast: false
 
-      matrix:
-       include:
-        - TYPE: "server"
-          JOB_NAME: "Server"
-          RUN_COMMAND: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations
-
-    name: ${{ matrix.JOB_NAME }}
+    name: Server
 
     services:
       mysql:
@@ -74,6 +74,6 @@ jobs:
         run: bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
 
       - name: Run Tests
-        run: ${{ matrix.RUN_COMMAND }}
+        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations
         env:
-          TYPE: ${{ matrix.TYPE }}
+          TYPE: server
