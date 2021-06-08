@@ -1,0 +1,110 @@
+{
+ "actions": [],
+ "creation": "2021-06-08 12:43:12.667411",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_unicommerce",
+  "unicommerce_site",
+  "column_break_2",
+  "username",
+  "password",
+  "authentication_details_section",
+  "access_token",
+  "refresh_token",
+  "column_break_8",
+  "expires_on",
+  "token_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Username",
+   "reqd": 1
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Password",
+   "reqd": 1
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "refresh_token",
+   "fieldtype": "Password",
+   "label": "Refresh Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Datetime",
+   "label": "Expires On",
+   "read_only": 1
+  },
+  {
+   "description": "E.g. frappe.unicommerce.com",
+   "fieldname": "unicommerce_site",
+   "fieldtype": "Data",
+   "label": "Unicommerce Site",
+   "reqd": 1
+  },
+  {
+   "fieldname": "token_type",
+   "fieldtype": "Data",
+   "label": "Token Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "authentication_details_section",
+   "fieldtype": "Section Break",
+   "label": "Authentication Details"
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_unicommerce",
+   "fieldtype": "Check",
+   "label": "Enable Unicommerce"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2021-06-08 16:23:45.541252",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
