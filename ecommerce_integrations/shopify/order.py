@@ -157,7 +157,7 @@ def get_order_taxes(shopify_order, setting):
 			{
 				"charge_type": _("On Net Total"),
 				"account_head": get_tax_account_head(tax),
-				"description": f"{tax.get('title')} - {tax.get('rate') * 100.0}%",
+				"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0}%",
 				"rate": tax.get("rate") * 100.00,
 				"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
 				"cost_center": setting.cost_center,
@@ -180,6 +180,15 @@ def get_tax_account_head(tax):
 		frappe.throw(_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title")))
 
 	return tax_account
+
+def get_tax_account_description(tax):
+	tax_title = tax.get("title")
+
+	tax_description = frappe.db.get_value(
+		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_description",
+	)
+
+	return tax_description
 
 
 def get_discounted_amount(order):
