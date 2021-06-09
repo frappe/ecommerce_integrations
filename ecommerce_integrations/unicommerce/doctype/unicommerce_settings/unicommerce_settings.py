@@ -25,12 +25,15 @@ class UnicommerceSettings(SettingController):
 			except:
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
 
-	def renew_tokens(self):
+	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens(grant_type="refresh_token")
-			except:
+			except Exception as e:
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
+				raise e
+		if save:
+			self.save()
 
 	def update_tokens(self, grant_type="password"):
 		url = f"https://{self.unicommerce_site}/oauth/token"
