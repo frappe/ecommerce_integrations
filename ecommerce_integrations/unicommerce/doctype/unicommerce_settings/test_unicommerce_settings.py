@@ -12,6 +12,7 @@ from ecommerce_integrations.unicommerce.tests.utils import TestCase
 class TestUnicommerceSettings(TestCase):
 	@responses.activate
 	def test_authentication(self):
+		"""requirement: When saved the system get acess/refresh tokens from unicommerce."""
 
 		responses.add(
 			responses.GET,
@@ -31,6 +32,7 @@ class TestUnicommerceSettings(TestCase):
 
 	@responses.activate
 	def test_failed_auth(self):
+		"""requirement: When improper credentials are provided, system throws error."""
 
 		settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		# failure case
@@ -41,6 +43,7 @@ class TestUnicommerceSettings(TestCase):
 
 	@responses.activate
 	def test_refresh_tokens(self):
+		"""requirement: The system has functionality to refresh token periodically. This is used by UnicommerceAPIClient to ensure that token is valid before using it."""
 		url = "https://demostaging.unicommerce.com/oauth/token?grant_type=refresh_token&client_id=my-trusted-client&refresh_token=REFRESH_TOKEN"
 		responses.add(
 			responses.GET,
