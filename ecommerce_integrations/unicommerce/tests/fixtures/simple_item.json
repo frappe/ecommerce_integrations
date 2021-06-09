@@ -1,0 +1,130 @@
+{
+	"successful": true,
+	"message": null,
+	"errors": [],
+	"warnings": null,
+	"itemTypeDTO": {
+		"tat": 6,
+		"id": 129851,
+		"skuCode": "TITANIUM_WATCH",
+		"categoryCode": "SK001",
+		"name": "TITANIUM WATCH",
+		"description": "This is a watch.",
+		"scanIdentifier": "TITANIUM_WATCH",
+		"length": 100,
+		"width": 100,
+		"height": 50,
+		"weight": 1000,
+		"color": "Silver",
+		"size": "M",
+		"brand": "TITANIUM",
+		"ean": "",
+		"upc": "",
+		"isbn": "",
+		"maxRetailPrice": 312000.0,
+		"basePrice": 22000.0,
+		"batchGroupCode": null,
+		"costPrice": 15000.0,
+		"taxTypeCode": "DEFAULT",
+		"gstTaxTypeCode": "DEFAULT_GST",
+		"hsnCode": "91011100",
+		"imageUrl": "https://user-images.githubusercontent.com/9079960/131f-650c52c07a0e.gif",
+		"productPageUrl": null,
+		"type": "SIMPLE",
+		"determineExpiryFrom": null,
+		"taxCalculationType": null,
+		"requiresCustomization": false,
+		"itemDetailFieldsText": "",
+		"enabled": true,
+		"tags": [],
+		"shelfLife": 0,
+		"expirable": false,
+		"customFieldValues": [
+			{
+				"fieldName": "Woollen",
+				"fieldValue": "",
+				"valueType": "text",
+				"displayName": "Wollen",
+				"required": false,
+				"possibleValues": [""]
+			},
+			{
+				"fieldName": "Type",
+				"fieldValue": "",
+				"valueType": "text",
+				"displayName": "Type",
+				"required": false,
+				"possibleValues": [""]
+			},
+			{
+				"fieldName": "SerialNumber",
+				"fieldValue": "100",
+				"valueType": "text",
+				"displayName": "SerialNumber",
+				"required": true,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "BOMComponentSKUs",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "BOM-ComponentSKUs",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "BWB",
+				"fieldValue": null,
+				"valueType": "select",
+				"displayName": "BWB",
+				"required": false,
+				"possibleValues": ["True", "False"]
+			},
+			{
+				"fieldName": "TypeofSKU",
+				"fieldValue": "inbound",
+				"valueType": "select",
+				"displayName": "TypeofSKU",
+				"required": false,
+				"possibleValues": ["inbound", "outbound", "inbou"]
+			},
+			{
+				"fieldName": "Modelnumber",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "Model Number",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "Model_Number",
+				"fieldValue": "100",
+				"valueType": "text",
+				"displayName": "Model Number",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "ActivityCode",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "Activity Code",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "Demo",
+				"fieldValue": "DEFAULT",
+				"valueType": "text",
+				"displayName": "Article Code",
+				"required": true,
+				"possibleValues": null
+			}
+		],
+		"componentItemTypes": [],
+		"grnExpiryTolerance": 0,
+		"dispatchExpiryTolerance": 0,
+		"returnExpiryTolerance": 0,
+		"minOrderSize": 1
+	}
+}

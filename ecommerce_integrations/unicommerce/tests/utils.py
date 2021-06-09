@@ -13,6 +13,7 @@ class TestCase(unittest.TestCase):
 		"username": "frappe",
 		"password": "hunter2",
 		"unicommerce_site": "demostaging.unicommerce.com",
+		"access_token": "AUTH_TOKEN",
 		"is_enabled": 1,
 	}
 
@@ -25,6 +26,8 @@ class TestCase(unittest.TestCase):
 			cls.old_config[key] = getattr(settings, key)
 		if settings.password:
 			cls.old_config["password"] = settings.get_password("password")
+		if settings.access_token:
+			cls.old_config["access_token"] = settings.get_password("access_token")
 
 		for key, value in cls.config.items():
 			setattr(settings, key, value)
