@@ -32,10 +32,11 @@
   "section_break_25",
   "sales_order_series",
   "column_break_27",
-  "sync_delivery_note",
-  "delivery_note_series",
   "sync_sales_invoice",
   "sales_invoice_series",
+  "sync_delivery_note",
+  "delivery_note_series",
+  "submit_delivery_note",
   "section_break_22",
   "html_16",
   "taxes",
@@ -329,12 +330,19 @@
   {
    "fieldname": "column_break_45",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.sync_delivery_note==1",
+   "fieldname": "submit_delivery_note",
+   "fieldtype": "Check",
+   "label": "Automatically submit Delivery Notes"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-20 13:47:40.636720",
+ "modified": "2021-06-09 14:22:51.324999",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

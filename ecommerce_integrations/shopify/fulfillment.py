@@ -50,7 +50,8 @@ def create_delivery_note(shopify_order, setting, so):
 			)
 			dn.flags.ignore_mandatory = True
 			dn.save()
-			dn.submit()
+			if cint(setting.submit_delivery_note):
+				dn.submit()
 			frappe.db.commit()
 
 
