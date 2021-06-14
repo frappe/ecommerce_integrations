@@ -44,14 +44,16 @@
   "update_shopify_item_on_update",
   "inventory_sync_section",
   "update_erpnext_stock_levels_to_shopify",
+  "inventory_sync_frequency",
   "fetch_shopify_locations",
   "shopify_warehouse_mapping",
-  "is_old_data_migrated",
   "sync_old_orders_section",
   "sync_old_orders",
   "column_break_45",
   "old_orders_from",
-  "old_orders_to"
+  "old_orders_to",
+  "is_old_data_migrated",
+  "last_inventory_sync"
  ],
  "fields": [
   {
@@ -329,12 +331,26 @@
   {
    "fieldname": "column_break_45",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "60",
+   "fieldname": "inventory_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Inventory Sync Frequency (In Minutes)",
+   "options": "5\n10\n15\n30\n60"
+  },
+  {
+   "fieldname": "last_inventory_sync",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Last Inventory Sync",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-05-20 13:47:40.636720",
+ "modified": "2021-06-14 19:30:13.839383",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

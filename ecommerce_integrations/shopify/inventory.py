@@ -9,6 +9,7 @@ from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,
 	update_inventory_sync_status,
 )
+from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
 from ecommerce_integrations.shopify.utils import create_shopify_log
@@ -22,6 +23,9 @@ def update_inventory_on_shopify() -> None:
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
+		return
+
+	if not need_to_run(SETTING_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
 		return
 
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
