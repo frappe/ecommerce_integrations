@@ -100,12 +100,9 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": [ ],
+	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
 	"daily": [ ],
-	"hourly": [
-		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",
-		"ecommerce_integrations.shopify.order.sync_old_orders"
-	],
+	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
 	"weekly": [ ],
 	"monthly": [ ],
 }
