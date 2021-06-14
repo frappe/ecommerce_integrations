@@ -15,7 +15,9 @@
   "refresh_token",
   "column_break_8",
   "expires_on",
-  "token_type"
+  "token_type",
+  "item_sync_settings_section",
+  "default_item_group"
  ],
  "fields": [
   {
@@ -82,12 +84,23 @@
    "fieldname": "enable_unicommerce",
    "fieldtype": "Check",
    "label": "Enable Unicommerce"
+  },
+  {
+   "fieldname": "item_sync_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Item Sync Settings"
+  },
+  {
+   "fieldname": "default_item_group",
+   "fieldtype": "Link",
+   "label": "Default Item Group",
+   "options": "Item Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-08 16:23:45.541252",
+ "modified": "2021-06-14 16:20:35.029202",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
