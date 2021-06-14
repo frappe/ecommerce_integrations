@@ -48,6 +48,13 @@ class EcommerceCustomer:
 		except Exception as e:
 			raise e
 
+	def get_customer_address_doc(self,customer_name: str, type):
+		doc = frappe.get_all("Address", {"link_name": customer_name, "address_type": type})
+		if(len(doc)>0):
+			doc = frappe.get_last_doc("Address", {'name': doc[0].name})
+			return doc
+
+
 	def create_customer_address(self, address: Dict[str, str]) -> None:
 		"""Create address from dictionary containing fields used in Address doctype of ERPNext."""
 
@@ -58,6 +65,24 @@ class EcommerceCustomer:
 				{
 					"doctype": "Address",
 					**address,
+					"links": [{"link_doctype": "Customer", "link_name": customer_doc.name}],
+				}
+			).insert(ignore_mandatory=True)
+
+			frappe.db.commit()
+		except Exception as e:
+			raise e
+
+	def create_customer_contact(self, contact: Dict[str, str]) -> None:
+		"""Create address from dictionary containing fields used in Address doctype of ERPNext."""
+
+		try:
+			customer_doc = self.get_customer_doc()
+
+			frappe.get_doc(
+				{
+					"doctype": "Contact",
+					**contact,
 					"links": [{"link_doctype": "Customer", "link_name": customer_doc.name}],
 				}
 			).insert(ignore_mandatory=True)
