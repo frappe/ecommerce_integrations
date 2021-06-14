@@ -41,9 +41,9 @@ class UnicommerceAPIClient:
 		url = self.base_url + API_ENDPOINTS[endpoint]
 		try:
 			response = requests.request(url=url, method=method, headers=headers, json=body)
-		except Exception as e:
+			response.raise_for_status()
+		except Exception:
 			create_unicommerce_log(status="Error")
-			raise e
 
 		data = frappe._dict(response.json())
 		status = data.successful if data.successful is not None else True

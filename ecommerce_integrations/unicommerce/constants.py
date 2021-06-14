@@ -8,3 +8,5 @@ API_ENDPOINTS = {
 	"get_sales_order": "/services/rest/v1/oms/saleorder/get",
 	"search_sales_order": "/services/rest/v1/oms/saleOrder/search",
 }
+
+DEFAULT_WEIGHT_UOM = "Gram"
