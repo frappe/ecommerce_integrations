@@ -10,7 +10,7 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 # unicommerce product to ERPNext item mapping
 # reference: https://documentation.unicommerce.com/docs/itemtype-get.html
-PRODUCT_MAPPING = {
+UNI_TO_ERPNEXT_ITEM_MAPPING = {
 	"skuCode": "item_code",
 	"name": "item_name",
 	"description": "description",
@@ -20,6 +20,8 @@ PRODUCT_MAPPING = {
 	"hsnCode": "gst_hsn_code",
 	"imageUrl": "image",
 }
+
+ERPNEXT_TO_UNI_ITEM_MAPPING = {v:k for k,v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
 
 
 def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = None) -> None:
@@ -61,7 +63,7 @@ def _create_item_dict(uni_item):
 
 	_validate_create_brand(uni_item.get("brand"))
 
-	for uni_field, erpnext_field in PRODUCT_MAPPING.items():
+	for uni_field, erpnext_field in UNI_TO_ERPNEXT_ITEM_MAPPING.items():
 
 		value = uni_item.get(uni_field)
 		if not _validate_field(erpnext_field, value):
