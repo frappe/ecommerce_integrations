@@ -72,3 +72,23 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
 		self.assertTrue("MISSING" in log.response_data, "Logging for missing item not working")
+
+
+	@responses.activate
+	def test_get_sales_order(self):
+		responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleorder/get",
+			status=200,
+			json=self.load_fixture("simple_order"),
+			match=[responses.json_params_matcher({"code": "SO5841"})],
+		)
+
+		order_data = self.client.get_sales_order("SO5841")
+
+		self.assertEqual(order_data["saleOrderDTO"]["code"], "SO5841")
+		self.assertEqual(order_data["saleOrderDTO"]["displayOrderCode"], "SINV-00042")
+
+	@responses.activate
+	def test_search_sales_order(self):
+		pass
