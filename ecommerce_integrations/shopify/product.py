@@ -273,8 +273,6 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None)
 
 	item_name = frappe.db.get_value("Item", {"item_code": sku})
 	if item_name:
-		item_doc = frappe.get_doc("Item", item_name)
-
 		try:
 			ecommerce_item = frappe.get_doc(
 				{
