@@ -219,7 +219,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
 				{
 					"charge_type": _("Actual"),
 					"account_head": get_tax_account_head(tax),
-					"description": f"{get_tax_account_description(tax) or tax.get('title')} - {round(Decimal(tax.get('rate') * 100.0), 2)}%",
+					"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%",
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,
 				}
