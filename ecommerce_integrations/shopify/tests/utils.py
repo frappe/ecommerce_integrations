@@ -105,7 +105,6 @@ class TestCase(unittest.TestCase):
 
 	def fake(self, endpoint, **kwargs):
 		body = kwargs.pop("body", None) or self.load_fixture(endpoint)
-		format = kwargs.pop("format", "json")
 		method = kwargs.pop("method", "GET")
 		prefix = kwargs.pop("prefix", f"/admin/api/{API_VERSION}")
 
