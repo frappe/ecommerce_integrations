@@ -5,7 +5,6 @@ from frappe import _
 from frappe.utils import cstr, flt, get_datetime, getdate, nowdate, cint
 from shopify.collection import PaginatedIterator
 from shopify.resources import Order
-from decimal import Decimal
 
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
