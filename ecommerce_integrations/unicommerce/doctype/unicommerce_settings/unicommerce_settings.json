@@ -17,7 +17,15 @@
   "expires_on",
   "token_type",
   "item_sync_settings_section",
-  "default_item_group"
+  "default_item_group",
+  "sales_order_syncing_section",
+  "order_sync_frequency",
+  "inventory_sync_settings_section",
+  "inventory_sync_frequency",
+  "sync_status_section",
+  "last_order_sync",
+  "column_break_20",
+  "last_inventory_sync"
  ],
  "fields": [
   {
@@ -95,12 +103,58 @@
    "fieldtype": "Link",
    "label": "Default Item Group",
    "options": "Item Group"
+  },
+  {
+   "fieldname": "sales_order_syncing_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Order Sync Settings"
+  },
+  {
+   "default": "30",
+   "fieldname": "order_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Order Sync Frequency (In minutes)",
+   "options": "10\n15\n30\n60"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "sync_status_section",
+   "fieldtype": "Section Break",
+   "label": "Sync Status"
+  },
+  {
+   "fieldname": "last_order_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Order Sync",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_inventory_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Inventory Sync",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inventory_sync_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Inventory Sync Settings"
+  },
+  {
+   "default": "10",
+   "fieldname": "inventory_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Inventory Sync Frequency (In minutes)",
+   "options": "5\n10\n15\n30\n60"
+  },
+  {
+   "fieldname": "column_break_20",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-14 16:20:35.029202",
+ "modified": "2021-06-15 13:44:53.667635",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
