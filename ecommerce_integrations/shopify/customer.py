@@ -30,105 +30,87 @@ class ShopifyCustomer(EcommerceCustomer):
 
 	def create_customer_address(self, customer_name, customer_dict: Dict[str, Any]) -> None:
 		"""Create customer address(es) using Customer dict provided by shopify."""
-		try:
-			shopify_address = customer_dict.get("default_address", {})
+		shopify_address = customer_dict.get("default_address", {})
 
-			# map shopify address fields to ERPNext
-			address_fields = {
-				"address_title": customer_name,
-				"address_type": _("Billing"),
-				ADDRESS_ID_FIELD: shopify_address.get("id"),
-				"address_line1": shopify_address.get("address1") or "Address 1",
-				"address_line2": shopify_address.get("address2"),
-				"city": shopify_address.get("city"),
-				"state": shopify_address.get("province"),
-				"pincode": shopify_address.get("zip"),
-				"country": shopify_address.get("country"),
-				"phone": shopify_address.get("phone"),
-				"email_id": customer_dict.get("email"),
-			}
+		# map shopify address fields to ERPNext
+		address_fields = {
+			"address_title": customer_name,
+			"address_type": _("Billing"),
+			ADDRESS_ID_FIELD: shopify_address.get("id"),
+			"address_line1": shopify_address.get("address1") or "Address 1",
+			"address_line2": shopify_address.get("address2"),
+			"city": shopify_address.get("city"),
+			"state": shopify_address.get("province"),
+			"pincode": shopify_address.get("zip"),
+			"country": shopify_address.get("country"),
+			"phone": shopify_address.get("phone"),
+			"email_id": customer_dict.get("email"),
+		}
 
-			super().create_customer_address(address_fields)
-
-		except Exception as e:
-			raise e
+		super().create_customer_address(address_fields)
 
 	def create_additional_address(self, customer_name, customer_mail, type, shopify_address: Dict[str, Any]) -> None:
 		"""Create customer address(es) using Customer dict provided by shopify."""
-		try:
+		# map shopify address fields to ERPNext
+		address_fields = {
+			"address_title": customer_name,
+			"address_type": _(type),
+			"address_line1": shopify_address.get("address1") or "Address 1",
+			"address_line2": shopify_address.get("address2"),
+			"city": shopify_address.get("city"),
+			"state": shopify_address.get("province"),
+			"pincode": shopify_address.get("zip"),
+			"country": shopify_address.get("country"),
+			"phone": shopify_address.get("phone"),
+			"email_id": customer_mail,
+		}
 
-			# map shopify address fields to ERPNext
-			address_fields = {
-				"address_title": customer_name,
-				"address_type": _(type),
-				"address_line1": shopify_address.get("address1") or "Address 1",
-				"address_line2": shopify_address.get("address2"),
-				"city": shopify_address.get("city"),
-				"state": shopify_address.get("province"),
-				"pincode": shopify_address.get("zip"),
-				"country": shopify_address.get("country"),
-				"phone": shopify_address.get("phone"),
-				"email_id": customer_mail,
-			}
-
-			super().create_customer_address(address_fields)
-
-		except Exception as e:
-			raise e
+		super().create_customer_address(address_fields)
 
 	def update_additional_address(self, customer_name, customer_mail, type, shopify_address: Dict[str, Any]) -> None:
-		try:
-			oldAddress = self.get_customer_address_doc(customer_name, _(type))
-			
-			if(not oldAddress):
-				self.create_additional_address(customer_name, customer_mail, type, shopify_address)
-			else:
-				oldAddress.address_line1 = shopify_address.get("address1") or "Address 1"
-				oldAddress.address_line2 = shopify_address.get("address2")
-				oldAddress.city = shopify_address.get("city")
-				oldAddress.state = shopify_address.get("province")
-				oldAddress.pincode = shopify_address.get("zip")
-				oldAddress.country = shopify_address.get("country")
-				oldAddress.phone = shopify_address.get("phone")
-				oldAddress.email_id = customer_mail
-				oldAddress.save()
+		oldAddress = self.get_customer_address_doc(customer_name, _(type))
 
-		except Exception as e:
-			raise e
+		if(not oldAddress):
+			self.create_additional_address(customer_name, customer_mail, type, shopify_address)
+		else:
+			oldAddress.address_line1 = shopify_address.get("address1") or "Address 1"
+			oldAddress.address_line2 = shopify_address.get("address2")
+			oldAddress.city = shopify_address.get("city")
+			oldAddress.state = shopify_address.get("province")
+			oldAddress.pincode = shopify_address.get("zip")
+			oldAddress.country = shopify_address.get("country")
+			oldAddress.phone = shopify_address.get("phone")
+			oldAddress.email_id = customer_mail
+			oldAddress.save()
 
 	def create_contact(self, first_name, last_name, customer_mail, phone, mobile, marketing) -> None:
-		try:
-			
-			contact_fields = {
-				"status": "Passive",
-				"first_name": first_name,
-				"last_name": last_name,
-				"unsubscribed": not marketing
-			}
+		contact_fields = {
+			"status": "Passive",
+			"first_name": first_name,
+			"last_name": last_name,
+			"unsubscribed": not marketing
+		}
 
-			if(customer_mail):
-				contact_fields["email_ids"] =  [{
-					"email_id": customer_mail,
-					"is_primary": True
-				}]
+		if(customer_mail):
+			contact_fields["email_ids"] =  [{
+				"email_id": customer_mail,
+				"is_primary": True
+			}]
 
-			phone_nos = [] 
-			if(phone):
-				phone_nos.append({
-					"phone": phone,
-					"is_primary_phone": True
-				})
+		phone_nos = []
+		if(phone):
+			phone_nos.append({
+				"phone": phone,
+				"is_primary_phone": True
+			})
 
-			if(mobile):
-				phone_nos.append({
-					"phone": mobile,
-					"is_primary_phone": True
-				})
+		if(mobile):
+			phone_nos.append({
+				"phone": mobile,
+				"is_primary_phone": True
+			})
 
-			if(len(phone_nos) > 0):
-				contact_fields["phone_nos"] = phone_nos
+		if(len(phone_nos) > 0):
+			contact_fields["phone_nos"] = phone_nos
 
-			super().create_customer_contact(contact_fields)
-
-		except Exception as e:
-			raise e
+		super().create_customer_contact(contact_fields)
