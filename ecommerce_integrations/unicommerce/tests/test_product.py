@@ -5,10 +5,10 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME
 from ecommerce_integrations.unicommerce.product import (
 	_get_barcode_data,
+	_get_item_group,
 	_validate_create_brand,
 	_validate_field,
 	import_product_from_unicommerce,
-	_get_item_group
 )
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
 
@@ -95,7 +95,6 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 		self.assertEqual(types, ["EAN", "UPC-A"])
 		self.assertEqual(values, ["73513537", "065100004327"])
-
 
 	def test_get_item_group(self):
 		self.assertEqual(_get_item_group("Products"), "Products")
