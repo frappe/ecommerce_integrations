@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, List, Optional, Tuple
 
 import frappe
 import requests
@@ -23,7 +23,6 @@ class UnicommerceAPIClient:
 
 	def __initialize_auth(self):
 		"""Initialize and setup authentication details"""
-		self.settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		self.settings.renew_tokens()
 		self._auth_headers = {"Authorization": f"Bearer {self.settings.get_password('access_token')}"}
 
