@@ -7,6 +7,7 @@ from frappe import _
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
 from ecommerce_integrations.controllers.setting import SettingController
+from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 
@@ -34,6 +35,8 @@ class UnicommerceSettings(SettingController):
 				raise e
 		if save:
 			self.save()
+			frappe.db.commit()
+			self.load_from_db()
 
 	def update_tokens(self, grant_type="password"):
 		url = f"https://{self.unicommerce_site}/oauth/token"
