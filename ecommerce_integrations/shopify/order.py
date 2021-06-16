@@ -39,9 +39,7 @@ def sync_sales_order(payload, request_id=None):
 			customer = ShopifyCustomer(customer_id=customer_id)
 			if not customer.is_synced():
 				customer.sync_customer(customer=shopify_customer)
-				customer.create_additional_address(customer_name, shopify_customer.get("email"),"Billing", order.get("billing_address"))
-				customer.create_additional_address(customer_name, shopify_customer.get("email"),"Shipping", order.get("shipping_address"))
-				
+
 				if(shopify_customer.get("first_name") and shopify_customer.get("last_name") and shopify_customer.get("email")):
 					customer.create_contact(shopify_customer.get("first_name"),
 					shopify_customer.get("last_name"),
@@ -53,7 +51,7 @@ def sync_sales_order(payload, request_id=None):
 			else:
 				customer.update_additional_address(customer_name, shopify_customer.get("email"),"Billing", order.get("billing_address"))
 				customer.update_additional_address(customer_name, shopify_customer.get("email"),"Shipping", order.get("billing_address"))
-		
+
 		create_items_if_not_exist(order)
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)

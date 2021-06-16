@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import frappe
 from frappe import _
@@ -27,14 +27,29 @@ class ShopifyCustomer(EcommerceCustomer):
 		customer_group = self.setting.customer_group
 		super().sync_customer(customer_name, customer_group)
 
-	def create_customer_address(self, customer_name, customer_dict: Dict[str, Any]) -> None:
-		"""Create customer address(es) using Customer dict provided by shopify."""
-		shopify_address = customer_dict.get("default_address", {})
+		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
+		shipping_address = customer.get("shipping_address", {})
 
-		# map shopify address fields to ERPNext
+		if billing_address:
+			self.create_customer_address(
+				customer_name, billing_address, address_type="Billing", email=customer.get("email")
+			)
+		if shipping_address:
+			self.create_customer_address(
+				customer_name, shipping_address, address_type="Shipping", email=customer.get("email")
+			)
+
+	def create_customer_address(
+		self,
+		customer_name,
+		shopify_address: Dict[str, Any],
+		address_type: str = "Billing",
+		email: Optional[str] = None,
+	) -> None:
+		"""Create customer address(es) using Customer dict provided by shopify."""
 		address_fields = {
 			"address_title": customer_name,
-			"address_type": _("Billing"),
+			"address_type": address_type,
 			ADDRESS_ID_FIELD: shopify_address.get("id"),
 			"address_line1": shopify_address.get("address1") or "Address 1",
 			"address_line2": shopify_address.get("address2"),
@@ -43,27 +58,7 @@ class ShopifyCustomer(EcommerceCustomer):
 			"pincode": shopify_address.get("zip"),
 			"country": shopify_address.get("country"),
 			"phone": shopify_address.get("phone"),
-			"email_id": customer_dict.get("email"),
-		}
-
-		super().create_customer_address(address_fields)
-
-	def create_additional_address(
-		self, customer_name, customer_mail, type, shopify_address: Dict[str, Any]
-	) -> None:
-		"""Create customer address(es) using Customer dict provided by shopify."""
-		# map shopify address fields to ERPNext
-		address_fields = {
-			"address_title": customer_name,
-			"address_type": _(type),
-			"address_line1": shopify_address.get("address1") or "Address 1",
-			"address_line2": shopify_address.get("address2"),
-			"city": shopify_address.get("city"),
-			"state": shopify_address.get("province"),
-			"pincode": shopify_address.get("zip"),
-			"country": shopify_address.get("country"),
-			"phone": shopify_address.get("phone"),
-			"email_id": customer_mail,
+			"email_id": email,
 		}
 
 		super().create_customer_address(address_fields)
@@ -74,7 +69,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		oldAddress = self.get_customer_address_doc(customer_name, _(type))
 
 		if not oldAddress:
-			self.create_additional_address(customer_name, customer_mail, type, shopify_address)
+			self.create_customer_address(customer_name, shopify_address, type, customer_mail)
 		else:
 			oldAddress.address_line1 = shopify_address.get("address1") or "Address 1"
 			oldAddress.address_line2 = shopify_address.get("address2")
