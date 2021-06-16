@@ -21,7 +21,7 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 	"imageUrl": "image",
 }
 
-ERPNEXT_TO_UNI_ITEM_MAPPING = {v:k for k,v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
+ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
 
 
 def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = None) -> None:

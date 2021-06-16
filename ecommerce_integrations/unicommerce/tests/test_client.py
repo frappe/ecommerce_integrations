@@ -73,7 +73,6 @@ class TestUnicommerceClient(TestCaseApiClient):
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
 		self.assertTrue("MISSING" in log.response_data, "Logging for missing item not working")
 
-
 	@responses.activate
 	def test_get_sales_order(self):
 		responses.add(
