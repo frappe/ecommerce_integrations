@@ -45,12 +45,11 @@ class EcommerceCustomer:
 
 		frappe.db.commit()
 
-	def get_customer_address_doc(self,customer_name: str, type):
+	def get_customer_address_doc(self, customer_name: str, type):
 		doc = frappe.get_all("Address", {"link_name": customer_name, "address_type": type})
-		if(len(doc)>0):
-			doc = frappe.get_last_doc("Address", {'name': doc[0].name})
+		if len(doc) > 0:
+			doc = frappe.get_last_doc("Address", {"name": doc[0].name})
 			return doc
-
 
 	def create_customer_address(self, address: Dict[str, str]) -> None:
 		"""Create address from dictionary containing fields used in Address doctype of ERPNext."""
