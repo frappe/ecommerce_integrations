@@ -168,20 +168,6 @@ def get_order_taxes(shopify_order, setting):
 					"cost_center": setting.cost_center,
 				}
 			)
-
-	if not setting.dont_recalculate_taxes:
-		for tax in shopify_order.get("tax_lines"):
-			print(tax)
-			taxes.append(
-				{
-					"charge_type": _("On Net Total"),
-					"account_head": get_tax_account_head(tax),
-					"description": f"{tax.get('title')} - {tax.get('rate') * 100.0}%",
-					"rate": tax.get("rate") * 100.00,
-					"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
-					"cost_center": setting.cost_center,
-				}
-			)
 		
 	taxes = update_taxes_with_shipping_lines(taxes, shopify_order.get("shipping_lines"), setting)
 
