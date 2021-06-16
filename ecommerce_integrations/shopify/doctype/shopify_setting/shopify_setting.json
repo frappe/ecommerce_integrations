@@ -9,7 +9,6 @@
   "column_break_4",
   "section_break_2",
   "shopify_url",
-  "api_key",
   "column_break_3",
   "password",
   "shared_secret",
@@ -25,10 +24,9 @@
   "cash_bank_account",
   "column_break_19",
   "cost_center",
-  "inventory_settings_section",
   "price_list",
+  "inventory_settings_section",
   "column_break_22",
-  "warehouse",
   "section_break_25",
   "sales_order_series",
   "column_break_27",
@@ -43,6 +41,7 @@
   "upload_erpnext_items",
   "update_shopify_item_on_update",
   "inventory_sync_section",
+  "warehouse",
   "update_erpnext_stock_levels_to_shopify",
   "inventory_sync_frequency",
   "fetch_shopify_locations",
@@ -68,7 +67,8 @@
   },
   {
    "fieldname": "section_break_2",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Authentication Details"
   },
   {
    "description": "eg: frappe.myshopify.com",
@@ -76,12 +76,6 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Shop URL",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
-  },
-  {
-   "fieldname": "api_key",
-   "fieldtype": "Data",
-   "label": "API Key",
    "mandatory_depends_on": "eval:doc.enable_shopify"
   },
   {
@@ -139,9 +133,10 @@
    "label": "Inventory Settings"
   },
   {
+   "description": "If individual warehouse are not mapped, the default warehouse is considered for transactions.",
    "fieldname": "warehouse",
    "fieldtype": "Link",
-   "label": "Warehouse",
+   "label": "Default warehouse",
    "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Warehouse"
   },
@@ -188,7 +183,8 @@
   },
   {
    "fieldname": "section_break_25",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Order sync Settings"
   },
   {
    "fieldname": "sales_order_series",
@@ -247,6 +243,7 @@
    "fieldtype": "Column Break"
   },
   {
+   "description": "This is only required for filling out required fields in Sales Order.",
    "fieldname": "price_list",
    "fieldtype": "Link",
    "label": "Price List",
@@ -334,9 +331,11 @@
   },
   {
    "default": "60",
+   "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "fieldname": "inventory_sync_frequency",
    "fieldtype": "Select",
    "label": "Inventory Sync Frequency (In Minutes)",
+   "mandatory_depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "options": "5\n10\n15\n30\n60"
   },
   {
@@ -350,7 +349,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-14 19:30:13.839383",
+ "modified": "2021-06-16 20:02:17.827016",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
