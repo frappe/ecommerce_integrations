@@ -47,7 +47,6 @@ class TestCase(unittest.TestCase):
 				{
 					"enable_shopify": 1,
 					"shopify_url": "frappetest.myshopify.com",
-					"api_key": "supersecret",
 					"password": "supersecret",
 					"shared_secret": "supersecret",
 					"default_customer": "_Test Customer",
