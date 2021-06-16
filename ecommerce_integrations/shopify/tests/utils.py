@@ -47,7 +47,6 @@ class TestCase(unittest.TestCase):
 				{
 					"enable_shopify": 1,
 					"shopify_url": "frappetest.myshopify.com",
-					"api_key": "supersecret",
 					"password": "supersecret",
 					"shared_secret": "supersecret",
 					"default_customer": "_Test Customer",
@@ -105,7 +104,6 @@ class TestCase(unittest.TestCase):
 
 	def fake(self, endpoint, **kwargs):
 		body = kwargs.pop("body", None) or self.load_fixture(endpoint)
-		format = kwargs.pop("format", "json")
 		method = kwargs.pop("method", "GET")
 		prefix = kwargs.pop("prefix", f"/admin/api/{API_VERSION}")
 
