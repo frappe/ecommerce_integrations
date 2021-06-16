@@ -39,6 +39,8 @@ class ShopifyCustomer(EcommerceCustomer):
 				customer_name, shipping_address, address_type="Shipping", email=customer.get("email")
 			)
 
+		self.create_customer_contact(customer)
+
 	def create_customer_address(
 		self,
 		customer_name,
@@ -81,25 +83,25 @@ class ShopifyCustomer(EcommerceCustomer):
 			oldAddress.email_id = customer_mail
 			oldAddress.save()
 
-	def create_contact(self, first_name, last_name, customer_mail, phone, mobile, marketing) -> None:
+	def create_customer_contact(self, shopify_customer: Dict[str, Any]) -> None:
+
+		if not (shopify_customer.get("first_name") and shopify_customer.get("email")):
+			return
+
 		contact_fields = {
 			"status": "Passive",
-			"first_name": first_name,
-			"last_name": last_name,
-			"unsubscribed": not marketing,
+			"first_name": shopify_customer.get("first_name"),
+			"last_name": shopify_customer.get("last_name"),
+			"unsubscribed": not shopify_customer.get("accepts_marketing"),
 		}
 
-		if customer_mail:
-			contact_fields["email_ids"] = [{"email_id": customer_mail, "is_primary": True}]
+		if shopify_customer.get("email"):
+			contact_fields["email_ids"] = [{"email_id": shopify_customer.get("email"), "is_primary": True}]
 
-		phone_nos = []
-		if phone:
-			phone_nos.append({"phone": phone, "is_primary_phone": True})
 
-		if mobile:
-			phone_nos.append({"phone": mobile, "is_primary_phone": True})
+		phone_no = shopify_customer.get("phone") or shopify_customer.get("default_address", {}).get("phone")
 
-		if len(phone_nos) > 0:
-			contact_fields["phone_nos"] = phone_nos
+		if phone_no:
+			contact_fields["phone_nos"] = [{"phone": phone_no, "is_primary_phone": True}]
 
 		super().create_customer_contact(contact_fields)
