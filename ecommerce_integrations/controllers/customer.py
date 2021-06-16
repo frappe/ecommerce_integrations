@@ -2,7 +2,6 @@ import frappe
 
 from frappe import _
 from frappe.utils.nestedset import get_root_of
-from erpnext.selling.doctype.customer.customer import Customer
 
 from typing import Dict
 
@@ -21,8 +20,7 @@ class EcommerceCustomer:
 	def get_customer_doc(self):
 		"""Get ERPNext customer document."""
 		if self.is_synced():
-			doc: Customer = frappe.get_last_doc("Customer", {self.customer_id_field: self.customer_id})
-			return doc
+			return frappe.get_last_doc("Customer", {self.customer_id_field: self.customer_id})
 		else:
 			raise frappe.DoesNotExistError()
 
@@ -67,7 +65,7 @@ class EcommerceCustomer:
 		frappe.db.commit()
 
 	def create_customer_contact(self, contact: Dict[str, str]) -> None:
-		"""Create address from dictionary containing fields used in Address doctype of ERPNext."""
+		"""Create contact from dictionary containing fields used in Address doctype of ERPNext."""
 
 		customer_doc = self.get_customer_doc()
 
