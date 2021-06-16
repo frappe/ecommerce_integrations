@@ -1,9 +1,8 @@
-import frappe
+from typing import Dict
 
+import frappe
 from frappe import _
 from frappe.utils.nestedset import get_root_of
-
-from typing import Dict
 
 
 class EcommerceCustomer:
@@ -43,11 +42,15 @@ class EcommerceCustomer:
 
 		frappe.db.commit()
 
-	def get_customer_address_doc(self, customer_name: str, type):
-		doc = frappe.get_all("Address", {"link_name": customer_name, "address_type": type})
-		if len(doc) > 0:
-			doc = frappe.get_last_doc("Address", {"name": doc[0].name})
-			return doc
+	def get_customer_address_doc(self, address_type: str):
+		try:
+			customer = self.get_customer_doc().name
+			addresses = frappe.get_all("Address", {"link_name": customer, "address_type": address_type})
+			if addresses:
+				address = frappe.get_last_doc("Address", {"name": addresses[0].name})
+				return address
+		except frappe.DoesNotExistError:
+			return None
 
 	def create_customer_address(self, address: Dict[str, str]) -> None:
 		"""Create address from dictionary containing fields used in Address doctype of ERPNext."""
