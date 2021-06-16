@@ -33,15 +33,15 @@ def sync_sales_order(payload, request_id=None):
 		return
 	try:
 		shopify_customer = order.get("customer", {})
+		shopify_customer["billing_address"] = order.get("billing_address")
+		shopify_customer["shipping_address"] = order.get("shipping_address")
 		customer_id = shopify_customer.get("id")
-		customer_name = shopify_customer.get("first_name", "") + " " + shopify_customer.get("last_name", "")
 		if customer_id:
 			customer = ShopifyCustomer(customer_id=customer_id)
 			if not customer.is_synced():
 				customer.sync_customer(customer=shopify_customer)
 			else:
-				customer.update_additional_address(customer_name, shopify_customer.get("email"),"Billing", order.get("billing_address"))
-				customer.update_additional_address(customer_name, shopify_customer.get("email"),"Shipping", order.get("billing_address"))
+				customer.update_existing_addresses(shopify_customer)
 
 		create_items_if_not_exist(order)
 
