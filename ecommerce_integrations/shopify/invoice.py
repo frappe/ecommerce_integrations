@@ -52,6 +52,10 @@ def create_sales_invoice(shopify_order, setting, so):
 		sales_invoice.insert(ignore_mandatory=True)
 		sales_invoice.submit()
 		make_payament_entry_against_sales_invoice(sales_invoice, setting, posting_date)
+
+		if shopify_order.get("note"):
+			sales_invoice.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
 		frappe.db.commit()
 
 
