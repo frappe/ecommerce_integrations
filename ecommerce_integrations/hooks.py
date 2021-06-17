@@ -104,8 +104,9 @@ scheduler_events = {
 	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
 	"daily": [],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
-	"weekly": [],
-	"monthly": [],
+	"hourly_long": ["ecommerce_integrations.unicommerce.product.upload_new_items"],
+	"weekly": [ ],
+	"monthly": [ ],
 }
 
 

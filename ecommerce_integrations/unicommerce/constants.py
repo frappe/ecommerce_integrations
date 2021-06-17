@@ -11,3 +11,8 @@ API_ENDPOINTS = {
 }
 
 DEFAULT_WEIGHT_UOM = "Gram"
+
+
+# Custom fields
+
+ITEM_SYNC_CHECKBOX = "sync_with_unicommerce"

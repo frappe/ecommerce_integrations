@@ -17,6 +17,7 @@
   "expires_on",
   "token_type",
   "item_sync_settings_section",
+  "upload_item_to_unicommerce",
   "default_item_group",
   "sales_order_syncing_section",
   "order_sync_frequency",
@@ -164,12 +165,19 @@
    "label": "Channel Config",
    "options": "Unicommerce Channel Config",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "description": "If enabled, any new item with \"sync with Unicommerce\" checked will be uploaded to Unicommerce on an hourly basis.",
+   "fieldname": "upload_item_to_unicommerce",
+   "fieldtype": "Check",
+   "label": "Upload new items to Unicommerce"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-17 13:06:57.398965",
+ "modified": "2021-06-17 17:08:30.058431",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

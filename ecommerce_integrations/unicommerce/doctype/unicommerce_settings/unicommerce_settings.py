@@ -6,6 +6,7 @@ from typing import Dict, List
 import frappe
 import requests
 from frappe import _
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
 from ecommerce_integrations.controllers.setting import (
@@ -13,7 +14,7 @@ from ecommerce_integrations.controllers.setting import (
 	IntegrationWarehouse,
 	SettingController,
 )
-from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.constants import ITEM_SYNC_CHECKBOX
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 
@@ -31,6 +32,7 @@ class UnicommerceSettings(SettingController):
 				self.update_tokens()
 			except:
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
+		setup_custom_fields()
 
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
@@ -84,3 +86,19 @@ class UnicommerceSettings(SettingController):
 		reverse_map = self.get_erpnext_to_integration_wh_mapping()
 
 		return {v: k for k, v in reverse_map.items()}
+
+
+def setup_custom_fields():
+	custom_fields = {
+		"Item": [
+			dict(
+				fieldname=ITEM_SYNC_CHECKBOX,
+				label="Sync Item with Unicommerce",
+				fieldtype="Check",
+				insert_after="item_code",
+				print_hide=1,
+			)
+		],
+	}
+
+	create_custom_fields(custom_fields)
