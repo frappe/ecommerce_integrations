@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, NewType
 
 import frappe
 from frappe import _
@@ -8,8 +8,15 @@ from stdnum.ean import is_valid as validate_barcode
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
-from ecommerce_integrations.unicommerce.constants import DEFAULT_WEIGHT_UOM, MODULE_NAME
+from ecommerce_integrations.unicommerce.constants import (
+	DEFAULT_WEIGHT_UOM,
+	ITEM_SYNC_CHECKBOX,
+	MODULE_NAME,
+	SETTINGS_DOCTYPE,
+)
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
+
+ItemCode = NewType("ItemCode", str)
 
 # unicommerce product to ERPNext item mapping
 # reference: https://documentation.unicommerce.com/docs/itemtype-get.html
@@ -167,7 +174,39 @@ def _get_item_group(category_code):
 	return get_root_of("Item Group")
 
 
-def upload_items_to_unicommerce(item_codes: List[str], client: UnicommerceAPIClient) -> None:
+def upload_new_items() -> None:
+	"""Upload new items to Unicommerce on hourly basis.
+
+	All the items that have "sync_with_unicommerce" checked but do not have
+	corresponding Ecommerce Item, are pushed to Unicommerce."""
+
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+
+	if not (settings.is_enabled() and settings.upload_item_to_unicommerce):
+		return
+
+	new_items = _get_new_items()
+	upload_items_to_unicommerce(new_items)
+
+
+def _get_new_items() -> List[ItemCode]:
+	new_items = frappe.db.sql(
+		f"""
+			SELECT item.item_code
+			FROM tabItem item
+			LEFT JOIN `tabEcommerce Item` ei
+				ON ei.erpnext_item_code = item.item_code
+				WHERE ei.erpnext_item_code is NULL
+					AND item.{ITEM_SYNC_CHECKBOX} = 1
+		"""
+	)
+
+	return [item[0] for item in new_items]
+
+
+def upload_items_to_unicommerce(
+	item_codes: List[ItemCode], client: UnicommerceAPIClient = None
+) -> None:
 	"""Upload multiple items to Unicommerce."""
 	if not client:
 		client = UnicommerceAPIClient()
@@ -178,10 +217,9 @@ def upload_items_to_unicommerce(item_codes: List[str], client: UnicommerceAPICli
 
 		if status:
 			_handle_ecommerce_item(item_code)
-			pass
 
 
-def _build_unicommerce_item(item_code: str) -> JsonDict:
+def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 	"""Build Unicommerce item JSON using an ERPNext item"""
 	item = frappe.get_doc("Item", item_code)
 
@@ -203,7 +241,7 @@ def _build_unicommerce_item(item_code: str) -> JsonDict:
 	return item_json
 
 
-def _handle_ecommerce_item(item_code: str) -> None:
+def _handle_ecommerce_item(item_code: ItemCode) -> None:
 	ecommerce_item = frappe.db.get_value(
 		"Ecommerce Item", {"integration": MODULE_NAME, "erpnext_item_code": item_code}
 	)
