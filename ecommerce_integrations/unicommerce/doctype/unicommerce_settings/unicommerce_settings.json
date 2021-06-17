@@ -20,6 +20,7 @@
   "default_item_group",
   "sales_order_syncing_section",
   "order_sync_frequency",
+  "channel_config",
   "inventory_sync_settings_section",
   "inventory_sync_frequency",
   "warehouse_mapping",
@@ -156,12 +157,19 @@
    "fieldtype": "Table",
    "label": "Warehouse Mapping",
    "options": "Unicommerce Warehouses"
+  },
+  {
+   "fieldname": "channel_config",
+   "fieldtype": "Table",
+   "label": "Channel Config",
+   "options": "Unicommerce Channel Config",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-17 12:44:25.117785",
+ "modified": "2021-06-17 13:06:57.398965",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
