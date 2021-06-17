@@ -61,11 +61,19 @@ class UnicommerceAPIClient:
 
 	def get_unicommerce_item(self, sku: str) -> Optional[JsonDict]:
 		"""Get Unicommerce item data for specified SKU code.
-		Returns None if not found.
+
+		ref: https://documentation.unicommerce.com/docs/itemtype-get.html
 		"""
 		item, status = self.request(endpoint="get_item", body={"skuCode": sku})
 		if status:
 			return item
+
+	def create_update_item(self, item_dict: JsonDict) -> Tuple[JsonDict, bool]:
+		"""Create/update item on unicommerce.
+
+		ref: https://documentation.unicommerce.com/docs/createoredit-itemtype.html
+		"""
+		return self.request(endpoint="create_update_item", body={"itemType": item_dict})
 
 	def get_sales_order(self, order_code: str) -> Optional[JsonDict]:
 		"""Get details for a sales order.

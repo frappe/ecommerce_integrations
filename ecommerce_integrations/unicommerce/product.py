@@ -1,10 +1,13 @@
+from typing import List
+
 import frappe
 from frappe import _
+from frappe.utils import now
 from frappe.utils.nestedset import get_root_of
 from stdnum.ean import is_valid as validate_barcode
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
-from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
+from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import DEFAULT_WEIGHT_UOM, MODULE_NAME
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -22,6 +25,10 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 }
 
 ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
+
+ERPNEXT_TO_UNI_ITEM_MAPPING.update(
+	{"item_group": "categoryCode",}
+)
 
 
 def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = None) -> None:
@@ -158,3 +165,60 @@ def _get_item_group(category_code):
 		return default_item_group
 
 	return get_root_of("Item Group")
+
+
+def upload_items_to_unicommerce(item_codes: List[str], client: UnicommerceAPIClient) -> None:
+	"""Upload multiple items to Unicommerce."""
+	if not client:
+		client = UnicommerceAPIClient()
+
+	for item_code in item_codes:
+		item_data = _build_unicommerce_item(item_code)
+		_, status = client.create_update_item(item_data)
+
+		if status:
+			_handle_ecommerce_item(item_code)
+			pass
+
+
+def _build_unicommerce_item(item_code: str) -> JsonDict:
+	"""Build Unicommerce item JSON using an ERPNext item"""
+	item = frappe.get_doc("Item", item_code)
+
+	item_json = {}
+
+	for erpnext_field, uni_field in ERPNEXT_TO_UNI_ITEM_MAPPING.items():
+		value = item.get(erpnext_field)
+		if value is not None:
+			item_json[uni_field] = value
+
+	item_json["enabled"] = not bool(item.get("disabled"))
+
+	for barcode in item.barcodes:
+		if barcode.barcode_type == "EAN":
+			item_json["ean"] = barcode.barcode
+		elif barcode.barcode_type == "UPC-A":
+			item_json["upc"] = barcode.barcode
+
+	return item_json
+
+
+def _handle_ecommerce_item(item_code: str) -> None:
+	ecommerce_item = frappe.db.get_value(
+		"Ecommerce Item", {"integration": MODULE_NAME, "erpnext_item_code": item_code}
+	)
+
+	if ecommerce_item:
+		frappe.db.set_value("Ecommerce Item", ecommerce_item, "item_synced_on", now())
+	else:
+		frappe.get_doc(
+			{
+				"doctype": "Ecommerce Item",
+				"integration": MODULE_NAME,
+				"erpnext_item_code": item_code,
+				"integration_item_code": item_code,
+				"sku": item_code,
+				"item_synced_on": now(),
+			}
+		).insert()
+	frappe.db.commit()

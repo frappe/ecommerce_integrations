@@ -7,7 +7,7 @@ import frappe
 from erpnext import get_default_company
 from frappe import _
 from frappe.model.document import Document
-from frappe.utils import cstr, get_datetime
+from frappe.utils import cstr, get_datetime, now
 
 
 class EcommerceItem(Document):
@@ -155,6 +155,7 @@ def create_ecommerce_item(
 			"variant_id": cstr(variant_id),
 			"variant_of": cstr(variant_of),
 			"sku": sku,
+			"item_synced_on": now(),
 		}
 	)
 
