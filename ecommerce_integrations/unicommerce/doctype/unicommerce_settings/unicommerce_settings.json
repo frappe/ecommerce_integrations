@@ -22,6 +22,7 @@
   "order_sync_frequency",
   "inventory_sync_settings_section",
   "inventory_sync_frequency",
+  "warehouse_mapping",
   "sync_status_section",
   "last_order_sync",
   "column_break_20",
@@ -149,12 +150,18 @@
   {
    "fieldname": "column_break_20",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse_mapping",
+   "fieldtype": "Table",
+   "label": "Warehouse Mapping",
+   "options": "Unicommerce Warehouses"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-15 13:44:53.667635",
+ "modified": "2021-06-17 12:44:25.117785",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
