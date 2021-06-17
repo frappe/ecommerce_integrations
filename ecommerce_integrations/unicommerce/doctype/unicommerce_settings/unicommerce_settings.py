@@ -1,12 +1,18 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+from typing import Dict, List
+
 import frappe
 import requests
 from frappe import _
 from frappe.utils import add_to_date, get_datetime, now_datetime
 
-from ecommerce_integrations.controllers.setting import SettingController
+from ecommerce_integrations.controllers.setting import (
+	ERPNextWarehouse,
+	IntegrationWarehouse,
+	SettingController,
+)
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -61,3 +67,20 @@ class UnicommerceSettings(SettingController):
 			res = res.json()
 			error, description = res.get("error"), res.get("error_description")
 			frappe.throw(_("Unicommerce reported error: <br>{}: {}").format(error, description))
+
+	def get_erpnext_warehouses(self) -> List[ERPNextWarehouse]:
+		return [wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled]
+
+	def get_erpnext_to_integration_wh_mapping(self) -> Dict[ERPNextWarehouse, IntegrationWarehouse]:
+		"""Get enabled mapping from ERPNextWarehouse to Unicommerce facility."""
+		return {
+			wh_map.erpnext_warehouse: wh_map.unicommerce_facility_code
+			for wh_map in self.warehouse_mapping
+			if wh_map.enabled
+		}
+
+	def get_integration_to_erpnext_wh_mapping(self) -> Dict[IntegrationWarehouse, ERPNextWarehouse]:
+		"""Get enabled mapping from Unicommerce facility to ERPNext warehouse."""
+		reverse_map = self.get_erpnext_to_integration_wh_mapping()
+
+		return {v: k for k, v in reverse_map.items()}
