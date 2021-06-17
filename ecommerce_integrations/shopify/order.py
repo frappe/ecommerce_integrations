@@ -115,6 +115,9 @@ def create_sales_order(shopify_order, setting, company=None):
 		so.save(ignore_permissions=True)
 		so.submit()
 
+		if shopify_order.get("note"):
+			so.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
 	else:
 		so = frappe.get_doc("Sales Order", so)
 
