@@ -100,12 +100,9 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": [ ],
+	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
 	"daily": [ ],
-	"hourly": [
-		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",
-		"ecommerce_integrations.shopify.order.sync_old_orders"
-	],
+	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
 	"weekly": [ ],
 	"monthly": [ ],
 }
@@ -117,7 +114,7 @@ extend_bootinfo = "ecommerce_integrations.boot.boot_session"
 # Testing
 # -------
 
-# before_tests = "ecommerce_integrations.install.before_tests"
+before_tests = "erpnext.setup.utils.before_tests"
 
 # Overriding Methods
 # ------------------------------

@@ -51,6 +51,10 @@ def create_delivery_note(shopify_order, setting, so):
 			dn.flags.ignore_mandatory = True
 			dn.save()
 			dn.submit()
+
+			if shopify_order.get("note"):
+				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
 			frappe.db.commit()
 
 
@@ -58,7 +62,9 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 	# local import to avoid circular imports
 	from ecommerce_integrations.shopify.product import get_item_code
 
-	warehouse = _get_warehouse_map(location_id)
+	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+	wh_map = setting.get_integration_to_erpnext_wh_mapping()
+	warehouse = wh_map.get(str(location_id)) or setting.warehouse
 
 	return [
 		dn_item.update({"qty": item.get("quantity"), "warehouse": warehouse})
@@ -66,16 +72,3 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 		for dn_item in dn_items
 		if get_item_code(item) == dn_item.item_code
 	]
-
-
-def _get_warehouse_map(shopify_location_id: str) -> str:
-	shopify_location_id = str(shopify_location_id)
-	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
-
-	if setting.shopify_warehouse_mapping and shopify_location_id:
-		for wh in setting.shopify_warehouse_mapping:
-			if wh.shopify_location_id == shopify_location_id:
-				return wh.erpnext_warehouse
-
-	# return default WH
-	return setting.warehouse

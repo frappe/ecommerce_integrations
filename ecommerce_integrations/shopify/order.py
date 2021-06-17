@@ -33,11 +33,15 @@ def sync_sales_order(payload, request_id=None):
 		return
 	try:
 		shopify_customer = order.get("customer", {})
+		shopify_customer["billing_address"] = order.get("billing_address")
+		shopify_customer["shipping_address"] = order.get("shipping_address")
 		customer_id = shopify_customer.get("id")
 		if customer_id:
 			customer = ShopifyCustomer(customer_id=customer_id)
 			if not customer.is_synced():
 				customer.sync_customer(customer=shopify_customer)
+			else:
+				customer.update_existing_addresses(shopify_customer)
 
 		create_items_if_not_exist(order)
 
@@ -111,6 +115,9 @@ def create_sales_order(shopify_order, setting, company=None):
 		so.save(ignore_permissions=True)
 		so.submit()
 
+		if shopify_order.get("note"):
+			so.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
 	else:
 		so = frappe.get_doc("Sales Order", so)
 
@@ -157,7 +164,7 @@ def get_order_taxes(shopify_order, setting):
 			{
 				"charge_type": _("On Net Total"),
 				"account_head": get_tax_account_head(tax),
-				"description": f"{tax.get('title')} - {tax.get('rate') * 100.0}%",
+				"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%",
 				"rate": tax.get("rate") * 100.00,
 				"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
 				"cost_center": setting.cost_center,
@@ -181,6 +188,15 @@ def get_tax_account_head(tax):
 
 	return tax_account
 
+def get_tax_account_description(tax):
+	tax_title = tax.get("title")
+
+	tax_description = frappe.db.get_value(
+		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_description",
+	)
+
+	return tax_description
+
 
 def get_discounted_amount(order):
 	discounted_amount = 0.0
@@ -198,7 +214,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
 				{
 					"charge_type": _("Actual"),
 					"account_head": get_tax_account_head(shipping_charge),
-					"description": shipping_charge["title"],
+					"description": get_tax_account_description(shipping_charge) or shipping_charge["title"],
 					"tax_amount": shipping_charge["price"],
 					"cost_center": setting.cost_center,
 				}
@@ -209,7 +225,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
 				{
 					"charge_type": _("Actual"),
 					"account_head": get_tax_account_head(tax),
-					"description": tax["title"],
+					"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%",
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,
 				}

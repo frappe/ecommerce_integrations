@@ -19,10 +19,17 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 class ShopifyProduct:
-	def __init__(self, product_id: str, variant_id: Optional[str] = None, sku: Optional[str] = None):
+	def __init__(
+		self,
+		product_id: str,
+		variant_id: Optional[str] = None,
+		sku: Optional[str] = None,
+		has_variants: Optional[int] = 0,
+	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
+		self.has_variants = has_variants
 		self.setting = frappe.get_doc(SETTING_DOCTYPE)
 
 		if not self.setting.is_enabled():
@@ -35,7 +42,11 @@ class ShopifyProduct:
 
 	def get_erpnext_item(self):
 		return ecommerce_item.get_erpnext_item(
-			MODULE_NAME, integration_item_code=self.product_id, variant_id=self.variant_id, sku=self.sku,
+			MODULE_NAME,
+			integration_item_code=self.product_id,
+			variant_id=self.variant_id,
+			sku=self.sku,
+			has_variants=self.has_variants,
 		)
 
 	@temp_shopify_session
@@ -51,6 +62,7 @@ class ShopifyProduct:
 		warehouse = self.setting.warehouse
 
 		if _has_variants(product_dict):
+			self.has_variants = 1
 			attributes = self._create_attribute(product_dict)
 			self._create_item(product_dict, warehouse, 1, attributes)
 			self._create_item_variants(product_dict, warehouse, attributes)
@@ -141,7 +153,7 @@ class ShopifyProduct:
 
 	def _create_item_variants(self, product_dict, warehouse, attributes):
 		template_item = ecommerce_item.get_erpnext_item(
-			MODULE_NAME, integration_item_code=product_dict.get("id")
+			MODULE_NAME, integration_item_code=product_dict.get("id"), has_variants=1
 		)
 
 		if template_item:
@@ -261,8 +273,6 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None)
 
 	item_name = frappe.db.get_value("Item", {"item_code": sku})
 	if item_name:
-		item_doc = frappe.get_doc("Item", item_name)
-
 		try:
 			ecommerce_item = frappe.get_doc(
 				{

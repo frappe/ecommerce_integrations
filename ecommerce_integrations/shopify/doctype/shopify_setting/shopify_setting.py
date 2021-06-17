@@ -1,18 +1,20 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+from typing import Dict, List
+
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from pyactiveresource.connection import UnauthorizedAccess
 from shopify.resources import Location
 
-from ecommerce_integrations.controllers.setting import SettingController
-from ecommerce_integrations.shopify import connection
-from ecommerce_integrations.shopify.utils import (
-	migrate_from_old_connector,
-	ensure_old_connector_is_disabled,
+from ecommerce_integrations.controllers.setting import (
+	ERPNextWarehouse,
+	IntegrationWarehouse,
+	SettingController,
 )
+from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
@@ -21,6 +23,10 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
 	SUPPLIER_ID_FIELD,
+)
+from ecommerce_integrations.shopify.utils import (
+	ensure_old_connector_is_disabled,
+	migrate_from_old_connector,
 )
 
 
@@ -50,7 +56,8 @@ class ShopifySetting(SettingController):
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
-				msg += _("Please check credentials and retry. Disabling and re-enabling the integration might also help.")
+				msg += _("Please check credentials and retry.") + " "
+				msg += _("Disabling and re-enabling the integration might also help.")
 				frappe.throw(msg)
 
 			for webhook in new_webhooks:
@@ -80,6 +87,21 @@ class ShopifySetting(SettingController):
 				"shopify_warehouse_mapping",
 				{"shopify_location_id": location.id, "shopify_location_name": location.name},
 			)
+
+	def get_erpnext_warehouses(self) -> List[ERPNextWarehouse]:
+		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]
+
+	def get_erpnext_to_integration_wh_mapping(self) -> Dict[ERPNextWarehouse, IntegrationWarehouse]:
+		return {
+			wh_map.erpnext_warehouse: wh_map.shopify_location_id
+			for wh_map in self.shopify_warehouse_mapping
+		}
+
+	def get_integration_to_erpnext_wh_mapping(self) -> Dict[IntegrationWarehouse, ERPNextWarehouse]:
+		return {
+			wh_map.shopify_location_id: wh_map.erpnext_warehouse
+			for wh_map in self.shopify_warehouse_mapping
+		}
 
 
 @frappe.whitelist()
