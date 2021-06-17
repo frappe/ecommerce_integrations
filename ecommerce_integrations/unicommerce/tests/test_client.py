@@ -91,3 +91,17 @@ class TestUnicommerceClient(TestCaseApiClient):
 	@responses.activate
 	def test_search_sales_order(self):
 		pass
+
+	@responses.activate
+	def test_create_update_item(self):
+		item_dict = {"test_dict": True}
+		responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/createOrEdit",
+			status=200,
+			json={"successful": True},
+			match=[responses.json_params_matcher({"itemType": item_dict})],
+		)
+
+		response, _ = self.client.create_update_item(item_dict)
+		self.assertTrue(response["successful"])

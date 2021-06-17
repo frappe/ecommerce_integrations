@@ -7,6 +7,7 @@ API_ENDPOINTS = {
 	"search_item": "/services/rest/v1/product/itemType/search",
 	"get_sales_order": "/services/rest/v1/oms/saleorder/get",
 	"search_sales_order": "/services/rest/v1/oms/saleOrder/search",
+	"create_update_item": "/services/rest/v1/catalog/itemType/createOrEdit",
 }
 
 DEFAULT_WEIGHT_UOM = "Gram"

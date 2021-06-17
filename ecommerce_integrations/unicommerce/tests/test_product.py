@@ -4,6 +4,7 @@ import responses
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME
 from ecommerce_integrations.unicommerce.product import (
+	_build_unicommerce_item,
 	_get_barcode_data,
 	_get_item_group,
 	_validate_create_brand,
@@ -99,3 +100,23 @@ class TestUnicommerceProduct(TestCaseApiClient):
 	def test_get_item_group(self):
 		self.assertEqual(_get_item_group("Products"), "Products")
 		self.assertEqual(_get_item_group("Whatever"), "All Item Groups")
+
+	@responses.activate
+	def test_build_unicommerce_item(self):
+		"""Build unicommerce item from recently synced uni item and compare if dicts are same"""
+
+		responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
+			status=200,
+			json=self.load_fixture("simple_item"),
+			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
+		)
+		code = "TITANIUM_WATCH"
+		import_product_from_unicommerce(code, self.client)
+
+		uni_item = _build_unicommerce_item("TITANIUM_WATCH")
+		actual_item = self.load_fixture("simple_item")["itemTypeDTO"]
+
+		for k, v in uni_item.items():
+			self.assertEqual(actual_item[k], v)
