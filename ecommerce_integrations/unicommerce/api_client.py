@@ -151,6 +151,10 @@ class UnicommerceAPIClient:
 					item["facilityInventoryAdjustment"]["itemSKU"]: item["successful"]
 					for item in item_wise_response
 				}
+				if False in item_wise_status.values():
+					create_unicommerce_log(
+						status="Failure", response_data=response, message="Inventory sync failed for some items",
+					)
 				return item_wise_status, status
 			except:
 				return response, False

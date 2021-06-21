@@ -45,6 +45,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		if not erpnext_inventory:
 			continue  # nothing to update
 
+		# TODO: consider reserved qty on both platforms.
 		inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
 		facility_code = wh_to_facility_map[warehouse]
 
@@ -66,16 +67,3 @@ def _update_inventory_sync_status(
 	for sku in successful_skus:
 		ecom_item = sku_to_ecom_item_map[sku]
 		update_inventory_sync_status(ecom_item, timestamp)
-
-	success_percent = (
-		len(successful_skus) / len(unicommerce_response) if len(unicommerce_response) else 0
-	)
-	status = "Success" if success_percent == 1 else "Partial Success"
-	message = f"inventory sync: updated {success_percent * 100:.2f}% items"
-
-	create_unicommerce_log(
-		status=status,
-		message=message,
-		method="update_inventory_on_unicommerce",
-		response_data=unicommerce_response,
-	)
