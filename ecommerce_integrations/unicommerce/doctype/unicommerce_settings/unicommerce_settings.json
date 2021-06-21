@@ -23,6 +23,7 @@
   "order_sync_frequency",
   "channel_config",
   "inventory_sync_settings_section",
+  "enable_inventory_sync",
   "inventory_sync_frequency",
   "warehouse_mapping",
   "sync_status_section",
@@ -172,12 +173,18 @@
    "fieldname": "upload_item_to_unicommerce",
    "fieldtype": "Check",
    "label": "Upload new items to Unicommerce"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_inventory_sync",
+   "fieldtype": "Check",
+   "label": "Enable Inventory Sync"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-17 17:08:30.058431",
+ "modified": "2021-06-21 15:52:23.450424",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

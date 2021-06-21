@@ -105,3 +105,43 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		response, _ = self.client.create_update_item(item_dict)
 		self.assertTrue(response["successful"])
+
+	@responses.activate
+	def test_bulk_inventory_sync(self):
+
+		expected_body = {
+			"inventoryAdjustments": [
+				{
+					"itemSKU": "A",
+					"quantity": 1,
+					"shelfCode": "DEFAULT",
+					"inventoryType": "GOOD_INVENTORY",
+					"adjustmentType": "REPLACE",
+					"facilityCode": "42",
+				},
+				{
+					"itemSKU": "B",
+					"quantity": 2,
+					"shelfCode": "DEFAULT",
+					"inventoryType": "GOOD_INVENTORY",
+					"adjustmentType": "REPLACE",
+					"facilityCode": "42",
+				},
+			]
+		}
+		responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/inventory/adjust/bulk",
+			status=200,
+			json=self.load_fixture("bulk_inventory_response"),
+			match=[responses.json_params_matcher(expected_body)],
+		)
+
+		inventory_map = {"A": 1, "B": 2}
+		response, status = self.client.bulk_inventory_update("42", inventory_map)
+
+		req_headers = responses.calls[0].request.headers
+		self.assertEqual(req_headers["Facility"], "42")
+
+		self.assertTrue(status)
+		self.assertDictEqual(response, {k: True for k in inventory_map})
