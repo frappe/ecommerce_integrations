@@ -112,3 +112,45 @@ class UnicommerceAPIClient:
 
 		if status:
 			return search_results
+
+	def bulk_inventory_update(self, facility_code: str, inventory_map: Dict[str, int]):
+		"""Bulk update inventory on unicommerce using SKU and qty.
+
+		The qty should be "total" quantity.
+		ref: https://documentation.unicommerce.com/docs/adjust-inventory-bulk.html
+		"""
+
+		extra_headers = {"Facility": facility_code}
+
+		inventry_adjustments = []
+		for sku, qty in inventory_map.items():
+			inventry_adjustments.append(
+				{
+					"itemSKU": sku,
+					"quantity": qty,
+					"shelfCode": "DEFAULT",  # XXX
+					"inventoryType": "GOOD_INVENTORY",
+					"adjustmentType": "REPLACE",
+					"facilityCode": facility_code,
+				}
+			)
+
+		response, status = self.request(
+			endpoint="bulk_inventory_sync",
+			headers=extra_headers,
+			body={"inventoryAdjustments": inventry_adjustments},
+		)
+
+		if not status:
+			return response, status
+		else:
+			# parse result by item
+			try:
+				item_wise_response = response["inventoryAdjustmentResponses"]
+				item_wise_status = {
+					item["facilityInventoryAdjustment"]["itemSKU"]: item["successful"]
+					for item in item_wise_response
+				}
+				return item_wise_status, status
+			except:
+				return response, False

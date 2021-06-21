@@ -101,8 +101,11 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
-	"daily": [],
+	"all": [
+		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",
+		"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce"
+		],
+	"daily": [ ],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
 	"hourly_long": ["ecommerce_integrations.unicommerce.product.upload_new_items"],
 	"weekly": [ ],
