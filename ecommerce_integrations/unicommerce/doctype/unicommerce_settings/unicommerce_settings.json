@@ -21,7 +21,6 @@
   "default_item_group",
   "sales_order_syncing_section",
   "order_sync_frequency",
-  "channel_config",
   "inventory_sync_settings_section",
   "enable_inventory_sync",
   "inventory_sync_frequency",
@@ -161,13 +160,6 @@
    "options": "Unicommerce Warehouses"
   },
   {
-   "fieldname": "channel_config",
-   "fieldtype": "Table",
-   "label": "Channel Config",
-   "options": "Unicommerce Channel Config",
-   "reqd": 1
-  },
-  {
    "default": "0",
    "description": "If enabled, any new item with \"sync with Unicommerce\" checked will be uploaded to Unicommerce on an hourly basis.",
    "fieldname": "upload_item_to_unicommerce",
@@ -184,7 +176,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-21 15:52:23.450424",
+ "modified": "2021-06-22 19:10:11.197156",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

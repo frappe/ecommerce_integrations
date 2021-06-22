@@ -5,5 +5,5 @@
 from frappe.model.document import Document
 
 
-class UnicommerceChannelConfig(Document):
+class UnicommerceChannel(Document):
 	pass
