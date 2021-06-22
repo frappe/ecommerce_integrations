@@ -10,7 +10,6 @@ from ecommerce_integrations.controllers.inventory import (
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
-from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 
 def update_inventory_on_unicommerce(client=None, force=False):
