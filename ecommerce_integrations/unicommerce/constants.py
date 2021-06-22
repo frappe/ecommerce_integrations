@@ -15,5 +15,6 @@ DEFAULT_WEIGHT_UOM = "Gram"
 
 
 # Custom fields
-
 ITEM_SYNC_CHECKBOX = "sync_with_unicommerce"
+ORDER_CODE_FIELD = "unicommerce_order_code"
+CHANNEL_ID_FIELD = "unicommerce_channel_id"
