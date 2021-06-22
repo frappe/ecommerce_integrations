@@ -85,8 +85,8 @@ class UnicommerceAPIClient:
 		"""
 
 		order, status = self.request(endpoint="get_sales_order", body={"code": order_code})
-		if status:
-			return order
+		if status and "saleOrderDTO" in order:
+			return order["saleOrderDTO"]
 
 	def search_sales_order(
 		self,
@@ -96,7 +96,7 @@ class UnicommerceAPIClient:
 		channel: Optional[str] = None,
 		facility_codes: Optional[List[str]] = None,
 		updated_since: Optional[int] = None,
-	) -> Optional[JsonDict]:
+	) -> Optional[List[JsonDict]]:
 		"""Search sales order using specified parameters and return search results.
 
 		ref: https://documentation.unicommerce.com/docs/saleorder-search.html
