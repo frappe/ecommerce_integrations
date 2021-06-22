@@ -13,7 +13,7 @@ from ecommerce_integrations.unicommerce.constants import (
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
 
-def fetch_new_orders(client=None, force=False):
+def fetch_new_orders(client: UnicommerceAPIClient = None, force=False):
 	"""This is called from a scheduled job and syncs all new orders from last synced time."""
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 

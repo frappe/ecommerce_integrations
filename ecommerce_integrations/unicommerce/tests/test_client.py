@@ -85,8 +85,8 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		order_data = self.client.get_sales_order("SO5841")
 
-		self.assertEqual(order_data["saleOrderDTO"]["code"], "SO5841")
-		self.assertEqual(order_data["saleOrderDTO"]["displayOrderCode"], "SINV-00042")
+		self.assertEqual(order_data["code"], "SO5841")
+		self.assertEqual(order_data["displayOrderCode"], "SINV-00042")
 
 	@responses.activate
 	def test_search_sales_order(self):

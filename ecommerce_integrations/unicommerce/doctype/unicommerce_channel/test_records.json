@@ -1,0 +1,16 @@
+[
+	{
+		"doctype": "Unicommerce Channel",
+		"display_name": "a",
+		"channel_id": "RAINFOREST",
+		"enabled": 1,
+		"company": "Wind Power LLC"
+	},
+	{
+		"doctype": "Unicommerce Channel",
+		"display_name": "b",
+		"channel_id": "CUSTOM_FF_TEST",
+		"enabled": 1,
+		"company": "Wind Power LLC"
+	}
+]
