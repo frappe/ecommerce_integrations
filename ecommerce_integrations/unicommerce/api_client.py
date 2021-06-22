@@ -95,6 +95,7 @@ class UnicommerceAPIClient:
 		status: Optional[str] = None,
 		channel: Optional[str] = None,
 		facility_codes: Optional[List[str]] = None,
+		updated_since: Optional[int] = None,
 	) -> Optional[JsonDict]:
 		"""Search sales order using specified parameters and return search results.
 
@@ -106,6 +107,7 @@ class UnicommerceAPIClient:
 			"facility_codes": facility_codes,
 			"fromDate": _utc_timeformat(from_date) if from_date else None,
 			"toDate": _utc_timeformat(to_date) if to_date else None,
+			"updatedSinceInMinutes": updated_since,
 		}
 
 		# remove None values.
@@ -113,8 +115,8 @@ class UnicommerceAPIClient:
 
 		search_results, status = self.request(endpoint="search_sales_order", body=body)
 
-		if status:
-			return search_results
+		if status and "elements" in search_results:
+			return search_results["elements"]
 
 	def bulk_inventory_update(self, facility_code: str, inventory_map: Dict[str, int]):
 		"""Bulk update inventory on unicommerce using SKU and qty.
