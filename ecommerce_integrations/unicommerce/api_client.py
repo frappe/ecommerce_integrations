@@ -38,6 +38,7 @@ class UnicommerceAPIClient:
 			frappe.throw(_("Undefined Unicommerce API endpoint"))
 
 		url = self.base_url + API_ENDPOINTS[endpoint]
+
 		try:
 			response = requests.request(url=url, method=method, headers=headers, json=body)
 			response.raise_for_status()
