@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import frappe
 import requests
 from frappe import _
+from frappe.utils import get_datetime
+from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import API_ENDPOINTS, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
@@ -88,10 +90,10 @@ class UnicommerceAPIClient:
 
 	def search_sales_order(
 		self,
-		from_date: str = None,
-		to_date: str = None,
-		status: str = None,
-		channel: str = None,
+		from_date: Optional[str] = None,
+		to_date: Optional[str] = None,
+		status: Optional[str] = None,
+		channel: Optional[str] = None,
 		facility_codes: Optional[List[str]] = None,
 	) -> Optional[JsonDict]:
 		"""Search sales order using specified parameters and return search results.
@@ -102,8 +104,8 @@ class UnicommerceAPIClient:
 			"status": status,
 			"channel": channel,
 			"facility_codes": facility_codes,
-			"fromDate": from_date,
-			"toDate": to_date,
+			"fromDate": _utc_timeformat(from_date) if from_date else None,
+			"toDate": _utc_timeformat(to_date) if to_date else None,
 		}
 
 		# remove None values.
@@ -159,3 +161,8 @@ class UnicommerceAPIClient:
 				return item_wise_status, status
 			except:
 				return response, False
+
+
+def _utc_timeformat(datetime) -> str:
+	""" Get datetime in UTC/GMT as required by Unicommerce"""
+	return get_datetime(datetime).astimezone(timezone("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
