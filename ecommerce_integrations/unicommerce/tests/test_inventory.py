@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import frappe
 import responses
 from erpnext.stock.doctype.item.test_item import make_item
@@ -16,8 +18,9 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		super().setUpClass()
 		cls.items = ["_Test Inventory Item A", "_Test Inventory Item B", "_Test Inventory Item C"]
 
-		for item in cls.items:
-			make_item(item)
+		with patch("ecommerce_integrations.shopify.product.upload_erpnext_item"):
+			for item in cls.items:
+				make_item(item)
 
 		cls.ecom_items = [make_ecommerce_item(item) for item in cls.items]
 
