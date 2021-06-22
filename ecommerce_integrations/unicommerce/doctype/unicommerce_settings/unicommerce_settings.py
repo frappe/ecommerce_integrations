@@ -14,7 +14,11 @@ from ecommerce_integrations.controllers.setting import (
 	IntegrationWarehouse,
 	SettingController,
 )
-from ecommerce_integrations.unicommerce.constants import ITEM_SYNC_CHECKBOX
+from ecommerce_integrations.unicommerce.constants import (
+	CHANNEL_ID_FIELD,
+	ITEM_SYNC_CHECKBOX,
+	ORDER_CODE_FIELD,
+)
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 
@@ -98,6 +102,29 @@ def setup_custom_fields():
 				insert_after="item_code",
 				print_hide=1,
 			)
+		],
+		"Sales Order": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="update_auto_repeat_reference",
+			),
+			dict(
+				fieldname=ORDER_CODE_FIELD,
+				label="Unicommerce Order No.",
+				fieldtype="Data",
+				insert_after="unicommerce_section",
+				read_only=1,
+			),
+			dict(
+				fieldname=CHANNEL_ID_FIELD,
+				label="Unicommerce Channel",
+				fieldtype="Link",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+				options="Unicommerce Channel",
+			),
 		],
 	}
 
