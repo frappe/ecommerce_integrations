@@ -80,6 +80,7 @@ class ShopifyCustomer(EcommerceCustomer):
 			new_values = _map_address_fields(shopify_address, customer_name, address_type, email)
 
 			old_address.update({k: v for k, v in new_values.items() if k not in exclude_in_update})
+			old_address.flags.ignore_mandatory = True
 			old_address.save()
 
 	def create_customer_contact(self, shopify_customer: Dict[str, Any]) -> None:
