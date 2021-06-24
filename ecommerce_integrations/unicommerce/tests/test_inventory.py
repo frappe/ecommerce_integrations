@@ -30,7 +30,6 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		for ecom_item in cls.ecom_items:
 			frappe.delete_doc("Ecommerce Item", ecom_item)
 
-	@responses.activate
 	def test_inventory_sync(self):
 		"""requirement: When bin is changed the inventory sync should take place in next cycle"""
 
@@ -73,14 +72,14 @@ class TestUnicommerceProduct(TestCaseApiClient):
 				},
 			]
 		}
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/inventory/adjust/bulk",
 			status=200,
 			json={"successful": True},
 			match=[responses.json_params_matcher(wh1_request)],
 		)
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/inventory/adjust/bulk",
 			status=200,

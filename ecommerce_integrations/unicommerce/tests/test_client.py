@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 import frappe
@@ -16,12 +17,54 @@ class TestCaseApiClient(TestCase):
 		):
 			cls.client = UnicommerceAPIClient()
 
+	def setUp(self):
+		self.responses = responses.RequestsMock()
+		self.responses.start()
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
+			status=200,
+			json=self.load_fixture("simple_item"),
+			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
+		)
+
+		def sales_order_mock(request):
+			payload = json.loads(request.body)
+			resp_body = self.load_fixture(f"order-{payload['code']}")
+			headers = {}
+			return (200, headers, json.dumps(resp_body))
+
+		self.responses.add_callback(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleorder/get",
+			callback=sales_order_mock,
+			content_type="application/json",
+		)
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleOrder/search",
+			status=200,
+			json=self.load_fixture("so_search_results"),
+		)
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
+			status=200,
+			json=self.load_fixture("product-MC-100"),
+			match=[responses.json_params_matcher({"skuCode": "MC-100"})],
+		)
+
+		self.addCleanup(self.responses.stop)
+		self.addCleanup(self.responses.reset)
+
 
 class TestUnicommerceClient(TestCaseApiClient):
-	@responses.activate
 	def test_authorization_headers(self):
 		"""requirement: client inserts bearer token in headers"""
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
 			status=200,
@@ -32,19 +75,11 @@ class TestUnicommerceClient(TestCaseApiClient):
 		ret, _ = self.client.request(endpoint="get_item", body={"skuCode": "sku"})
 		self.assertEqual(ret["status"], "fail")
 
-		req_headers = responses.calls[0].request.headers
+		req_headers = self.responses.calls[0].request.headers
 		self.assertEqual(req_headers["Authorization"], "Bearer AUTH_TOKEN")
 
-	@responses.activate
 	def test_get_item(self):
 		"""requirement: When querying correct item, item is returned as _dict"""
-		responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
-			json=self.load_fixture("simple_item"),
-			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
-		)
 
 		item_data = self.client.get_unicommerce_item("TITANIUM_WATCH")
 
@@ -56,10 +91,9 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assertEqual(item_data.itemTypeDTO["skuCode"], "TITANIUM_WATCH")
 		self.assertEqual(item_data.itemTypeDTO["weight"], 1000)
 
-	@responses.activate
 	def test_get_missing_item(self):
 		"""requirement: When querying missing item, `None` is returned and error log is crated"""
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
 			status=200,
@@ -73,29 +107,15 @@ class TestUnicommerceClient(TestCaseApiClient):
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
 		self.assertTrue("MISSING" in log.response_data, "Logging for missing item not working")
 
-	@responses.activate
 	def test_get_sales_order(self):
-		responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleorder/get",
-			status=200,
-			json=self.load_fixture("simple_order"),
-			match=[responses.json_params_matcher({"code": "SO5841"})],
-		)
-
 		order_data = self.client.get_sales_order("SO5841")
 
 		self.assertEqual(order_data["code"], "SO5841")
 		self.assertEqual(order_data["displayOrderCode"], "SINV-00042")
 
-	@responses.activate
-	def test_search_sales_order(self):
-		pass
-
-	@responses.activate
 	def test_create_update_item(self):
 		item_dict = {"test_dict": True}
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/createOrEdit",
 			status=200,
@@ -106,7 +126,6 @@ class TestUnicommerceClient(TestCaseApiClient):
 		response, _ = self.client.create_update_item(item_dict)
 		self.assertTrue(response["successful"])
 
-	@responses.activate
 	def test_bulk_inventory_sync(self):
 
 		expected_body = {
@@ -129,7 +148,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 				},
 			]
 		}
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/inventory/adjust/bulk",
 			status=200,
@@ -140,7 +159,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		inventory_map = {"A": 1, "B": 2}
 		response, status = self.client.bulk_inventory_update("42", inventory_map)
 
-		req_headers = responses.calls[0].request.headers
+		req_headers = self.responses.calls[0].request.headers
 		self.assertEqual(req_headers["Facility"], "42")
 
 		self.assertTrue(status)
