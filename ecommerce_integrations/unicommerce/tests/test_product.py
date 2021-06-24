@@ -15,10 +15,9 @@ from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClie
 
 
 class TestUnicommerceProduct(TestCaseApiClient):
-	@responses.activate
 	def test_import_missing_item_raises_error(self):
 		"""requirement: when attempting to sync SKU that doesn't exist on Unicommerce system should throw error"""
-		responses.add(
+		self.responses.add(
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
 			status=200,
@@ -30,16 +29,8 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
 		self.assertTrue("Failed to import" in log.message, "Logging for missing item not working")
 
-	@responses.activate
 	def test_import_item_from_unicommerce(self):
 		"""requirement: When syncing correct item system creates item in erpnext and Ecommerce item for it"""
-		responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
-			json=self.load_fixture("simple_item"),
-			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
-		)
 		code = "TITANIUM_WATCH"
 
 		import_product_from_unicommerce(code, self.client)
@@ -101,17 +92,9 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		self.assertEqual(_get_item_group("Products"), "Products")
 		self.assertEqual(_get_item_group("Whatever"), "All Item Groups")
 
-	@responses.activate
 	def test_build_unicommerce_item(self):
 		"""Build unicommerce item from recently synced uni item and compare if dicts are same"""
 
-		responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
-			json=self.load_fixture("simple_item"),
-			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
-		)
 		code = "TITANIUM_WATCH"
 		import_product_from_unicommerce(code, self.client)
 
