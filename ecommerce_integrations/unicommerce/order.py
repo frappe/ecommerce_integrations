@@ -1,19 +1,22 @@
-from typing import Any, Dict, Iterator, NewType, Optional
+from typing import Any, Dict, Iterator, NewType, Optional, Set
 
 import frappe
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
-	CHANNEL_ID_FIELD,
+	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	SETTINGS_DOCTYPE,
 )
+from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
+from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
 
-def fetch_new_orders(client: UnicommerceAPIClient = None, force=False):
+def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	"""This is called from a scheduled job and syncs all new orders from last synced time."""
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
@@ -33,7 +36,7 @@ def fetch_new_orders(client: UnicommerceAPIClient = None, force=False):
 		return
 
 	for order in new_orders:
-		_sync_new_order(order)
+		create_order(order, client=client)
 
 
 def _get_new_orders(
@@ -61,6 +64,35 @@ def _get_new_orders(
 			yield order
 
 
-def _sync_new_order(order: UnicommerceOrder) -> None:
-	# TODO
-	pass
+def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
+
+	if request_id is None:
+		log = create_unicommerce_log(method="self", request_data=payload)
+		request_id = log.name
+	if client is None:
+		client = UnicommerceAPIClient()
+
+	order = payload
+	frappe.set_user("Administrator")
+	frappe.flags.request_id = request_id
+	try:
+		_validate_item_list(order)
+	except Exception as e:
+		create_unicommerce_log(status="Error", exception=e)
+	else:
+		create_unicommerce_log(status="Success")
+
+
+def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
+	"""Ensure all items are synced before processing order.
+
+	If not synced then product sync for specific item is initiated"""
+
+	items = {so_item["itemSku"] for so_item in order["saleOrderItems"]}
+
+	for item in items:
+		if ecommerce_item.is_synced(integration=MODULE_NAME, integration_item_code=item):
+			continue
+		else:
+			import_product_from_unicommerce(sku=item, client=client)
+	return items
