@@ -21,6 +21,7 @@
   "default_item_group",
   "sales_order_syncing_section",
   "order_sync_frequency",
+  "default_customer_group",
   "inventory_sync_settings_section",
   "enable_inventory_sync",
   "inventory_sync_frequency",
@@ -171,12 +172,19 @@
    "fieldname": "enable_inventory_sync",
    "fieldtype": "Check",
    "label": "Enable Inventory Sync"
+  },
+  {
+   "fieldname": "default_customer_group",
+   "fieldtype": "Link",
+   "label": "Default Customer Group",
+   "options": "Customer Group",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-22 19:10:11.197156",
+ "modified": "2021-06-28 13:24:15.142084",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

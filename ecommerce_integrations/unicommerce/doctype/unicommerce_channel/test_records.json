@@ -1,16 +1,18 @@
 [
 	{
 		"doctype": "Unicommerce Channel",
-		"display_name": "a",
+		"display_name": "amazon",
 		"channel_id": "RAINFOREST",
 		"enabled": 1,
-		"company": "Wind Power LLC"
+		"company": "Wind Power LLC",
+		"customer_group": "Individual"
 	},
 	{
 		"doctype": "Unicommerce Channel",
-		"display_name": "b",
+		"display_name": "custom",
 		"channel_id": "CUSTOM_FF_TEST",
 		"enabled": 1,
-		"company": "Wind Power LLC"
+		"company": "Wind Power LLC",
+		"customer_group": "Individual"
 	}
 ]

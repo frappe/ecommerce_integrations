@@ -10,6 +10,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	SETTINGS_DOCTYPE,
 )
+from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -77,6 +78,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 	frappe.flags.request_id = request_id
 	try:
 		_validate_item_list(order)
+		sync_customer(order)
 	except Exception as e:
 		create_unicommerce_log(status="Error", exception=e)
 	else:

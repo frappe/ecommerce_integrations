@@ -9,7 +9,8 @@
   "enabled",
   "channel_id",
   "display_name",
-  "company"
+  "company",
+  "customer_group"
  ],
  "fields": [
   {
@@ -39,11 +40,18 @@
    "fieldname": "enabled",
    "fieldtype": "Check",
    "label": "Enabled"
+  },
+  {
+   "description": "Customer will be created with this Customer Group. If not provided, default Unicommerce customer group will be used.",
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-06-22 19:16:48.607650",
+ "modified": "2021-06-28 13:27:39.671779",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
