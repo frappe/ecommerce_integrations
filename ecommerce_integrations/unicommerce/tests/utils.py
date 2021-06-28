@@ -18,7 +18,7 @@ class TestCase(unittest.TestCase):
 		"enable_inventory_sync": 1,
 		"default_customer_group": "Individual",
 		"warehouse_mapping": [
-			{"unicommerce_facility_code": "A", "erpnext_warehouse": "Stores - WP", "enabled": 1},
+			{"unicommerce_facility_code": "Test-123", "erpnext_warehouse": "Stores - WP", "enabled": 1},
 			{"unicommerce_facility_code": "B", "erpnext_warehouse": "Work In Progress - WP", "enabled": 1},
 		],
 	}

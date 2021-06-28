@@ -45,7 +45,7 @@ class UnicommerceAPIClient:
 			response = requests.request(url=url, method=method, headers=headers, json=body)
 			response.raise_for_status()
 		except Exception:
-			create_unicommerce_log(status="Error")
+			create_unicommerce_log(status="Error", make_new=True)
 
 		data = frappe._dict(response.json())
 		status = data.successful if data.successful is not None else True
@@ -57,7 +57,7 @@ class UnicommerceAPIClient:
 			request_data = "\n\n".join([url, body])
 			message = ", ".join(error["message"] for error in data.errors)
 			create_unicommerce_log(
-				status="Error", response_data=data, request_data=request_data, message=message
+				status="Error", response_data=data, request_data=request_data, message=message, make_new=True
 			)
 
 		return data, status
@@ -158,7 +158,10 @@ class UnicommerceAPIClient:
 				}
 				if False in item_wise_status.values():
 					create_unicommerce_log(
-						status="Failure", response_data=response, message="Inventory sync failed for some items",
+						status="Failure",
+						response_data=response,
+						message="Inventory sync failed for some items",
+						make_new=True,
 					)
 				return item_wise_status, status
 			except:

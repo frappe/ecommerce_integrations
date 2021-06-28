@@ -56,17 +56,21 @@ def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = Non
 
 		item_dict = _create_item_dict(item)
 		ecommerce_item.create_ecommerce_item(MODULE_NAME, integration_item_code=sku, item_dict=item_dict)
-	except Exception:
+	except Exception as e:
 		create_unicommerce_log(
 			status="Failure",
 			message=f"Failed to import Item: {sku} from Unicommerce",
 			response_data=response,
+			make_new=True,
+			exception=e,
 		)
+		raise e
 	else:
 		create_unicommerce_log(
 			status="Success",
 			message=f"Successfully imported Item: {sku} from Unicommerce",
 			response_data=response,
+			make_new=True,
 		)
 
 
