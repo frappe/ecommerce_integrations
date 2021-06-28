@@ -18,6 +18,7 @@ DEFAULT_WEIGHT_UOM = "Gram"
 ITEM_SYNC_CHECKBOX = "sync_with_unicommerce"
 ORDER_CODE_FIELD = "unicommerce_order_code"
 CHANNEL_ID_FIELD = "unicommerce_channel_id"
+ORDER_STATUS_FIELD = "unicommerce_order_status"
 
 
 UNICOMMERCE_COUNTRY_MAPPING = {

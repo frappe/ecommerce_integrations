@@ -1,3 +1,4 @@
+import datetime
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
@@ -6,8 +7,10 @@ from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
+	CHANNEL_ID_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
@@ -68,7 +71,9 @@ def _get_new_orders(
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
 
 	if request_id is None:
-		log = create_unicommerce_log(method="self", request_data=payload)
+		log = create_unicommerce_log(
+			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
+		)
 		request_id = log.name
 	if client is None:
 		client = UnicommerceAPIClient()
@@ -77,12 +82,15 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 	try:
-		_validate_item_list(order)
-		sync_customer(order)
+		_validate_item_list(order, client=client)
+		customer = sync_customer(order)
+		_create_order(order, customer)
 	except Exception as e:
 		create_unicommerce_log(status="Error", exception=e)
+		frappe.flags.request_id = None
 	else:
 		create_unicommerce_log(status="Success")
+		frappe.flags.request_id = None
 
 
 def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
@@ -100,5 +108,51 @@ def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -
 	return items
 
 
+def _create_order(order: UnicommerceOrder, customer) -> None:
+
+	company = frappe.db.get_value(
+		"Unicommerce Channel", {"channel_id": order["channel"]}, fieldname="company"
+	)
+
+	so = frappe.get_doc(
+		{
+			"doctype": "Sales Order",
+			"customer": customer.name,
+			ORDER_CODE_FIELD: order["code"],
+			ORDER_STATUS_FIELD: order["status"],
+			CHANNEL_ID_FIELD: order["channel"],
+			"transaction_date": datetime.date.fromtimestamp(order["displayOrderDateTime"] / 1000),
+			"delivery_date": datetime.date.fromtimestamp(order["fulfillmentTat"] / 1000),
+			"ignore_pricing_rule": 1,
+			"items": _get_line_items(order),
+			"company": company,
+			# TODO: tax, discount, naming series
+		}
+	)
+
+	so.save()
+
+
 def _get_line_items(order: UnicommerceOrder) -> List[Dict[str, Any]]:
-	pass
+
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	wh_map = settings.get_integration_to_erpnext_wh_mapping()
+	line_items = order["saleOrderItems"]
+
+	so_items = []
+
+	for item in line_items:
+		item_code = ecommerce_item.get_erpnext_item_code(
+			integration=MODULE_NAME, integration_item_code=item["itemSku"]
+		)
+		so_items.append(
+			{
+				"item_code": item_code,
+				"rate": item["sellingPrice"],
+				"qty": 1,  # XXX: consolidate qty? Unicommerce creates one entry for each qty
+				"stock_uom": "Nos",
+				"warehouse": wh_map[item["facilityCode"]],
+			}
+		)
+
+	return so_items

@@ -103,13 +103,19 @@ doc_events = {
 scheduler_events = {
 	"all": [
 		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",
-		"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce"
 		],
 	"daily": [ ],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
 	"hourly_long": ["ecommerce_integrations.unicommerce.product.upload_new_items"],
 	"weekly": [ ],
 	"monthly": [ ],
+	"cron": {
+		# Every five minutes
+		"*/5 * * * *": [
+			"ecommerce_integrations.unicommerce.order.sync_new_orders",
+			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
+		]
+	}
 }
 
 

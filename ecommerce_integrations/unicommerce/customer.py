@@ -16,6 +16,7 @@ def sync_customer(order):
 	There is no unique identified for customer, so a new customer is created for every order"""
 	customer = _create_new_customer(order)
 	_create_customer_addresses(order.get("addresses") or [], customer)
+	return customer
 
 
 def _create_new_customer(order) -> None:

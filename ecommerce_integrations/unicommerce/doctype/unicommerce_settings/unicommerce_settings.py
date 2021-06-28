@@ -18,6 +18,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	ITEM_SYNC_CHECKBOX,
 	ORDER_CODE_FIELD,
+	ORDER_STATUS_FIELD,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -128,6 +129,13 @@ def setup_custom_fields():
 				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 				options="Unicommerce Channel",
+			),
+			dict(
+				fieldname=ORDER_STATUS_FIELD,
+				label="Unicommerce Order Status",
+				fieldtype="Data",
+				insert_after=CHANNEL_ID_FIELD,
+				read_only=1,
 			),
 		],
 	}
