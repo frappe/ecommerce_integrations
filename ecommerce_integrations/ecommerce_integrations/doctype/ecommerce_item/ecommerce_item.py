@@ -83,6 +83,21 @@ def _is_sku_synced(integration: str, sku: str) -> bool:
 	return bool(frappe.db.exists("Ecommerce Item", filter))
 
 
+def get_erpnext_item_code(
+	integration: str,
+	integration_item_code: str,
+	variant_id: Optional[str] = None,
+	has_variants: Optional[int] = 0,
+) -> Optional[str]:
+	filters = {"integration": integration, "integration_item_code": integration_item_code}
+	if variant_id:
+		filters.update({"variant_id": variant_id})
+	elif has_variants:
+		filters.update({"has_variants": 1})
+
+	return frappe.db.get_value("Ecommerce Item", filters, fieldname="erpnext_item_code")
+
+
 def get_erpnext_item(
 	integration: str,
 	integration_item_code: str,
@@ -96,20 +111,16 @@ def get_erpnext_item(
 	"""
 
 	if sku:
-		item_code = frappe.db.get_value("Ecommerce Item", {"sku": sku}, fieldname="erpnext_item_code")
+		item_code = frappe.db.get_value(
+			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
+		)
 	else:
-		filter = {"integration": integration, "integration_item_code": integration_item_code}
-		if variant_id:
-			filter.update({"variant_id": variant_id})
-		elif has_variants:
-			filter.update({"has_variants": 1})
-
-		item_code = frappe.db.get_value("Ecommerce Item", filter, fieldname="erpnext_item_code")
+		item_code = get_erpnext_item_code(
+			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
+		)
 
 	if item_code:
 		return frappe.get_doc("Item", item_code)
-
-	return None
 
 
 def create_ecommerce_item(

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, NewType, Optional, Set
+from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
 
@@ -98,3 +98,7 @@ def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -
 		else:
 			import_product_from_unicommerce(sku=item, client=client)
 	return items
+
+
+def _get_line_items(order: UnicommerceOrder) -> List[Dict[str, Any]]:
+	pass
