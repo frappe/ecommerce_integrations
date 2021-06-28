@@ -28,6 +28,10 @@ class UnicommerceSettings(SettingController):
 
 	def validate(self):
 		if not self.is_enabled():
+			self.access_token = ""
+			self.refresh_token = ""
+			self.token_type = ""
+			self.expires_on = now_datetime()
 			return
 
 		# TODO: handle 30 days limit
