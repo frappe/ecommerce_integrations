@@ -115,8 +115,8 @@ def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -
 
 def _create_order(order: UnicommerceOrder, customer) -> None:
 
-	company = frappe.db.get_value(
-		"Unicommerce Channel", {"channel_id": order["channel"]}, fieldname="company"
+	company, warehouse = frappe.db.get_value(
+		"Unicommerce Channel", {"channel_id": order["channel"]}, fieldname=["company", "warehouse"]
 	)
 
 	so = frappe.get_doc(
@@ -129,7 +129,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"transaction_date": datetime.date.fromtimestamp(order["displayOrderDateTime"] / 1000),
 			"delivery_date": datetime.date.fromtimestamp(order["fulfillmentTat"] / 1000),
 			"ignore_pricing_rule": 1,
-			"items": _get_line_items(order),
+			"items": _get_line_items(order, default_warehouse=warehouse),
 			"company": company,
 			# TODO: tax, discount, naming series
 		}
@@ -138,7 +138,9 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	so.save()
 
 
-def _get_line_items(order: UnicommerceOrder) -> List[Dict[str, Any]]:
+def _get_line_items(
+	order: UnicommerceOrder, default_warehouse: Optional[str] = None
+) -> List[Dict[str, Any]]:
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping()
@@ -155,7 +157,7 @@ def _get_line_items(order: UnicommerceOrder) -> List[Dict[str, Any]]:
 				"rate": item.rate,
 				"qty": qty,
 				"stock_uom": "Nos",
-				"warehouse": item.warehouse,
+				"warehouse": item.warehouse or default_warehouse,
 			}
 		)
 

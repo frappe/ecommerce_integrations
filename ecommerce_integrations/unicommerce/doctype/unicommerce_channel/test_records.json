@@ -5,6 +5,7 @@
 		"channel_id": "RAINFOREST",
 		"enabled": 1,
 		"company": "Wind Power LLC",
+		"warehouse": "Stores - WP",
 		"customer_group": "Individual"
 	},
 	{
@@ -13,6 +14,7 @@
 		"channel_id": "CUSTOM_FF_TEST",
 		"enabled": 1,
 		"company": "Wind Power LLC",
+		"warehouse": "Stores - WP",
 		"customer_group": "Individual"
 	}
 ]

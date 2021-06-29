@@ -10,6 +10,7 @@
   "channel_id",
   "display_name",
   "company",
+  "warehouse",
   "customer_group"
  ],
  "fields": [
@@ -47,11 +48,18 @@
    "fieldtype": "Link",
    "label": "Customer Group",
    "options": "Customer Group"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-06-28 13:27:39.671779",
+ "modified": "2021-06-29 17:55:34.202111",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
