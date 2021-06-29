@@ -1,4 +1,5 @@
 import datetime
+from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
@@ -18,6 +19,9 @@ from ecommerce_integrations.unicommerce.product import import_product_from_unico
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
+
+
+SoItem = namedtuple("SoItem", ["item_code", "rate", "warehouse"])
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
@@ -139,20 +143,34 @@ def _get_line_items(order: UnicommerceOrder) -> List[Dict[str, Any]]:
 	wh_map = settings.get_integration_to_erpnext_wh_mapping()
 	line_items = order["saleOrderItems"]
 
-	so_items = []
+	# consolidate quantity
+	consolidated_item_qty = _get_consolidate_qty(line_items, wh_map)
 
-	for item in line_items:
-		item_code = ecommerce_item.get_erpnext_item_code(
-			integration=MODULE_NAME, integration_item_code=item["itemSku"]
-		)
+	so_items = []
+	for item, qty in consolidated_item_qty.items():
 		so_items.append(
 			{
-				"item_code": item_code,
-				"rate": item["sellingPrice"],
-				"qty": 1,  # XXX: consolidate qty? Unicommerce creates one entry for each qty
+				"item_code": item.item_code,
+				"rate": item.rate,
+				"qty": qty,
 				"stock_uom": "Nos",
-				"warehouse": wh_map[item["facilityCode"]],
+				"warehouse": item.warehouse,
 			}
 		)
 
 	return so_items
+
+
+def _get_consolidate_qty(line_items, wh_map) -> Dict[SoItem, int]:
+
+	consolidated_item_qty = defaultdict(int)
+	for item in line_items:
+		item_code = ecommerce_item.get_erpnext_item_code(
+			integration=MODULE_NAME, integration_item_code=item["itemSku"]
+		)
+		so_item = SoItem(
+			item_code=item_code, rate=item["sellingPrice"], warehouse=wh_map.get(item["facilityCode"]),
+		)
+		consolidated_item_qty[so_item] += 1
+
+	return consolidated_item_qty
