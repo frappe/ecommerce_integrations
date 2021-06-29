@@ -1,3 +1,5 @@
+import re
+
 SETTINGS_DOCTYPE = "Unicommerce Settings"
 MODULE_NAME = "unicommerce"
 
@@ -12,6 +14,7 @@ API_ENDPOINTS = {
 }
 
 DEFAULT_WEIGHT_UOM = "Gram"
+UNICOMMERCE_SKU_PATTERN = re.compile(r"[A-Za-z0-9._\-/]{3,45}")
 
 
 # Custom fields

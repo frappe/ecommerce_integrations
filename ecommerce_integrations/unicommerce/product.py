@@ -13,6 +13,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ITEM_SYNC_CHECKBOX,
 	MODULE_NAME,
 	SETTINGS_DOCTYPE,
+	UNICOMMERCE_SKU_PATTERN,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -264,3 +265,21 @@ def _handle_ecommerce_item(item_code: ItemCode) -> None:
 			}
 		).insert()
 	frappe.db.commit()
+
+
+def validate_item_code(doc, method=None):
+	"""Validate item_code to ensure that it fulfills unicommerce SKU code requirements.
+
+	ref: http://support.unicommerce.com/index.php/knowledge-base/q-what-is-an-item-master-how-do-we-add-update-an-item-master/"""
+
+	item = doc
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+
+	if not settings.is_enabled():
+		return
+
+	if item.sync_with_unicommerce and not UNICOMMERCE_SKU_PATTERN.fullmatch(item.item_code):
+		msg = _("Item code is not valid as per Unicommerce requirements.") + "<br>"
+		msg += _("Unicommerce allows 3-45 character long alpha-numeric SKU code") + " "
+		msg += _("with four special characters: . _ - /")
+		frappe.throw(msg, title="Invalid SKU for Unicommerce")
