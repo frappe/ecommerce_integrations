@@ -3,6 +3,7 @@ from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
+from frappe.utils import add_to_date
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -39,7 +40,7 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	if client is None:
 		client = UnicommerceAPIClient()
 
-	new_orders = _get_new_orders(client, from_date=settings.last_order_sync)
+	new_orders = _get_new_orders(client, from_date=add_to_date(settings.last_order_sync, days=-1))
 	if new_orders is None:
 		return
 
