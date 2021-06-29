@@ -264,7 +264,6 @@ def _handle_ecommerce_item(item_code: ItemCode) -> None:
 				"item_synced_on": now(),
 			}
 		).insert()
-	frappe.db.commit()
 
 
 def validate_item_code(doc, method=None):
