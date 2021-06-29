@@ -16,7 +16,7 @@ class TestUnicommerceProduct(TestCaseApiClient):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		cls.items = ["_Test Inventory Item A", "_Test Inventory Item B", "_Test Inventory Item C"]
+		cls.items = ["_TestInventoryItemA", "_TestInventoryItemB", "_TestInventoryItemC"]
 
 		with patch("ecommerce_integrations.shopify.product.upload_erpnext_item"):
 			for item in cls.items:
@@ -34,25 +34,25 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		"""requirement: When bin is changed the inventory sync should take place in next cycle"""
 
 		# create stock entries for warehouses (warehouses are part of before_test hook in erpnext)
-		make_stock_entry(item_code="_Test Inventory Item A", qty=10, to_warehouse="Stores - WP", rate=10)
-		make_stock_entry(item_code="_Test Inventory Item B", qty=2, to_warehouse="Stores - WP", rate=10)
+		make_stock_entry(item_code="_TestInventoryItemA", qty=10, to_warehouse="Stores - WP", rate=10)
+		make_stock_entry(item_code="_TestInventoryItemB", qty=2, to_warehouse="Stores - WP", rate=10)
 		make_stock_entry(
-			item_code="_Test Inventory Item C", qty=42, to_warehouse="Work In Progress - WP", rate=10
+			item_code="_TestInventoryItemC", qty=42, to_warehouse="Work In Progress - WP", rate=10
 		)
 
 		wh1_request = {
 			"inventoryAdjustments": [
 				{
-					"itemSKU": "_Test Inventory Item A",
-					"quantity": get_stock_balance("_Test Inventory Item A", "Stores - WP"),
+					"itemSKU": "_TestInventoryItemA",
+					"quantity": get_stock_balance("_TestInventoryItemA", "Stores - WP"),
 					"shelfCode": "DEFAULT",
 					"inventoryType": "GOOD_INVENTORY",
 					"adjustmentType": "REPLACE",
 					"facilityCode": "A",
 				},
 				{
-					"itemSKU": "_Test Inventory Item B",
-					"quantity": get_stock_balance("_Test Inventory Item B", "Stores - WP"),
+					"itemSKU": "_TestInventoryItemB",
+					"quantity": get_stock_balance("_TestInventoryItemB", "Stores - WP"),
 					"shelfCode": "DEFAULT",
 					"inventoryType": "GOOD_INVENTORY",
 					"adjustmentType": "REPLACE",
@@ -63,8 +63,8 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		wh2_request = {
 			"inventoryAdjustments": [
 				{
-					"itemSKU": "_Test Inventory Item C",
-					"quantity": get_stock_balance("_Test Inventory Item C", "Work In Progress - WP"),
+					"itemSKU": "_TestInventoryItemC",
+					"quantity": get_stock_balance("_TestInventoryItemC", "Work In Progress - WP"),
 					"shelfCode": "DEFAULT",
 					"inventoryType": "GOOD_INVENTORY",
 					"adjustmentType": "REPLACE",
