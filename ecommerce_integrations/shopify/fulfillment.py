@@ -55,7 +55,6 @@ def create_delivery_note(shopify_order, setting, so):
 			if shopify_order.get("note"):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
-			frappe.db.commit()
 
 
 def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):

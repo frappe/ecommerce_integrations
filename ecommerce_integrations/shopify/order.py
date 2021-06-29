@@ -121,7 +121,6 @@ def create_sales_order(shopify_order, setting, company=None):
 	else:
 		so = frappe.get_doc("Sales Order", so)
 
-	frappe.db.commit()
 	return so
 
 
