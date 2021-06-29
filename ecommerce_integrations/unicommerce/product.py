@@ -178,7 +178,7 @@ def _get_item_group(category_code):
 	return get_root_of("Item Group")
 
 
-def upload_new_items() -> None:
+def upload_new_items(force=False) -> None:
 	"""Upload new items to Unicommerce on hourly basis.
 
 	All the items that have "sync_with_unicommerce" checked but do not have
