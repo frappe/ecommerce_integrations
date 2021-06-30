@@ -56,8 +56,6 @@ def create_sales_invoice(shopify_order, setting, so):
 		if shopify_order.get("note"):
 			sales_invoice.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
-		frappe.db.commit()
-
 
 def set_cost_center(items, cost_center):
 	for item in items:
