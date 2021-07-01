@@ -72,7 +72,9 @@ class TestUnicommerceClient(TestCaseApiClient):
 			match=[responses.json_params_matcher({"skuCode": "sku"})],
 		)
 
-		ret, _ = self.client.request(endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": "sku"})
+		ret, _ = self.client.request(
+			endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": "sku"}
+		)
 		self.assertEqual(ret["status"], "fail")
 
 		req_headers = self.responses.calls[0].request.headers
@@ -164,3 +166,46 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.assertTrue(status)
 		self.assertDictEqual(response, {k: True for k in inventory_map})
+
+	def test_create_sales_invoice(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/createInvoiceBySaleOrderCode",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{"saleOrderCode": "SO_CODE", "saleOrderItemCodes": ["1", "2", "3"]}
+				)
+			],
+		)
+
+		self.client.create_sales_invoice("SO_CODE", ["1", "2", "3"], "TEST")
+
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers["Facility"], "TEST")
+
+	def test_get_sales_invoice(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/invoice/details/get",
+			status=200,
+			json={"successful": True, "return": False},
+			match=[responses.json_params_matcher({"shippingPackageCode": "PACKAGE_ID", "return": False})],
+		)
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/invoice/details/get",
+			status=200,
+			json={"successful": True, "return": True},
+			match=[
+				responses.json_params_matcher({"shippingPackageCode": "PACKAGE_ID_RETURN", "return": True})
+			],
+		)
+
+		res = self.client.get_sales_invoice("PACKAGE_ID")
+		self.assertFalse(res["return"])
+
+		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", is_return=True)
+		self.assertTrue(res["return"])

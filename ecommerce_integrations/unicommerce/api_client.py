@@ -172,6 +172,30 @@ class UnicommerceAPIClient:
 			except:
 				return response, False
 
+	def create_sales_invoice(
+		self, so_code: str, so_item_codes: List[str], facility_code: str
+	) -> Optional[JsonDict]:
+
+		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
+		extra_headers = {"Facility": facility_code}
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/createInvoiceBySaleOrderCode", body=body, headers=extra_headers,
+		)
+		if status:
+			return response
+
+	def get_sales_invoice(
+		self, shipping_package_code: str, is_return: bool = False
+	) -> Optional[JsonDict]:
+		response, status = self.request(
+			endpoint="/services/rest/v1/invoice/details/get",
+			body={"shippingPackageCode": shipping_package_code, "return": is_return,},
+		)
+
+		if status:
+			return response
+
 
 def _utc_timeformat(datetime) -> str:
 	""" Get datetime in UTC/GMT as required by Unicommerce"""
