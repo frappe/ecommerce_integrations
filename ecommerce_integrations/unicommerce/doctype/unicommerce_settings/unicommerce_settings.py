@@ -35,7 +35,6 @@ class UnicommerceSettings(SettingController):
 			self.expires_on = now_datetime()
 			return
 
-		# TODO: handle 30 days limit
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens()
@@ -75,9 +74,22 @@ class UnicommerceSettings(SettingController):
 			self.token_type = res["token_type"]
 			self.expires_on = add_to_date(now_datetime(), seconds=int(res["expires_in"]))
 		else:
+			# Invalid refresh token
 			res = res.json()
 			error, description = res.get("error"), res.get("error_description")
-			frappe.throw(_("Unicommerce reported error: <br>{}: {}").format(error, description))
+			if error and "invalid_grant" in error:
+				self._handle_refresh_token_expiry(grant_type=grant_type)
+			else:
+				frappe.throw(_("Unicommerce reported error: <br>{}: {}").format(error, description))
+
+	def _handle_refresh_token_expiry(self, grant_type: str):
+		"""Handle expired refresh token. Refresh tokens expire every 30 days.
+
+		This is only notified using `invalid_grant` in error message."""
+
+		if grant_type == "password":
+			return
+		self.update_tokens(grant_type="password")
 
 	def get_erpnext_warehouses(self, all_wh=False) -> List[ERPNextWarehouse]:
 		"""Get list of configured ERPNext warehouses.
