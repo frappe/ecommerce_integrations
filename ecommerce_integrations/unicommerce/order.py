@@ -2,7 +2,7 @@ import datetime
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
-from frappe.utils import add_to_date
+from frappe.utils import add_to_date, flt
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -11,9 +11,9 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
-	ORDER_ITEM_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
@@ -112,9 +112,7 @@ def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -
 
 def _create_order(order: UnicommerceOrder, customer) -> None:
 
-	company, warehouse = frappe.db.get_value(
-		"Unicommerce Channel", {"channel_id": order["channel"]}, fieldname=["company", "warehouse"]
-	)
+	channel_config = frappe.get_doc("Unicommerce Channel", order["channel"])
 
 	so = frappe.get_doc(
 		{
@@ -126,9 +124,9 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"transaction_date": datetime.date.fromtimestamp(order["displayOrderDateTime"] / 1000),
 			"delivery_date": datetime.date.fromtimestamp(order["fulfillmentTat"] / 1000),
 			"ignore_pricing_rule": 1,
-			"items": _get_line_items(order, default_warehouse=warehouse),
-			"company": company,
-			# TODO: tax, discount, naming series
+			"items": _get_line_items(order, default_warehouse=channel_config.warehouse),
+			"company": channel_config.company,
+			"taxes": _get_taxes(order, channel_config),
 		}
 	)
 
@@ -159,3 +157,32 @@ def _get_line_items(
 			}
 		)
 	return so_items
+
+
+def _get_taxes(order: UnicommerceOrder, channel_config) -> List:
+	line_items = order["saleOrderItems"]
+	taxes = []
+
+	# Note: Tax details are not available during SO stage.
+	# When invoice is created, tax details are added and consider "included in rate"
+
+	taxes.extend(_get_shipping_line(line_items, channel_config))
+	return taxes
+
+
+def _get_shipping_line(line_items, channel_config):
+
+	total_shipping_cost = 0.0
+
+	for item in line_items:
+		total_shipping_cost += flt(item.get("shippingCharges"))
+		total_shipping_cost += flt(item.get("shippingMethodCharges"))
+
+	return [
+		{
+			"charge_type": "Actual",
+			"account_head": channel_config.fnf_account,
+			"tax_amount": total_shipping_cost,
+			"description": "Shipping charges",
+		}
+	]

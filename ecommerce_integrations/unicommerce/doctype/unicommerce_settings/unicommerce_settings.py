@@ -18,8 +18,8 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	ITEM_SYNC_CHECKBOX,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
-	ORDER_ITEM_CODE_FIELD
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
