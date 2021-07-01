@@ -22,9 +22,6 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
 
-SoItem = namedtuple("SoItem", ["item_code", "rate", "warehouse"])
-
-
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	"""This is called from a scheduled job and syncs all new orders from last synced time."""
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
@@ -146,34 +143,18 @@ def _get_line_items(
 	wh_map = settings.get_integration_to_erpnext_wh_mapping()
 	line_items = order["saleOrderItems"]
 
-	# consolidate quantity
-	consolidated_item_qty = _get_consolidate_qty(line_items, wh_map)
-
 	so_items = []
-	for item, qty in consolidated_item_qty.items():
-		so_items.append(
-			{
-				"item_code": item.item_code,
-				"rate": item.rate,
-				"qty": qty,
-				"stock_uom": "Nos",
-				"warehouse": item.warehouse or default_warehouse,
-			}
-		)
-
-	return so_items
-
-
-def _get_consolidate_qty(line_items, wh_map) -> Dict[SoItem, int]:
-
-	consolidated_item_qty = defaultdict(int)
 	for item in line_items:
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
-		so_item = SoItem(
-			item_code=item_code, rate=item["sellingPrice"], warehouse=wh_map.get(item["facilityCode"]),
+		so_items.append(
+			{
+				"item_code": item_code,
+				"rate": item["sellingPrice"],  # XXX
+				"qty": 1,
+				"stock_uom": "Nos",
+				"warehouse": wh_map.get(item["facilityCode"], default_warehouse),
+			}
 		)
-		consolidated_item_qty[so_item] += 1
-
-	return consolidated_item_qty
+	return so_items
