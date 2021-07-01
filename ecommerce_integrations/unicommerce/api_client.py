@@ -6,7 +6,7 @@ from frappe import _
 from frappe.utils import get_datetime
 from pytz import timezone
 
-from ecommerce_integrations.unicommerce.constants import API_ENDPOINTS, SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 JsonDict = Dict[str, Any]
@@ -36,10 +36,7 @@ class UnicommerceAPIClient:
 
 		headers.update(self._auth_headers)
 
-		if endpoint not in API_ENDPOINTS:
-			frappe.throw(_("Undefined Unicommerce API endpoint"))
-
-		url = self.base_url + API_ENDPOINTS[endpoint]
+		url = self.base_url + endpoint
 
 		try:
 			response = requests.request(url=url, method=method, headers=headers, json=body)
@@ -67,7 +64,9 @@ class UnicommerceAPIClient:
 
 		ref: https://documentation.unicommerce.com/docs/itemtype-get.html
 		"""
-		item, status = self.request(endpoint="get_item", body={"skuCode": sku})
+		item, status = self.request(
+			endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": sku}
+		)
 		if status:
 			return item
 
@@ -76,7 +75,9 @@ class UnicommerceAPIClient:
 
 		ref: https://documentation.unicommerce.com/docs/createoredit-itemtype.html
 		"""
-		return self.request(endpoint="create_update_item", body={"itemType": item_dict})
+		return self.request(
+			endpoint="/services/rest/v1/catalog/itemType/createOrEdit", body={"itemType": item_dict}
+		)
 
 	def get_sales_order(self, order_code: str) -> Optional[JsonDict]:
 		"""Get details for a sales order.
@@ -84,7 +85,9 @@ class UnicommerceAPIClient:
 		ref: https://documentation.unicommerce.com/docs/saleorder-get.html
 		"""
 
-		order, status = self.request(endpoint="get_sales_order", body={"code": order_code})
+		order, status = self.request(
+			endpoint="/services/rest/v1/oms/saleorder/get", body={"code": order_code}
+		)
 		if status and "saleOrderDTO" in order:
 			return order["saleOrderDTO"]
 
@@ -113,7 +116,9 @@ class UnicommerceAPIClient:
 		# remove None values.
 		body = {k: v for k, v in body.items() if v is not None}
 
-		search_results, status = self.request(endpoint="search_sales_order", body=body)
+		search_results, status = self.request(
+			endpoint="/services/rest/v1/oms/saleOrder/search", body=body
+		)
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
@@ -141,7 +146,7 @@ class UnicommerceAPIClient:
 			)
 
 		response, status = self.request(
-			endpoint="bulk_inventory_sync",
+			endpoint="/services/rest/v1/inventory/adjust/bulk",
 			headers=extra_headers,
 			body={"inventoryAdjustments": inventry_adjustments},
 		)

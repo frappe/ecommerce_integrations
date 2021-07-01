@@ -72,7 +72,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 			match=[responses.json_params_matcher({"skuCode": "sku"})],
 		)
 
-		ret, _ = self.client.request(endpoint="get_item", body={"skuCode": "sku"})
+		ret, _ = self.client.request(endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": "sku"})
 		self.assertEqual(ret["status"], "fail")
 
 		req_headers = self.responses.calls[0].request.headers
