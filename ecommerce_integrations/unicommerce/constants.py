@@ -15,6 +15,23 @@ ORDER_STATUS_FIELD = "unicommerce_order_status"
 ORDER_ITEM_CODE_FIELD = "unicommerce_order_item_code"
 
 
+# Tax -> Unicommerce field mapping
+TAX_FIELDS_MAPPING = {
+	"igst": "totalIntegratedGst",
+	"cgst": "totalCentralGst",
+	"sgst": "totalStateGst",
+	"ugst": "totalUnionTerritoryGst",
+}
+
+# field name for accounts in Unicommerce channels
+CHANNEL_TAX_ACCOUNT_FIELD_MAP = {
+	"igst": "igst_account",
+	"cgst": "cgst_account",
+	"sgst": "sgst_account",
+	"ugst": "ugst_account",
+}
+
+
 UNICOMMERCE_COUNTRY_MAPPING = {
 	"AD": "Andorra",
 	"AE": "United Arab Emirates",
