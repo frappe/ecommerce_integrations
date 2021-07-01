@@ -6,7 +6,12 @@
 		"enabled": 1,
 		"company": "Wind Power LLC",
 		"warehouse": "Stores - WP",
-		"customer_group": "Individual"
+		"customer_group": "Individual",
+		"fnf_account": "Freight and Forwarding Charges - WP",
+		"igst_account": "IGST - WP",
+		"cgst_account": "CGST - WP",
+		"sgst_account": "SGST - WP",
+		"ugst_account": "SGST - WP"
 	},
 	{
 		"doctype": "Unicommerce Channel",
@@ -15,6 +20,10 @@
 		"enabled": 1,
 		"company": "Wind Power LLC",
 		"warehouse": "Stores - WP",
-		"customer_group": "Individual"
+		"customer_group": "Individual",
+		"igst_account": "IGST - WP",
+		"cgst_account": "CGST - WP",
+		"sgst_account": "SGST - WP",
+		"ugst_account": "SGST - WP"
 	}
 ]
