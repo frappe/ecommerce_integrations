@@ -1,5 +1,4 @@
 import datetime
-from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
@@ -14,6 +13,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
+	ORDER_ITEM_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
@@ -155,6 +155,7 @@ def _get_line_items(
 				"qty": 1,
 				"stock_uom": "Nos",
 				"warehouse": wh_map.get(item["facilityCode"], default_warehouse),
+				ORDER_ITEM_CODE_FIELD: item.get("code"),
 			}
 		)
 	return so_items
