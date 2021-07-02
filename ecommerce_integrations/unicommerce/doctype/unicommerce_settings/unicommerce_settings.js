@@ -6,6 +6,11 @@ frappe.ui.form.on("Unicommerce Settings", {
 		if (!frm.doc.enable_unicommerce) {
 			return;
 		}
+
+		frm.add_custom_button(__("View Logs"), () => {
+			frappe.set_route("List", "Ecommerce Integration Log", "List");
+		});
+
 		let sync_buttons = ["Items", "Orders", "Inventory"];
 
 		sync_buttons.forEach((action) => {
