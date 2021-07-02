@@ -132,9 +132,9 @@ class UnicommerceAPIClient:
 
 		extra_headers = {"Facility": facility_code}
 
-		inventry_adjustments = []
+		inventory_adjustments = []
 		for sku, qty in inventory_map.items():
-			inventry_adjustments.append(
+			inventory_adjustments.append(
 				{
 					"itemSKU": sku,
 					"quantity": qty,
@@ -148,7 +148,7 @@ class UnicommerceAPIClient:
 		response, status = self.request(
 			endpoint="/services/rest/v1/inventory/adjust/bulk",
 			headers=extra_headers,
-			body={"inventoryAdjustments": inventry_adjustments},
+			body={"inventoryAdjustments": inventory_adjustments},
 		)
 
 		if not status:

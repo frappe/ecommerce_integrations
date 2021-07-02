@@ -32,5 +32,5 @@ def force_sync(document) -> None:
 
 	method = SYNC_METHODS.get(document)
 	if not method:
-		frappe.thorow(frappe._("Unknown method"))
+		frappe.throw(frappe._("Unknown method"))
 	frappe.enqueue(method, queue="long", is_async=True, **{"force": True})
