@@ -131,7 +131,7 @@ extend_bootinfo = "ecommerce_integrations.boot.boot_session"
 # Testing
 # -------
 
-before_tests = "erpnext.setup.utils.before_tests"
+before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 
 # Overriding Methods
 # ------------------------------
