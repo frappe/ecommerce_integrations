@@ -123,6 +123,25 @@ class UnicommerceAPIClient:
 		if status and "elements" in search_results:
 			return search_results["elements"]
 
+	def get_inventory_snapshot(
+		self, sku_codes: List[str], facility_code: str, updated_since: int = 1430
+	) -> Optional[JsonDict]:
+		"""Get current inventory snapshot.
+
+		ref: https://documentation.unicommerce.com/docs/inventory-snapshot.html
+		"""
+
+		extra_headers = {"Facility": facility_code}
+
+		body = {"itemTypeSKUs": sku_codes, "updatedSinceInMinutes": updated_since}
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/inventory/inventorySnapshot/get", headers=extra_headers, body=body,
+		)
+
+		if status:
+			return response
+
 	def bulk_inventory_update(self, facility_code: str, inventory_map: Dict[str, int]):
 		"""Bulk update inventory on unicommerce using SKU and qty.
 

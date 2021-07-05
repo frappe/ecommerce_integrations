@@ -209,3 +209,23 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", is_return=True)
 		self.assertTrue(res["return"])
+
+	def test_get_inventory_snapshot(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/inventory/inventorySnapshot/get",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{"itemTypeSKUs": ["BOOK", "KINDLE"], "updatedSinceInMinutes": 120}
+				)
+			],
+		)
+
+		self.client.get_inventory_snapshot(
+			sku_codes=["BOOK", "KINDLE"], facility_code="TEST", updated_since=120
+		)
+
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers["Facility"], "TEST")
