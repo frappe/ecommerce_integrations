@@ -190,8 +190,23 @@ def upload_new_items(force=False) -> None:
 	if not (settings.is_enabled() and settings.upload_item_to_unicommerce):
 		return
 
+
 	new_items = _get_new_items()
-	upload_items_to_unicommerce(new_items)
+	if not new_items:
+		return
+
+	log = create_unicommerce_log(status="Queued", message=f"Item sync initiated", make_new=True)
+	synced_items = upload_items_to_unicommerce(new_items)
+
+	unsynced_items = set(new_items) - set(synced_items)
+
+	log.message = (
+		"Item sync completed\n"
+		f"Synced items: {', '.join(synced_items)}\n"
+		f"Unsynced items: {', '.join(unsynced_items)}"
+	)
+	log.status = "Success"
+	log.save()
 
 
 def _get_new_items() -> List[ItemCode]:
@@ -211,10 +226,15 @@ def _get_new_items() -> List[ItemCode]:
 
 def upload_items_to_unicommerce(
 	item_codes: List[ItemCode], client: UnicommerceAPIClient = None
-) -> None:
-	"""Upload multiple items to Unicommerce."""
+) -> List[ItemCode]:
+	"""Upload multiple items to Unicommerce.
+
+	Return Successfully synced item codes.
+	"""
 	if not client:
 		client = UnicommerceAPIClient()
+
+	synced_items = []
 
 	for item_code in item_codes:
 		item_data = _build_unicommerce_item(item_code)
@@ -222,6 +242,9 @@ def upload_items_to_unicommerce(
 
 		if status:
 			_handle_ecommerce_item(item_code)
+			synced_items.append(item_code)
+
+	return synced_items
 
 
 def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
