@@ -1,15 +1,14 @@
-frappe.ui.form.on("Sales Order", {
+frappe.ui.form.on("Item", {
 	refresh(frm) {
-		if (frm.doc.unicommerce_order_code) {
-			// add button to open unicommerce order from SO page
+		if (frm.doc.sync_with_unicommerce) {
 			frm.add_custom_button(
-				__("Open Unicommerce Order"),
+				__("Open Unicommerce Item"),
 				function () {
 					frappe.call({
 						method:
 							"ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
 						args: {
-							code: frm.doc.unicommerce_order_code,
+							code: frm.doc.item_code,
 							doctype: frm.doc.doctype,
 						},
 						callback: function (r) {

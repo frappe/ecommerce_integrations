@@ -11,19 +11,25 @@ SYNC_METHODS = {
 	"Inventory": "ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
 }
 
+DOCUMENT_URL_FORMAT = {
+	"Sales Order": "https://{site}/order/orderitems?orderCode={code}",
+	"Item": "https://{site}/products/edit?sku={code}",
+}
+
 
 def create_unicommerce_log(**kwargs):
 	return create_log(module_def=MODULE_NAME, **kwargs)
 
 
 @frappe.whitelist()
-def get_unicommerce_order_url(code: str) -> str:
+def get_unicommerce_document_url(code: str, doctype: str) -> str:
 	if not isinstance(code, str):
-		frappe.throw(frappe._("Invalid Order code"))
+		frappe.throw(frappe._("Invalid Document code"))
 
 	site = frappe.db.get_single_value("Unicommerce Settings", "unicommerce_site", cache=True)
+	url = DOCUMENT_URL_FORMAT.get(doctype, "")
 
-	return f"https://{site}/order/orderitems?orderCode={code}"
+	return url.format(site=site, code=code)
 
 
 @frappe.whitelist()

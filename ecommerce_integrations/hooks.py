@@ -34,6 +34,7 @@ app_license = "GNU GPL v3.0"
 doctype_js = {
 		"Shopify Settings" : "public/js/shopify/old_settings.js",
 		"Sales Order": "public/js/unicommerce/sales_order.js",
+		"Item": "public/js/unicommerce/item.js",
 		}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
