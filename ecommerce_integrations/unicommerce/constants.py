@@ -17,10 +17,10 @@ ORDER_ITEM_CODE_FIELD = "unicommerce_order_item_code"
 
 # Tax -> Unicommerce field mapping
 TAX_FIELDS_MAPPING = {
-	"igst": "totalIntegratedGst",
-	"cgst": "totalCentralGst",
-	"sgst": "totalStateGst",
-	"ugst": "totalUnionTerritoryGst",
+	"igst": "integratedGst",
+	"cgst": "centralGst",
+	"sgst": "stateGst",
+	"ugst": "unionTerritoryGst",
 }
 
 # field name for accounts in Unicommerce channels
