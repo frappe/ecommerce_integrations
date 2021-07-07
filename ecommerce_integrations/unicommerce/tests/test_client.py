@@ -170,7 +170,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 	def test_create_sales_invoice(self):
 		self.responses.add(
 			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/createInvoiceBySaleOrderCode",
+			"https://demostaging.unicommerce.com/services/rest/v1/invoice/createInvoiceBySaleOrderCode",
 			status=200,
 			json={"successful": True},
 			match=[

@@ -199,7 +199,9 @@ class UnicommerceAPIClient:
 		extra_headers = {"Facility": facility_code}
 
 		response, status = self.request(
-			endpoint="/services/rest/v1/createInvoiceBySaleOrderCode", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/invoice/createInvoiceBySaleOrderCode",
+			body=body,
+			headers=extra_headers,
 		)
 		if status:
 			return response
