@@ -204,11 +204,14 @@ class TestUnicommerceClient(TestCaseApiClient):
 			],
 		)
 
-		res = self.client.get_sales_invoice("PACKAGE_ID")
+		res = self.client.get_sales_invoice("PACKAGE_ID", "TEST")
 		self.assertFalse(res["return"])
 
-		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", is_return=True)
+		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", "TEST", is_return=True)
 		self.assertTrue(res["return"])
+
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers["Facility"], "TEST")
 
 	def test_get_inventory_snapshot(self):
 		self.responses.add(

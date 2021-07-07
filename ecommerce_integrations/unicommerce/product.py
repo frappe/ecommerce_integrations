@@ -190,7 +190,6 @@ def upload_new_items(force=False) -> None:
 	if not (settings.is_enabled() and settings.upload_item_to_unicommerce):
 		return
 
-
 	new_items = _get_new_items()
 	if not new_items:
 		return

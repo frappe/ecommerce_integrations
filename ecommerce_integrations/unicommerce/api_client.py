@@ -205,11 +205,13 @@ class UnicommerceAPIClient:
 			return response
 
 	def get_sales_invoice(
-		self, shipping_package_code: str, is_return: bool = False
+		self, shipping_package_code: str, facility_code: str, is_return: bool = False
 	) -> Optional[JsonDict]:
+		extra_headers = {"Facility": facility_code}
 		response, status = self.request(
 			endpoint="/services/rest/v1/invoice/details/get",
-			body={"shippingPackageCode": shipping_package_code, "return": is_return,},
+			body={"shippingPackageCode": shipping_package_code, "return": is_return},
+			headers=extra_headers,
 		)
 
 		if status:
