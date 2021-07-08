@@ -5,7 +5,7 @@ import unittest
 
 import frappe
 
-from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.constants import PRODUCT_CATEGORY_FIELD, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings import (
 	setup_custom_fields,
 )
@@ -56,6 +56,7 @@ class TestCase(unittest.TestCase):
 		settings.flags.ignore_mandatory = True
 		settings.save()
 		setup_custom_fields()
+		_setup_test_item_categories()
 
 	@classmethod
 	def tearDownClass(cls):
@@ -76,3 +77,10 @@ class TestCase(unittest.TestCase):
 		with open(os.path.dirname(__file__) + f"/fixtures/{name}.json", "rb") as f:
 			data = f.read()
 		return json.loads(data)
+
+
+def _setup_test_item_categories():
+	frappe.get_doc(
+		{"doctype": "Item Group", PRODUCT_CATEGORY_FIELD: "TESTCAT", "item_group_name": "Test category"}
+	).insert(ignore_if_duplicate=True)
+	frappe.db.set_value("Item Group", "Products", PRODUCT_CATEGORY_FIELD, "Products")

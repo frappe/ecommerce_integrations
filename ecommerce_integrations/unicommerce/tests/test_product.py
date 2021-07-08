@@ -15,6 +15,10 @@ from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClie
 
 
 class TestUnicommerceProduct(TestCaseApiClient):
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+
 	def test_import_missing_item_raises_error(self):
 		"""requirement: when attempting to sync SKU that doesn't exist on Unicommerce system should throw error"""
 		self.responses.add(
@@ -91,6 +95,7 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		self.assertEqual(values, ["73513537", "065100004327"])
 
 	def test_get_item_group(self):
+		self.assertEqual(_get_item_group("TESTCAT"), "Test category")
 		self.assertEqual(_get_item_group("Products"), "Products")
 		self.assertEqual(_get_item_group("Whatever"), "All Item Groups")
 

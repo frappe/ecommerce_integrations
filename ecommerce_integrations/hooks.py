@@ -99,7 +99,7 @@ doc_events = {
 		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item",
 		"validate": [
 			"ecommerce_integrations.utils.taxation.validate_tax_template",
-			"ecommerce_integrations.unicommerce.product.validate_item_code",
+			"ecommerce_integrations.unicommerce.product.validate_item",
 		]
 	}
 }

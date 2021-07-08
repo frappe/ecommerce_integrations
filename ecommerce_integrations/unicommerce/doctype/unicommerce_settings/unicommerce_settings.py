@@ -20,6 +20,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	PRODUCT_CATEGORY_FIELD,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -172,6 +173,15 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="item_code",
 				read_only=1,
+			),
+		],
+		"Item Group": [
+			dict(
+				fieldname=PRODUCT_CATEGORY_FIELD,
+				label="Unicommerce Product Category Code",
+				fieldtype="Data",
+				insert_after="is_group",
+				unique=1,
 			),
 		],
 	}

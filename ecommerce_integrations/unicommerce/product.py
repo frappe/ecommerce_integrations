@@ -12,6 +12,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	DEFAULT_WEIGHT_UOM,
 	ITEM_SYNC_CHECKBOX,
 	MODULE_NAME,
+	PRODUCT_CATEGORY_FIELD,
 	SETTINGS_DOCTYPE,
 	UNICOMMERCE_SKU_PATTERN,
 )
@@ -33,10 +34,6 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 }
 
 ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
-
-ERPNEXT_TO_UNI_ITEM_MAPPING.update(
-	{"item_group": "categoryCode",}
-)
 
 
 def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = None) -> None:
@@ -165,12 +162,13 @@ def _get_item_group(category_code):
 	"""Given unicommerce category code find the Item group in ERPNext.
 
 	Returns item group with following priority:
-	        1. Item group with same name as categoryCode on Unicommerce.
+	        1. Item group that has unicommerce_product_code linked.
 	        2. Default Item group configured in Unicommerce settings.
 	        3. root of Item Group tree."""
 
-	if category_code and frappe.db.exists("Item Group", category_code):
-		return category_code
+	item_group = frappe.db.get_value("Item Group", {PRODUCT_CATEGORY_FIELD: category_code})
+	if category_code and item_group:
+		return item_group
 
 	default_item_group = frappe.db.get_single_value("Unicommerce Settings", "default_item_group")
 	if default_item_group:
@@ -265,6 +263,10 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 		elif barcode.barcode_type == "UPC-A":
 			item_json["upc"] = barcode.barcode
 
+	item_json["categoryCode"] = frappe.db.get_value(
+		"Item Group", item.item_group, PRODUCT_CATEGORY_FIELD
+	)
+
 	return item_json
 
 
@@ -288,8 +290,11 @@ def _handle_ecommerce_item(item_code: ItemCode) -> None:
 		).insert()
 
 
-def validate_item_code(doc, method=None):
-	"""Validate item_code to ensure that it fulfills unicommerce SKU code requirements.
+def validate_item(doc, method=None):
+	"""Validate Item:
+
+	1. item_code should  fulfill unicommerce SKU code requirements.
+	2. Selected item group should have unicommerce product category.
 
 	ref: http://support.unicommerce.com/index.php/knowledge-base/q-what-is-an-item-master-how-do-we-add-update-an-item-master/"""
 
@@ -304,3 +309,9 @@ def validate_item_code(doc, method=None):
 		msg += _("Unicommerce allows 3-45 character long alpha-numeric SKU code") + " "
 		msg += _("with four special characters: . _ - /")
 		frappe.throw(msg, title="Invalid SKU for Unicommerce")
+
+	item_group = frappe.get_cached_doc("Item Group", item.item_group)
+	if not item_group.get(PRODUCT_CATEGORY_FIELD):
+		frappe.throw(
+			_("Unicommerce Product category required in Item Group: {}").format(item_group.name)
+		)
