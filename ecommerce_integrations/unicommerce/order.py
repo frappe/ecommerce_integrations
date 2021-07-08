@@ -72,27 +72,36 @@ def _get_new_orders(
 
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
 
+	order = payload
+
 	if request_id is None:
 		log = create_unicommerce_log(
 			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
 		)
 		request_id = log.name
+
+	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
+	if existing_so:
+		so = frappe.get_doc("Sales Order", existing_so)
+		create_unicommerce_log(status="Invalid", message="Sales Order already exists, skipped")
+		return so
+
 	if client is None:
 		client = UnicommerceAPIClient()
 
-	order = payload
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 	try:
 		_validate_item_list(order, client=client)
 		customer = sync_customer(order)
-		_create_order(order, customer)
+		order = _create_order(order, customer)
 	except Exception as e:
 		create_unicommerce_log(status="Error", exception=e)
 		frappe.flags.request_id = None
 	else:
 		create_unicommerce_log(status="Success")
 		frappe.flags.request_id = None
+		return order
 
 
 def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
@@ -132,6 +141,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 
 	so.save()
 
+	return so
+
 
 def _get_line_items(
 	order: UnicommerceOrder, default_warehouse: Optional[str] = None
@@ -149,7 +160,7 @@ def _get_line_items(
 		so_items.append(
 			{
 				"item_code": item_code,
-				"rate": item["sellingPrice"],  # XXX
+				"rate": item["sellingPrice"],
 				"qty": 1,
 				"stock_uom": "Nos",
 				"warehouse": wh_map.get(item["facilityCode"], default_warehouse),

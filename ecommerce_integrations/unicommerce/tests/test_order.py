@@ -2,7 +2,17 @@ from unittest import skip
 
 from frappe.test_runner import make_test_records
 
-from ecommerce_integrations.unicommerce.order import _validate_item_list, create_order
+from ecommerce_integrations.unicommerce.constants import (
+	CHANNEL_ID_FIELD,
+	ORDER_CODE_FIELD,
+	ORDER_STATUS_FIELD,
+)
+from ecommerce_integrations.unicommerce.order import (
+	_get_line_items,
+	_get_shipping_line,
+	_validate_item_list,
+	create_order,
+)
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
 
 
@@ -20,7 +30,19 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			order = self.load_fixture(order_file)["saleOrderDTO"]
 			self.assertEqual(items, _validate_item_list(order, client=self.client))
 
-	@skip
 	def test_create_order(self):
-		order = self.load_fixture("order-SO5907")["saleOrderDTO"]
-		create_order(order)
+		order = self.load_fixture("order-SO6008-order")
+
+		so = create_order(order, client=self.client)
+
+		customer_name = order["addresses"][0]["name"]
+		self.assertTrue(customer_name in so.customer)
+		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
+		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
+
+	def test_get_line_items(self):
+		pass
+
+	def test_get_shipping_line(self):
+		pass
