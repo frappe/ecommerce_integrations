@@ -6,6 +6,9 @@ import unittest
 import frappe
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings import (
+	setup_custom_fields,
+)
 
 
 class TestCase(unittest.TestCase):
@@ -52,6 +55,7 @@ class TestCase(unittest.TestCase):
 		settings.flags.ignore_validate = True  # to prevent hitting the API
 		settings.flags.ignore_mandatory = True
 		settings.save()
+		setup_custom_fields()
 
 	@classmethod
 	def tearDownClass(cls):
