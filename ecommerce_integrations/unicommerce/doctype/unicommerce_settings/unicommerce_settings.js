@@ -34,4 +34,15 @@ frappe.ui.form.on("Unicommerce Settings", {
 			);
 		});
 	},
+
+	onload: function (frm) {
+		frappe.call({
+			method: "ecommerce_integrations.utils.naming_series.get_series",
+			callback: function (r) {
+				$.each(r.message, (key, value) => {
+					set_field_options(key, value);
+				});
+			},
+		});
+	},
 });

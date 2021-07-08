@@ -122,11 +122,13 @@ def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -
 def _create_order(order: UnicommerceOrder, customer) -> None:
 
 	channel_config = frappe.get_doc("Unicommerce Channel", order["channel"])
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
 	so = frappe.get_doc(
 		{
 			"doctype": "Sales Order",
 			"customer": customer.name,
+			"naming_series": channel_config.sales_order_series or settings.sales_order_series,
 			ORDER_CODE_FIELD: order["code"],
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],

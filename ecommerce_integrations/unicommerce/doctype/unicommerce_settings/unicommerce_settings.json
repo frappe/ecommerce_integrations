@@ -23,6 +23,10 @@
   "sales_order_syncing_section",
   "order_sync_frequency",
   "default_customer_group",
+  "column_break_19",
+  "sales_order_series",
+  "sales_invoice_series",
+  "delivery_note_series",
   "inventory_sync_settings_section",
   "enable_inventory_sync",
   "inventory_sync_frequency",
@@ -191,12 +195,34 @@
    "fieldtype": "Data",
    "label": "Client ID",
    "mandatory_depends_on": "enable_unicommerce"
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Default Sales Order Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Default Delivery Note Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Default Sales Invoice Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-07-08 18:00:02.086116",
+ "modified": "2021-07-08 18:22:32.668487",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

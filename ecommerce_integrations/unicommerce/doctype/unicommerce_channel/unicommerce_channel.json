@@ -17,7 +17,10 @@
   "igst_account",
   "cgst_account",
   "sgst_account",
-  "ugst_account"
+  "ugst_account",
+  "sales_order_series",
+  "sales_invoice_series",
+  "delivery_note_series"
  ],
  "fields": [
   {
@@ -101,11 +104,26 @@
    "label": "UGST Account",
    "options": "Account",
    "reqd": 1
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Sales Order Series"
+  },
+  {
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Delivery Note Series"
+  },
+  {
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Series"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-01 17:35:18.089066",
+ "modified": "2021-07-08 18:22:18.925185",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
