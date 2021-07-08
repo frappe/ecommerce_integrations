@@ -11,6 +11,10 @@ from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
 
+# Note: Undocumented but currently handles ~1000 inventory changes in one request.
+# Remaining to be done in next interval.
+MAX_INVENTORY_UPDATE_IN_REQUEST = 1000
+
 
 def update_inventory_on_unicommerce(client=None, force=False):
 	"""Update ERPnext warehouse wise inventory to Unicommerce.
@@ -44,11 +48,12 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		if not erpnext_inventory:
 			continue  # nothing to update
 
+		erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
+
 		# TODO: consider reserved qty on both platforms.
 		inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
 		facility_code = wh_to_facility_map[warehouse]
 
-		# XXX: batching required? limit on max inventory update in single request?
 		response, status = client.bulk_inventory_update(
 			facility_code=facility_code, inventory_map=inventory_map
 		)
