@@ -59,10 +59,7 @@ class UnicommerceSettings(SettingController):
 	def update_tokens(self, grant_type="password"):
 		url = f"https://{self.unicommerce_site}/oauth/token"
 
-		params = {
-			"grant_type": grant_type,
-			"client_id": "my-trusted-client",  # TODO: make this configurable
-		}
+		params = {"grant_type": grant_type, "client_id": self.client_id}
 		if grant_type == "password":
 			params.update({"username": self.username, "password": self.get_password("password")})
 		elif grant_type == "refresh_token":

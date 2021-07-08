@@ -10,6 +10,7 @@
   "column_break_2",
   "username",
   "password",
+  "client_id",
   "authentication_details_section",
   "access_token",
   "refresh_token",
@@ -33,18 +34,20 @@
  ],
  "fields": [
   {
+   "depends_on": "enable_unicommerce",
    "fieldname": "username",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Username",
-   "reqd": 1
+   "mandatory_depends_on": "enable_unicommerce"
   },
   {
+   "depends_on": "enable_unicommerce",
    "fieldname": "password",
    "fieldtype": "Password",
    "in_list_view": 1,
    "label": "Password",
-   "reqd": 1
+   "mandatory_depends_on": "enable_unicommerce"
   },
   {
    "fieldname": "access_token",
@@ -65,11 +68,12 @@
    "read_only": 1
   },
   {
+   "depends_on": "enable_unicommerce",
    "description": "E.g. frappe.unicommerce.com",
    "fieldname": "unicommerce_site",
    "fieldtype": "Data",
    "label": "Unicommerce Site",
-   "reqd": 1
+   "mandatory_depends_on": "enable_unicommerce"
   },
   {
    "fieldname": "token_type",
@@ -179,12 +183,20 @@
    "label": "Default Customer Group",
    "options": "Customer Group",
    "reqd": 1
+  },
+  {
+   "default": "my-trusted-client",
+   "depends_on": "enable_unicommerce",
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "mandatory_depends_on": "enable_unicommerce"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-28 13:24:15.142084",
+ "modified": "2021-07-08 18:00:02.086116",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
