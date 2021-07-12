@@ -1,3 +1,5 @@
+import datetime
+
 import frappe
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log import (
@@ -40,3 +42,8 @@ def force_sync(document) -> None:
 	if not method:
 		frappe.throw(frappe._("Unknown method"))
 	frappe.enqueue(method, queue="long", is_async=True, **{"force": True})
+
+
+def get_unicommerce_date(timestamp: int) -> datetime.date:
+	""" Convert unicommerce ms timestamp to datetime."""
+	return datetime.date.fromtimestamp(timestamp // 1000)

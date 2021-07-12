@@ -1,4 +1,3 @@
-import datetime
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
 import frappe
@@ -18,7 +17,7 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
-from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
+from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
@@ -134,8 +133,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
 			FACILITY_CODE_FIELD: _get_facility_code(order["saleOrderItems"]),
-			"transaction_date": datetime.date.fromtimestamp(order["displayOrderDateTime"] / 1000),
-			"delivery_date": datetime.date.fromtimestamp(order["fulfillmentTat"] / 1000),
+			"transaction_date": get_unicommerce_date(order["displayOrderDateTime"]),
+			"delivery_date": get_unicommerce_date(order["fulfillmentTat"]),
 			"ignore_pricing_rule": 1,
 			"items": _get_line_items(order, default_warehouse=channel_config.warehouse),
 			"company": channel_config.company,
