@@ -92,7 +92,8 @@ doctype_js = {"Shopify Settings" : "public/js/shopify_old_settings.js"}
 doc_events = {
 	"Item": {
 		"after_insert": "ecommerce_integrations.shopify.product.upload_erpnext_item",
-		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item"
+		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item",
+		"validate": "ecommerce_integrations.utils.taxation.validate_tax_template",
 	}
 }
 

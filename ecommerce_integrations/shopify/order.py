@@ -2,7 +2,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, get_datetime, getdate, nowdate, cint
+from frappe.utils import cint, cstr, flt, get_datetime, getdate, nowdate
 from shopify.collection import PaginatedIterator
 from shopify.resources import Order
 
@@ -16,11 +16,9 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 )
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
-from ecommerce_integrations.shopify.product import (
-	create_items_if_not_exist,
-	get_item_code,
-)
+from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code
 from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
 
 def sync_sales_order(payload, request_id=None):
@@ -106,6 +104,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"taxes": get_order_taxes(shopify_order, setting),
 				"apply_discount_on": "Net Total",
 				"discount_amount": get_discounted_amount(shopify_order),
+				"tax_category": get_dummy_tax_category(),
 			}
 		)
 
@@ -121,7 +120,6 @@ def create_sales_order(shopify_order, setting, company=None):
 	else:
 		so = frappe.get_doc("Sales Order", so)
 
-	frappe.db.commit()
 	return so
 
 
@@ -164,7 +162,9 @@ def get_order_taxes(shopify_order, setting):
 			{
 				"charge_type": _("On Net Total"),
 				"account_head": get_tax_account_head(tax),
-				"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%",
+				"description": (
+					f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+				),
 				"rate": tax.get("rate") * 100.00,
 				"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
 				"cost_center": setting.cost_center,
@@ -187,6 +187,7 @@ def get_tax_account_head(tax):
 		frappe.throw(_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title")))
 
 	return tax_account
+
 
 def get_tax_account_description(tax):
 	tax_title = tax.get("title")
@@ -225,7 +226,9 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
 				{
 					"charge_type": _("Actual"),
 					"account_head": get_tax_account_head(tax),
-					"description": f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%",
+					"description": (
+						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+					),
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,
 				}
@@ -310,7 +313,9 @@ def sync_old_orders():
 			status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders"
 		)
 	except Exception as e:
-		create_shopify_log(status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders", exception=e)
+		create_shopify_log(
+			status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders", exception=e
+		)
 
 
 def _fetch_old_orders(from_time, to_time):
