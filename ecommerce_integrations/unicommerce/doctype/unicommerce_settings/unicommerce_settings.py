@@ -16,6 +16,7 @@ from ecommerce_integrations.controllers.setting import (
 )
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	FACILITY_CODE_FIELD,
 	ITEM_SYNC_CHECKBOX,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
@@ -154,6 +155,13 @@ def setup_custom_fields():
 				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 				options="Unicommerce Channel",
+			),
+			dict(
+				fieldname=FACILITY_CODE_FIELD,
+				label="Unicommerce Facility Code",
+				fieldtype="Data",
+				insert_after=CHANNEL_ID_FIELD,
+				read_only=1,
 			),
 			dict(
 				fieldname=ORDER_STATUS_FIELD,

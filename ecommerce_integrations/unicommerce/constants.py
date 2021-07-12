@@ -14,6 +14,7 @@ CHANNEL_ID_FIELD = "unicommerce_channel_id"
 ORDER_STATUS_FIELD = "unicommerce_order_status"
 ORDER_ITEM_CODE_FIELD = "unicommerce_order_item_code"
 PRODUCT_CATEGORY_FIELD = "unicommerce_product_category"
+FACILITY_CODE_FIELD = "unicommerce_facility_code"
 
 
 # Tax -> Unicommerce field mapping

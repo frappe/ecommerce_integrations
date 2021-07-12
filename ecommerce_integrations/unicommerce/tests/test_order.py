@@ -8,6 +8,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_STATUS_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import (
+	_get_facility_code,
 	_get_line_items,
 	_get_shipping_line,
 	_validate_item_list,
@@ -46,3 +47,9 @@ class TestUnicommerceOrder(TestCaseApiClient):
 
 	def test_get_shipping_line(self):
 		pass
+
+	def test_get_facility_code(self):
+		line_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
+		facility = _get_facility_code(line_items)
+
+		self.assertEqual(facility, "Test-123")

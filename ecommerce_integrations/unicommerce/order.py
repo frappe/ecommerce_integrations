@@ -9,6 +9,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	FACILITY_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
@@ -132,6 +133,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			ORDER_CODE_FIELD: order["code"],
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
+			FACILITY_CODE_FIELD: _get_facility_code(order["saleOrderItems"]),
 			"transaction_date": datetime.date.fromtimestamp(order["displayOrderDateTime"] / 1000),
 			"delivery_date": datetime.date.fromtimestamp(order["fulfillmentTat"] / 1000),
 			"ignore_pricing_rule": 1,
@@ -199,3 +201,12 @@ def _get_shipping_line(line_items, channel_config):
 			"description": "Shipping charges",
 		}
 	]
+
+
+def _get_facility_code(line_items) -> str:
+	facility_codes = {item.get("facilityCode") for item in line_items}
+
+	if len(facility_codes) > 1:
+		frappe.throw("Multiple facility codes found in single order")
+
+	return list(facility_codes)[0]
