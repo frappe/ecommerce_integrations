@@ -1,7 +1,6 @@
-from typing import List, Dict, NewType
+from typing import Dict, List, NewType
 
 from frappe.model.document import Document
-
 
 ERPNextWarehouse = NewType("ERPNextWarehouse", str)
 IntegrationWarehouse = NewType("IntegrationWarehouse", str)

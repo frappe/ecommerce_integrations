@@ -8,7 +8,7 @@ from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify import connection
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, API_VERSION
+from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
 
 
 class TestShopifyConnection(unittest.TestCase):

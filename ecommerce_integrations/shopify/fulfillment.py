@@ -56,7 +56,6 @@ def create_delivery_note(shopify_order, setting, so):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
 
-
 def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 	# local import to avoid circular imports
 	from ecommerce_integrations.shopify.product import get_item_code
