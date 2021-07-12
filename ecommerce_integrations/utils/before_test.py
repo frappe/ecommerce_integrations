@@ -1,5 +1,4 @@
 import frappe
-
 from erpnext.setup.utils import enable_all_roles_and_domains
 
 

@@ -43,8 +43,10 @@ class UnicommerceSettings(SettingController):
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens()
-			except:
-				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
+			except Exception as e:
+				create_unicommerce_log(
+					status="Error", message="Failed to authenticate with Unicommerce", exception=e
+				)
 		setup_custom_fields()
 
 	def renew_tokens(self, save=True):

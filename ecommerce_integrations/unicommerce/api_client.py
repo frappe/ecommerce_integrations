@@ -188,7 +188,7 @@ class UnicommerceAPIClient:
 						make_new=True,
 					)
 				return item_wise_status, status
-			except:
+			except Exception:
 				return response, False
 
 	def create_sales_invoice(
@@ -198,7 +198,7 @@ class UnicommerceAPIClient:
 		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
 		extra_headers = {"Facility": facility_code}
 
-		response, _ = self.request(
+		response, status = self.request(
 			endpoint="/services/rest/v1/invoice/createInvoiceBySaleOrderCode",
 			body=body,
 			headers=extra_headers,
@@ -212,7 +212,7 @@ class UnicommerceAPIClient:
 			"shippingPackageCode": shipping_package_code,
 			"generateUniwareShippingLabel": generate_label,
 		}
-		response, _ = self.request(
+		response, status = self.request(
 			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
 			body=body,
 			headers={"Facility": facility_code},

@@ -192,7 +192,7 @@ def upload_new_items(force=False) -> None:
 	if not new_items:
 		return
 
-	log = create_unicommerce_log(status="Queued", message=f"Item sync initiated", make_new=True)
+	log = create_unicommerce_log(status="Queued", message="Item sync initiated", make_new=True)
 	synced_items = upload_items_to_unicommerce(new_items)
 
 	unsynced_items = set(new_items) - set(synced_items)
