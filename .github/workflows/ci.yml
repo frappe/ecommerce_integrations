@@ -9,7 +9,22 @@ on:
       - develop
 
 jobs:
-  test:
+  linters:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout Code Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install and Run Pre-commit
+        uses: pre-commit/action@v2.0.0
+
+  tests:
     runs-on: ubuntu-18.04
 
     strategy:
@@ -42,7 +57,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
@@ -71,7 +86,11 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Install
-        run: bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+        run: |
+          bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+          cd ~/frappe-bench/ && source env/bin/activate
+          cd apps/ecommerce_integrations && pip install -r dev-requirements.txt
+
 
       - name: Run Tests
         run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations
