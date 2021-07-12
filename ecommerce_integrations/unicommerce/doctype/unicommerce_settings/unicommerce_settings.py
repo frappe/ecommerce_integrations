@@ -17,11 +17,13 @@ from ecommerce_integrations.controllers.setting import (
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
+	INVOICE_CODE_FIELD,
 	ITEM_SYNC_CHECKBOX,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PRODUCT_CATEGORY_FIELD,
+	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -139,7 +141,7 @@ def setup_custom_fields():
 				fieldname="unicommerce_section",
 				label="Unicommerce Details",
 				fieldtype="Section Break",
-				insert_after="update_auto_repeat_reference",
+				insert_after="append",
 			),
 			dict(
 				fieldname=ORDER_CODE_FIELD,
@@ -187,6 +189,42 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="is_group",
 				unique=1,
+			),
+		],
+		"Sales Invoice": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="append",
+			),
+			dict(
+				fieldname=ORDER_CODE_FIELD,
+				label="Unicommerce Order No.",
+				fieldtype="Data",
+				insert_after="unicommerce_section",
+				read_only=1,
+			),
+			dict(
+				fieldname=FACILITY_CODE_FIELD,
+				label="Unicommerce Facility Code",
+				fieldtype="Data",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=INVOICE_CODE_FIELD,
+				label="Unicommerce Facility Code",
+				fieldtype="Data",
+				insert_after=FACILITY_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=SHIPPING_PACKAGE_CODE_FIELD,
+				label="Unicommerce Facility Code",
+				fieldtype="Data",
+				insert_after=INVOICE_CODE_FIELD,
+				read_only=1,
 			),
 		],
 	}

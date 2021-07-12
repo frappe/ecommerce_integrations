@@ -15,6 +15,8 @@ ORDER_STATUS_FIELD = "unicommerce_order_status"
 ORDER_ITEM_CODE_FIELD = "unicommerce_order_item_code"
 PRODUCT_CATEGORY_FIELD = "unicommerce_product_category"
 FACILITY_CODE_FIELD = "unicommerce_facility_code"
+INVOICE_CODE_FIELD = "unicommerce_invoice_code"
+SHIPPING_PACKAGE_CODE_FIELD = "unicommerce_shipping_package_code"
 
 
 # Tax -> Unicommerce field mapping
