@@ -198,13 +198,27 @@ class UnicommerceAPIClient:
 		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
 		extra_headers = {"Facility": facility_code}
 
-		response, status = self.request(
+		response, _ = self.request(
 			endpoint="/services/rest/v1/invoice/createInvoiceBySaleOrderCode",
 			body=body,
 			headers=extra_headers,
 		)
-		if status:
-			return response
+		return response
+
+	def create_invoice_by_shipping_code(
+		self, shipping_package_code: str, facility_code: str, generate_label=True
+	):
+		body = {
+			"shippingPackageCode": shipping_package_code,
+			"generateUniwareShippingLabel": generate_label,
+		}
+		response, _ = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			body=body,
+			headers={"Facility": facility_code},
+		)
+
+		return response
 
 	def get_sales_invoice(
 		self, shipping_package_code: str, facility_code: str, is_return: bool = False
