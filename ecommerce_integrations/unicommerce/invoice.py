@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from frappe.utils import flt
 from frappe.utils.file_manager import save_file
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -15,7 +16,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_CODE_FIELD,
 	TAX_FIELDS_MAPPING,
 )
-from ecommerce_integrations.unicommerce.order import _get_shipping_line
+from ecommerce_integrations.unicommerce.order import _get_cod_charges, _get_shipping_line
 from ecommerce_integrations.unicommerce.utils import get_unicommerce_date
 
 JsonDict = Dict[str, Any]
@@ -94,7 +95,7 @@ def _get_tax_lines(line_items, channel_config):
 	}
 	for item in line_items:
 		for tax_head, unicommerce_field in TAX_FIELDS_MAPPING.items():
-			tax_map[tax_head] += item.get(unicommerce_field) or 0.0
+			tax_map[tax_head] += flt(item.get(unicommerce_field)) or 0.0
 
 	taxes = []
 
@@ -111,11 +112,12 @@ def _get_tax_lines(line_items, channel_config):
 		)
 
 	taxes.extend(_get_shipping_line(line_items, channel_config))
+	taxes.extend(_get_cod_charges(line_items, channel_config))
 
 	return taxes
 
 
 def _verify_total(si, si_data) -> None:
 	""" Leave a comment if grand total does not match unicommerce total"""
-	if abs(si.grand_total - si_data["total"]) > 0.5:
+	if abs(si.grand_total - flt(si_data["total"])) > 0.5:
 		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")

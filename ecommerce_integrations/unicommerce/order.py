@@ -181,6 +181,7 @@ def _get_taxes(order: UnicommerceOrder, channel_config) -> List:
 	# When invoice is created, tax details are added and consider "included in rate"
 
 	taxes.extend(_get_shipping_line(line_items, channel_config))
+	taxes.extend(_get_cod_charges(line_items, channel_config))
 	return taxes
 
 
@@ -199,6 +200,22 @@ def _get_shipping_line(line_items, channel_config):
 				"account_head": channel_config.fnf_account,
 				"tax_amount": total_shipping_cost,
 				"description": "Shipping charges",
+			}
+		]
+
+	return []
+
+
+def _get_cod_charges(line_items, channel_config):
+	total_cod_charges = sum(flt(d.get("cashOnDeliveryCharges")) for d in line_items)
+
+	if total_cod_charges:
+		return [
+			{
+				"charge_type": "Actual",
+				"account_head": channel_config.cod_account or channel_config.fnf_account,
+				"tax_amount": total_cod_charges,
+				"description": "Cash On Delivery Charges",
 			}
 		]
 
