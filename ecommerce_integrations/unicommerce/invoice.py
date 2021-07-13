@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from frappe.utils.file_manager import save_file
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.constants import (
@@ -47,6 +48,17 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
 	si.insert()
+
+	if si_data.get("encodedInvoice"):
+		# attach file to the sales invoice
+		save_file(
+			f"unicommerce-invoice-{si_data['code']}.pdf",
+			si_data["encodedInvoice"],
+			si.doctype,
+			si.name,
+			decode=True,
+			is_private=1,
+		)
 
 
 def _get_line_items(line_items, warehouse: str) -> List[Dict[str, Any]]:

@@ -144,6 +144,7 @@ def setup_custom_fields():
 				label="Unicommerce Details",
 				fieldtype="Section Break",
 				insert_after="append",
+				collapsible=1,
 			),
 			dict(
 				fieldname=ORDER_CODE_FIELD,
@@ -199,6 +200,7 @@ def setup_custom_fields():
 				label="Unicommerce Details",
 				fieldtype="Section Break",
 				insert_after="append",
+				collapsible=1,
 			),
 			dict(
 				fieldname=ORDER_CODE_FIELD,
@@ -216,14 +218,14 @@ def setup_custom_fields():
 			),
 			dict(
 				fieldname=INVOICE_CODE_FIELD,
-				label="Unicommerce Facility Code",
+				label="Unicommerce Invoice Code",
 				fieldtype="Data",
 				insert_after=FACILITY_CODE_FIELD,
 				read_only=1,
 			),
 			dict(
 				fieldname=SHIPPING_PACKAGE_CODE_FIELD,
-				label="Unicommerce Facility Code",
+				label="Unicommerce Shipping Package Code",
 				fieldtype="Data",
 				insert_after=INVOICE_CODE_FIELD,
 				read_only=1,
