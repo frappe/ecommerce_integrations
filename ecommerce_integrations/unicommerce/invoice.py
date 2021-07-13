@@ -65,23 +65,23 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 def _get_line_items(line_items, warehouse: str, cost_center: str) -> List[Dict[str, Any]]:
 	""" Invoice items can be different and are consolidated, hence recomputing is required """
 
-	so_items = []
+	si_items = []
 	for item in line_items:
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
-		so_items.append(
+		si_items.append(
 			{
 				"item_code": item_code,
 				# Note: Discount is already removed from this price.
-				"rate": item["sellingPrice"],
-				"qty": 1,
+				"rate": item["unitPrice"],
+				"qty": item["quantity"],
 				"stock_uom": "Nos",
 				"warehouse": warehouse,
 				"cost_center": cost_center,
 			}
 		)
-	return so_items
+	return si_items
 
 
 def _verify_total(si, si_data) -> None:
