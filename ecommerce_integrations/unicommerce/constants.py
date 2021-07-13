@@ -25,6 +25,10 @@ TAX_FIELDS_MAPPING = {
 	"cgst": "centralGst",
 	"sgst": "stateGst",
 	"ugst": "unionTerritoryGst",
+	"cash_on_delivery_charges": "cashOnDeliveryCharges",
+	"gift_wrap_charges": "giftWrapCharges",
+	"shipping_charges": "shippingCharges",
+	"shipping_method_charges": "shippingMethodCharges",
 }
 
 # field name for accounts in Unicommerce channels
@@ -33,6 +37,10 @@ CHANNEL_TAX_ACCOUNT_FIELD_MAP = {
 	"cgst": "cgst_account",
 	"sgst": "sgst_account",
 	"ugst": "ugst_account",
+	"cash_on_delivery_charges": "cod_account",
+	"gift_wrap_charges": "gift_wrap_account",
+	"shipping_charges": "fnf_account",
+	"shipping_method_charges": "fnf_account",
 }
 
 

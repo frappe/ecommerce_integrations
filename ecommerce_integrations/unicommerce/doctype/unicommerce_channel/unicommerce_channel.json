@@ -131,11 +131,11 @@
    "reqd": 1
   },
   {
-   "description": "If unset, the freight and forwarding account will be used.",
    "fieldname": "cod_account",
    "fieldtype": "Link",
    "label": "Cash On Delivery Charges Account",
-   "options": "Account"
+   "options": "Account",
+   "reqd": 1
   },
   {
    "fieldname": "gift_wrap_account",
@@ -147,7 +147,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-13 14:48:47.778246",
+ "modified": "2021-07-13 15:16:05.050357",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",

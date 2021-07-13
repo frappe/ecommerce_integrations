@@ -8,12 +8,14 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
 	FACILITY_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
+	TAX_FIELDS_MAPPING,
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
@@ -139,7 +141,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"ignore_pricing_rule": 1,
 			"items": _get_line_items(order, default_warehouse=channel_config.warehouse),
 			"company": channel_config.company,
-			"taxes": _get_taxes(order, channel_config),
+			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
 		}
 	)
@@ -175,70 +177,38 @@ def _get_line_items(
 	return so_items
 
 
-def _get_taxes(order: UnicommerceOrder, channel_config) -> List:
-	line_items = order["saleOrderItems"]
+def get_taxes(line_items, channel_config) -> List:
 	taxes = []
 
-	# Note: Tax details are not available during SO stage.
-	# When invoice is created, tax details are added and consider "included in rate"
+	# Note: Tax details are NOT available during SO stage.
+	# Fields are also different hence during SO stage this function won't capture GST.
+	# Same function is also used in invoice to recompute accurate tax and charges.
+	# When invoice is created, tax details are added.
+	tax_map = {tax_head: 0.0 for tax_head in TAX_FIELDS_MAPPING.keys()}
 
-	taxes.extend(_get_shipping_line(line_items, channel_config))
-	taxes.extend(_get_cod_charges(line_items, channel_config))
-	taxes.extend(_get_gift_wrap_charges(line_items, channel_config))
-	return taxes
-
-
-def _get_shipping_line(line_items, channel_config):
-
-	total_shipping_cost = 0.0
-
+	tax_account_map = {
+		tax_head: channel_config.get(account_field)
+		for tax_head, account_field in CHANNEL_TAX_ACCOUNT_FIELD_MAP.items()
+	}
 	for item in line_items:
-		total_shipping_cost += flt(item.get("shippingCharges"))
-		total_shipping_cost += flt(item.get("shippingMethodCharges"))
+		for tax_head, unicommerce_field in TAX_FIELDS_MAPPING.items():
+			tax_map[tax_head] += flt(item.get(unicommerce_field)) or 0.0
 
-	if total_shipping_cost:
-		return [
+	taxes = []
+
+	for tax_head, value in tax_map.items():
+		if not value:
+			continue
+		taxes.append(
 			{
 				"charge_type": "Actual",
-				"account_head": channel_config.fnf_account,
-				"tax_amount": total_shipping_cost,
-				"description": "Shipping charges",
+				"account_head": tax_account_map[tax_head],
+				"tax_amount": value,
+				"description": tax_head.replace("_", " "),
 			}
-		]
+		)
 
-	return []
-
-
-def _get_cod_charges(line_items, channel_config):
-	total_cod_charges = sum(flt(d.get("cashOnDeliveryCharges")) for d in line_items)
-
-	if total_cod_charges:
-		return [
-			{
-				"charge_type": "Actual",
-				"account_head": channel_config.cod_account or channel_config.fnf_account,
-				"tax_amount": total_cod_charges,
-				"description": "Cash On Delivery Charges",
-			}
-		]
-
-	return []
-
-
-def _get_gift_wrap_charges(line_items, channel_config):
-	total_gift_wrap_charges = sum(flt(d.get("giftWrapCharges")) for d in line_items)
-
-	if total_gift_wrap_charges:
-		return [
-			{
-				"charge_type": "Actual",
-				"account_head": channel_config.gift_wrap_account,
-				"tax_amount": total_gift_wrap_charges,
-				"description": "Gift Wrap Charges",
-			}
-		]
-
-	return []
+	return taxes
 
 
 def _get_facility_code(line_items) -> str:
