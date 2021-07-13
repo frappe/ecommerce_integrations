@@ -11,5 +11,50 @@ frappe.ui.form.on("Unicommerce Channel", {
 				});
 			},
 		});
+
+		frm.set_query("cost_center", () => ({
+			filters: { company: frm.doc.company, is_group: 0 },
+		}));
+
+		frm.set_query("warehouse", () => ({
+			filters: {
+				company: frm.doc.company,
+				is_group: 0,
+				disabled: 0,
+			},
+		}));
+
+		const tax_accounts = [
+			"igst_account",
+			"cgst_account",
+			"sgst_account",
+			"ugst_account",
+		];
+
+		const misc_accounts = [
+			"fnf_account",
+			"cod_account",
+			"gift_wrap_account",
+		];
+
+		tax_accounts.forEach((field_name) => {
+			frm.set_query(field_name, () => ({
+				query: "erpnext.controllers.queries.tax_account_query",
+				filters: {
+					account_type: ["Tax"],
+					company: frm.doc.company,
+				},
+			}));
+		});
+
+		misc_accounts.forEach((field_name) => {
+			frm.set_query(field_name, () => ({
+				query: "erpnext.controllers.queries.tax_account_query",
+				filters: {
+					account_type: ["Chargeable", "Expense Account"],
+					company: frm.doc.company,
+				},
+			}));
+		});
 	},
 });

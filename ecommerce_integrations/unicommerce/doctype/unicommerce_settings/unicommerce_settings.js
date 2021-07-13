@@ -36,6 +36,7 @@ frappe.ui.form.on("Unicommerce Settings", {
 	},
 
 	onload: function (frm) {
+		// naming series options
 		frappe.call({
 			method: "ecommerce_integrations.utils.naming_series.get_series",
 			callback: function (r) {
@@ -44,5 +45,16 @@ frappe.ui.form.on("Unicommerce Settings", {
 				});
 			},
 		});
+
+		frm.fields_dict["warehouse_mapping"].grid.get_field(
+			"erpnext_warehouse"
+		).get_query = function (doc) {
+			return {
+				filters: {
+					is_group: 0,
+					disabled: 0,
+				},
+			};
+		};
 	},
 });

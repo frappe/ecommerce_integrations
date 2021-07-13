@@ -14,6 +14,8 @@ class UnicommerceChannel(Document):
 		company_fields = {
 			"warehouse": "Warehouse",
 			"fnf_account": "Account",
+			"cod_account": "Account",
+			"gift_wrap_account": "Account",
 			"igst_account": "Account",
 			"cgst_account": "Account",
 			"sgst_account": "Account",
