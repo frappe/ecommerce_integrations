@@ -9,8 +9,6 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 from ecommerce_integrations.unicommerce.order import (
 	_get_facility_code,
-	_get_line_items,
-	_get_shipping_line,
 	_validate_item_list,
 	create_order,
 )
@@ -43,9 +41,6 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
 
 	def test_get_line_items(self):
-		pass
-
-	def test_get_shipping_line(self):
 		pass
 
 	def test_get_facility_code(self):
