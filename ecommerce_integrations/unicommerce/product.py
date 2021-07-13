@@ -301,10 +301,10 @@ def validate_item(doc, method=None):
 	item = doc
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
-	if not settings.is_enabled():
+	if not settings.is_enabled() or not item.sync_with_unicommerce:
 		return
 
-	if item.sync_with_unicommerce and not UNICOMMERCE_SKU_PATTERN.fullmatch(item.item_code):
+	if not UNICOMMERCE_SKU_PATTERN.fullmatch(item.item_code):
 		msg = _("Item code is not valid as per Unicommerce requirements.") + "<br>"
 		msg += _("Unicommerce allows 3-45 character long alpha-numeric SKU code") + " "
 		msg += _("with four special characters: . _ - /")
