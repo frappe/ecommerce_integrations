@@ -12,7 +12,8 @@
 		"cgst_account": "CGST - WP",
 		"sgst_account": "SGST - WP",
 		"ugst_account": "SGST - WP",
-		"cost_center": "Main - WP"
+		"cost_center": "Main - WP",
+		"gift_wrap_account": "Miscellaneous Expenses - WP"
 	},
 	{
 		"doctype": "Unicommerce Channel",
@@ -27,6 +28,7 @@
 		"cgst_account": "CGST - WP",
 		"sgst_account": "SGST - WP",
 		"ugst_account": "SGST - WP",
-		"cost_center": "Main - WP"
+		"cost_center": "Main - WP",
+		"gift_wrap_account": "Miscellaneous Expenses - WP"
 	}
 ]

@@ -16,7 +16,11 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_CODE_FIELD,
 	TAX_FIELDS_MAPPING,
 )
-from ecommerce_integrations.unicommerce.order import _get_cod_charges, _get_shipping_line
+from ecommerce_integrations.unicommerce.order import (
+	_get_cod_charges,
+	_get_gift_wrap_charges,
+	_get_shipping_line,
+)
 from ecommerce_integrations.unicommerce.utils import get_unicommerce_date
 
 JsonDict = Dict[str, Any]
@@ -113,6 +117,7 @@ def _get_tax_lines(line_items, channel_config):
 
 	taxes.extend(_get_shipping_line(line_items, channel_config))
 	taxes.extend(_get_cod_charges(line_items, channel_config))
+	taxes.extend(_get_gift_wrap_charges(line_items, channel_config))
 
 	return taxes
 

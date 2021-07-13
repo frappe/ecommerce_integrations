@@ -184,6 +184,7 @@ def _get_taxes(order: UnicommerceOrder, channel_config) -> List:
 
 	taxes.extend(_get_shipping_line(line_items, channel_config))
 	taxes.extend(_get_cod_charges(line_items, channel_config))
+	taxes.extend(_get_gift_wrap_charges(line_items, channel_config))
 	return taxes
 
 
@@ -218,6 +219,22 @@ def _get_cod_charges(line_items, channel_config):
 				"account_head": channel_config.cod_account or channel_config.fnf_account,
 				"tax_amount": total_cod_charges,
 				"description": "Cash On Delivery Charges",
+			}
+		]
+
+	return []
+
+
+def _get_gift_wrap_charges(line_items, channel_config):
+	total_gift_wrap_charges = sum(flt(d.get("giftWrapCharges")) for d in line_items)
+
+	if total_gift_wrap_charges:
+		return [
+			{
+				"charge_type": "Actual",
+				"account_head": channel_config.gift_wrap_account,
+				"tax_amount": total_gift_wrap_charges,
+				"description": "Gift Wrap Charges",
 			}
 		]
 

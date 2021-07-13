@@ -15,6 +15,7 @@
   "accounts_settings_section",
   "fnf_account",
   "cod_account",
+  "gift_wrap_account",
   "igst_account",
   "cgst_account",
   "sgst_account",
@@ -135,11 +136,18 @@
    "fieldtype": "Link",
    "label": "Cash On Delivery Charges Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "gift_wrap_account",
+   "fieldtype": "Link",
+   "label": "Gift Wrap Charge Account",
+   "options": "Account",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-13 14:30:08.720004",
+ "modified": "2021-07-13 14:48:47.778246",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
