@@ -18,6 +18,7 @@ from ecommerce_integrations.unicommerce.constants import (
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
+from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
@@ -139,6 +140,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"items": _get_line_items(order, default_warehouse=channel_config.warehouse),
 			"company": channel_config.company,
 			"taxes": _get_taxes(order, channel_config),
+			"tax_category": get_dummy_tax_category(),
 		}
 	)
 
