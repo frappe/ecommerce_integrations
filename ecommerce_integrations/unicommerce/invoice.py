@@ -49,6 +49,8 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	si.ignore_pricing_rule = 1
 	si.insert()
 
+	_verify_total(si, si_data)
+
 	if si_data.get("encodedInvoice"):
 		# attach file to the sales invoice
 		save_file(
@@ -72,6 +74,7 @@ def _get_line_items(line_items, warehouse: str) -> List[Dict[str, Any]]:
 		so_items.append(
 			{
 				"item_code": item_code,
+				# Note: Discount is already removed from this price.
 				"rate": item["sellingPrice"],
 				"qty": 1,
 				"stock_uom": "Nos",
@@ -109,3 +112,9 @@ def _get_tax_lines(line_items, channel_config):
 	taxes.extend(_get_shipping_line(line_items, channel_config))
 
 	return taxes
+
+
+def _verify_total(si, si_data) -> None:
+	""" Leave a comment if grand total does not match unicommerce total"""
+	if abs(si.grand_total - si_data["total"]) > 0.5:
+		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")
