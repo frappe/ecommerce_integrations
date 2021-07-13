@@ -1,5 +1,6 @@
-from unittest import skip
+from copy import deepcopy
 
+import frappe
 from frappe.test_runner import make_test_records
 
 from ecommerce_integrations.unicommerce.constants import (
@@ -43,8 +44,17 @@ class TestUnicommerceOrder(TestCaseApiClient):
 	def test_get_line_items(self):
 		pass
 
+	def test_get_taxes(self):
+		pass
+
 	def test_get_facility_code(self):
 		line_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
 		facility = _get_facility_code(line_items)
 
 		self.assertEqual(facility, "Test-123")
+
+		bad_line_item = deepcopy(line_items[0])
+		bad_line_item["facilityCode"] = "grrr"
+		line_items.append(bad_line_item)
+
+		self.assertRaises(frappe.ValidationError, _get_facility_code, line_items)
