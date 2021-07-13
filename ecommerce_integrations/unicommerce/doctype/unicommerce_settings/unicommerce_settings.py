@@ -128,6 +128,28 @@ class UnicommerceSettings(SettingController):
 
 
 def setup_custom_fields():
+
+	custom_sections = {
+		"Sales Order": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="update_auto_repeat_reference",
+				collapsible=1,
+			),
+		],
+		"Sales Invoice": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="against_income_account",
+				collapsible=1,
+			),
+		],
+	}
+
 	custom_fields = {
 		"Item": [
 			dict(
@@ -139,13 +161,6 @@ def setup_custom_fields():
 			)
 		],
 		"Sales Order": [
-			dict(
-				fieldname="unicommerce_section",
-				label="Unicommerce Details",
-				fieldtype="Section Break",
-				insert_after="append",
-				collapsible=1,
-			),
 			dict(
 				fieldname=ORDER_CODE_FIELD,
 				label="Unicommerce Order No.",
@@ -196,13 +211,6 @@ def setup_custom_fields():
 		],
 		"Sales Invoice": [
 			dict(
-				fieldname="unicommerce_section",
-				label="Unicommerce Details",
-				fieldtype="Section Break",
-				insert_after="append",
-				collapsible=1,
-			),
-			dict(
 				fieldname=ORDER_CODE_FIELD,
 				label="Unicommerce Order No.",
 				fieldtype="Data",
@@ -233,4 +241,6 @@ def setup_custom_fields():
 		],
 	}
 
+	# create sections first for proper ordering
+	create_custom_fields(custom_sections)
 	create_custom_fields(custom_fields)
