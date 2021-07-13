@@ -192,14 +192,17 @@ def _get_shipping_line(line_items, channel_config):
 		total_shipping_cost += flt(item.get("shippingCharges"))
 		total_shipping_cost += flt(item.get("shippingMethodCharges"))
 
-	return [
-		{
-			"charge_type": "Actual",
-			"account_head": channel_config.fnf_account,
-			"tax_amount": total_shipping_cost,
-			"description": "Shipping charges",
-		}
-	]
+	if total_shipping_cost:
+		return [
+			{
+				"charge_type": "Actual",
+				"account_head": channel_config.fnf_account,
+				"tax_amount": total_shipping_cost,
+				"description": "Shipping charges",
+			}
+		]
+
+	return []
 
 
 def _get_facility_code(line_items) -> str:
