@@ -18,6 +18,7 @@
   "cgst_account",
   "sgst_account",
   "ugst_account",
+  "cost_center",
   "sales_order_series",
   "sales_invoice_series",
   "delivery_note_series"
@@ -119,11 +120,18 @@
    "fieldname": "sales_invoice_series",
    "fieldtype": "Select",
    "label": "Sales Invoice Series"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-08 18:22:18.925185",
+ "modified": "2021-07-13 12:42:46.825269",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",

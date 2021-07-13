@@ -18,6 +18,7 @@ class UnicommerceChannel(Document):
 			"cgst_account": "Account",
 			"sgst_account": "Account",
 			"ugst_account": "Account",
+			"cost_center": "Cost Center",
 		}
 
 		for field, doctype in company_fields.items():

@@ -37,7 +37,7 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	warehouse = settings.get_integration_to_erpnext_wh_mapping().get(facility_code)
 
 	si = make_sales_invoice(so.name)
-	si.set("items", _get_line_items(line_items, warehouse))
+	si.set("items", _get_line_items(line_items, warehouse, channel_config.cost_center))
 	si.set("taxes", _get_tax_lines(line_items, channel_config))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, si_data.get("shippingPackageCode"))
@@ -63,7 +63,7 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 		)
 
 
-def _get_line_items(line_items, warehouse: str) -> List[Dict[str, Any]]:
+def _get_line_items(line_items, warehouse: str, cost_center: str) -> List[Dict[str, Any]]:
 	""" Invoice items can be different and are consolidated, hence recomputing is required """
 
 	so_items = []
@@ -79,6 +79,7 @@ def _get_line_items(line_items, warehouse: str) -> List[Dict[str, Any]]:
 				"qty": 1,
 				"stock_uom": "Nos",
 				"warehouse": warehouse,
+				"cost_center": cost_center,
 			}
 		)
 	return so_items

@@ -11,7 +11,8 @@
 		"igst_account": "IGST - WP",
 		"cgst_account": "CGST - WP",
 		"sgst_account": "SGST - WP",
-		"ugst_account": "SGST - WP"
+		"ugst_account": "SGST - WP",
+		"cost_center": "Main - WP"
 	},
 	{
 		"doctype": "Unicommerce Channel",
@@ -25,6 +26,7 @@
 		"igst_account": "IGST - WP",
 		"cgst_account": "CGST - WP",
 		"sgst_account": "SGST - WP",
-		"ugst_account": "SGST - WP"
+		"ugst_account": "SGST - WP",
+		"cost_center": "Main - WP"
 	}
 ]
