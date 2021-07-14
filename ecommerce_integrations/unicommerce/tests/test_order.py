@@ -1,3 +1,4 @@
+from collections import defaultdict
 from copy import deepcopy
 
 import frappe
@@ -43,7 +44,33 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
 
 	def test_get_line_items(self):
-		pass
+		so_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
+		items = _get_line_items(so_items)
+
+		expected_item = {
+			"item_code": "TITANIUM_WATCH",
+			"rate": 312000.0,
+			"qty": 1,
+			"stock_uom": "Nos",
+			"warehouse": "Stores - WP",
+			"unicommerce_order_item_code": "TITANIUM_WATCH-0",
+		}
+
+		self.assertEqual(items[0], expected_item)
+
+	def test_get_line_items_multiple(self):
+		so_items = self.load_fixture("order-SO5906")["saleOrderDTO"]["saleOrderItems"]
+		items = _get_line_items(so_items)
+
+		item_to_qty = defaultdict(int)
+		total_price = 0.0
+
+		for item in items:
+			item_to_qty[item["item_code"]] += 1
+			total_price += item["rate"]
+
+		self.assertEqual(item_to_qty["MC-100"], 11)
+		self.assertAlmostEqual(total_price, 7028.0)
 
 	def test_get_taxes(self):
 		pass
