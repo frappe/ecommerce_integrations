@@ -95,7 +95,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 	try:
-		_validate_item_list(order, client=client)
+		_sync_order_items(order, client=client)
 		customer = sync_customer(order)
 		order = _create_order(order, customer)
 	except Exception as e:
@@ -107,7 +107,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 		return order
 
 
-def _validate_item_list(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
+def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
 	"""Ensure all items are synced before processing order.
 
 	If not synced then product sync for specific item is initiated"""
@@ -139,7 +139,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"transaction_date": get_unicommerce_date(order["displayOrderDateTime"]),
 			"delivery_date": get_unicommerce_date(order["fulfillmentTat"]),
 			"ignore_pricing_rule": 1,
-			"items": _get_line_items(order, default_warehouse=channel_config.warehouse),
+			"items": _get_line_items(order["saleOrderItems"], default_warehouse=channel_config.warehouse),
 			"company": channel_config.company,
 			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
@@ -151,13 +151,10 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	return so
 
 
-def _get_line_items(
-	order: UnicommerceOrder, default_warehouse: Optional[str] = None
-) -> List[Dict[str, Any]]:
+def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List[Dict[str, Any]]:
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping()
-	line_items = order["saleOrderItems"]
 
 	so_items = []
 	for item in line_items:

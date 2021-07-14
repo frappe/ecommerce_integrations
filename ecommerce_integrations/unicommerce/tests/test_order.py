@@ -10,7 +10,8 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 from ecommerce_integrations.unicommerce.order import (
 	_get_facility_code,
-	_validate_item_list,
+	_get_line_items,
+	_sync_order_items,
 	create_order,
 )
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
@@ -28,7 +29,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 
 		for order_file, items in zip(order_files, items_list):
 			order = self.load_fixture(order_file)["saleOrderDTO"]
-			self.assertEqual(items, _validate_item_list(order, client=self.client))
+			self.assertEqual(items, _sync_order_items(order, client=self.client))
 
 	def test_create_order(self):
 		order = self.load_fixture("order-SO6008-order")
