@@ -13,10 +13,6 @@ from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce
 
 class TestCase(unittest.TestCase):
 	config = {
-		"username": "frappe",
-		"password": "hunter2",
-		"unicommerce_site": "demostaging.unicommerce.com",
-		"access_token": "AUTH_TOKEN",
 		"is_enabled": 1,
 		"enable_inventory_sync": 1,
 		"default_customer_group": "Individual",
@@ -34,10 +30,6 @@ class TestCase(unittest.TestCase):
 		cls.old_config = copy.deepcopy(cls.config)
 		for key in cls.old_config:
 			cls.old_config[key] = getattr(settings, key)
-		if settings.password:
-			cls.old_config["password"] = settings.get_password("password")
-		if settings.access_token:
-			cls.old_config["access_token"] = settings.get_password("access_token")
 
 		cls.old_config["warehouse_mapping"] = []
 		for wh_map in settings.warehouse_mapping:

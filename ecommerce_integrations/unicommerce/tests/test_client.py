@@ -12,10 +12,7 @@ class TestCaseApiClient(TestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		with patch(
-			"ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings.UnicommerceSettings.renew_tokens"
-		):
-			cls.client = UnicommerceAPIClient()
+		cls.client = UnicommerceAPIClient("https://demostaging.unicommerce.com", "AUTH_TOKEN")
 
 	def setUp(self):
 		self.responses = responses.RequestsMock()

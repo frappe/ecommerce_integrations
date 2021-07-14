@@ -18,15 +18,21 @@ class UnicommerceAPIClient:
 	API docs: https://documentation.unicommerce.com/
 	"""
 
-	def __init__(self):
+	def __init__(
+		self, url: Optional[str] = None, access_token: Optional[str] = None,
+	):
 		self.settings = frappe.get_doc(SETTINGS_DOCTYPE)
-		self.base_url = f"https://{self.settings.unicommerce_site}"
+		self.base_url = url or f"https://{self.settings.unicommerce_site}"
+		self.access_token = access_token
 		self.__initialize_auth()
 
 	def __initialize_auth(self):
 		"""Initialize and setup authentication details"""
-		self.settings.renew_tokens()
-		self._auth_headers = {"Authorization": f"Bearer {self.settings.get_password('access_token')}"}
+		if not self.access_token:
+			self.settings.renew_tokens()
+			self.access_token = self.settings.get_password("access_token")
+
+		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
 
 	def request(
 		self, endpoint: str, method: str = "POST", headers: JsonDict = None, body: JsonDict = None,

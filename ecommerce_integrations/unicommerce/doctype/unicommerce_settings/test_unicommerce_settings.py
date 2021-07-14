@@ -10,6 +10,16 @@ from ecommerce_integrations.unicommerce.tests.utils import TestCase
 
 
 class TestUnicommerceSettings(TestCase):
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		settings = frappe.get_doc(SETTINGS_DOCTYPE)
+		settings.unicommerce_site = "demostaging.unicommerce.com"
+		settings.username = "frappe"
+		settings.password = "hunter2"
+
+		cls.settings = settings
+
 	@responses.activate
 	def test_authentication(self):
 		"""requirement: When saved the system get acess/refresh tokens from unicommerce."""
@@ -22,24 +32,22 @@ class TestUnicommerceSettings(TestCase):
 			match_querystring=True,
 		)
 
-		settings = frappe.get_doc(SETTINGS_DOCTYPE)
-		settings.update_tokens()
+		self.settings.update_tokens()
 
-		self.assertEqual(settings.access_token, "1211cf66-d9b3-498b-a8a4-04c76578b72e")
-		self.assertEqual(settings.refresh_token, "18f96b68-bdf4-4c5f-93f2-16e2c6e674c6")
-		self.assertEqual(settings.token_type, "bearer")
-		self.assertTrue(str(settings.expires_on) > now())
+		self.assertEqual(self.settings.access_token, "1211cf66-d9b3-498b-a8a4-04c76578b72e")
+		self.assertEqual(self.settings.refresh_token, "18f96b68-bdf4-4c5f-93f2-16e2c6e674c6")
+		self.assertEqual(self.settings.token_type, "bearer")
+		self.assertTrue(str(self.settings.expires_on) > now())
 
 	@responses.activate
 	def test_failed_auth(self):
 		"""requirement: When improper credentials are provided, system throws error."""
 
-		settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		# failure case
 		responses.add(
 			responses.GET, "https://demostaging.unicommerce.com/oauth/token", json={}, status=401
 		)
-		self.assertRaises(frappe.ValidationError, settings.update_tokens)
+		self.assertRaises(frappe.ValidationError, self.settings.update_tokens)
 
 	@responses.activate
 	def test_refresh_tokens(self):
@@ -53,13 +61,12 @@ class TestUnicommerceSettings(TestCase):
 			match_querystring=True,
 		)
 
-		settings = frappe.get_doc(SETTINGS_DOCTYPE)
-		settings.expires_on = now_datetime()  # to trigger refresh
-		settings.refresh_token = "REFRESH_TOKEN"
-		settings.renew_tokens(save=False)
+		self.settings.expires_on = now_datetime()  # to trigger refresh
+		self.settings.refresh_token = "REFRESH_TOKEN"
+		self.settings.renew_tokens(save=False)
 
-		self.assertEqual(settings.access_token, "1211cf66-d9b3-498b-a8a4-04c76578b72e")
-		self.assertEqual(settings.refresh_token, "18f96b68-bdf4-4c5f-93f2-16e2c6e674c6")
-		self.assertEqual(settings.token_type, "bearer")
-		self.assertTrue(str(settings.expires_on) > now())
+		self.assertEqual(self.settings.access_token, "1211cf66-d9b3-498b-a8a4-04c76578b72e")
+		self.assertEqual(self.settings.refresh_token, "18f96b68-bdf4-4c5f-93f2-16e2c6e674c6")
+		self.assertEqual(self.settings.token_type, "bearer")
+		self.assertTrue(str(self.settings.expires_on) > now())
 		self.assertTrue(responses.assert_call_count(url, 1))
