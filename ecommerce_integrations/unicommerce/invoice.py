@@ -33,7 +33,7 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
 
 	line_items = si_data["invoiceItems"]
-	warehouse = settings.get_integration_to_erpnext_wh_mapping().get(facility_code)
+	warehouse = settings.get_integration_to_erpnext_wh_mapping(all_wh=True).get(facility_code)
 
 	si = make_sales_invoice(so.name)
 	si.set("items", _get_line_items(line_items, warehouse, channel_config.cost_center))

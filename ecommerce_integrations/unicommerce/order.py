@@ -154,7 +154,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List[Dict[str, Any]]:
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
-	wh_map = settings.get_integration_to_erpnext_wh_mapping()
+	wh_map = settings.get_integration_to_erpnext_wh_mapping(all_wh=True)
 
 	so_items = []
 	for item in line_items:
