@@ -205,15 +205,10 @@ class UnicommerceAPIClient:
 		)
 		return response
 
-	def create_invoice_by_shipping_code(
-		self, shipping_package_code: str, facility_code: str, generate_label=True
-	):
-		body = {
-			"shippingPackageCode": shipping_package_code,
-			"generateUniwareShippingLabel": generate_label,
-		}
+	def create_invoice_by_shipping_code(self, shipping_package_code: str, facility_code: str):
+		body = {"shippingPackageCode": shipping_package_code}
 		response, status = self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoice",
 			body=body,
 			headers={"Facility": facility_code},
 		)

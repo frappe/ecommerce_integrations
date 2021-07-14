@@ -188,14 +188,10 @@ class TestUnicommerceClient(TestCaseApiClient):
 	def test_create_sales_invoice_with_shipping_package(self):
 		self.responses.add(
 			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoice",
 			status=200,
 			json={"successful": True},
-			match=[
-				responses.json_params_matcher(
-					{"shippingPackageCode": "SP_CODE", "generateUniwareShippingLabel": True}
-				)
-			],
+			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
 		)
 
 		self.client.create_invoice_by_shipping_code("SP_CODE", "TEST")
