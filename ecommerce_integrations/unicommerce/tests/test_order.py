@@ -32,17 +32,6 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			order = self.load_fixture(order_file)["saleOrderDTO"]
 			self.assertEqual(items, _sync_order_items(order, client=self.client))
 
-	def test_create_order(self):
-		order = self.load_fixture("order-SO6008-order")
-
-		so = create_order(order, client=self.client)
-
-		customer_name = order["addresses"][0]["name"]
-		self.assertTrue(customer_name in so.customer)
-		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
-		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
-		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
-
 	def test_get_line_items(self):
 		so_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
 		items = _get_line_items(so_items)
@@ -86,3 +75,30 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		line_items.append(bad_line_item)
 
 		self.assertRaises(frappe.ValidationError, _get_facility_code, line_items)
+
+	def test_create_order(self):
+		order = self.load_fixture("order-SO6008-order")
+
+		so = create_order(order, client=self.client)
+
+		customer_name = order["addresses"][0]["name"]
+		self.assertTrue(customer_name in so.customer)
+		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
+		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
+
+	def test_create_order_multiple_items(self):
+		order = self.load_fixture("order-SO5906")["saleOrderDTO"]
+
+		so = create_order(order, client=self.client)
+
+		customer_name = order["addresses"][0]["name"]
+		self.assertTrue(customer_name in so.customer)
+		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
+		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
+
+		qty = sum(item.qty for item in so.items)
+		amount = sum(item.amount for item in so.items)
+		self.assertEqual(qty, 11)
+		self.assertAlmostEqual(amount, 7028.0)
