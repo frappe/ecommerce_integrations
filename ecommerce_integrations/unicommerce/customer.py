@@ -57,13 +57,13 @@ def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> Non
 	else first is billing and second is shipping"""
 
 	if len(addresses) == 1:
-		_create_customer_address(addresses[0], "Billing", customer)
+		_create_customer_address(addresses[0], "Billing", customer, also_shipping=True)
 	elif len(addresses) >= 2:
 		_create_customer_address(addresses[0], "Billing", customer)
 		_create_customer_address(addresses[1], "Shipping", customer)
 
 
-def _create_customer_address(uni_address, address_type, customer):
+def _create_customer_address(uni_address, address_type, customer, also_shipping=False):
 	frappe.get_doc(
 		{
 			"address_line1": uni_address.get("addressLine1") or "Not provided",
@@ -78,5 +78,7 @@ def _create_customer_address(uni_address, address_type, customer):
 			"pincode": uni_address.get("pincode"),
 			"state": uni_address.get("state"),
 			"links": [{"link_doctype": "Customer", "link_name": customer.name}],
+			"is_primary_address": int(address_type == "Billing"),
+			"is_shipping_address": int(also_shipping or address_type == "Shipping"),
 		}
 	).insert(ignore_mandatory=True)
