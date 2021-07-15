@@ -15,6 +15,7 @@ from ecommerce_integrations.controllers.setting import (
 	SettingController,
 )
 from ecommerce_integrations.unicommerce.constants import (
+	ADDRESS_JSON_FIELD,
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
@@ -207,6 +208,16 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="is_group",
 				unique=1,
+			),
+		],
+		"Customer": [
+			dict(
+				fieldname=ADDRESS_JSON_FIELD,
+				label="Unicommerce raw billing address",
+				fieldtype="Text",
+				insert_after="append",
+				read_only=1,
+				hidden=1,
 			),
 		],
 		"Sales Invoice": [

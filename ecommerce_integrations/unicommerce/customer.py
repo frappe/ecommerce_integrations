@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict, List
 
 import frappe
@@ -5,6 +6,7 @@ from frappe import _
 from frappe.utils.nestedset import get_root_of
 
 from ecommerce_integrations.unicommerce.constants import (
+	ADDRESS_JSON_FIELD,
 	SETTINGS_DOCTYPE,
 	UNICOMMERCE_COUNTRY_MAPPING,
 )
@@ -13,14 +15,21 @@ from ecommerce_integrations.unicommerce.constants import (
 def sync_customer(order):
 	"""Using order create a new customer.
 
-	There is no unique identified for customer, so a new customer is created for every order"""
+	Note: Unicommerce doesn't deduplicate customer."""
 	customer = _create_new_customer(order)
 	_create_customer_addresses(order.get("addresses") or [], customer)
 	return customer
 
 
-def _create_new_customer(order) -> None:
+def _create_new_customer(order):
 	"""Create a new customer from Sales Order address data"""
+
+	address = order.get("billingAddress") or (order.get("addresses") and order.get("addresses")[0])
+	address.pop("id", None)  # this is not important and can be different for same address
+
+	customer = _check_if_customer_exists(address)
+	if customer:
+		return customer
 
 	setting = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	customer_group = (
@@ -30,9 +39,7 @@ def _create_new_customer(order) -> None:
 		or setting.default_customer_group
 	)
 
-	address = order.get("billingAddress") or (order.get("addresses") and order.get("addresses")[0])
 	name = address.get("name") or order["channel"] + " customer"
-
 	customer = frappe.get_doc(
 		{
 			"doctype": "Customer",
@@ -40,6 +47,7 @@ def _create_new_customer(order) -> None:
 			"customer_group": customer_group,
 			"territory": get_root_of("Territory"),
 			"customer_type": "Individual",
+			ADDRESS_JSON_FIELD: json.dumps(address),
 		}
 	)
 
@@ -47,6 +55,16 @@ def _create_new_customer(order) -> None:
 	customer.insert(ignore_permissions=True)
 
 	return customer
+
+
+def _check_if_customer_exists(address):
+	"""Very crude method to determine if same customer exists.
+
+	If ALL address fields match then new customer is not created"""
+
+	customer_name = frappe.db.get_value("Customer", {ADDRESS_JSON_FIELD: json.dumps(address)})
+	if customer_name:
+		return frappe.get_doc("Customer", customer_name)
 
 
 def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> None:

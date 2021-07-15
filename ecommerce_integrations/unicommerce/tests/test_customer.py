@@ -4,6 +4,7 @@ from frappe.test_runner import make_test_records
 from ecommerce_integrations.unicommerce.customer import (
 	_create_customer_addresses,
 	_create_new_customer,
+	sync_customer,
 )
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
 
@@ -33,3 +34,11 @@ class TestUnicommerceProduct(TestCaseApiClient):
 		self.assertEqual(len(new_addresses), 2)
 		addr_types = {d.address_type for d in new_addresses}
 		self.assertEqual(addr_types, {"Shipping", "Billing"})
+
+	def test_deduplication(self):
+		"""requirement: Literally same order should not create duplicates."""
+		order = self.load_fixture("order-SO5841")["saleOrderDTO"]
+		customer = sync_customer(order)
+		same_customer = sync_customer(order)
+
+		self.assertEqual(customer.name, same_customer.name)
