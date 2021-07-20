@@ -2,7 +2,7 @@ from typing import List, NewType
 
 import frappe
 from frappe import _
-from frappe.utils import now
+from frappe.utils import get_url, now
 from frappe.utils.nestedset import get_root_of
 from stdnum.ean import is_valid as validate_barcode
 
@@ -266,6 +266,8 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 	item_json["categoryCode"] = frappe.db.get_value(
 		"Item Group", item.item_group, PRODUCT_CATEGORY_FIELD
 	)
+	# append site prefix to image url
+	item_json["imageUrl"] = get_url(item.image)
 
 	return item_json
 
