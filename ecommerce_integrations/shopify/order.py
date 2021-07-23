@@ -157,19 +157,25 @@ def get_order_items(order_items, setting, delivery_date):
 
 def get_order_taxes(shopify_order, setting):
 	taxes = []
-	for tax in shopify_order.get("tax_lines"):
-		taxes.append(
-			{
-				"charge_type": _("On Net Total"),
-				"account_head": get_tax_account_head(tax),
-				"description": (
-					f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
-				),
-				"rate": tax.get("rate") * 100.00,
-				"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
-				"cost_center": setting.cost_center,
-			}
-		)
+	line_items = shopify_order.get("line_items")
+
+	for line_item in line_items:
+		item_code = get_item_code(line_item)
+		for tax in line_item.get("tax_lines"):
+			taxes.append(
+				{
+					"charge_type": _("On Net Total"),
+					"account_head": get_tax_account_head(tax),
+					"description": (
+						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+					),
+					"item_wise_tax_detail": json.dumps({item_code: [tax.get("rate") * 100, tax.get("price")]}),
+					"tax_amount": tax.get("price"),
+					"included_in_print_rate": 1 if shopify_order.get("taxes_included") else 0,
+					"cost_center": setting.cost_center,
+					"dont_recompute_tax": 1,
+				}
+			)
 
 	taxes = update_taxes_with_shipping_lines(taxes, shopify_order.get("shipping_lines"), setting)
 
