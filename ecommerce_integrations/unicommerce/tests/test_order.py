@@ -42,7 +42,6 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			"qty": 1,
 			"stock_uom": "Nos",
 			"warehouse": "Stores - WP",
-			"unicommerce_order_item_code": "TITANIUM_WATCH-0",
 		}
 
 		self.assertEqual(items[0], expected_item)
@@ -55,8 +54,8 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		total_price = 0.0
 
 		for item in items:
-			item_to_qty[item["item_code"]] += 1
-			total_price += item["rate"]
+			item_to_qty[item["item_code"]] += item["qty"]
+			total_price += item["rate"] * item["qty"]
 
 		self.assertEqual(item_to_qty["MC-100"], 11)
 		self.assertAlmostEqual(total_price, 7028.0)
