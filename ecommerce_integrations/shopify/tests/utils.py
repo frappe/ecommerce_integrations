@@ -66,7 +66,7 @@ class TestCase(unittest.TestCase):
 					"update_erpnext_stock_levels_to_shopify": 1,
 					"doctype": "Shopify Setting",
 					"taxes": [
-						{"shopify_tax": "IGST", "tax_account": "IGST - _TC",},
+						{"shopify_tax": "IGST", "tax_account": "Output Tax IGST - _TC",},
 						{"shopify_tax": "Standard", "tax_account": "Freight and Forwarding Charges - _TC",},
 					],
 					"shopify_warehouse_mapping": [
