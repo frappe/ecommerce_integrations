@@ -1,5 +1,6 @@
 import frappe
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE, OLD_SETTINGS_DOCTYPE
+
+from ecommerce_integrations.shopify.constants import OLD_SETTINGS_DOCTYPE, SETTING_DOCTYPE
 
 
 def boot_session(bootinfo):

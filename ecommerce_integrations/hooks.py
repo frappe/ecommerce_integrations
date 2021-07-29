@@ -31,7 +31,7 @@ app_license = "GNU GPL v3.0"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Shopify Settings" : "public/js/shopify_old_settings.js"}
+doctype_js = {"Shopify Settings": "public/js/shopify_old_settings.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -44,7 +44,7 @@ doctype_js = {"Shopify Settings" : "public/js/shopify_old_settings.js"}
 
 # website user home page (by Role)
 # role_home_page = {
-#	"Role": "home_page"
+# 	"Role": "home_page"
 # }
 
 # Generators
@@ -102,10 +102,10 @@ doc_events = {
 
 scheduler_events = {
 	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
-	"daily": [ ],
+	"daily": [],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
-	"weekly": [ ],
-	"monthly": [ ],
+	"weekly": [],
+	"monthly": [],
 }
 
 

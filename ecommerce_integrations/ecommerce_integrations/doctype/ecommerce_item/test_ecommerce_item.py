@@ -1,8 +1,9 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See license.txt
 
-import frappe
 import unittest
+
+import frappe
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 

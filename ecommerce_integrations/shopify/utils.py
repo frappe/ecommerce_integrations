@@ -10,8 +10,8 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 )
 from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
-	SETTING_DOCTYPE,
 	OLD_SETTINGS_DOCTYPE,
+	SETTING_DOCTYPE,
 )
 
 
