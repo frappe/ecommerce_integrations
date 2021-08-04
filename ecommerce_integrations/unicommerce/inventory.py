@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from collections import defaultdict
+from typing import Any, Dict, List
 
 import frappe
 from frappe.utils import cint, now
@@ -42,11 +43,14 @@ def update_inventory_on_unicommerce(client=None, force=False):
 	if client is None:
 		client = UnicommerceAPIClient()
 
+	# track which ecommerce item was updated successfully
+	success_map: Dict[str, bool] = defaultdict(lambda: True)
+	inventory_synced_on = now()
+
 	for warehouse in warehouses:
-		inventory_synced_on = now()
 		erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
 		if not erpnext_inventory:
-			continue  # nothing to update
+			continue
 
 		erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
 
@@ -59,15 +63,17 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		)
 
 		if status:
-			_update_inventory_sync_status(response, erpnext_inventory, inventory_synced_on)
+			# update success_map
+			sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
+			for sku, status in response.items():
+				ecom_item = sku_to_ecom_item_map[sku]
+				# Any one warehouse sync failure should be considered failure
+				success_map[ecom_item] = success_map[ecom_item] and status
+
+	_update_inventory_sync_status(success_map, inventory_synced_on)
 
 
-def _update_inventory_sync_status(
-	unicommerce_response: Dict[str, bool], ecommerce_item_map: Dict[str, Any], timestamp: str
-) -> None:
-	successful_skus = [sku for sku, status in unicommerce_response.items() if status]
-	sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in ecommerce_item_map}
-
-	for sku in successful_skus:
-		ecom_item = sku_to_ecom_item_map[sku]
-		update_inventory_sync_status(ecom_item, timestamp)
+def _update_inventory_sync_status(ecom_item_success_map: Dict[str, bool], timestamp: str) -> None:
+	for ecom_item, status in ecom_item_success_map.items():
+		if status:
+			update_inventory_sync_status(ecom_item, timestamp)
