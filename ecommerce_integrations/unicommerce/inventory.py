@@ -6,6 +6,7 @@ from frappe.utils import cint, now
 
 from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,
+	get_inventory_levels_of_group_warehouse,
 	update_inventory_sync_status,
 )
 from ecommerce_integrations.controllers.scheduling import need_to_run
@@ -48,7 +49,15 @@ def update_inventory_on_unicommerce(client=None, force=False):
 	inventory_synced_on = now()
 
 	for warehouse in warehouses:
-		erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
+		is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
+
+		if is_group_warehouse:
+			erpnext_inventory = get_inventory_levels_of_group_warehouse(
+				warehouse=warehouse, integration=MODULE_NAME
+			)
+		else:
+			erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
+
 		if not erpnext_inventory:
 			continue
 

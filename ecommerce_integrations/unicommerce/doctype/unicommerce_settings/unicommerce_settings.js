@@ -51,7 +51,6 @@ frappe.ui.form.on("Unicommerce Settings", {
 		).get_query = function (doc) {
 			return {
 				filters: {
-					is_group: 0,
 					disabled: 0,
 				},
 			};

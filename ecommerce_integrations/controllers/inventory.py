@@ -3,6 +3,7 @@ from typing import List, Tuple
 import frappe
 from frappe import _dict
 from frappe.utils import now
+from frappe.utils.nestedset import get_descendants_of
 
 
 def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict]:
@@ -28,6 +29,45 @@ def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict
 		values=warehouses + (integration,),
 		as_dict=1,
 	)
+
+	return data
+
+
+def get_inventory_levels_of_group_warehouse(warehouse: str, integration: str):
+	"""Get updated inventory for a single group warehouse.
+
+	If warehouse mapping is done to a group warehouse then consolidation of all
+	leaf warehouses is required"""
+
+	child_warehouse = get_descendants_of("Warehouse", warehouse)
+	all_warehouses = tuple(child_warehouse) + (warehouse,)
+
+	data = frappe.db.sql(
+		f"""
+			SELECT ei.name as ecom_item, bin.item_code as item_code,
+				integration_item_code,
+				variant_id,
+				sum(actual_qty) as actual_qty,
+				sum(reserved_qty) as reserved_qty,
+				max(bin.modified) as last_updated,
+				max(ei.inventory_synced_on) as last_synced
+			FROM `tabEcommerce Item` ei
+				JOIN tabBin bin
+				ON ei.erpnext_item_code = bin.item_code
+			WHERE bin.warehouse in ({', '.join(['%s'] * len(all_warehouses))})
+				AND integration = %s
+			GROUP BY
+				ei.erpnext_item_code
+			HAVING
+				last_updated > last_synced
+			""",
+		values=all_warehouses + (integration,),
+		as_dict=1,
+	)
+
+	# add warehouse as group warehouse for sending to integrations
+	for item in data:
+		item.warehouse = warehouse
 
 	return data
 
