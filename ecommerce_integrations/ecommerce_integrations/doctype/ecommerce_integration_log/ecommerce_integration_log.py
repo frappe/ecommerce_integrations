@@ -83,6 +83,7 @@ def resync(method, name, request_data):
 	frappe.only_for("System Manager")
 
 	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
+	frappe.db.set_value("Ecommerce Integration Log", name, "traceback", "", update_modified=False)
 	frappe.enqueue(
 		method=method,
 		queue="short",

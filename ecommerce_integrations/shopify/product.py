@@ -139,7 +139,7 @@ class ShopifyProduct:
 		sku = item_dict["sku"]
 
 		if not _match_sku_and_link_item(
-			item_dict, integration_item_code, variant_id, variant_of=variant_of
+			item_dict, integration_item_code, variant_id, variant_of=variant_of, has_variant=has_variant
 		):
 			ecommerce_item.create_ecommerce_item(
 				MODULE_NAME,
@@ -262,13 +262,15 @@ def _get_item_image(product_dict):
 	return None
 
 
-def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None) -> bool:
+def _match_sku_and_link_item(
+	item_dict, product_id, variant_id, variant_of=None, has_variant=False
+) -> bool:
 	"""Tries to match new item with existing item using Shopify SKU == item_code.
 
 	Returns true if matched and linked.
 	"""
 	sku = item_dict["sku"]
-	if not sku or variant_of:
+	if not sku or variant_of or has_variant:
 		return False
 
 	item_name = frappe.db.get_value("Item", {"item_code": sku})

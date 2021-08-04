@@ -137,6 +137,9 @@ def create_ecommerce_item(
 	item_dict contains fields necessary to populate Item doctype.
 	"""
 
+	# SKU not allowed for template items
+	sku = cstr(sku) if not has_variants else None
+
 	if is_synced(integration, integration_item_code, variant_id, sku):
 		return
 
@@ -152,9 +155,6 @@ def create_ecommerce_item(
 	new_item = frappe.get_doc(item)
 	new_item.flags.from_integration = True
 	new_item.insert(ignore_permissions=True, ignore_mandatory=True)
-
-	# SKU not allowed for template items
-	sku = cstr(sku) if not has_variants else None
 
 	ecommerce_item = frappe.get_doc(
 		{
