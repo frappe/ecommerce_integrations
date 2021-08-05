@@ -46,7 +46,7 @@ def sync_sales_order(payload, request_id=None):
 		setting = frappe.get_doc(SETTING_DOCTYPE)
 		create_order(order, setting)
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e)
+		create_shopify_log(status="Error", exception=e, rollback=True)
 	else:
 		create_shopify_log(status="Success")
 
