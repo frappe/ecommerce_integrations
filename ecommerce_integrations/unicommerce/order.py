@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set
 
@@ -184,14 +185,21 @@ def get_taxes(line_items, channel_config) -> List:
 	# Same function is also used in invoice to recompute accurate tax and charges.
 	# When invoice is created, tax details are added.
 	tax_map = {tax_head: 0.0 for tax_head in TAX_FIELDS_MAPPING.keys()}
+	item_wise_tax_map = {tax_head: {} for tax_head in TAX_FIELDS_MAPPING.keys()}
 
 	tax_account_map = {
 		tax_head: channel_config.get(account_field)
 		for tax_head, account_field in CHANNEL_TAX_ACCOUNT_FIELD_MAP.items()
 	}
 	for item in line_items:
+		item_code = ecommerce_item.get_erpnext_item_code(
+			integration=MODULE_NAME, integration_item_code=item["itemSku"]
+		)
 		for tax_head, unicommerce_field in TAX_FIELDS_MAPPING.items():
-			tax_map[tax_head] += flt(item.get(unicommerce_field)) or 0.0
+			tax_amount = flt(item.get(unicommerce_field)) or 0.0
+
+			tax_map[tax_head] += tax_amount
+			item_wise_tax_map[tax_head][item_code] = [0.0, tax_amount]
 
 	taxes = []
 
@@ -204,6 +212,8 @@ def get_taxes(line_items, channel_config) -> List:
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
 				"description": tax_head.replace("_", " "),
+				"item_wise_tax_detail": json.dumps(item_wise_tax_map[tax_head]),
+				"dont_recompute_tax": 1,
 			}
 		)
 
