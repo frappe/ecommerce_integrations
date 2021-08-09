@@ -29,7 +29,7 @@ def process_purchase_order(order, center, error_logs):
 				msg = _("For Order no {}. ").format(items['order_number']) + supplier_err_msg
 				error_logs.append(msg)
 
-			item_err_msg_list = check_for_item(items['item_data'], center, item_group="Product")
+			item_err_msg_list = check_for_item(items['item_data'], center, item_group="Products")
 			if len(item_err_msg_list):
 				item_err_msg = "\n".join(err for err in item_err_msg_list)
 				msg = _("For Order no {}.\n").format(items['order_number']) + item_err_msg

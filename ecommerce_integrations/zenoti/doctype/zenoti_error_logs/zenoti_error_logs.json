@@ -11,20 +11,21 @@
  "fields": [
   {
    "fieldname": "error_message",
-   "fieldtype": "Text",
-   "label": "Error Message"
+   "fieldtype": "Text Editor",
+   "label": "Error Message",
+   "read_only": 1
   },
   {
    "fieldname": "title",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Title",
-   "unique": 1
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-02 13:54:40.623950",
+ "modified": "2021-08-09 17:11:41.401957",
  "modified_by": "Administrator",
  "module": "Zenoti",
  "name": "Zenoti Error Logs",

@@ -4,6 +4,7 @@ import json
 import requests
 
 from frappe import _
+from frappe.utils import flt
 from erpnext.controllers.accounts_controller import add_taxes_from_tax_template
 
 api_url = "https://api.zenoti.com/v1/"
@@ -58,7 +59,7 @@ def make_item(item, center, item_group):
 	item_details = get_item_details(item, center, item_group)
 	if not item_details:
 		center_name = get_center_code(center)
-		err_msg = _("Details for Item {0} does not exist in center {1}").format(item, center_name)
+		err_msg = _("Details for Item {0} does not exist in center {1}").format(frappe.bold(item), frappe.bold(center_name))
 		return err_msg
 	create_item(item_details, item_group, center)
 
@@ -70,25 +71,23 @@ def create_item(item_details, item_group, center):
 	item.item_group = item_group
 	item.is_stock_item = 0
 	item.include_item_in_manufacturing = 0
-	if item_group == "Product":
+	if item_group == "Products":
 		item.is_stock_item = 1
 	item.zenoti_item_type = get_zenoti_item_type(item_details)
 	item.stock_uom = "Nos"
 	item.zenoti_item_category = get_zenoti_category(item_details.get('category_id'), center)
 	item.zenoti_item_sub_category = get_zenoti_category(item_details.get('sub_category_id'), center)
-	item.zenoti_item_category = item_details['bussiness_unit_id']
+	# item.zenoti_item_category = item_details['bussiness_unit_id']
 	if item_details.get("image_paths"):
 		item.image = item_details['image_paths']
 	item.insert()
 
 def get_item_details(item_code, center, item_group):
-	print(item_code)
-	print(center)
-	print(item_group)
 	list_of_items_in_a_center = get_list_of_items_in_a_center(center, item_group)
 	for item in list_of_items_in_a_center:
-		if item_code == item['code']:
-			return item
+		if 'code' in item:
+			if item_code == item['code']:
+				return item
 
 def get_list_of_centers():
 	list_of_all_centers = []
@@ -104,7 +103,6 @@ def process_list_of_all_centers_response(all_center, list_of_all_centers):
 
 def get_list_of_items_in_a_center(center, item_group):
 	list_of_all_items_in_center = []
-	# print(item_group)
 	url1 = api_url + 'centers/' + center + '/' + item_type[item_group] + '?size=100'
 	all_items_in_center = make_api_call(url1)
 	if all_items_in_center:
@@ -166,13 +164,17 @@ def get_item_tax_rate(item_tax_template):
 	}
 	return json.dumps(tax_dict)
 
-
 def add_taxes(doc):
 	for item in doc.items:
 		add_taxes_from_tax_template(item, doc, db_insert=False)
 
-def add_payments(doc):
-	pass
+def add_payments(doc, payments):
+	for key, value in payments.items():
+		payment = {}
+		if flt(value) > 0:
+			payment['mode_of_payment'] = key
+			payment['amount'] = value
+			doc.append("payments", payment)
 
 def make_address(details, ref_docname, doctype):
 	country_id = details['country_id']
@@ -238,8 +240,8 @@ def create_address(details, county_details, state_details, doctype, ref_docname)
 
 def check_for_item_tax_template(item_tax_template):
 	err_msg = ""
-	if not frappe.db.exists("Item Tax Template", {"title":item_tax_template}):
-		err_msg = _("Item Tax Template {} does not exist.").format(item_tax_template)
+	if item_tax_template and not frappe.db.exists("Item Tax Template", {"title":item_tax_template}):
+		err_msg = _("Item Tax Template {} does not exist.").format(frappe.bold(item_tax_template))
 	return err_msg
 
 def get_center_code(center_id):
@@ -256,12 +258,12 @@ def get_cost_center(center_name):
 	err_msg = ""
 	cost_center = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_name}, ['erpnext_cost_center'])
 	if not cost_center:
-		err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(center_name)
+		err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(frappe.bold(center_name))
 	return cost_center, err_msg
 
 def get_warehouse(center_name):
 	err_msg = ""
 	warehouse = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_name}, ['erpnext_warehouse'])
 	if not warehouse:
-		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(center_name)
+		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(frappe.bold(center_name))
 	return warehouse, err_msg

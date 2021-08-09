@@ -15,7 +15,6 @@ from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_rec
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 import requests
-from requests.api import options
 
 class ZenotiSettings(Document):
 
@@ -49,24 +48,6 @@ class ZenotiSettings(Document):
 		}
 		doc.append("accounts", payment_mode_accounts)
 
-def sync_records():
-	# if self.enable_zenoti:
-	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
-		error_logs = []
-		list_of_centers = get_list_of_centers()
-		if len(list_of_centers):
-			process_purchase_orders(list_of_centers, error_logs)
-			process_sales_invoices(list_of_centers, error_logs)
-			process_stock_reconciliation(list_of_centers, error_logs)
-			
-			# self.last_sync = now()
-			# frappe.db.set_value("Zenoti Settings", "Zenoti Settings", "last_sync", get_datetime())
-			# frappe.db.commit()
-
-		if len(error_logs):
-			make_error_log(error_logs)
-
-
 def sync_invoices():
 	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
 		last_sync = frappe.db.get_single_value("Zenoti Settings", "last_sync")
@@ -91,7 +72,7 @@ def sync_stocks():
 					make_error_log(error_logs)
 
 def make_error_log(error_logs):
-	msg = "\n".join(err for err in error_logs)
+	msg = "\n\n".join(err for err in error_logs)
 	log = frappe.new_doc("Zenoti Error Logs")
 	log.title = _("Errors occured at {}").format(get_datetime())
 	log.error_message = msg

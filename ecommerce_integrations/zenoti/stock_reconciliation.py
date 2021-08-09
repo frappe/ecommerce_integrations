@@ -13,7 +13,7 @@ def process_stock_reconciliation(list_of_centers, error_logs):
 			cost_center, err_msg = get_cost_center(center_code)
 			if err_msg:
 				error_logs.append(err_msg)
-			item_err_msg_list = check_for_item(list_for_entry, center, item_group="Product")
+			item_err_msg_list = check_for_item(list_for_entry, center, item_group="Products")
 			if len(item_err_msg_list):
 				item_err_msg = "\n".join(err for err in item_err_msg_list)
 				error_logs.append(item_err_msg)
