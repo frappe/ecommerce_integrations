@@ -12,8 +12,8 @@ def process_purchase_orders(list_of_centers, error_logs):
 				process_purchase_order(order, center, error_logs)
 
 def get_list_of_purchase_orders_for_center(center):
-	start_date = frappe.utils.add_days(frappe.utils.today(), -35)
-	end_date = frappe.utils.add_days(frappe.utils.today(), -30)
+	start_date = frappe.utils.add_days(frappe.utils.today(), -1)
+	end_date = frappe.utils.today()
 	route = "inventory/purchase_orders?center_id="
 	url_end = "&show_delivery_details=true&date_criteria=1&status=-1"
 	full_url = api_url + route + center + "&start_date=" + start_date + "&end_date=" + end_date + url_end
