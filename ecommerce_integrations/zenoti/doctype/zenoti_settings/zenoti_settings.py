@@ -15,6 +15,7 @@ from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_rec
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 import requests
+from requests.api import options
 
 class ZenotiSettings(Document):
 
@@ -47,6 +48,23 @@ class ZenotiSettings(Document):
 			"default_account": account
 		}
 		doc.append("accounts", payment_mode_accounts)
+
+def sync_records():
+	# if self.enable_zenoti:
+	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
+		error_logs = []
+		list_of_centers = get_list_of_centers()
+		if len(list_of_centers):
+			process_purchase_orders(list_of_centers, error_logs)
+			process_sales_invoices(list_of_centers, error_logs)
+			process_stock_reconciliation(list_of_centers, error_logs)
+			
+			# self.last_sync = now()
+			# frappe.db.set_value("Zenoti Settings", "Zenoti Settings", "last_sync", get_datetime())
+			# frappe.db.commit()
+
+		if len(error_logs):
+			make_error_log(error_logs)
 
 
 def sync_invoices():
@@ -224,7 +242,43 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			)
-		]
+		],
+		"Sales Invoice Item": [
+			dict(
+				fieldname="zenoti_employee_details",
+				label="Zenoti Employee Details",
+				fieldtype="Section Break",
+				insert_after="delivered_by_supplier",
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname="sold_by",
+				label="Sold By",
+				fieldtype="Link",
+				options="Employee",
+				insert_after="zenoti_employee_details",
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname="tips_column_break",
+				label="",
+				fieldtype="Column Break",
+				options="Employee",
+				insert_after="sold_by",
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname="tips",
+				label="Tips",
+				fieldtype="Data",
+				insert_after="tips_column_break",
+				read_only=1,
+				print_hide=1,
+			),
+		],
 	}
 
 	create_custom_fields(custom_fields, update=False)
