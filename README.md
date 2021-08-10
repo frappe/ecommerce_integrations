@@ -6,6 +6,8 @@ Ecommerce integrations for ERPNext
 
 - Shopify
 
+- Zenoti
+
 
 ### Contributing
 
