@@ -21,6 +21,7 @@
   "upload_item_to_unicommerce",
   "default_item_group",
   "sales_order_syncing_section",
+  "only_sync_completed_orders",
   "order_sync_frequency",
   "default_customer_group",
   "column_break_19",
@@ -217,12 +218,19 @@
   {
    "fieldname": "column_break_19",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "The integration will only sync orders once they are fully processed on Unicommerce. Use this if you only want one-way sync from Unicommerce to ERPNext.",
+   "fieldname": "only_sync_completed_orders",
+   "fieldtype": "Check",
+   "label": "Only Sync Completed Orders"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-07-08 18:22:32.668487",
+ "modified": "2021-08-10 10:27:44.955529",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

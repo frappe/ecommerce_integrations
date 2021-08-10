@@ -15,12 +15,12 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import get_taxes
-from ecommerce_integrations.unicommerce.utils import get_unicommerce_date
+from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 
 JsonDict = Dict[str, Any]
 
 
-def create_sales_invoice(si_data: JsonDict, so_code: str):
+def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
@@ -28,6 +28,12 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	so = frappe.get_doc("Sales Order", so_code)
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
+
+	existing_si = frappe.db.get_value("Sales Invoice", {INVOICE_CODE_FIELD: si_data["code"]})
+	if existing_si:
+		si = frappe.get_doc("Sales Invoice", existing_si)
+		create_unicommerce_log(status="Invalid", message="Sales Invoice already exists, skipped")
+		return si
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
@@ -46,7 +52,9 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 	si.naming_series = channel_config.sales_invoice_series or settings.sales_order_series
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
+	si.update_stock = update_stock
 	si.insert()
+	si.submit()
 
 	_verify_total(si, si_data)
 
@@ -60,6 +68,8 @@ def create_sales_invoice(si_data: JsonDict, so_code: str):
 			decode=True,
 			is_private=1,
 		)
+
+	return si
 
 
 def _get_line_items(line_items, warehouse: str, cost_center: str) -> List[Dict[str, Any]]:

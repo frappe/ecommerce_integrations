@@ -43,21 +43,29 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	if client is None:
 		client = UnicommerceAPIClient()
 
-	new_orders = _get_new_orders(client, from_date=add_to_date(settings.last_order_sync, days=-1))
+	status = "COMPLETE" if settings.only_sync_completed_orders else None
+
+	new_orders = _get_new_orders(
+		client, from_date=add_to_date(settings.last_order_sync, days=-1), status=status
+	)
+
 	if new_orders is None:
 		return
 
 	for order in new_orders:
-		create_order(order, client=client)
+		sales_order = create_order(order, client=client)
+
+		if settings.only_sync_completed_orders:
+			_create_sales_invoices(order, sales_order, client)
 
 
 def _get_new_orders(
-	client: UnicommerceAPIClient, from_date: str
+	client: UnicommerceAPIClient, from_date: str, status: Optional[str]
 ) -> Optional[Iterator[UnicommerceOrder]]:
 
 	"""Search new sales order from unicommerce."""
 
-	uni_orders = client.search_sales_order(from_date=from_date)
+	uni_orders = client.search_sales_order(from_date=from_date, status=status)
 	configured_channels = {
 		c.channel_id
 		for c in frappe.get_all("Unicommerce Channel", filters={"enabled": 1}, fields="channel_id")
@@ -74,6 +82,20 @@ def _get_new_orders(
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
 			yield order
+
+
+def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAPIClient):
+	"""Create sales invoice from sales orders, used when integration is only
+	syncing finshed orders from Unicommerce."""
+	from ecommerce_integrations.unicommerce.invoice import create_sales_invoice
+
+	facility_code = sales_order.get(FACILITY_CODE_FIELD)
+	shipping_packages = unicommerce_order["shippingPackages"]
+	for package in shipping_packages:
+		invoice_data = client.get_sales_invoice(
+			shipping_package_code=package["code"], facility_code=facility_code
+		)
+		create_sales_invoice(invoice_data["invoice"], sales_order.name, update_stock=1)
 
 
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
@@ -199,7 +221,7 @@ def get_taxes(line_items, channel_config) -> List:
 			tax_amount = flt(item.get(unicommerce_field)) or 0.0
 
 			tax_map[tax_head] += tax_amount
-			item_wise_tax_map[tax_head][item_code] = [0.0, tax_amount]
+			item_wise_tax_map[tax_head][item_code] = [0.0, tax_amount]  # TODO: get rate
 
 	taxes = []
 
