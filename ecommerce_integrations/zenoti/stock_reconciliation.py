@@ -38,6 +38,7 @@ def make_list_for_entry(data, list_for_entry, error_logs):
 				'item_name': entry['product_name'],
 				'warehouse': warehouse,
 				'qty': entry['total_quantity'],
+				'allow_zero_valuation_rate' : 1
 			}
 			list_for_entry.append(record)
 	return list_for_entry

@@ -92,32 +92,31 @@ def validate_details(invoice, center, error_logs):
 	if err_msg:
 		make_error_log_msg(invoice, err_msg, error_logs)
 
-	item_err_msg_list = check_for_items(invoice, center)
-	if len(item_err_msg_list):
-		item_err_msg = "\n".join(err for err in item_err_msg_list)
-		make_error_log_msg(invoice, item_err_msg, error_logs)
-
 	cost_center, cost_center_err_msg = get_cost_center(invoice[0]['center']['center_name'])
 	if cost_center_err_msg:
 		make_error_log_msg(invoice, cost_center_err_msg, error_logs)
+
 	warehouse, warehouse_err_msg = get_warehouse(invoice[0]['center']['center_name'])
 	if warehouse_err_msg:
 		make_error_log_msg(invoice, warehouse_err_msg, error_logs)
+
 	emp_err_msg = check_for_employee(invoice[0]['employee']['name'], invoice[0]['employee']['code'])
 	if emp_err_msg:
 		make_error_log_msg(invoice, emp_err_msg, error_logs)
-	item_data, total_qty, payments, line_item_err_msg_list = process_sales_line_items(invoice, cost_center)
+
+	item_data, total_qty, payments, line_item_err_msg_list = process_sales_line_items(invoice, center, cost_center)
 	if len(line_item_err_msg_list):
 		line_item_err_msg = "\n".join(err for err in line_item_err_msg_list)
 		make_error_log_msg(invoice, line_item_err_msg, error_logs)
 
-	if not err_msg and not item_err_msg_list and not cost_center_err_msg and not line_item_err_msg_list and not emp_err_msg:
+	if not err_msg and not cost_center_err_msg and not line_item_err_msg_list and not emp_err_msg:
 		data['cost_center'] = cost_center
 		data['warehouse'] = warehouse
 		data['item_data'] = item_data
 		data['total_qty'] = total_qty
 		data['is_return'] = 1 if flt(total_qty) < 0 else 0
 		data['payments'] = payments
+
 	return data
 
 def check_for_employee(emp_name, emp_code):
@@ -129,7 +128,8 @@ def check_for_employee(emp_name, emp_code):
 	if emp_code:
 		filters['zenoti_employee_code'] = emp_code
 	if not filters:
-		err_msg = _("Details for Employee {0} not found in Center {1} in Zenoti").format(frappe.bold(emp_name))
+		err_msg = _("Details for Employee missing")
+		return err_msg
 	if not frappe.db.exists("Employee", filters):
 		err_msg = make_employee(emp_name, emp_code, list_of_centers)
 	return err_msg
@@ -183,7 +183,7 @@ def make_error_log_msg(invoice, err_msg, error_logs):
 	msg = _("For {0} {1}. ").format(frappe.bold(invoice_no), frappe.bold(receipt_no)) + "\n" + err_msg
 	error_logs.append(msg)
 	
-def process_sales_line_items(invoice, cost_center):
+def process_sales_line_items(invoice, center, cost_center):
 	item_list = []
 	err_msg_list = []
 	total_qty = 0
@@ -193,7 +193,13 @@ def process_sales_line_items(invoice, cost_center):
 		'Custom': 0,
 		'Gift and Prepaid Card': 0
 	}
+	tip = 0
+	add_to_list = False
 	for line_item in invoice:
+		item_err_msg_list, item_group = check_for_items(line_item, center)
+		if len(item_err_msg_list):
+			item_err_msg = "\n".join(err for err in item_err_msg_list)
+			err_msg_list.append(item_err_msg)
 		sold_by = frappe.db.get_value("Employee", {"employee_name": line_item['employee']['name']})
 		if not sold_by:
 			msg = _("Employee {} not found in ERPNext.").format(frappe.bold(line_item['employee']['name']))
@@ -204,25 +210,55 @@ def process_sales_line_items(invoice, cost_center):
 			continue
 
 		if len(err_msg_list) == 0:
+			rate = abs(flt(line_item['sale_price']) - flt(line_item['discount']))
+			discount_amount = line_item['discount']
+			if line_item['package']:
+				rate = 0
+				discount_amount = 0
 			qty = line_item['quantity'] if  line_item['sale_price'] >= 0 else line_item['quantity'] * -1
+			tip += line_item['tips']
 			item_dict = {
 				'item_code' : line_item['item']['code'],
 				'item_name' : line_item['item']['name'],
-				'rate' : abs(flt(line_item['sale_price']) - flt(line_item['discount'])),
-				'discount_amount': line_item['discount'],
+				'rate' : rate,
+				'discount_amount': discount_amount,
 				'item_tax_template' : line_item['tax_code'],
 				'cost_center': cost_center,
 				'qty': qty,
-				'sold_by': sold_by,
-				'tips': line_item['tips'],
-				'rounding_adjustment' : line_item['rounding_adjustment'],
+				'sold_by': sold_by
 			}
-			item_list.append(item_dict)
+			if item_group == "Gift or Pre-paid Cards":
+				item_dict['income_account'] = frappe.db.get_single_value("Zenoti Settings", "default_liability_account")
+			
 			total_qty += qty
 			payments['Cash'] += line_item['cash']
 			payments['Card'] += line_item['card']
 			payments['Custom'] += line_item['custom']
 			payments['Gift and Prepaid Card'] += flt(line_item['prepaid_card']) + flt(line_item['prepaid_card_redemption'])
+
+			for entry in ['cash', 'card', 'custom', 'prepaid_card', 'prepaid_card_redemption']:
+				if line_item[entry] != 0:
+					add_to_list = True
+					break
+
+			if add_to_list:
+				item_list.append(item_dict)
+
+	if tip > 0:
+		item_dict = {
+				'item_code' : "Tips",
+				'item_name' : "Tips",
+				'rate' : tip,
+				'income_account' : frappe.db.get_single_value("Zenoti Settings", "default_liability_account"),
+				'cost_center': cost_center,
+				'qty': 1
+			}
+		item_list.append(item_dict)
+
+		for key, value in payments.items():
+			if value > 0:
+				payments[key] += tip
+				break
 
 	return item_list, total_qty, payments, err_msg_list
 
@@ -281,23 +317,22 @@ def get_guest_details(guest_id):
 	guest_details = make_api_call(url)
 	return guest_details
 
-def check_for_items(invoice_items, center):
+def check_for_items(item, center):
 	err_list = []
-	for item in invoice_items:
-		group = cint(item['item']['type'])
-		if not frappe.db.exists("Item", {"item_code": item['item']['code'], "item_group": item_type[group]}):	
-			if group == 6:
-				err_msg = make_card_item(item)
-			else:
-				err_msg = make_item(item['item']['code'], center, item_type[group])
-			if err_msg:
-				err_list.append(err_msg)
-	return err_list
+	group = cint(item['item']['type'])
+	if not frappe.db.exists("Item", {"item_code": item['item']['code'], "item_group": item_type[group]}):	
+		if group == 6:
+			err_msg = make_card_item(item)
+		else:
+			err_msg = make_item(item['item']['code'], center, item_type[group])
+		if err_msg:
+			err_list.append(err_msg)
+	return err_list, item_type[group]
 
 def make_card_item(item_details):
 	item = frappe.new_doc("Item")
-	item.item_code = item_details['item']['code']
-	item.item_name = item_details['item']['name']
+	item.item_code = "Card No. " + item_details['item']['code']
+	item.item_name = "Card No. " + item_details['item']['name']
 	item.item_group = "Gift or Pre-paid Cards"
 	item.is_stock_item = 0
 	item.include_item_in_manufacturing = 0
@@ -323,4 +358,5 @@ def make_invoice(invoice_details):
 	add_taxes(doc)
 	doc.set('payments', [])
 	add_payments(doc, invoice_details['payments'])
+	print("doc.is_pos", doc.is_pos)
 	doc.insert()

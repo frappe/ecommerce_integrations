@@ -4,7 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import get_datetime, add_to_date, cint
+from frappe.utils import get_datetime, add_to_date, cint, now
 
 from erpnext import get_default_company
 
@@ -27,7 +27,9 @@ class ZenotiSettings(Document):
 			frappe.throw("Please verify the API Key")	
 		setup_custom_fields()
 		make_item_group()
+		make_item_tips()
 		self.add_gift_and_prepaid_card_as_payment_mode()
+		self.sync_records()
 
 	def add_gift_and_prepaid_card_as_payment_mode(self):
 		if not frappe.db.get_value("Mode of Payment", "Gift and Prepaid Card"):
@@ -47,6 +49,20 @@ class ZenotiSettings(Document):
 			"default_account": account
 		}
 		doc.append("accounts", payment_mode_accounts)
+
+	def sync_records(self):
+		if self.enable_zenoti:
+			error_logs = []
+			list_of_centers = get_list_of_centers()
+			if len(list_of_centers):
+				process_purchase_orders(list_of_centers, error_logs)
+				process_sales_invoices(list_of_centers, error_logs)
+				process_stock_reconciliation(list_of_centers, error_logs)
+
+				self.last_sync = now()
+
+			if len(error_logs):
+				make_error_log(error_logs)
 
 def sync_invoices():
 	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
@@ -79,11 +95,22 @@ def make_error_log(error_logs):
 	log.insert()
 
 def make_item_group():
-	if not frappe.db.get_value("Item Group", "Gift or Pre-paid Cards"):
+	if not frappe.db.exists("Item Group", "Gift or Pre-paid Cards"):
 		doc = frappe.new_doc("Item Group")
 		doc.item_group_name = "Gift or Pre-paid Cards"
 		doc.parent_item_group = "All Item Groups"
 		doc.insert()
+
+def make_item_tips():
+	if not frappe.db.exists("Item", "Tips"):
+		item = frappe.new_doc("Item")
+		item.item_code = "Tips"
+		item.item_name = "Tips"
+		item.item_group = "All Item Groups"
+		item.is_stock_item = 0
+		item.include_item_in_manufacturing = 0
+		item.stock_uom = "Nos"
+		item.insert()
 
 def setup_custom_fields():
 	custom_fields = {
