@@ -124,7 +124,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 		customer = sync_customer(order)
 		order = _create_order(order, customer)
 	except Exception as e:
-		create_unicommerce_log(status="Error", exception=e)
+		create_unicommerce_log(status="Error", exception=e, rollback=True)
 		frappe.flags.request_id = None
 	else:
 		create_unicommerce_log(status="Success")

@@ -61,6 +61,7 @@ def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = Non
 			response_data=response,
 			make_new=True,
 			exception=e,
+			rollback=True,
 		)
 		raise e
 	else:
