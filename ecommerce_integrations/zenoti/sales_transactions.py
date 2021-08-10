@@ -129,31 +129,43 @@ def check_for_employee(emp_name, emp_code):
 	if emp_code:
 		filters['zenoti_employee_code'] = emp_code
 	if not filters:
-		err_msg = _("Details for Employee {0} not found in Center {1} in Zenoti").format(frappe.bold(emp_name), frappe.bold(center_name))
+		err_msg = _("Details for Employee {0} not found in Center {1} in Zenoti").format(frappe.bold(emp_name))
 	if not frappe.db.exists("Employee", filters):
 		err_msg = make_employee(emp_name, emp_code, list_of_centers)
 	return err_msg
 
 def make_employee(emp_name, emp_code, list_of_centers):
 	err_msg = ""
-	emp_found = False
+	employee = None
 	for center in list_of_centers:
 		url = api_url + "/centers/" + center + "/employees?page=1&size=1000"
-		all_emps = make_api_call(url)
-		for emp in all_emps['employees']:
-			if emp['personal_info']['name'] == emp_name and emp['code'] == emp_code:
-				emp_found = True
-				create_emp(emp)
-				break
-	if not emp_found:
+		employee = get_emp(url, emp_name, emp_code, "employees")
+		if not employee:
+			url = api_url + "/centers/" + center + "/therapists?page=1&size=1000" 
+			employee = get_emp(url, emp_name, emp_code, "therapists")
+
+		if employee:
+			create_emp(employee)
+			break
+
+	if not employee:
 		err_msg = _("Details for Employee {0} not found in Zenoti").format(frappe.bold(emp_name))
 	return err_msg
+
+def get_emp(url, emp_name, emp_code, key):
+	employee = None
+	all_emps = make_api_call(url)
+	for emp in all_emps[key]:
+		if emp['personal_info']['name'] == emp_name and emp['code'] == emp_code:
+			employee = emp
+			break
+	return employee
 
 def create_emp(emp):
 	doc = frappe.new_doc("Employee")
 	doc.zenoti_employee_id = emp['id']
 	doc.zenoti_employee_code = emp['code']
-	doc.zenoti_employee_username = emp['personal_info']['user_name']
+	doc.zenoti_employee_username = emp['personal_info']['user_name'] if 'user_name' in emp['personal_info'] else ''
 	doc.first_name = emp['personal_info']['first_name']
 	doc.last_name = emp['personal_info']['last_name']
 	doc.employee_name = emp['personal_info']['name']
