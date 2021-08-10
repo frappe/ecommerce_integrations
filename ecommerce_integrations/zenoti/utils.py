@@ -171,7 +171,7 @@ def add_taxes(doc):
 def add_payments(doc, payments):
 	for key, value in payments.items():
 		payment = {}
-		if flt(value) > 0:
+		if flt(value) != 0:
 			payment['mode_of_payment'] = key
 			payment['amount'] = value
 			doc.append("payments", payment)
