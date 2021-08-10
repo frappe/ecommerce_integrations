@@ -129,7 +129,8 @@ def check_for_employee(emp_name, emp_code):
 	if emp_code:
 		filters['zenoti_employee_code'] = emp_code
 	if not filters:
-		err_msg = _("Details for Employee {0} not found in Center {1} in Zenoti").format(frappe.bold(emp_name))
+		err_msg = _("Details for Employee missing")
+		return err_msg
 	if not frappe.db.exists("Employee", filters):
 		err_msg = make_employee(emp_name, emp_code, list_of_centers)
 	return err_msg
