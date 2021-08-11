@@ -244,7 +244,7 @@ def process_sales_line_items(invoice, center, cost_center):
 			if add_to_list:
 				item_list.append(item_dict)
 
-	if tip > 0:
+	if tip != 0:
 		item_dict = {
 				'item_code' : "Tips",
 				'item_name' : "Tips",
@@ -256,7 +256,7 @@ def process_sales_line_items(invoice, center, cost_center):
 		item_list.append(item_dict)
 
 		for key, value in payments.items():
-			if value > 0:
+			if value != 0:
 				payments[key] += tip
 				break
 
