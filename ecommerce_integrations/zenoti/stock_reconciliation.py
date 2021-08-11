@@ -7,7 +7,9 @@ def process_stock_reconciliation(list_of_centers, error_logs):
 	for center in list_of_centers:
 		list_for_entry = []
 		stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(center)
-		center_code = get_center_code(center)
+		center_code, center_code_err = get_center_code(center)
+		if center_code_err:
+			error_logs.append(center_code_err)
 		make_list_for_entry(stock_quantities_of_products_in_a_center, list_for_entry, error_logs)
 		if list_for_entry and center_code:
 			cost_center, err_msg = get_cost_center(center_code)
