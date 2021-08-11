@@ -246,24 +246,25 @@ def check_for_item_tax_template(item_tax_template):
 
 def get_center_code(center_id):
 	center = None
+	err = ""
 	url = api_url + "Centers/" + center_id
 	center_details = make_api_call(url)
 	if len(center_details.get("center")):
 		center = center_details['center']['code']
 		if not center:
-			center = center_details['center']['name']
-	return center
+			err = _("Could not find Center Id {} in Zenoti.").format(center_id)
+	return center, err
 
-def get_cost_center(center_name):
+def get_cost_center(center_code):
 	err_msg = ""
-	cost_center = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_name}, ['erpnext_cost_center'])
+	cost_center = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_code}, ['erpnext_cost_center'])
 	if not cost_center:
-		err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(frappe.bold(center_name))
+		err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(frappe.bold(center_code))
 	return cost_center, err_msg
 
-def get_warehouse(center_name):
+def get_warehouse(center_code):
 	err_msg = ""
-	warehouse = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_name}, ['erpnext_warehouse'])
+	warehouse = frappe.db.get_value("Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_code}, ['erpnext_warehouse'])
 	if not warehouse:
-		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(frappe.bold(center_name))
+		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(frappe.bold(center_code))
 	return warehouse, err_msg

@@ -92,11 +92,11 @@ def validate_details(invoice, center, error_logs):
 	if err_msg:
 		make_error_log_msg(invoice, err_msg, error_logs)
 
-	cost_center, cost_center_err_msg = get_cost_center(invoice[0]['center']['center_name'])
+	cost_center, cost_center_err_msg = get_cost_center(invoice[0]['center']['center_code'])
 	if cost_center_err_msg:
 		make_error_log_msg(invoice, cost_center_err_msg, error_logs)
 
-	warehouse, warehouse_err_msg = get_warehouse(invoice[0]['center']['center_name'])
+	warehouse, warehouse_err_msg = get_warehouse(invoice[0]['center']['center_code'])
 	if warehouse_err_msg:
 		make_error_log_msg(invoice, warehouse_err_msg, error_logs)
 

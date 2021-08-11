@@ -77,7 +77,7 @@ def get_list_of_all_suppliers():
 def get_required_data_to_create_purchase_record(order, error_logs):
 	data = []
 	if not frappe.db.exists("Purchase Invoice", {"zenoti_order_no": order['order_number']}) and not frappe.db.exists("Purchase Order", {"zenoti_order_no": order['order_number']}):
-		center, err_msg = get_cost_center(order['center_name'])
+		center, err_msg = get_cost_center(order['center']['code'])
 		if err_msg:
 			msg = _("For Order no {}. ").format(order['order_number']) + err_msg
 			error_logs.append(msg)
