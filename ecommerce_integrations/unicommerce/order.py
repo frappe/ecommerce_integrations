@@ -92,10 +92,20 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 	facility_code = sales_order.get(FACILITY_CODE_FIELD)
 	shipping_packages = unicommerce_order["shippingPackages"]
 	for package in shipping_packages:
-		invoice_data = client.get_sales_invoice(
-			shipping_package_code=package["code"], facility_code=facility_code
-		)
-		create_sales_invoice(invoice_data["invoice"], sales_order.name, update_stock=1)
+		try:
+			log = create_unicommerce_log(method="create_sales_invoice", make_new=True)
+			frappe.flags.request_id = log.name
+
+			invoice_data = client.get_sales_invoice(
+				shipping_package_code=package["code"], facility_code=facility_code
+			)
+			create_sales_invoice(invoice_data["invoice"], sales_order.name, update_stock=1)
+		except Exception as e:
+			create_unicommerce_log(status="Error", exception=e, rollback=True, request_data=invoice_data)
+			frappe.flags.request_id = None
+		else:
+			create_unicommerce_log(status="Success", request_data=invoice_data)
+			frappe.flags.request_id = None
 
 
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:

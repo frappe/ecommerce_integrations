@@ -50,16 +50,16 @@ def create_log(
 	else:
 		log = frappe.get_doc("Ecommerce Integration Log", frappe.flags.request_id)
 
-	if not isinstance(response_data, str):
+	if response_data and not isinstance(response_data, str):
 		response_data = json.dumps(response_data, sort_keys=True, indent=4)
 
-	if not isinstance(request_data, str):
+	if request_data and not isinstance(request_data, str):
 		request_data = json.dumps(request_data, sort_keys=True, indent=4)
 
 	log.message = message or _get_message(exception)
 	log.method = log.method or method
-	log.response_data = log.response_data or response_data
-	log.request_data = log.request_data or request_data
+	log.response_data = response_data or log.response_data
+	log.request_data = request_data or log.request_data
 	log.traceback = log.traceback or frappe.get_traceback()
 	log.status = status
 	log.save(ignore_permissions=True)
