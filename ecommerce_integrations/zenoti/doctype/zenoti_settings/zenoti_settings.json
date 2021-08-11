@@ -38,7 +38,8 @@
    "depends_on": "enable_zenoti",
    "fieldname": "last_sync",
    "fieldtype": "Datetime",
-   "label": "Last Sync"
+   "label": "Last Sync",
+   "read_only": 1
   },
   {
    "depends_on": "enable_zenoti",
@@ -134,7 +135,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-08-10 22:46:21.163539",
+ "modified": "2021-08-11 10:59:59.051880",
  "modified_by": "Administrator",
  "module": "Zenoti",
  "name": "Zenoti Settings",
