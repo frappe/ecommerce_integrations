@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from frappe.utils import flt
+from frappe.utils import flt, nowdate
 from frappe.utils.file_manager import save_file
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -11,6 +11,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	MODULE_NAME,
+	ORDER_CODE_FIELD,
 	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
@@ -69,6 +70,8 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 			is_private=1,
 		)
 
+	make_payment_entry(si, channel_config, si.posting_date)
+
 	return si
 
 
@@ -98,3 +101,18 @@ def _verify_total(si, si_data) -> None:
 	""" Leave a comment if grand total does not match unicommerce total"""
 	if abs(si.grand_total - flt(si_data["total"])) > 0.5:
 		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")
+
+
+def make_payment_entry(invoice, channel_config, invoice_posting_date=None):
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	payment_entry = get_payment_entry(
+		invoice.doctype, invoice.name, bank_account=channel_config.cash_or_bank_account
+	)
+
+	payment_entry.reference_no = invoice.get(ORDER_CODE_FIELD) or invoice.name
+	payment_entry.posting_date = invoice_posting_date or nowdate()
+	payment_entry.reference_date = invoice_posting_date or nowdate()
+
+	payment_entry.insert(ignore_permissions=True)
+	payment_entry.submit()

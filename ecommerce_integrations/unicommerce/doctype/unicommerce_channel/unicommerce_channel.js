@@ -56,5 +56,14 @@ frappe.ui.form.on("Unicommerce Channel", {
 				},
 			}));
 		});
+
+		frm.set_query("cash_or_bank_account", () => ({
+			filters: {
+				company: frm.doc.company,
+				is_group: 0,
+				root_type: "Asset",
+				account_type: ["in", ["Cash", "Bank"]],
+			},
+		}));
 	},
 });

@@ -18,6 +18,7 @@
   "cgst_account",
   "sgst_account",
   "ugst_account",
+  "cash_or_bank_account",
   "column_break_12",
   "fnf_account",
   "cod_account",
@@ -159,11 +160,19 @@
   {
    "fieldname": "column_break_5",
    "fieldtype": "Column Break"
+  },
+  {
+   "description": "Account used for Payment Entry.",
+   "fieldname": "cash_or_bank_account",
+   "fieldtype": "Link",
+   "label": "Cash or Bank Account",
+   "options": "Account",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-07-13 17:24:45.408041",
+ "modified": "2021-08-11 13:10:39.178595",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",

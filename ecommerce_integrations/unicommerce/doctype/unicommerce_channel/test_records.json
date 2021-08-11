@@ -14,6 +14,7 @@
 		"sgst_account": "Output Tax SGST - WP",
 		"ugst_account": "Output Tax SGST - WP",
 		"cost_center": "Main - WP",
+		"cash_or_bank_account": "Cash - WP",
 		"gift_wrap_account": "Miscellaneous Expenses - WP"
 	},
 	{
@@ -31,6 +32,7 @@
 		"sgst_account": "Output Tax SGST - WP",
 		"ugst_account": "Output Tax SGST - WP",
 		"cost_center": "Main - WP",
+		"cash_or_bank_account": "Cash - WP",
 		"gift_wrap_account": "Miscellaneous Expenses - WP"
 	}
 ]

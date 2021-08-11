@@ -20,11 +20,12 @@ class UnicommerceChannel(Document):
 			"cgst_account": "Account",
 			"sgst_account": "Account",
 			"ugst_account": "Account",
+			"cash_or_bank_account": "Account",
 			"cost_center": "Cost Center",
 		}
 
 		for field, doctype in company_fields.items():
-			if self.company != frappe.db.get_value(doctype, self.get(field), "company"):
+			if self.company != frappe.db.get_value(doctype, self.get(field), "company", cache=True):
 				frappe.throw(
 					_("{}: {} does not belong to company {}").format(doctype, self.get(field), self.company)
 				)
