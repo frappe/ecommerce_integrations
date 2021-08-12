@@ -2,15 +2,33 @@
 
 Ecommerce integrations for ERPNext
 
-### Currently supported intgrations:
 
-- Shopify
+### Installation
 
+- Frappe Cloud Users can install [from Marketplace](https://frappecloud.com/marketplace/apps/ecommerce-integrations).
+- Self Hosted users can install using Bench:
+
+```bash
+# Production installation
+$ bench get-app ecommerce_integrations --branch main
+
+# OR development install
+$ bench get-app ecommerce_integrations  --branch develop
+
+# install on site
+$ bench --site sitename install-app ecommerce_integrations
+```
+
+After installation follow user documentation for each integration to set it up.
 
 ### Contributing
 
 - Follow general [ERPNext contribution guideline](https://github.com/frappe/erpnext/wiki/Contribution-Guidelines)
-- Send PRs to `develop` branch.
+- Send PRs to `develop` branch only.
+
+### Currently supported intgrations:
+
+- Shopify - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/shopify_integration)
 
 
 ### Development setup
