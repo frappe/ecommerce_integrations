@@ -177,6 +177,9 @@ def add_payments(doc, payments):
 			doc.append("payments", payment)
 
 def make_address(details, ref_docname, doctype):
+	address_errors = validate_details_for_address(details, doctype)
+	if address_errors:
+		return
 	country_id = details['country_id']
 	state_id = details['state_id']
 	county_details = get_country(country_id)
@@ -186,6 +189,12 @@ def make_address(details, ref_docname, doctype):
 		return
 	
 	create_address(details, county_details, state_details, doctype, ref_docname)
+
+def validate_details_for_address(details, doctype):
+	err = False
+	if not details['address1'] or not details['city']:
+		err = True
+	return err
 
 def get_country(country_id):
 	list_of_countries = get_list_of_countries()
