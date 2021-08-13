@@ -229,6 +229,8 @@ def process_sales_line_items(invoice, center, cost_center):
 			}
 			if item_group == "Gift or Pre-paid Cards":
 				item_dict['income_account'] = frappe.db.get_single_value("Zenoti Settings", "default_liability_account")
+				item_dict['item_code'] = "Card No. " + item_dict['item_code']
+				item_dict['item_name'] = "Card No. " + item_dict['item_name']
 			
 			total_qty += qty
 			payments['Cash'] += line_item['cash']
@@ -358,5 +360,4 @@ def make_invoice(invoice_details):
 	add_taxes(doc)
 	doc.set('payments', [])
 	add_payments(doc, invoice_details['payments'])
-	print("doc.is_pos", doc.is_pos)
 	doc.insert()
