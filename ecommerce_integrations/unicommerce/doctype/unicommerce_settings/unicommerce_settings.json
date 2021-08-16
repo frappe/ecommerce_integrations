@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "beta": 1,
  "creation": "2021-06-08 12:43:12.667411",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -230,7 +231,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-08-10 10:27:44.955529",
+ "modified": "2021-08-16 14:45:35.320200",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
