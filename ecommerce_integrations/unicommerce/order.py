@@ -17,6 +17,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 	TAX_FIELDS_MAPPING,
+	TAX_RATE_FIELDS_MAPPING,
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
@@ -229,9 +230,12 @@ def get_taxes(line_items, channel_config) -> List:
 		)
 		for tax_head, unicommerce_field in TAX_FIELDS_MAPPING.items():
 			tax_amount = flt(item.get(unicommerce_field)) or 0.0
+			tax_rate_field = TAX_RATE_FIELDS_MAPPING.get(tax_head, "")
+			tax_rate = item.get(tax_rate_field, 0.0)
 
 			tax_map[tax_head] += tax_amount
-			item_wise_tax_map[tax_head][item_code] = [0.0, tax_amount]  # TODO: get rate
+
+			item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
 
 	taxes = []
 

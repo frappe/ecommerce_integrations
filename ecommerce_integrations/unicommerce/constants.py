@@ -19,7 +19,7 @@ SHIPPING_PACKAGE_CODE_FIELD = "unicommerce_shipping_package_code"
 ADDRESS_JSON_FIELD = "unicommerce_raw_billing_address"
 
 
-# Tax -> Unicommerce field mapping
+# Tax -> Unicommerce tax amount field mapping
 TAX_FIELDS_MAPPING = {
 	"igst": "integratedGst",
 	"cgst": "centralGst",
@@ -29,6 +29,14 @@ TAX_FIELDS_MAPPING = {
 	"gift_wrap_charges": "giftWrapCharges",
 	"shipping_charges": "shippingCharges",
 	"shipping_method_charges": "shippingMethodCharges",
+}
+
+# Tax -> Unicommerce tax "rate" field mapping
+TAX_RATE_FIELDS_MAPPING = {
+	"igst": "integratedGstPercentage",
+	"cgst": "centralGstPercentage",
+	"sgst": "stateGstPercentage",
+	"ugst": "unionTerritoryGstPercentage",
 }
 
 # field name for accounts in Unicommerce channels
