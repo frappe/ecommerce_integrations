@@ -1,0 +1,42 @@
+{
+	"successful": true,
+	"message": null,
+	"errors": null,
+	"warnings": null,
+	"inventoryAdjustmentResponses": [
+		{
+			"facilityInventoryAdjustment": {
+				"itemSKU": "A",
+				"quantity": 1,
+				"shelfCode": "DEFAULT",
+				"inventoryType": "GOOD_INVENTORY",
+				"transferToShelfCode": null,
+				"sla": null,
+				"batchCode": null,
+				"adjustmentType": "REPLACE",
+				"remarks": null,
+				"forceAllocate": true,
+				"facilityCode": "42"
+			},
+			"successful": true,
+			"errors": []
+		},
+		{
+			"facilityInventoryAdjustment": {
+				"itemSKU": "B",
+				"quantity": 2,
+				"shelfCode": "DEFAULT",
+				"inventoryType": "GOOD_INVENTORY",
+				"transferToShelfCode": null,
+				"sla": null,
+				"batchCode": null,
+				"adjustmentType": "REPLACE",
+				"remarks": null,
+				"forceAllocate": true,
+				"facilityCode": "42"
+			},
+			"successful": true,
+			"errors": []
+		}
+	]
+}

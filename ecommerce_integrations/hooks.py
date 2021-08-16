@@ -31,7 +31,11 @@ app_license = "GNU GPL v3.0"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {"Shopify Settings": "public/js/shopify_old_settings.js"}
+doctype_js = {
+	"Shopify Settings": "public/js/shopify/old_settings.js",
+	"Sales Order": "public/js/unicommerce/sales_order.js",
+	"Item": "public/js/unicommerce/item.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -93,7 +97,10 @@ doc_events = {
 	"Item": {
 		"after_insert": "ecommerce_integrations.shopify.product.upload_erpnext_item",
 		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item",
-		"validate": "ecommerce_integrations.utils.taxation.validate_tax_template",
+		"validate": [
+			"ecommerce_integrations.utils.taxation.validate_tax_template",
+			"ecommerce_integrations.unicommerce.product.validate_item",
+		],
 	}
 }
 
@@ -101,11 +108,19 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
+	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",],
 	"daily": [],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
+	"hourly_long": ["ecommerce_integrations.unicommerce.product.upload_new_items"],
 	"weekly": [],
 	"monthly": [],
+	"cron": {
+		# Every five minutes
+		"*/5 * * * *": [
+			"ecommerce_integrations.unicommerce.order.sync_new_orders",
+			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
+		]
+	},
 }
 
 
@@ -115,7 +130,7 @@ extend_bootinfo = "ecommerce_integrations.boot.boot_session"
 # Testing
 # -------
 
-before_tests = "erpnext.setup.utils.before_tests"
+before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 
 # Overriding Methods
 # ------------------------------

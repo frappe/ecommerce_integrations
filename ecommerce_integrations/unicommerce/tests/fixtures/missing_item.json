@@ -1,0 +1,15 @@
+{
+	"successful": false,
+	"message": null,
+	"errors": [
+		{
+			"code": 10001,
+			"fieldName": null,
+			"description": "Invalid item type:MISSING",
+			"message": "INVALID_ITEM_TYPE",
+			"errorParams": null
+		}
+	],
+	"warnings": null,
+	"itemTypeDTO": null
+}
