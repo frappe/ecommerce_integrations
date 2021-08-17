@@ -32,7 +32,7 @@ def process_sales_invoices(list_of_centers, error_logs):
 	for center in list_of_centers:
 		list_of_invoice_for_center = get_list_of_invoices_for_center(center)
 		for invoice in list_of_invoice_for_center:
-			invoice_details = get_invoice_details(invoice, center, error_logs)
+			invoice_details = get_invoice_details(invoice, error_logs)
 			if invoice_details:
 				make_invoice(invoice_details)
 
@@ -65,10 +65,10 @@ def get_start_end_date():
 
 	return start_date, end_date
 
-def get_invoice_details(invoice, center, error_logs):
+def get_invoice_details(invoice, error_logs):
 	invoice_details = None
 	if not frappe.db.exists("Sales Invoice", {"zenoti_invoice_no": invoice[0]['invoice_no']}):
-		data = validate_details(invoice, center, error_logs)
+		data = validate_details(invoice, error_logs)
 		if data:
 			date_time = invoice[0]['sold_on'].split("T")
 			invoice_details = {
@@ -82,11 +82,12 @@ def get_invoice_details(invoice, center, error_logs):
 				'item_data' : data['item_data'],
 				'total_qty': data['total_qty'],
 				'is_return': data['is_return'],
-				'payments': data['payments']
+				'payments': data['payments'],
+				'rounding_adjustment': data['rounding_adjustment']
 			}
 	return invoice_details
 
-def validate_details(invoice, center, error_logs):
+def validate_details(invoice, error_logs):
 	data = {}
 	err_msg = check_for_customer(invoice[0]['guest']['guest_id'], invoice[0]['guest']['guest_name'])
 	if err_msg:
@@ -104,7 +105,7 @@ def validate_details(invoice, center, error_logs):
 	if emp_err_msg:
 		make_error_log_msg(invoice, emp_err_msg, error_logs)
 
-	item_data, total_qty, payments, line_item_err_msg_list = process_sales_line_items(invoice, center, cost_center)
+	item_data, total_qty, rounding_adjustment, payments, line_item_err_msg_list = process_sales_line_items(invoice, cost_center)
 	if len(line_item_err_msg_list):
 		line_item_err_msg = "\n".join(err for err in line_item_err_msg_list)
 		make_error_log_msg(invoice, line_item_err_msg, error_logs)
@@ -116,6 +117,7 @@ def validate_details(invoice, center, error_logs):
 		data['total_qty'] = total_qty
 		data['is_return'] = 1 if flt(total_qty) < 0 else 0
 		data['payments'] = payments
+		data['rounding_adjustment'] = rounding_adjustment
 
 	return data
 
@@ -183,7 +185,7 @@ def make_error_log_msg(invoice, err_msg, error_logs):
 	msg = _("For {0} {1}. ").format(frappe.bold(invoice_no), frappe.bold(receipt_no)) + "\n" + err_msg
 	error_logs.append(msg)
 	
-def process_sales_line_items(invoice, center, cost_center):
+def process_sales_line_items(invoice, cost_center):
 	item_list = []
 	err_msg_list = []
 	total_qty = 0
@@ -196,8 +198,9 @@ def process_sales_line_items(invoice, center, cost_center):
 	}
 	tip = 0
 	add_to_list = False
+	rounding_adjustment = 0
 	for line_item in invoice:
-		item_err_msg_list, item_group = check_for_items(line_item, center)
+		item_err_msg_list, item_group = check_for_items(line_item)
 		if len(item_err_msg_list):
 			item_err_msg = "\n".join(err for err in item_err_msg_list)
 			err_msg_list.append(item_err_msg)
@@ -211,7 +214,7 @@ def process_sales_line_items(invoice, center, cost_center):
 			continue
 
 		if len(err_msg_list) == 0:
-			rate = abs(flt(line_item['sale_price']) - flt(line_item['discount']))
+			rate = abs(flt(line_item['sale_price']) - flt(line_item['discount'])) / abs(flt(line_item['quantity']))
 			discount_amount = line_item['discount']
 			if line_item['package']:
 				rate = 0
@@ -240,6 +243,8 @@ def process_sales_line_items(invoice, center, cost_center):
 			payments['Points'] += line_item['points']
 			payments['Gift and Prepaid Card'] += flt(line_item['prepaid_card']) + flt(line_item['prepaid_card_redemption'])
 
+			rounding_adjustment += line_item['rounding_adjustment']
+
 			for entry in ['cash', 'card', 'custom', 'points', 'prepaid_card', 'prepaid_card_redemption']:
 				if line_item[entry] != 0:
 					add_to_list = True
@@ -264,7 +269,7 @@ def process_sales_line_items(invoice, center, cost_center):
 				payments[key] += tip
 				break
 
-	return item_list, total_qty, payments, err_msg_list
+	return item_list, total_qty, rounding_adjustment, payments, err_msg_list
 
 def check_for_customer(guest_id, guest_name):
 	err_msg = ""
@@ -321,14 +326,18 @@ def get_guest_details(guest_id):
 	guest_details = make_api_call(url)
 	return guest_details
 
-def check_for_items(item, center):
+def check_for_items(item):
 	err_list = []
 	group = cint(item['item']['type'])
 	if not frappe.db.exists("Item", {"item_code": item['item']['code'], "item_group": item_type[group]}):	
 		if group == 6:
 			err_msg = make_card_item(item)
 		else:
-			err_msg = make_item(item['item']['code'], center, item_type[group])
+			item_to_search = {
+				"code": item['item']['code'],
+				"name": item['item']['name']
+			}
+			err_msg = make_item(item_to_search, item_type[group])
 		if err_msg:
 			err_list.append(err_msg)
 	return err_list, item_type[group]
@@ -357,6 +366,7 @@ def make_invoice(invoice_details):
 	doc.selling_price_list = frappe.db.get_single_value("Zenoti Settings", "default_selling_price_list")
 	doc.set_warehouse = invoice_details['set_warehouse']
 	doc.update_stock = 1
+	doc.rounding_adjustment = invoice_details['rounding_adjustment']
 	doc.set('items', [])
 	add_items(doc, invoice_details['item_data'])
 	add_taxes(doc)
