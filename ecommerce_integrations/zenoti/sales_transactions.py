@@ -191,6 +191,7 @@ def process_sales_line_items(invoice, center, cost_center):
 		'Cash': 0,
 		'Card': 0,
 		'Custom': 0,
+		'Points': 0,
 		'Gift and Prepaid Card': 0
 	}
 	tip = 0
@@ -236,9 +237,10 @@ def process_sales_line_items(invoice, center, cost_center):
 			payments['Cash'] += line_item['cash']
 			payments['Card'] += line_item['card']
 			payments['Custom'] += line_item['custom']
+			payments['Points'] += line_item['points']
 			payments['Gift and Prepaid Card'] += flt(line_item['prepaid_card']) + flt(line_item['prepaid_card_redemption'])
 
-			for entry in ['cash', 'card', 'custom', 'prepaid_card', 'prepaid_card_redemption']:
+			for entry in ['cash', 'card', 'custom', 'points', 'prepaid_card', 'prepaid_card_redemption']:
 				if line_item[entry] != 0:
 					add_to_list = True
 					break
