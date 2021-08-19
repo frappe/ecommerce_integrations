@@ -6,6 +6,7 @@ from typing import Dict, List
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.utils import get_datetime
 from pyactiveresource.connection import UnauthorizedAccess
 from shopify.resources import Location
 
@@ -39,6 +40,7 @@ class ShopifySetting(SettingController):
 
 		self._handle_webhooks()
 		self._validate_warehouse_links()
+		self._initalize_default_values()
 
 		if self.is_enabled():
 			setup_custom_fields()
@@ -72,6 +74,10 @@ class ShopifySetting(SettingController):
 		for wh_map in self.shopify_warehouse_mapping:
 			if not wh_map.erpnext_warehouse:
 				frappe.throw(_("ERPNext warehouse required in warehouse map table."))
+
+	def _initalize_default_values(self):
+		if not self.last_inventory_sync:
+			self.last_inventory_sync = get_datetime("1970-01-01")
 
 	@frappe.whitelist()
 	@connection.temp_shopify_session
