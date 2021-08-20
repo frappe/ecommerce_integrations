@@ -35,7 +35,10 @@ def migrate_from_old_connector(payload=None, request_id=None):
 
 
 def ensure_old_connector_is_disabled():
-	old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
+	try:
+		old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
+	except ImportError:
+		return
 
 	if old_setting.enable_shopify:
 		link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)

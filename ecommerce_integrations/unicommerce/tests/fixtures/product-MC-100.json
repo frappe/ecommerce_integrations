@@ -1,0 +1,130 @@
+{
+	"successful": true,
+	"message": null,
+	"errors": [],
+	"warnings": null,
+	"itemTypeDTO": {
+		"tat": null,
+		"id": 120494,
+		"skuCode": "MC-100",
+		"categoryCode": "NTX",
+		"name": "Microfiber Drying Cloth",
+		"description": null,
+		"scanIdentifier": "MC-100",
+		"length": 1,
+		"width": 1,
+		"height": 1,
+		"weight": 1,
+		"color": "White",
+		"size": null,
+		"brand": "Microtex",
+		"ean": "",
+		"upc": "",
+		"isbn": "",
+		"maxRetailPrice": 659.0,
+		"basePrice": 500.0,
+		"batchGroupCode": null,
+		"costPrice": 500.0,
+		"taxTypeCode": "DEFAULT",
+		"gstTaxTypeCode": "none",
+		"hsnCode": "",
+		"imageUrl": null,
+		"productPageUrl": null,
+		"type": "SIMPLE",
+		"determineExpiryFrom": null,
+		"taxCalculationType": null,
+		"requiresCustomization": false,
+		"itemDetailFieldsText": null,
+		"enabled": true,
+		"tags": [],
+		"shelfLife": null,
+		"expirable": false,
+		"customFieldValues": [
+			{
+				"fieldName": "Woollen",
+				"fieldValue": "",
+				"valueType": "text",
+				"displayName": "Wollen",
+				"required": false,
+				"possibleValues": [""]
+			},
+			{
+				"fieldName": "Type",
+				"fieldValue": "",
+				"valueType": "text",
+				"displayName": "Type",
+				"required": false,
+				"possibleValues": [""]
+			},
+			{
+				"fieldName": "SerialNumber",
+				"fieldValue": "6",
+				"valueType": "text",
+				"displayName": "SerialNumber",
+				"required": true,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "BOMComponentSKUs",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "BOM-ComponentSKUs",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "BWB",
+				"fieldValue": null,
+				"valueType": "select",
+				"displayName": "BWB",
+				"required": false,
+				"possibleValues": ["True", "False"]
+			},
+			{
+				"fieldName": "TypeofSKU",
+				"fieldValue": null,
+				"valueType": "select",
+				"displayName": "TypeofSKU",
+				"required": false,
+				"possibleValues": ["inbound", "outbound", "inbou"]
+			},
+			{
+				"fieldName": "Modelnumber",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "Model Number",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "Model_Number",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "Model Number",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "ActivityCode",
+				"fieldValue": null,
+				"valueType": "text",
+				"displayName": "Activity Code",
+				"required": false,
+				"possibleValues": null
+			},
+			{
+				"fieldName": "Demo",
+				"fieldValue": "DEFAULT",
+				"valueType": "text",
+				"displayName": "Article Code",
+				"required": true,
+				"possibleValues": null
+			}
+		],
+		"componentItemTypes": [],
+		"grnExpiryTolerance": null,
+		"dispatchExpiryTolerance": null,
+		"returnExpiryTolerance": null,
+		"minOrderSize": 1
+	}
+}

@@ -6,6 +6,7 @@ from typing import Dict, List
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+from frappe.utils import get_datetime
 from pyactiveresource.connection import UnauthorizedAccess
 from shopify.resources import Location
 
@@ -39,6 +40,7 @@ class ShopifySetting(SettingController):
 
 		self._handle_webhooks()
 		self._validate_warehouse_links()
+		self._initalize_default_values()
 
 		if self.is_enabled():
 			setup_custom_fields()
@@ -73,6 +75,10 @@ class ShopifySetting(SettingController):
 			if not wh_map.erpnext_warehouse:
 				frappe.throw(_("ERPNext warehouse required in warehouse map table."))
 
+	def _initalize_default_values(self):
+		if not self.last_inventory_sync:
+			self.last_inventory_sync = get_datetime("1970-01-01")
+
 	@frappe.whitelist()
 	@connection.temp_shopify_session
 	def update_location_table(self):
@@ -102,18 +108,6 @@ class ShopifySetting(SettingController):
 			wh_map.shopify_location_id: wh_map.erpnext_warehouse
 			for wh_map in self.shopify_warehouse_mapping
 		}
-
-
-@frappe.whitelist()
-def get_series():
-	return {
-		"sales_order_series": frappe.get_meta("Sales Order").get_options("naming_series")
-		or "SO-Shopify-",
-		"sales_invoice_series": frappe.get_meta("Sales Invoice").get_options("naming_series")
-		or "SI-Shopify-",
-		"delivery_note_series": frappe.get_meta("Delivery Note").get_options("naming_series")
-		or "DN-Shopify-",
-	}
 
 
 def setup_custom_fields():

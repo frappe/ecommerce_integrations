@@ -1,0 +1,254 @@
+{
+ "actions": [],
+ "beta": 1,
+ "creation": "2021-06-08 12:43:12.667411",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_unicommerce",
+  "unicommerce_site",
+  "column_break_2",
+  "username",
+  "password",
+  "client_id",
+  "authentication_details_section",
+  "access_token",
+  "refresh_token",
+  "column_break_8",
+  "expires_on",
+  "token_type",
+  "item_sync_settings_section",
+  "upload_item_to_unicommerce",
+  "default_item_group",
+  "sales_order_syncing_section",
+  "only_sync_completed_orders",
+  "order_sync_frequency",
+  "default_customer_group",
+  "column_break_19",
+  "sales_order_series",
+  "sales_invoice_series",
+  "delivery_note_series",
+  "inventory_sync_settings_section",
+  "enable_inventory_sync",
+  "inventory_sync_frequency",
+  "warehouse_mapping",
+  "sync_status_section",
+  "last_order_sync",
+  "column_break_20",
+  "last_inventory_sync"
+ ],
+ "fields": [
+  {
+   "depends_on": "enable_unicommerce",
+   "fieldname": "username",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Username",
+   "mandatory_depends_on": "enable_unicommerce"
+  },
+  {
+   "depends_on": "enable_unicommerce",
+   "fieldname": "password",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Password",
+   "mandatory_depends_on": "enable_unicommerce"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "refresh_token",
+   "fieldtype": "Password",
+   "label": "Refresh Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expires_on",
+   "fieldtype": "Datetime",
+   "label": "Expires On",
+   "read_only": 1
+  },
+  {
+   "depends_on": "enable_unicommerce",
+   "description": "E.g. frappe.unicommerce.com",
+   "fieldname": "unicommerce_site",
+   "fieldtype": "Data",
+   "label": "Unicommerce Site",
+   "mandatory_depends_on": "enable_unicommerce"
+  },
+  {
+   "fieldname": "token_type",
+   "fieldtype": "Data",
+   "label": "Token Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "authentication_details_section",
+   "fieldtype": "Section Break",
+   "label": "Authentication Details"
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_unicommerce",
+   "fieldtype": "Check",
+   "label": "Enable Unicommerce"
+  },
+  {
+   "fieldname": "item_sync_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Item Sync Settings"
+  },
+  {
+   "fieldname": "default_item_group",
+   "fieldtype": "Link",
+   "label": "Default Item Group",
+   "options": "Item Group"
+  },
+  {
+   "fieldname": "sales_order_syncing_section",
+   "fieldtype": "Section Break",
+   "label": "Sales Order Sync Settings"
+  },
+  {
+   "default": "30",
+   "fieldname": "order_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Order Sync Frequency (In minutes)",
+   "options": "10\n15\n30\n60"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "sync_status_section",
+   "fieldtype": "Section Break",
+   "label": "Sync Status"
+  },
+  {
+   "fieldname": "last_order_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Order Sync",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_inventory_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Inventory Sync",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inventory_sync_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Inventory Sync Settings"
+  },
+  {
+   "default": "10",
+   "fieldname": "inventory_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Inventory Sync Frequency (In minutes)",
+   "options": "5\n10\n15\n30\n60"
+  },
+  {
+   "fieldname": "column_break_20",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "warehouse_mapping",
+   "fieldtype": "Table",
+   "label": "Warehouse Mapping",
+   "options": "Unicommerce Warehouses"
+  },
+  {
+   "default": "0",
+   "description": "If enabled, any new item with \"sync with Unicommerce\" checked will be uploaded to Unicommerce on an hourly basis.",
+   "fieldname": "upload_item_to_unicommerce",
+   "fieldtype": "Check",
+   "label": "Upload new items to Unicommerce"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_inventory_sync",
+   "fieldtype": "Check",
+   "label": "Enable Inventory Sync"
+  },
+  {
+   "fieldname": "default_customer_group",
+   "fieldtype": "Link",
+   "label": "Default Customer Group",
+   "options": "Customer Group",
+   "reqd": 1
+  },
+  {
+   "default": "my-trusted-client",
+   "depends_on": "enable_unicommerce",
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "mandatory_depends_on": "enable_unicommerce"
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Default Sales Order Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Default Delivery Note Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Default Sales Invoice Series",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "The integration will only sync orders once they are fully processed on Unicommerce. Use this if you only want one-way sync from Unicommerce to ERPNext.",
+   "fieldname": "only_sync_completed_orders",
+   "fieldtype": "Check",
+   "label": "Only Sync Completed Orders"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2021-08-16 14:45:35.320200",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
