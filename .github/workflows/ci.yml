@@ -26,6 +26,7 @@ jobs:
 
   tests:
     runs-on: ubuntu-18.04
+    timeout-minutes: 20
 
     strategy:
       fail-fast: false

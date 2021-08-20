@@ -13,7 +13,8 @@
   "has_variants",
   "variant_id",
   "variant_of",
-  "inventory_synced_on"
+  "inventory_synced_on",
+  "item_synced_on"
  ],
  "fields": [
   {
@@ -84,12 +85,18 @@
   {
    "fieldname": "column_break_5",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item_synced_on",
+   "fieldtype": "Datetime",
+   "label": "Item Data Synced On",
+   "read_only": 1
   }
  ],
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-05-28 16:23:08.839942",
+ "modified": "2021-06-17 15:04:03.927948",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
