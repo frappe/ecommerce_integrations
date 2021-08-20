@@ -10,6 +10,7 @@ from erpnext import get_default_company
 
 from ecommerce_integrations.zenoti.utils import get_list_of_centers, api_url
 from ecommerce_integrations.zenoti.purchase_transactions import process_purchase_orders
+from ecommerce_integrations.zenoti.transfer_transactions import process_transfer_orders
 from ecommerce_integrations.zenoti.sales_transactions import process_sales_invoices
 from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_reconciliation
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
@@ -56,6 +57,7 @@ class ZenotiSettings(Document):
 			list_of_centers = get_list_of_centers()
 			if len(list_of_centers):
 				process_purchase_orders(list_of_centers, error_logs)
+				process_transfer_orders(list_of_centers, error_logs)
 				process_sales_invoices(list_of_centers, error_logs)
 				process_stock_reconciliation(list_of_centers, error_logs)
 
@@ -83,6 +85,7 @@ def sync_stocks():
 		list_of_centers = get_list_of_centers()
 		if len(list_of_centers):
 			process_purchase_orders(list_of_centers, error_logs)
+			process_transfer_orders(list_of_centers, error_logs)
 			process_stock_reconciliation(list_of_centers, error_logs)
 			if len(error_logs):
 					make_error_log(error_logs)
@@ -286,6 +289,25 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+		],
+		"Stock Entry": [
+			dict(
+				fieldname="zenoti_order_id",
+				label="Zenoti Order Id",
+				fieldtype="Data",
+				insert_after="naming_series",
+				read_only=1,
+				print_hide=1,
+				hidden=1
+			),
+			dict(
+				fieldname="zenoti_order_no",
+				label="Zenoti Order No",
+				fieldtype="Data",
+				insert_after="zenoti_order_id",
+				read_only=1,
+				print_hide=1,
+			)
 		],
 	}
 
