@@ -7,7 +7,7 @@ from ecommerce_integrations.zenoti.utils import check_for_item, add_items, api_u
 def process_transfer_orders(list_of_centers, error_logs):
 	for center in list_of_centers:
 		list_of_transfer_orders_for_center = get_list_of_transfer_orders_for_center(center)
-		if len(list_of_transfer_orders_for_center.get('orders')):
+		if list_of_transfer_orders_for_center and len(list_of_transfer_orders_for_center.get('orders')):
 			for order in list_of_transfer_orders_for_center.get('orders'):
 				process_transfer_order(order, error_logs)
         
