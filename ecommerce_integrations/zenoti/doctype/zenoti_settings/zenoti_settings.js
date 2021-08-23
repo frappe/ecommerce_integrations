@@ -12,6 +12,22 @@ frappe.ui.form.on('Zenoti Settings', {
 			}
 		});
 
+		frm.set_query("default_buying_price_list", function() {
+			return {
+				filters: {
+					buying: 1,
+				}
+			}
+		});
+
+		frm.set_query("default_selling_price_list", function() {
+			return {
+				filters: {
+					selling: 1,
+				}
+			}
+		});
+
 		frm.set_query("erpnext_warehouse", "map_zenoti_centre_to_erpnext_cost_center_and_warehouse", function() {
 			return {
 				filters: {
