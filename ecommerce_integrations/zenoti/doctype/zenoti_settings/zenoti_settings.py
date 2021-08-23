@@ -25,7 +25,8 @@ class ZenotiSettings(Document):
 		headers['Authorization'] = "apikey " + self.api_key
 		response = requests.request("GET",url=url, headers=headers)
 		if response.status_code != 200:
-			frappe.throw("Please verify the API Key")	
+			frappe.throw("Please verify the API Key")
+		check_perpetual_inventory_disabled()
 		setup_custom_fields()
 		make_item_group()
 		make_item_tips()
@@ -56,18 +57,24 @@ class ZenotiSettings(Document):
 			error_logs = []
 			list_of_centers = get_list_of_centers()
 			if len(list_of_centers):
+				process_stock_reconciliation(list_of_centers, error_logs)
 				process_purchase_orders(list_of_centers, error_logs)
 				process_transfer_orders(list_of_centers, error_logs)
 				process_sales_invoices(list_of_centers, error_logs)
-				process_stock_reconciliation(list_of_centers, error_logs)
 
 				self.last_sync = now()
 
 			if len(error_logs):
 				make_error_log(error_logs)
 
+def check_perpetual_inventory_disabled():
+	company = get_default_company()
+	if frappe.db.get_value("Company", company,  "enable_perpetual_inventory"):
+		frappe.db.set_value("Company", company,  "enable_perpetual_inventory", 0)
+
 def sync_invoices():
 	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
+		check_perpetual_inventory_disabled()
 		last_sync = frappe.db.get_single_value("Zenoti Settings", "last_sync")
 		interval = frappe.db.get_single_value("Zenoti Settings", "sync_interval")
 		if last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval))):
@@ -81,12 +88,13 @@ def sync_invoices():
 
 def sync_stocks():
 	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
+		check_perpetual_inventory_disabled()
 		error_logs = []
 		list_of_centers = get_list_of_centers()
 		if len(list_of_centers):
+			process_stock_reconciliation(list_of_centers, error_logs)
 			process_purchase_orders(list_of_centers, error_logs)
 			process_transfer_orders(list_of_centers, error_logs)
-			process_stock_reconciliation(list_of_centers, error_logs)
 			if len(error_logs):
 					make_error_log(error_logs)
 
