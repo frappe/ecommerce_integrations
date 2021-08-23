@@ -98,4 +98,4 @@ def create_transfer_record(order):
 	doc.to_warehouse = order['to_warehouse']
 	doc.set('items', [])
 	add_items(doc, order['item_data'])
-	doc.submit()
+	doc.insert()
