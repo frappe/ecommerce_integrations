@@ -105,8 +105,6 @@ def create_sales_order(shopify_order, setting, company=None):
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": get_order_taxes(shopify_order, setting),
-				"apply_discount_on": "Net Total",
-				"discount_amount": get_discounted_amount(shopify_order),
 				"tax_category": get_dummy_tax_category(),
 			}
 		)
@@ -161,14 +159,20 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 
 	price = flt(line_item.get("price"))
+	qty = cint(line_item.get("quantity"))
+
+	# remove line item level discounts
+	discount_allocations = line_item.get("discount_allocations") or []
+	total_discount = sum(flt(discount.get("amount")) for discount in discount_allocations)
+
 	if not taxes_inclusive:
-		return price
+		return price - (total_discount / qty)
 
 	total_taxes = 0.0
 	for tax in line_item.get("tax_lines"):
 		total_taxes += flt(tax.get("price"))
 
-	return price - total_taxes
+	return price - (total_taxes + total_discount) / qty
 
 
 def get_order_taxes(shopify_order, setting):
@@ -223,24 +227,19 @@ def get_tax_account_description(tax):
 	return tax_description
 
 
-def get_discounted_amount(order):
-	discounted_amount = 0.0
-	for discount in order.get("discount_codes"):
-		discounted_amount += flt(discount.get("amount"))
-	return discounted_amount
-
-
 def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
 	for shipping_charge in shipping_lines:
 		if shipping_charge.get("price"):
+			shipping_discounts = shipping_charge.get("discount_allocations") or []
+			total_discount = sum(flt(discount.get("amount")) for discount in shipping_discounts)
 			taxes.append(
 				{
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(shipping_charge),
 					"description": get_tax_account_description(shipping_charge) or shipping_charge["title"],
-					"tax_amount": shipping_charge["price"],
+					"tax_amount": flt(shipping_charge["price"]) - flt(total_discount),
 					"cost_center": setting.cost_center,
 				}
 			)
