@@ -277,7 +277,7 @@ def get_center_code(center_id):
 	err = ""
 	url = api_url + "Centers/" + center_id
 	center_details = make_api_call(url)
-	if len(center_details.get("center")):
+	if center_details and len(center_details.get("center")):
 		center = center_details['center']['code']
 		if not center:
 			err = _("Could not find Center Id {} in Zenoti.").format(center_id)
