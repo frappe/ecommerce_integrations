@@ -218,9 +218,10 @@ def validate_details_for_address(details, doctype):
 def get_country(country_id):
 	list_of_countries = get_list_of_countries()
 	country = None
-	for countries in list_of_countries['countries']:
-		if countries['id'] == country_id:
-			country = countries
+	if list_of_countries:
+		for countries in list_of_countries['countries']:
+			if countries['id'] == country_id:
+				country = countries
 	return country
 
 def get_list_of_countries():
@@ -231,9 +232,10 @@ def get_list_of_countries():
 def get_state(country_id, state_id):
 	list_of_states_of_the_country = get_list_of_states_of_a_country(country_id)
 	state = None
-	for states in list_of_states_of_the_country['states']:
-		if states['id'] == state_id:
-			state == states
+	if list_of_states_of_the_country:
+		for states in list_of_states_of_the_country['states']:
+			if states['id'] == state_id:
+				state == states
 	return state
 
 def get_list_of_states_of_a_country(country_id):

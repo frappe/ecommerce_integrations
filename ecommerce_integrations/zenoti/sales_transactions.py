@@ -157,10 +157,11 @@ def make_employee(emp_name, emp_code, list_of_centers):
 def get_emp(url, emp_name, emp_code, key):
 	employee = None
 	all_emps = make_api_call(url)
-	for emp in all_emps[key]:
-		if emp['personal_info']['name'] == emp_name and emp['code'] == emp_code:
-			employee = emp
-			break
+	if all_emps:
+		for emp in all_emps[key]:
+			if emp['personal_info']['name'] == emp_name and emp['code'] == emp_code:
+				employee = emp
+				break
 	return employee
 
 def create_emp(emp):

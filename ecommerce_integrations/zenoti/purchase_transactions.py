@@ -7,7 +7,7 @@ from ecommerce_integrations.zenoti.utils import check_for_item, add_items, add_t
 def process_purchase_orders(list_of_centers, error_logs):
 	for center in list_of_centers:
 		list_of_purchase_orders_for_center = get_list_of_purchase_orders_for_center(center)
-		if len(list_of_purchase_orders_for_center.get('orders')):
+		if list_of_purchase_orders_for_center and len(list_of_purchase_orders_for_center.get('orders')):
 			for order in list_of_purchase_orders_for_center.get('orders'):
 				process_purchase_order(order, center, error_logs)
 
@@ -64,7 +64,7 @@ def create_supplier(supplier_name):
 
 def get_supplier_details(supplier_name):
 	list_of_all_supplier = get_list_of_all_suppliers()
-	if len(list_of_all_supplier['vendors']):
+	if list_of_all_supplier and len(list_of_all_supplier['vendors']):
 		for supplier in list_of_all_supplier['vendors']:
 			if supplier_name == supplier['name']:
 				return supplier
