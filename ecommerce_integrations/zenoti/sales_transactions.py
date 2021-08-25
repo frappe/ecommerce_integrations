@@ -101,16 +101,12 @@ def validate_details(invoice, error_logs):
 	if warehouse_err_msg:
 		make_error_log_msg(invoice, warehouse_err_msg, error_logs)
 
-	emp_err_msg = check_for_employee(invoice[0]['employee']['name'], invoice[0]['employee']['code'])
-	if emp_err_msg:
-		make_error_log_msg(invoice, emp_err_msg, error_logs)
-
 	item_data, total_qty, rounding_adjustment, payments, line_item_err_msg_list = process_sales_line_items(invoice, cost_center)
 	if len(line_item_err_msg_list):
 		line_item_err_msg = "\n".join(err for err in line_item_err_msg_list)
 		make_error_log_msg(invoice, line_item_err_msg, error_logs)
 
-	if not err_msg and not cost_center_err_msg and not line_item_err_msg_list and not emp_err_msg:
+	if not err_msg and not cost_center_err_msg and not line_item_err_msg_list:
 		data['cost_center'] = cost_center
 		data['warehouse'] = warehouse
 		data['item_data'] = item_data
@@ -122,7 +118,6 @@ def validate_details(invoice, error_logs):
 	return data
 
 def check_for_employee(emp_name, emp_code):
-	list_of_centers = get_list_of_centers()
 	err_msg = ""
 	filters = {}
 	if emp_name:
@@ -133,10 +128,11 @@ def check_for_employee(emp_name, emp_code):
 		err_msg = _("Details for Employee missing")
 		return err_msg
 	if not frappe.db.exists("Employee", filters):
-		err_msg = make_employee(emp_name, emp_code, list_of_centers)
+		err_msg = make_employee(emp_name, emp_code)
 	return err_msg
 
-def make_employee(emp_name, emp_code, list_of_centers):
+def make_employee(emp_name, emp_code):
+	list_of_centers = get_list_of_centers()
 	err_msg = ""
 	employee = None
 	for center in list_of_centers:
@@ -205,6 +201,10 @@ def process_sales_line_items(invoice, cost_center):
 		if len(item_err_msg_list):
 			item_err_msg = "\n".join(err for err in item_err_msg_list)
 			err_msg_list.append(item_err_msg)
+		emp_err_msg = check_for_employee(line_item['employee']['name'], line_item['employee']['code'])
+		if emp_err_msg:
+			err_msg_list.append(emp_err_msg)
+			# make_error_log_msg(invoice, emp_err_msg, error_logs)
 		sold_by = frappe.db.get_value("Employee", {"employee_name": line_item['employee']['name']})
 		if not sold_by:
 			msg = _("Employee {} not found in ERPNext.").format(frappe.bold(line_item['employee']['name']))
