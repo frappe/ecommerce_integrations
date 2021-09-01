@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from frappe.utils import flt, nowdate
+from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -70,7 +70,8 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 			is_private=1,
 		)
 
-	make_payment_entry(si, channel_config, si.posting_date)
+	if cint(channel_config.auto_payment_entry):
+		make_payment_entry(si, channel_config, si.posting_date)
 
 	return si
 

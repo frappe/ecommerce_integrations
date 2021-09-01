@@ -24,6 +24,7 @@
   "cod_account",
   "gift_wrap_account",
   "cost_center",
+  "auto_payment_entry",
   "naming_series_config_section",
   "sales_order_series",
   "sales_invoice_series",
@@ -168,11 +169,17 @@
    "label": "Cash or Bank Account",
    "options": "Account",
    "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "auto_payment_entry",
+   "fieldtype": "Check",
+   "label": "Make payment entry automatically"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-11 13:10:39.178595",
+ "modified": "2021-09-01 10:36:46.569548",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
