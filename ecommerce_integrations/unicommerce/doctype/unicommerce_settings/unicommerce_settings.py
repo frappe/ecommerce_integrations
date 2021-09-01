@@ -17,6 +17,7 @@ from ecommerce_integrations.controllers.setting import (
 from ecommerce_integrations.unicommerce.constants import (
 	ADDRESS_JSON_FIELD,
 	CHANNEL_ID_FIELD,
+	CUSTOMER_CODE_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	ITEM_SYNC_CHECKBOX,
@@ -208,6 +209,13 @@ def setup_custom_fields():
 				insert_after="append",
 				read_only=1,
 				hidden=1,
+			),
+			dict(
+				fieldname=CUSTOMER_CODE_FIELD,
+				label="Unicommerce customer code",
+				fieldtype="Data",
+				insert_after="naming_series",
+				read_only=1,
 			),
 		],
 		"Sales Invoice": [
