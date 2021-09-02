@@ -1,9 +1,17 @@
 import frappe
-from frappe import _
-from frappe.utils import now, flt
-from ecommerce_integrations.zenoti.utils import api_url, check_for_item, get_cost_center, get_warehouse, make_api_call, get_center_code
-
 from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import get_stock_balance_for
+from frappe import _
+from frappe.utils import flt, now
+
+from ecommerce_integrations.zenoti.utils import (
+	api_url,
+	check_for_item,
+	get_center_code,
+	get_cost_center,
+	get_warehouse,
+	make_api_call,
+)
+
 
 def process_stock_reconciliation(list_of_centers, error_logs):
 	for center in list_of_centers:
@@ -26,27 +34,30 @@ def process_stock_reconciliation(list_of_centers, error_logs):
 					continue
 				make_stock_reconciliation(list_for_entry, cost_center)
 
+
 def retrieve_stock_quantities_of_products(center):
 	url = api_url + "inventory/stock?center_id={0}&inventory_date={1}".format(center, now())
 	stock_quantities_of_products = make_api_call(url)
 	return stock_quantities_of_products
 
+
 def make_list_for_entry(data, list_for_entry, error_logs):
-	for entry in data['list']:
-		if entry['total_quantity'] > 0:
-			warehouse, err_msg = get_warehouse(entry['center_code'])
+	for entry in data["list"]:
+		if entry["total_quantity"] > 0:
+			warehouse, err_msg = get_warehouse(entry["center_code"])
 			if err_msg:
 				error_logs.append(err_msg)
 				continue
 			record = {
-				'item_code': entry['product_code'],
-				'item_name': entry['product_name'],
-				'warehouse': warehouse,
-				'qty': entry['total_quantity'],
-				'allow_zero_valuation_rate' : 1
+				"item_code": entry["product_code"],
+				"item_name": entry["product_name"],
+				"warehouse": warehouse,
+				"qty": entry["total_quantity"],
+				"allow_zero_valuation_rate": 1,
 			}
 			list_for_entry.append(record)
 	return list_for_entry
+
 
 def make_stock_reconciliation(list_for_entry, cost_center):
 	doc = frappe.new_doc("Stock Reconciliation")
@@ -54,13 +65,14 @@ def make_stock_reconciliation(list_for_entry, cost_center):
 	doc.posting_date = frappe.utils.nowdate()
 	doc.posting_time = frappe.utils.nowtime()
 	doc.cost_center = cost_center
-	doc.set('items', [])
+	doc.set("items", [])
 	doc.difference_amount = 0.0
 	add_items_to_reconcile(doc, list_for_entry)
 	items = list(filter(lambda d: changed(d, doc), doc.items))
 	if items:
 		doc.items = items
 		doc.insert()
+
 
 def add_items_to_reconcile(doc, list_for_entry):
 	for item in list_for_entry:
@@ -69,13 +81,17 @@ def add_items_to_reconcile(doc, list_for_entry):
 			invoice_item[key] = value
 		doc.append("items", invoice_item)
 
-def changed(item, doc):
-	item_dict = get_stock_balance_for(item.item_code, item.warehouse,
-		doc.posting_date, doc.posting_time, batch_no=item.batch_no)
 
-	if ((item.qty is None or item.qty==item_dict.get("qty")) and
-		(item.valuation_rate is None or item.valuation_rate==item_dict.get("rate")) and
-		(not item.serial_no or (item.serial_no == item_dict.get("serial_nos")) )):
+def changed(item, doc):
+	item_dict = get_stock_balance_for(
+		item.item_code, item.warehouse, doc.posting_date, doc.posting_time, batch_no=item.batch_no
+	)
+
+	if (
+		(item.qty is None or item.qty == item_dict.get("qty"))
+		and (item.valuation_rate is None or item.valuation_rate == item_dict.get("rate"))
+		and (not item.serial_no or (item.serial_no == item_dict.get("serial_nos")))
+	):
 		return False
 	else:
 		# set default as current rates
@@ -92,7 +108,9 @@ def changed(item, doc):
 
 		item.current_qty = item_dict.get("qty")
 		item.current_valuation_rate = item_dict.get("rate")
-		doc.difference_amount += (flt(item.qty, item.precision("qty")) * \
-			flt(item.valuation_rate or item_dict.get("rate"), item.precision("valuation_rate")) \
-			- flt(item_dict.get("qty"), item.precision("qty")) * flt(item_dict.get("rate"), item.precision("valuation_rate")))
+		doc.difference_amount += flt(item.qty, item.precision("qty")) * flt(
+			item.valuation_rate or item_dict.get("rate"), item.precision("valuation_rate")
+		) - flt(item_dict.get("qty"), item.precision("qty")) * flt(
+			item_dict.get("rate"), item.precision("valuation_rate")
+		)
 		return True
