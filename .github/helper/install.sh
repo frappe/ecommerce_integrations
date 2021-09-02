@@ -4,7 +4,7 @@ set -e
 
 cd ~ || exit
 
-sudo apt-get -y install redis-server nodejs npm -qq
+sudo apt-get -y install redis-server -qq
 
 pip install frappe-bench
 

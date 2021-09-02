@@ -199,7 +199,12 @@ def get_order_taxes(shopify_order, setting):
 				}
 			)
 
-	taxes = update_taxes_with_shipping_lines(taxes, shopify_order.get("shipping_lines"), setting)
+	taxes = update_taxes_with_shipping_lines(
+		taxes,
+		shopify_order.get("shipping_lines"),
+		setting,
+		taxes_inclusive=shopify_order.get("taxes_included"),
+	)
 
 	return taxes
 
@@ -227,19 +232,28 @@ def get_tax_account_description(tax):
 	return tax_description
 
 
-def update_taxes_with_shipping_lines(taxes, shipping_lines, setting):
+def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, taxes_inclusive=False):
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
 	for shipping_charge in shipping_lines:
 		if shipping_charge.get("price"):
+
 			shipping_discounts = shipping_charge.get("discount_allocations") or []
 			total_discount = sum(flt(discount.get("amount")) for discount in shipping_discounts)
+
+			shipping_taxes = shipping_charge.get("tax_lines") or []
+			total_tax = sum(flt(discount.get("price")) for discount in shipping_taxes)
+
+			shipping_charge_amount = flt(shipping_charge["price"]) - flt(total_discount)
+			if bool(taxes_inclusive):
+				shipping_charge_amount -= total_tax
+
 			taxes.append(
 				{
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(shipping_charge),
 					"description": get_tax_account_description(shipping_charge) or shipping_charge["title"],
-					"tax_amount": flt(shipping_charge["price"]) - flt(total_discount),
+					"tax_amount": shipping_charge_amount,
 					"cost_center": setting.cost_center,
 				}
 			)

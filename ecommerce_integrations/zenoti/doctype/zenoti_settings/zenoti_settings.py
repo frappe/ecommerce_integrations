@@ -2,20 +2,17 @@
 # For license information, please see license.txt
 
 import frappe
+import requests
+
 from frappe.model.document import Document
 from frappe import _
-from frappe.utils import get_datetime, add_to_date, cint, now
-
-from erpnext import get_default_company
+from frappe.utils import get_datetime, add_to_date, cint
+from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 
 from ecommerce_integrations.zenoti.utils import get_list_of_centers, api_url
 from ecommerce_integrations.zenoti.purchase_transactions import process_purchase_orders
-from ecommerce_integrations.zenoti.transfer_transactions import process_transfer_orders
 from ecommerce_integrations.zenoti.sales_transactions import process_sales_invoices
 from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_reconciliation
-from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-
-import requests
 
 class ZenotiSettings(Document):
 
@@ -26,51 +23,40 @@ class ZenotiSettings(Document):
 		response = requests.request("GET",url=url, headers=headers)
 		if response.status_code != 200:
 			frappe.throw("Please verify the API Key")
+		check_for_opening_stock_reconciliation()
 		check_perpetual_inventory_disabled()
 		setup_custom_fields()
+		add_genders()
 		make_item_group()
 		make_item_tips()
 		self.add_gift_and_prepaid_card_as_payment_mode()
-		self.sync_records()
 
 	def add_gift_and_prepaid_card_as_payment_mode(self):
-		if not frappe.db.get_value("Mode of Payment", "Gift and Prepaid Card"):
-			doc = frappe.new_doc("Mode of Payment")
-			doc.mode_of_payment = "Gift and Prepaid Card"
-			doc.enabled = 1
-			doc.type = "General"
-			doc.set("accounts", [])
-			self.add_payment_mode_accounts(doc)
-			doc.insert()
+		payment_mode = "Gift and Prepaid Card"
+		account = self.liability_income_account_for_gift_and_prepaid_cards
+		add_mode_of_payments(payment_mode, account, self.company)
 
-	def add_payment_mode_accounts(self, doc):
-		company = get_default_company()
-		account = self.default_liability_account
-		payment_mode_accounts = {
-			"company": company,
-			"default_account": account
-		}
-		doc.append("accounts", payment_mode_accounts)
+def add_mode_of_payments(payment_mode, account, company):
+	if not frappe.db.get_value("Mode of Payment", payment_mode):
+		doc = frappe.new_doc("Mode of Payment")
+		doc.mode_of_payment = payment_mode
+		doc.enabled = 1
+		doc.type = "General"
+		doc.set("accounts", [])
+		add_payment_mode_accounts(doc, account, company)
+		doc.insert()
 
-	def sync_records(self):
-		if self.enable_zenoti:
-			error_logs = []
-			list_of_centers = get_list_of_centers()
-			if len(list_of_centers):
-				process_stock_reconciliation(list_of_centers, error_logs)
-				process_purchase_orders(list_of_centers, error_logs)
-				process_transfer_orders(list_of_centers, error_logs)
-				process_sales_invoices(list_of_centers, error_logs)
+def add_payment_mode_accounts(doc, account, company):
+	account = account
+	payment_mode_accounts = {
+		"company": company,
+		"default_account": account
+	}
+	doc.append("accounts", payment_mode_accounts)
 
-				self.last_sync = now()
-
-			if len(error_logs):
-				make_error_log(error_logs)
-
-def check_perpetual_inventory_disabled():
-	company = get_default_company()
-	if frappe.db.get_value("Company", company,  "enable_perpetual_inventory"):
-		frappe.db.set_value("Company", company,  "enable_perpetual_inventory", 0)
+def check_for_opening_stock_reconciliation():
+	if not frappe.db.exists("Stock Reconciliation", {"purpose": "Opening Stock"}):
+		frappe.throw(_('Please reconcile the stocks using Stock Reconciliation with purpose "Opening Stock" before configuring this'))
 
 def sync_invoices():
 	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
@@ -94,9 +80,13 @@ def sync_stocks():
 		if len(list_of_centers):
 			process_stock_reconciliation(list_of_centers, error_logs)
 			process_purchase_orders(list_of_centers, error_logs)
-			process_transfer_orders(list_of_centers, error_logs)
 			if len(error_logs):
 					make_error_log(error_logs)
+
+def check_perpetual_inventory_disabled():
+	company = frappe.db.get_single_value("Zenoti Settings", "company")
+	if frappe.db.get_value("Company", company,  "enable_perpetual_inventory"):
+		frappe.db.set_value("Company", company,  "enable_perpetual_inventory", 0)
 
 def make_error_log(error_logs):
 	msg = "\n\n".join(err for err in error_logs)
@@ -105,12 +95,20 @@ def make_error_log(error_logs):
 	log.error_message = msg
 	log.insert()
 
+def add_genders():
+	for gender in ["NotSpecified", "Any", "ThirdGender", "Multiple"]:
+		if not frappe.db.exists("Gender", gender):
+			doc = frappe.new_doc("Gender")
+			doc.gender = gender
+			doc.insert()
+
 def make_item_group():
-	if not frappe.db.exists("Item Group", "Gift or Pre-paid Cards"):
-		doc = frappe.new_doc("Item Group")
-		doc.item_group_name = "Gift or Pre-paid Cards"
-		doc.parent_item_group = "All Item Groups"
-		doc.insert()
+	for item_group in ['Gift or Pre-paid Cards', "Memberships", "Packages"]:
+		if not frappe.db.exists("Item Group", item_group):
+			doc = frappe.new_doc("Item Group")
+			doc.item_group_name = item_group
+			doc.parent_item_group = "All Item Groups"
+			doc.insert()
 
 def make_item_tips():
 	if not frappe.db.exists("Item", "Tips"):
