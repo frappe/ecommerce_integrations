@@ -22,8 +22,8 @@ item_type = {
 emp_gender_map = {
 	-1: "NotSpecified" ,
 	0: "Any",
-	1: "Male", 
-	2: "Female", 
+	1: "Male",
+	2: "Female",
 	3: "ThirdGender",
 	4: "Multiple"
 }
@@ -53,7 +53,10 @@ def get_list_of_invoices_for_center(center):
 				invoice.append(report)
 			else:
 				invoice.append(report)
-		
+
+		if len(invoice):
+			list_of_invoice_for_center.append(invoice)
+
 	return list_of_invoice_for_center
 
 def get_start_end_date():
@@ -106,7 +109,7 @@ def validate_details(invoice, error_logs):
 		line_item_err_msg = "\n".join(err for err in line_item_err_msg_list)
 		make_error_log_msg(invoice, line_item_err_msg, error_logs)
 
-	if not err_msg and not cost_center_err_msg and not line_item_err_msg_list:
+	if not err_msg and not cost_center_err_msg and not line_item_err_msg_list and item_data:
 		data['cost_center'] = cost_center
 		data['warehouse'] = warehouse
 		data['item_data'] = item_data
@@ -139,7 +142,7 @@ def make_employee(emp_name, emp_code):
 		url = api_url + "/centers/" + center + "/employees?page=1&size=1000"
 		employee = get_emp(url, emp_name, emp_code, "employees")
 		if not employee:
-			url = api_url + "/centers/" + center + "/therapists?page=1&size=1000" 
+			url = api_url + "/centers/" + center + "/therapists?page=1&size=1000"
 			employee = get_emp(url, emp_name, emp_code, "therapists")
 
 		if employee:
@@ -181,7 +184,7 @@ def make_error_log_msg(invoice, err_msg, error_logs):
 		receipt_no = _("Reciept No {0}").format(invoice[0]['receipt_no'])
 	msg = _("For {0} {1}. ").format(frappe.bold(invoice_no), frappe.bold(receipt_no)) + "\n" + err_msg
 	error_logs.append(msg)
-	
+
 def process_sales_line_items(invoice, cost_center):
 	item_list = []
 	err_msg_list = []
@@ -194,9 +197,9 @@ def process_sales_line_items(invoice, cost_center):
 		'Gift and Prepaid Card': 0
 	}
 	tip = 0
-	add_to_list = False
 	rounding_adjustment = 0
 	for line_item in invoice:
+		add_to_list = False
 		item_err_msg_list, item_group = check_for_items(line_item)
 		if len(item_err_msg_list):
 			item_err_msg = "\n".join(err for err in item_err_msg_list)
@@ -204,7 +207,6 @@ def process_sales_line_items(invoice, cost_center):
 		emp_err_msg = check_for_employee(line_item['employee']['name'], line_item['employee']['code'])
 		if emp_err_msg:
 			err_msg_list.append(emp_err_msg)
-			# make_error_log_msg(invoice, emp_err_msg, error_logs)
 		sold_by = frappe.db.get_value("Employee", {"employee_name": line_item['employee']['name']})
 		if not sold_by:
 			msg = _("Employee {} not found in ERPNext.").format(frappe.bold(line_item['employee']['name']))
@@ -216,27 +218,23 @@ def process_sales_line_items(invoice, cost_center):
 
 		if len(err_msg_list) == 0:
 			rate = abs(flt(line_item['sale_price']) - flt(line_item['discount'])) / abs(flt(line_item['quantity']))
-			discount_amount = line_item['discount']
-			if line_item['package']:
-				rate = 0
-				discount_amount = 0
 			qty = line_item['quantity'] if  line_item['sale_price'] >= 0 else line_item['quantity'] * -1
 			tip += line_item['tips']
 			item_dict = {
 				'item_code' : line_item['item']['code'],
 				'item_name' : line_item['item']['name'],
 				'rate' : rate,
-				'discount_amount': discount_amount,
+				'discount_amount': line_item['discount'],
 				'item_tax_template' : line_item['tax_code'],
 				'cost_center': cost_center,
 				'qty': qty,
 				'sold_by': sold_by
 			}
 			if item_group == "Gift or Pre-paid Cards":
-				item_dict['income_account'] = frappe.db.get_single_value("Zenoti Settings", "default_liability_account")
+				item_dict['income_account'] = frappe.db.get_single_value("Zenoti Settings", "liability_income_account_for_gift_and_prepaid_cards")
 				item_dict['item_code'] = "Card No. " + item_dict['item_code']
 				item_dict['item_name'] = "Card No. " + item_dict['item_name']
-			
+
 			total_qty += qty
 			payments['Cash'] += line_item['cash']
 			payments['Card'] += line_item['card']
@@ -255,15 +253,8 @@ def process_sales_line_items(invoice, cost_center):
 				item_list.append(item_dict)
 
 	if tip != 0:
-		item_dict = {
-				'item_code' : "Tips",
-				'item_name' : "Tips",
-				'rate' : tip,
-				'income_account' : frappe.db.get_single_value("Zenoti Settings", "default_liability_account"),
-				'cost_center': cost_center,
-				'qty': 1
-			}
-		item_list.append(item_dict)
+		tips_as_item = get_tips_as_item(tip, cost_center)
+		item_list.append(tips_as_item)
 
 		for key, value in payments.items():
 			if value != 0:
@@ -272,19 +263,32 @@ def process_sales_line_items(invoice, cost_center):
 
 	return item_list, total_qty, rounding_adjustment, payments, err_msg_list
 
+def get_tips_as_item(tip, cost_center):
+	item_dict = {
+				'item_code' : "Tips",
+				'item_name' : "Tips",
+				'rate' : tip,
+				'income_account' : frappe.db.get_single_value("Zenoti Settings", "liability_income_account_for_gift_and_prepaid_cards"),
+				'cost_center': cost_center,
+				'qty': 1
+			}
+	return item_dict
+
 def check_for_customer(guest_id, guest_name):
 	err_msg = ""
 	if not frappe.db.exists("Customer", {"zenoti_guest_id": guest_id}):
-		err_msg = create_customer(guest_id, guest_name)
+		err_msg = make_customer(guest_id, guest_name)
 	return err_msg
 
-def create_customer(guest_id, guest_name):
+def make_customer(guest_id, guest_name):
 	guest_details = get_guest_details(guest_id)
 	if not guest_details:
 		err_msg = _("Details for Guest {} not found in Zenoti").format(frappe.bold(guest_name))
 		return err_msg
 	customer_details = prepare_customer_details(guest_details)
-	
+	create_customer(customer_details)
+
+def create_customer(customer_details):
 	customer = frappe.new_doc("Customer")
 	customer.customer_name = customer_details['customer_name']
 	customer.zenoti_guest_id = customer_details['zenoti_guest_id']
@@ -330,7 +334,7 @@ def get_guest_details(guest_id):
 def check_for_items(item):
 	err_list = []
 	group = cint(item['item']['type'])
-	if not frappe.db.exists("Item", {"item_code": item['item']['code'], "item_group": item_type[group]}):	
+	if not frappe.db.exists("Item", {"item_code": item['item']['code'], "item_group": item_type[group]}):
 		if group == 6:
 			err_msg = make_card_item(item)
 		else:

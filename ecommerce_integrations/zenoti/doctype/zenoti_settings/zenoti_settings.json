@@ -7,6 +7,7 @@
  "field_order": [
   "enable_zenoti",
   "column_break_2",
+  "company",
   "last_sync",
   "section_break_3",
   "api_key",
@@ -16,7 +17,7 @@
   "default_purchase_warehouse",
   "default_buying_price_list",
   "default_selling_price_list",
-  "default_liability_account",
+  "liability_income_account_for_gift_and_prepaid_cards",
   "column_break_11",
   "default_customer_group",
   "default_supplier_group",
@@ -125,17 +126,25 @@
    "options": "Zenoti Cost Center and Warehouse Mapping"
   },
   {
-   "fieldname": "default_liability_account",
+   "fieldname": "liability_income_account_for_gift_and_prepaid_cards",
    "fieldtype": "Link",
-   "label": "Default Liability Account",
+   "label": "Liability Income Account to book Tips, Gift & Prepaid cards",
    "options": "Account",
+   "reqd": 1
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
    "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-08-11 10:59:59.051880",
+ "modified": "2021-09-02 11:59:48.695321",
  "modified_by": "Administrator",
  "module": "Zenoti",
  "name": "Zenoti Settings",
