@@ -64,7 +64,7 @@ def check_for_opening_stock_reconciliation():
 
 
 def sync_invoices():
-	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
+	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
 		check_perpetual_inventory_disabled()
 		last_sync = frappe.db.get_single_value("Zenoti Settings", "last_sync")
 		interval = frappe.db.get_single_value("Zenoti Settings", "sync_interval")
@@ -79,7 +79,7 @@ def sync_invoices():
 
 
 def sync_stocks():
-	if frappe.db.get_single_value("Zenoti Settings", "enable_zenoti"):
+	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
 		check_perpetual_inventory_disabled()
 		error_logs = []
 		list_of_centers = get_list_of_centers()
@@ -212,7 +212,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_invoice_no",
 				label="Zenoti Invoice No",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
@@ -220,7 +220,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_receipt_no",
 				label="Zenoti Receipt No",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="zenoti_invoice_no",
 				read_only=1,
 				print_hide=1,
@@ -230,7 +230,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_order_no",
 				label="Zenoti Order No",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
@@ -240,7 +240,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_order_no",
 				label="Zenoti Order No",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
@@ -312,7 +312,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_order_id",
 				label="Zenoti Order Id",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
@@ -321,7 +321,7 @@ def setup_custom_fields():
 			dict(
 				fieldname="zenoti_order_no",
 				label="Zenoti Order No",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="zenoti_order_id",
 				read_only=1,
 				print_hide=1,
