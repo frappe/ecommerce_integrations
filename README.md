@@ -30,6 +30,8 @@ After installation follow user documentation for each integration to set it up.
 
 - Shopify - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/shopify_integration)
 
+- Zenoti - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/zenoti_integration)
+
 
 ### Development setup
 
