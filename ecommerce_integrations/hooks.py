@@ -109,15 +109,17 @@ doc_events = {
 
 scheduler_events = {
 	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
-	"daily": [ ],
-	"daily_long": ["ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks"],
+	"daily": [],
+	"daily_long": [
+		"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks"
+	],
 	"hourly": ["ecommerce_integrations.shopify.order.sync_old_orders"],
 	"hourly_long": [
 		"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_invoices",
-		"ecommerce_integrations.unicommerce.product.upload_new_items"
-		],
-	"weekly": [ ],
-	"monthly": [ ],
+		"ecommerce_integrations.unicommerce.product.upload_new_items",
+	],
+	"weekly": [],
+	"monthly": [],
 	"cron": {
 		# Every five minutes
 		"*/5 * * * *": [
