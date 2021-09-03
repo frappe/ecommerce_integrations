@@ -1,0 +1,198 @@
+{
+ "actions": [],
+ "autoname": "field:channel_id",
+ "creation": "2021-06-22 19:12:21.869672",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "channel_id",
+  "display_name",
+  "company",
+  "column_break_5",
+  "warehouse",
+  "customer_group",
+  "accounts_settings_section",
+  "igst_account",
+  "cgst_account",
+  "sgst_account",
+  "ugst_account",
+  "cash_or_bank_account",
+  "column_break_12",
+  "fnf_account",
+  "cod_account",
+  "gift_wrap_account",
+  "cost_center",
+  "naming_series_config_section",
+  "sales_order_series",
+  "sales_invoice_series",
+  "delivery_note_series"
+ ],
+ "fields": [
+  {
+   "fieldname": "channel_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Unicommerce Channel Id",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Display Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "description": "Customer will be created with this Customer Group. If not provided, default Unicommerce customer group will be used.",
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Default Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "accounts_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Accounts Settings"
+  },
+  {
+   "fieldname": "fnf_account",
+   "fieldtype": "Link",
+   "label": "Freight and Forwarding Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "igst_account",
+   "fieldtype": "Link",
+   "label": "IGST Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cgst_account",
+   "fieldtype": "Link",
+   "label": "CGST Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sgst_account",
+   "fieldtype": "Link",
+   "label": "SGST Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ugst_account",
+   "fieldtype": "Link",
+   "label": "UGST Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Sales Order Series"
+  },
+  {
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Delivery Note Series"
+  },
+  {
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Series"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center",
+   "reqd": 1
+  },
+  {
+   "fieldname": "cod_account",
+   "fieldtype": "Link",
+   "label": "Cash On Delivery Charges Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "gift_wrap_account",
+   "fieldtype": "Link",
+   "label": "Gift Wrap Charge Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "naming_series_config_section",
+   "fieldtype": "Section Break",
+   "label": "Naming Series Config"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Account used for Payment Entry.",
+   "fieldname": "cash_or_bank_account",
+   "fieldtype": "Link",
+   "label": "Cash or Bank Account",
+   "options": "Account",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-08-11 13:10:39.178595",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Channel",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "display_name",
+ "track_changes": 1
+}

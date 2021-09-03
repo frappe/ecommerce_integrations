@@ -6,8 +6,7 @@ frappe.provide("ecommerce_integrations.shopify.shopify_setting");
 frappe.ui.form.on("Shopify Setting", {
 	onload: function (frm) {
 		frappe.call({
-			method:
-				"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.get_series",
+			method: "ecommerce_integrations.utils.naming_series.get_series",
 			callback: function (r) {
 				$.each(r.message, (key, value) => {
 					set_field_options(key, value);
@@ -18,13 +17,13 @@ frappe.ui.form.on("Shopify Setting", {
 		ecommerce_integrations.shopify.shopify_setting.setup_queries(frm);
 	},
 
-	fetch_shopify_locations: function(frm) {
+	fetch_shopify_locations: function (frm) {
 		frappe.call({
 			doc: frm.doc,
 			method: "update_location_table",
 			callback: (r) => {
 				if (!r.exc) refresh_field("shopify_warehouse_mapping");
-			}
+			},
 		});
 	},
 });
@@ -85,9 +84,9 @@ $.extend(ecommerce_integrations.shopify.shopify_setting, {
 		).get_query = function (doc) {
 			return {
 				filters: {
-					"is_group": 0,
-					"company": doc.company,
-					"disabled": 0,
+					is_group: 0,
+					company: doc.company,
+					disabled: 0,
 				},
 			};
 		};
