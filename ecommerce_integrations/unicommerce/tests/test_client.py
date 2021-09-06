@@ -196,6 +196,35 @@ class TestUnicommerceClient(TestCaseApiClient):
 		req_headers = self.responses.calls[0].request.headers
 		self.assertEqual(req_headers["Facility"], "TEST")
 
+	def test_create_invoice_and_label_with_shipping_package(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{"shippingPackageCode": "SP_CODE", "generateUniwareShippingLabel": True}
+				)
+			],
+		)
+
+		self.client.create_invoice_and_label_by_shipping_code("SP_CODE", "TEST")
+
+	def test_create_invoice_and_assign_shipper(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
+			status=200,
+			json={"successful": True},
+			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
+		)
+
+		self.client.create_invoice_and_assign_shipper("SP_CODE", "TEST")
+
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers["Facility"], "TEST")
+
 	def test_get_sales_invoice(self):
 		self.responses.add(
 			responses.POST,

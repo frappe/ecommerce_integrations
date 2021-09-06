@@ -200,7 +200,6 @@ class UnicommerceAPIClient:
 	def create_sales_invoice(
 		self, so_code: str, so_item_codes: List[str], facility_code: str
 	) -> Optional[JsonDict]:
-
 		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
 		extra_headers = {"Facility": facility_code}
 
@@ -215,6 +214,33 @@ class UnicommerceAPIClient:
 		body = {"shippingPackageCode": shipping_package_code}
 		response, status = self.request(
 			endpoint="/services/rest/v1/oms/shippingPackage/createInvoice",
+			body=body,
+			headers={"Facility": facility_code},
+		)
+
+		return response
+
+	def create_invoice_and_assign_shipper(self, shipping_package_code: str, facility_code: str):
+		body = {
+			"shippingPackageCode": shipping_package_code,
+		}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
+			body=body,
+			headers={"Facility": facility_code},
+		)
+
+		return response
+
+	def create_invoice_and_label_by_shipping_code(
+		self, shipping_package_code: str, facility_code: str, generate_label: bool = True
+	):
+		body = {
+			"shippingPackageCode": shipping_package_code,
+			"generateUniwareShippingLabel": generate_label,
+		}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
 			body=body,
 			headers={"Facility": facility_code},
 		)
