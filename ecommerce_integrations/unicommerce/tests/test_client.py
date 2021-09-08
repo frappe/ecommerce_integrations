@@ -57,6 +57,10 @@ class TestCaseApiClient(TestCase):
 		self.addCleanup(self.responses.stop)
 		self.addCleanup(self.responses.reset)
 
+	def assert_last_request_headers(self, header, value):
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers[header], value)
+
 
 class TestUnicommerceClient(TestCaseApiClient):
 	def test_authorization_headers(self):
@@ -74,8 +78,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		)
 		self.assertEqual(ret["status"], "fail")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Authorization"], "Bearer AUTH_TOKEN")
+		self.assert_last_request_headers("Authorization", "Bearer AUTH_TOKEN")
 
 	def test_get_item(self):
 		"""requirement: When querying correct item, item is returned as _dict"""
@@ -158,8 +161,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		inventory_map = {"A": 1, "B": 2}
 		response, status = self.client.bulk_inventory_update("42", inventory_map)
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "42")
+		self.assert_last_request_headers("Facility", "42")
 
 		self.assertTrue(status)
 		self.assertDictEqual(response, {k: True for k in inventory_map})
@@ -179,8 +181,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.client.create_sales_invoice("SO_CODE", ["1", "2", "3"], "TEST")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_create_sales_invoice_with_shipping_package(self):
 		self.responses.add(
@@ -193,8 +194,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.client.create_invoice_by_shipping_code("SP_CODE", "TEST")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_create_invoice_and_label_with_shipping_package(self):
 		self.responses.add(
@@ -222,8 +222,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.client.create_invoice_and_assign_shipper("SP_CODE", "TEST")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_sales_invoice(self):
 		self.responses.add(
@@ -250,8 +249,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", "TEST", is_return=True)
 		self.assertTrue(res["return"])
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_inventory_snapshot(self):
 		self.responses.add(
@@ -270,5 +268,4 @@ class TestUnicommerceClient(TestCaseApiClient):
 			sku_codes=["BOOK", "KINDLE"], facility_code="TEST", updated_since=120
 		)
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
