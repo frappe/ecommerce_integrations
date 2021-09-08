@@ -289,10 +289,9 @@ class UnicommerceAPIClient:
 			body["shippingBox"] = {"length": length, "width": width, "height": height}
 
 		extra_headers = {"Facility": facility_code}
-		response, status = self.request(
+		return self.request(
 			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
 		)
-		return response
 
 
 def _utc_timeformat(datetime) -> str:

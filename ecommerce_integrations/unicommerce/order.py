@@ -15,6 +15,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	PACKAGE_TYPE_FIELD,
 	SETTINGS_DOCTYPE,
 	TAX_FIELDS_MAPPING,
 	TAX_RATE_FIELDS_MAPPING,
@@ -277,3 +278,54 @@ def _get_consolidate_qty(line_items, wh_map) -> Dict[SoItem, int]:
 		consolidated_item_qty[so_item] += 1
 
 	return consolidated_item_qty
+
+
+def update_shipping_info(doc, method=None):
+	"""When package type is changed, update the shipping information on unicommerce."""
+
+	so = doc
+
+	if not so.has_value_changed(PACKAGE_TYPE_FIELD):
+		return
+	package_type = so.get(PACKAGE_TYPE_FIELD)
+
+	if not package_type:
+		return
+	frappe.enqueue(_update_package_info_on_unicommerce, queue="short", so_code=so.name)
+
+
+def _update_package_info_on_unicommerce(so_code):
+	try:
+		client = UnicommerceAPIClient()
+
+		so = frappe.get_doc("Sales Order", so_code)
+		package_type = so.get(PACKAGE_TYPE_FIELD)
+		package_info = frappe.get_doc("Unicommerce Package Type", package_type)
+
+		updated_so_data = client.get_sales_order(so.get(ORDER_CODE_FIELD))
+		shipping_packages = updated_so_data.get("shippingPackages")
+
+		if not shipping_packages:
+			frappe.throw(
+				frappe._("Shipping package not present on Unicommerce for order {}").format(so.name)
+			)
+
+		shipping_package_code = shipping_packages[0].get("code")
+
+		facility_code = so.get(FACILITY_CODE_FIELD)
+		response, status = client.update_shipping_package(
+			shipping_package_code=shipping_package_code,
+			facility_code=facility_code,
+			length=package_info.length,
+			width=package_info.width,
+			height=package_info.height,
+		)
+
+		if not status:
+			error_message = "Unicommerce integration: Could not update package size\n" + json.dumps(
+				response.get("errors"), indent=4
+			)
+			so.add_comment(text=error_message)
+	except Exception as e:
+		create_unicommerce_log(status="Error", exception=e)
+		raise

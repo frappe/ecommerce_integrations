@@ -101,7 +101,10 @@ doc_events = {
 			"ecommerce_integrations.utils.taxation.validate_tax_template",
 			"ecommerce_integrations.unicommerce.product.validate_item",
 		],
-	}
+	},
+	"Sales Order": {
+		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info"
+	},
 }
 
 # Scheduled Tasks
