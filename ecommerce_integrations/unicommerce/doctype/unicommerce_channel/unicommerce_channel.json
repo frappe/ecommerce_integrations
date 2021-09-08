@@ -28,7 +28,9 @@
   "naming_series_config_section",
   "sales_order_series",
   "sales_invoice_series",
-  "delivery_note_series"
+  "delivery_note_series",
+  "fulfilment_settings_section",
+  "shipping_handled_by_marketplace"
  ],
  "fields": [
   {
@@ -175,11 +177,24 @@
    "fieldname": "auto_payment_entry",
    "fieldtype": "Check",
    "label": "Make payment entry automatically"
+  },
+  {
+   "default": "1",
+   "description": "If checked, Unicommerce will request the marketplace to generate invoices and provide shipping details, else the shipper will be assigned using Unicommerce's shipping integrations. ",
+   "fieldname": "shipping_handled_by_marketplace",
+   "fieldtype": "Check",
+   "label": "Shipping Handled By Marketplace",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fulfilment_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Fulfilment Settings"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-01 10:36:46.569548",
+ "modified": "2021-09-06 16:23:14.571581",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
