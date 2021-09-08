@@ -18,6 +18,7 @@ INVOICE_CODE_FIELD = "unicommerce_invoice_code"
 SHIPPING_PACKAGE_CODE_FIELD = "unicommerce_shipping_package_code"
 ADDRESS_JSON_FIELD = "unicommerce_raw_billing_address"
 CUSTOMER_CODE_FIELD = "unicommerce_customer_code"
+PACKAGE_TYPE_FIELD = "unicommerce_package_type"
 
 
 # Tax -> Unicommerce tax amount field mapping

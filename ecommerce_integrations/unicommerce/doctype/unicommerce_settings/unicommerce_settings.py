@@ -23,6 +23,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ITEM_SYNC_CHECKBOX,
 	ORDER_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
@@ -190,6 +191,14 @@ def setup_custom_fields():
 				fieldtype="Small Text",
 				insert_after=CHANNEL_ID_FIELD,
 				read_only=1,
+			),
+			dict(
+				fieldname=PACKAGE_TYPE_FIELD,
+				label="Unicommerce Package Type",
+				fieldtype="Link",
+				options="Unicommerce Package Type",
+				insert_after=ORDER_STATUS_FIELD,
+				allow_on_submit=1,
 			),
 		],
 		"Item Group": [
