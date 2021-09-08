@@ -269,3 +269,22 @@ class TestUnicommerceClient(TestCaseApiClient):
 		)
 
 		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_update_shipping_package(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/edit",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{
+						"shippingPackageCode": "SP_CODE",
+						"shippingBox": {"length": 100, "width": 200, "height": 300},
+					}
+				)
+			],
+		)
+
+		self.client.update_shipping_package("SP_CODE", "TEST", length=100, width=200, height=300)
+		self.assert_last_request_headers("Facility", "TEST")

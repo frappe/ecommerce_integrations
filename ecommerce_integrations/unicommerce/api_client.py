@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import frappe
 import requests
 from frappe import _
-from frappe.utils import get_datetime
+from frappe.utils import cint, get_datetime
 from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
@@ -259,6 +259,40 @@ class UnicommerceAPIClient:
 
 		if status:
 			return response
+
+	def update_shipping_package(
+		self,
+		shipping_package_code: str,
+		facility_code: str,
+		weight: int = 0,
+		length: int = 0,
+		width: int = 0,
+		height: int = 0,
+	):
+		"""Update shipping package dimensions and other details on Unicommerce.
+
+		ref: https://documentation.unicommerce.com/docs/shippingpackage-edit.html
+		"""
+
+		body = {"shippingPackageCode": shipping_package_code}
+
+		def _positive(numbers):
+			for number in numbers:
+				if cint(number) <= 0:
+					return False
+			return True
+
+		if _positive([weight]):
+			body["actualWeight"] = weight
+
+		if _positive([length, width, height]):
+			body["shippingBox"] = {"length": length, "width": width, "height": height}
+
+		extra_headers = {"Facility": facility_code}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
+		)
+		return response
 
 
 def _utc_timeformat(datetime) -> str:
