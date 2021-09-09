@@ -20,7 +20,10 @@ from ecommerce_integrations.unicommerce.constants import (
 	CUSTOMER_CODE_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
+	ITEM_HEIGHT_FIELD,
+	ITEM_LENGTH_FIELD,
 	ITEM_SYNC_CHECKBOX,
+	ITEM_WIDTH_FIELD,
 	ORDER_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
@@ -160,7 +163,28 @@ def setup_custom_fields():
 				fieldtype="Check",
 				insert_after="item_code",
 				print_hide=1,
-			)
+			),
+			dict(
+				fieldname=ITEM_LENGTH_FIELD,
+				label="Length (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after="over_billing_allowance",
+				print_hide=1,
+			),
+			dict(
+				fieldname=ITEM_WIDTH_FIELD,
+				label="Width (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after=ITEM_LENGTH_FIELD,
+				print_hide=1,
+			),
+			dict(
+				fieldname=ITEM_HEIGHT_FIELD,
+				label="Height (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after=ITEM_WIDTH_FIELD,
+				print_hide=1,
+			),
 		],
 		"Sales Order": [
 			dict(

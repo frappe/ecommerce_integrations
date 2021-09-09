@@ -10,7 +10,10 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	DEFAULT_WEIGHT_UOM,
+	ITEM_HEIGHT_FIELD,
+	ITEM_LENGTH_FIELD,
 	ITEM_SYNC_CHECKBOX,
+	ITEM_WIDTH_FIELD,
 	MODULE_NAME,
 	PRODUCT_CATEGORY_FIELD,
 	SETTINGS_DOCTYPE,
@@ -31,6 +34,9 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 	"shelfLife": "shelf_life_in_days",
 	"hsnCode": "gst_hsn_code",
 	"imageUrl": "image",
+	"length": ITEM_LENGTH_FIELD,
+	"width": ITEM_WIDTH_FIELD,
+	"height": ITEM_HEIGHT_FIELD,
 }
 
 ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}
