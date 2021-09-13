@@ -21,7 +21,7 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get
 JsonDict = Dict[str, Any]
 
 
-def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
+def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0, submit=True):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
@@ -55,7 +55,8 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 	si.ignore_pricing_rule = 1
 	si.update_stock = update_stock
 	si.insert()
-	si.submit()
+	if submit:
+		si.submit()
 
 	_verify_total(si, si_data)
 
