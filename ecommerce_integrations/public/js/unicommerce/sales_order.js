@@ -21,6 +21,21 @@ frappe.ui.form.on("Sales Order", {
 				},
 				__("Unicommerce")
 			);
+			frm.add_custom_button(
+				__("Generate Invoice"),
+				function () {
+					frappe.call({
+						method:
+							"ecommerce_integrations.unicommerce.invoice.generate_unicommerce_invoices",
+						args: {
+							sales_orders: [frm.doc.name],
+						},
+						freeze: true,
+						freeze_message: "Requesting Invoice generation. Once synced, invoice will appear in linked documents.",
+					});
+				},
+				__("Unicommerce")
+			);
 		}
 	},
 });

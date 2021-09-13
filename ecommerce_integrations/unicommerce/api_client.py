@@ -221,6 +221,11 @@ class UnicommerceAPIClient:
 		return response
 
 	def create_invoice_and_assign_shipper(self, shipping_package_code: str, facility_code: str):
+		"""
+		 Invoice and label generation API for self-shipped orders.
+
+		ref: https://documentation.unicommerce.com/docs/pos-shippingpackage-createinvoice-allocateshippingprovider.html
+		"""
 		body = {
 			"shippingPackageCode": shipping_package_code,
 		}
@@ -235,6 +240,11 @@ class UnicommerceAPIClient:
 	def create_invoice_and_label_by_shipping_code(
 		self, shipping_package_code: str, facility_code: str, generate_label: bool = True
 	):
+		"""
+		 Invoice and label generation API for marketplace orders.
+
+		ref: https://documentation.unicommerce.com/docs/create_invoiceandlabel_by_shippingpackagecode.html
+		"""
 		body = {
 			"shippingPackageCode": shipping_package_code,
 			"generateUniwareShippingLabel": generate_label,
