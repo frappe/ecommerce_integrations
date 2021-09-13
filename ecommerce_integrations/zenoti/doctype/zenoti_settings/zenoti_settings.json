@@ -1,0 +1,167 @@
+{
+ "actions": [],
+ "creation": "2021-06-21 12:40:45.304441",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_zenoti",
+  "column_break_2",
+  "company",
+  "last_sync",
+  "section_break_3",
+  "api_key",
+  "column_break_5",
+  "sync_interval",
+  "section_break_7",
+  "default_purchase_warehouse",
+  "default_buying_price_list",
+  "default_selling_price_list",
+  "liability_income_account_for_gift_and_prepaid_cards",
+  "column_break_11",
+  "default_customer_group",
+  "default_supplier_group",
+  "cost_center_and_warehouse_mapping_section",
+  "map_zenoti_centre_to_erpnext_cost_center_and_warehouse"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_zenoti",
+   "fieldtype": "Check",
+   "label": "Enable Zenoti"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "last_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Sync",
+   "read_only": 1
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break",
+   "label": "Authentication & Sync"
+  },
+  {
+   "fieldname": "api_key",
+   "fieldtype": "Data",
+   "label": "API Key",
+   "mandatory_depends_on": "enable_zenoti"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "24",
+   "depends_on": "enable_zenoti",
+   "fieldname": "sync_interval",
+   "fieldtype": "Select",
+   "label": "Sync Interval (in hours)",
+   "options": "1\n3\n6\n12\n24"
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "section_break_7",
+   "fieldtype": "Section Break",
+   "label": "Set Defaults"
+  },
+  {
+   "fieldname": "default_purchase_warehouse",
+   "fieldtype": "Link",
+   "label": "Default Purchase Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_buying_price_list",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Default Buying Price List",
+   "options": "Price List",
+   "reqd": 1
+  },
+  {
+   "fieldname": "default_selling_price_list",
+   "fieldtype": "Link",
+   "label": "Default Selling Price List",
+   "options": "Price List",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "If no Customer Group is received from Zenoti this will be considered in the Invoices. If this is kept blank then \"All Customer Group\" will be selected for Invoices.",
+   "fieldname": "default_customer_group",
+   "fieldtype": "Link",
+   "label": "Default Customer Group",
+   "options": "Customer Group"
+  },
+  {
+   "description": "If no Supplier Group is received from Zenoti this will be considered in the Invoices. If this is kept blank then \"All Supplier Group\" will be selected for Invoices.",
+   "fieldname": "default_supplier_group",
+   "fieldtype": "Link",
+   "label": "Default Supplier Group",
+   "options": "Supplier Group"
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "cost_center_and_warehouse_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Cost Center and Warehouse Mapping"
+  },
+  {
+   "fieldname": "map_zenoti_centre_to_erpnext_cost_center_and_warehouse",
+   "fieldtype": "Table",
+   "label": "Map Zenoti Centre to ERPNext Cost Center and Warehouse",
+   "mandatory_depends_on": "enable_zenoti",
+   "options": "Zenoti Cost Center and Warehouse Mapping"
+  },
+  {
+   "fieldname": "liability_income_account_for_gift_and_prepaid_cards",
+   "fieldtype": "Link",
+   "label": "Liability Income Account to book Tips, Gift & Prepaid cards",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "depends_on": "enable_zenoti",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2021-09-02 11:59:48.695321",
+ "modified_by": "Administrator",
+ "module": "Zenoti",
+ "name": "Zenoti Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

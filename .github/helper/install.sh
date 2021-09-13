@@ -8,7 +8,7 @@ sudo apt-get -y install redis-server -qq
 
 pip install frappe-bench
 
-git clone https://github.com/frappe/frappe --branch version-13 --depth 1
+git clone https://github.com/frappe/frappe --branch develop --depth 1
 bench init --skip-assets --frappe-path ~/frappe --python "$(which python)" frappe-bench
 
 mkdir ~/frappe-bench/sites/test_site
@@ -31,7 +31,7 @@ sed -i 's/schedule:/# schedule:/g' Procfile
 sed -i 's/socketio:/# socketio:/g' Procfile
 sed -i 's/redis_socketio:/# redis_socketio:/g' Procfile
 
-bench get-app erpnext --branch version-13
+bench get-app erpnext --branch develop
 
 bench start &
 bench --site test_site reinstall --yes
