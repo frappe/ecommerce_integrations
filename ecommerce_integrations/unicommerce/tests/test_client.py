@@ -280,11 +280,14 @@ class TestUnicommerceClient(TestCaseApiClient):
 				responses.json_params_matcher(
 					{
 						"shippingPackageCode": "SP_CODE",
+						"shippingPackageTypeCode": "DEFAULT",
 						"shippingBox": {"length": 100, "width": 200, "height": 300},
 					}
 				)
 			],
 		)
 
-		self.client.update_shipping_package("SP_CODE", "TEST", length=100, width=200, height=300)
+		self.client.update_shipping_package(
+			"SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300
+		)
 		self.assert_last_request_headers("Facility", "TEST")

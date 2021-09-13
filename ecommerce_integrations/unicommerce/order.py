@@ -316,6 +316,7 @@ def _update_package_info_on_unicommerce(so_code):
 		response, status = client.update_shipping_package(
 			shipping_package_code=shipping_package_code,
 			facility_code=facility_code,
+			package_type_code=package_info.package_type_code or "DEFAULT",
 			length=package_info.length,
 			width=package_info.width,
 			height=package_info.height,

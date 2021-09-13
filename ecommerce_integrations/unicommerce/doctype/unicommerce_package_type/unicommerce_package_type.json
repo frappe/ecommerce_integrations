@@ -8,6 +8,7 @@
  "field_order": [
   "title",
   "package_type",
+  "package_type_code",
   "length",
   "width",
   "height"
@@ -44,11 +45,18 @@
    "fieldtype": "Int",
    "label": "Height (mm)",
    "reqd": 1
+  },
+  {
+   "default": "DEFAULT",
+   "fieldname": "package_type_code",
+   "fieldtype": "Data",
+   "label": "Unicommerce Package Type Code",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-08 12:11:56.731174",
+ "modified": "2021-09-13 10:45:34.722118",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Package Type",

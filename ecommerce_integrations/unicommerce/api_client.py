@@ -264,6 +264,7 @@ class UnicommerceAPIClient:
 		self,
 		shipping_package_code: str,
 		facility_code: str,
+		package_type_code: str,
 		weight: int = 0,
 		length: int = 0,
 		width: int = 0,
@@ -274,7 +275,10 @@ class UnicommerceAPIClient:
 		ref: https://documentation.unicommerce.com/docs/shippingpackage-edit.html
 		"""
 
-		body = {"shippingPackageCode": shipping_package_code}
+		body = {
+			"shippingPackageCode": shipping_package_code,
+			"shippingPackageTypeCode": package_type_code,
+		}
 
 		def _positive(numbers):
 			for number in numbers:
