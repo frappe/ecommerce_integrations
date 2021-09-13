@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
     branches:
       - develop
@@ -95,6 +95,13 @@ jobs:
 
 
       - name: Run Tests
-        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations
+        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations --coverage
         env:
           TYPE: server
+
+      - name: Upload coverage data
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+          files: /home/runner/frappe-bench/sites/coverage.xml
+          verbose: true
