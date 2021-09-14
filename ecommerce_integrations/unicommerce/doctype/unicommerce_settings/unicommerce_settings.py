@@ -52,7 +52,9 @@ class UnicommerceSettings(SettingController):
 				create_unicommerce_log(
 					status="Error", message="Failed to authenticate with Unicommerce", exception=e
 				)
-		setup_custom_fields()
+
+		if not self.flags.ignore_custom_fields:
+			setup_custom_fields()
 
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
@@ -62,6 +64,7 @@ class UnicommerceSettings(SettingController):
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
 				raise e
 		if save:
+			self.flags.ignore_custom_fields = True
 			self.save()
 			frappe.db.commit()
 			self.load_from_db()
