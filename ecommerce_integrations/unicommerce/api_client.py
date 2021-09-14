@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import frappe
 import requests
 from frappe import _
-from frappe.utils import cint, get_datetime
+from frappe.utils import cint, cstr, get_datetime
 from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
@@ -58,7 +58,7 @@ class UnicommerceAPIClient:
 			url = f"URL: {req.url}"
 			body = f"body:  {req.body.decode('utf-8')}"
 			request_data = "\n\n".join([url, body])
-			message = ", ".join(error["message"] for error in data.errors)
+			message = ", ".join(cstr(error["message"]) for error in data.errors)
 			create_unicommerce_log(
 				status="Error", response_data=data, request_data=request_data, message=message, make_new=True
 			)
