@@ -33,8 +33,9 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		so = create_order(order, client=self.client)
 
 		si_data = self.load_fixture("invoice-SDU0026")["invoice"]
+		label = self.load_fixture("invoice_label_response")["label"]
 
-		si = create_sales_invoice(si_data=si_data, so_code=so.name)
+		si = create_sales_invoice(si_data=si_data, so_code=so.name, shipping_label=label)
 
 		self.assertEqual(si.get(ORDER_CODE_FIELD), order["code"])
 		self.assertEqual(si.get(FACILITY_CODE_FIELD), "Test-123")
@@ -48,4 +49,6 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertNotEqual([], attachments)
+		self.assertGreaterEqual(
+			len(attachments), 2, msg=f"Expected 2 attachments, found: {str(attachments)}"
+		)

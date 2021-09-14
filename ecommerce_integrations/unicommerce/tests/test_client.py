@@ -291,3 +291,19 @@ class TestUnicommerceClient(TestCaseApiClient):
 			"SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300
 		)
 		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_get_invoice_label(self):
+		label_response = self.load_fixture("invoice_label_response")
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
+			status=200,
+			json=label_response,
+			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
+		)
+
+		label = self.client.get_invoice_label("SP_CODE", "TEST")
+		self.assertEqual(label, label_response["label"])
+
+		self.assert_last_request_headers("Facility", "TEST")
