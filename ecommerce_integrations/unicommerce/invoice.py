@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
@@ -86,10 +86,13 @@ def _fetch_and_sync_invoice(
 
 	for package in shipping_packages:
 		invoice_data = client.get_sales_invoice(package, facility_code)["invoice"]
-		create_sales_invoice(invoice_data, erpnext_so_code, update_stock=1)
+		label_pdf = client.get_invoice_label(package, facility_code)
+		create_sales_invoice(invoice_data, erpnext_so_code, update_stock=1, shipping_label=label_pdf)
 
 
-def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0, submit=True):
+def create_sales_invoice(
+	si_data: JsonDict, so_code: str, update_stock=0, submit=True, shipping_label=None
+):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
@@ -132,21 +135,52 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0, submit
 
 	_verify_total(si, si_data)
 
-	if si_data.get("encodedInvoice"):
-		# attach file to the sales invoice
-		save_file(
-			f"unicommerce-invoice-{si_data['code']}.pdf",
-			si_data["encodedInvoice"],
-			si.doctype,
-			si.name,
-			decode=True,
-			is_private=1,
-		)
+	attach_unicommerce_docs(
+		sales_invoice=si.name,
+		invoice=si_data.get("encodedInvoice"),
+		label=shipping_label,
+		invoice_code=si_data["code"],
+		package_code=si_data.get("shippingPackageCode"),
+	)
 
 	if cint(channel_config.auto_payment_entry):
 		make_payment_entry(si, channel_config, si.posting_date)
 
 	return si
+
+
+def attach_unicommerce_docs(
+	sales_invoice: str,
+	invoice: Optional[str],
+	label: Optional[str],
+	invoice_code: Optional[str],
+	package_code: Optional[str],
+) -> None:
+	"""Attach invoice and label to specified sales invoice.
+
+	Both invoice and label are base64 encoded PDFs.
+
+	File names are generated using specified invoice and shipping package code."""
+
+	if invoice:
+		save_file(
+			f"unicommerce-invoice-{invoice_code}.pdf",
+			invoice,
+			"Sales Invoice",
+			sales_invoice,
+			decode=True,
+			is_private=1,
+		)
+
+	if label:
+		save_file(
+			f"unicommerce-label-{package_code}.pdf",
+			label,
+			"Sales Invoice",
+			sales_invoice,
+			decode=True,
+			is_private=1,
+		)
 
 
 def _get_line_items(

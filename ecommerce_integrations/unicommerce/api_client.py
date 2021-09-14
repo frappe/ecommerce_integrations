@@ -307,6 +307,21 @@ class UnicommerceAPIClient:
 			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
 		)
 
+	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> Optional[str]:
+		"""Get the generated label for a given shipping package.
+
+		ref: https://documentation.unicommerce.com/docs/shippingpackage-getinvoicelabel.html
+		"""
+		# XXX: this is actually returning invoice PDF and not label
+		extra_headers = {"Facility": facility_code}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
+			body={"shippingPackageCode": shipping_package_code},
+			headers=extra_headers,
+		)
+		if status and "label" in response:
+			return response["label"]
+
 
 def _utc_timeformat(datetime) -> str:
 	""" Get datetime in UTC/GMT as required by Unicommerce"""
