@@ -41,7 +41,7 @@ def update_sales_order_status():
 
 	client = UnicommerceAPIClient()
 
-	days_to_sync = settings.get("order_status_days") or 2
+	days_to_sync = min(settings.get("order_status_days") or 2, 14)
 	minutes = days_to_sync * 24 * 60
 	updated_orders = client.search_sales_order(updated_since=minutes)
 
