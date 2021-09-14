@@ -128,7 +128,9 @@ scheduler_events = {
 		"*/5 * * * *": [
 			"ecommerce_integrations.unicommerce.order.sync_new_orders",
 			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
-		]
+		],
+		# Every thirty minutes
+		"*/30 * * * *": ["ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",],
 	},
 }
 
