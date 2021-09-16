@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from typing import Any, Dict, List, NewType, Optional
 
 import frappe
@@ -22,12 +23,16 @@ from ecommerce_integrations.unicommerce.order import get_taxes
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 
 JsonDict = Dict[str, Any]
-
 SOCode = NewType("SOCode", str)
-ItemCode = NewType("ItemCode", str)
-WHCode = NewType("WHCode", str)
 
-WHAllocation = Dict[SOCode, Dict[ItemCode, Dict[WHCode, int]]]
+
+class ItemWHAlloc:  # TypedDict
+	sales_order_row: str
+	item_code: str
+	warehouse: str
+
+
+WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
 
 
 @frappe.whitelist()
@@ -47,23 +52,31 @@ def generate_unicommerce_invoices(
 	        sales_orders: list of sales order codes to invoice.
 	        warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
 
-	        Example of warehouse_allocation
-	        {
-	           "SO0042": {
-	             "item-1": {
-	               "Stores - WP": 1,
-	               "WIP Warehouse - WP": 2,
-	              },
-	             "item-2": {
-	               "Stores - WP": 3,
-	              }
-	           },
-	           "SO0101": {
-	             "item-x": {
-	               "Stores - WP": 8,
-	               "WIP Warehouse - WP": 2,
-	              }
-	           }
+	    Example of warehouse_allocation:
+
+	    {
+	      "SO0042": [
+	          {
+	            "item_code": "SKU",
+	            # "qty": 1, always assumed to be 1 for Unicommerce orders.
+	            "warehouse": "Stores - WP",
+	            "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	          {
+	             "item_code": "SKU2",
+	             # "qty": 1,
+	             "warehouse": "Stores - WP",
+	             "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	       ],
+	       "SO0101": [
+	          {
+	             "item_code": "SKU3",
+	             # "qty": 1
+	             "warehouse": "Stores - WP",
+	             "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	       ]
 	        }
 	"""
 
@@ -86,11 +99,12 @@ def generate_unicommerce_invoices(
 		_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
 
 
-def _validate_wh_allocation(warehouse_allocation):
+def _validate_wh_allocation(warehouse_allocation: WHAllocation):
 	"""Validate that provided warehouse allocation is exactly sufficient for fulfilling the orders."""
 
 	if not warehouse_allocation:
 		return
+
 	so_codes = list(warehouse_allocation.keys())
 	so_item_data = frappe.db.sql(
 		"""
@@ -108,10 +122,13 @@ def _validate_wh_allocation(warehouse_allocation):
 		expected_item_qty.setdefault(item.sales_order, {})[item.item_code] = item.qty
 
 	for order, item_details in warehouse_allocation.items():
-		for item_code, wh_wise_qty in item_details.items():
-			total_qty = sum(wh_wise_qty.values())
-			expected_qty = expected_item_qty.get(order, {}).get(item_code)
+		item_wise_qty = defaultdict(int)
+		for item in item_details:
+			item_wise_qty[item["item_code"]] += 1
 
+		# group item details for total qty
+		for item_code, total_qty in item_wise_qty.items():
+			expected_qty = expected_item_qty.get(order, {}).get(item_code)
 			if abs(total_qty - expected_qty) > 0.1:
 				msg = _("Mismatch in quantity for order {}, item {} exepcted {} qty, received {}").format(
 					order, item_code, expected_qty, total_qty
