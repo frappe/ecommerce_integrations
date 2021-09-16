@@ -42,6 +42,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			"qty": 1,
 			"stock_uom": "Nos",
 			"warehouse": "Stores - WP",
+			"unicommerce_order_item_code": "TITANIUM_WATCH-0",
 		}
 
 		self.assertEqual(items[0], expected_item)

@@ -14,6 +14,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
 	SETTINGS_DOCTYPE,
@@ -26,8 +27,6 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
-
-SoItem = namedtuple("SoItem", ["item_code", "rate", "warehouse"])
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
@@ -193,19 +192,22 @@ def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping(all_wh=True)
-
-	consolidated_item_qty = _get_consolidate_qty(line_items, wh_map)
-
 	so_items = []
 
-	for item, qty in consolidated_item_qty.items():
+	for item in line_items:
+		item_code = ecommerce_item.get_erpnext_item_code(
+			integration=MODULE_NAME, integration_item_code=item["itemSku"]
+		)
+		warehouse = wh_map.get(item["facilityCode"]) or default_warehouse
+
 		so_items.append(
 			{
-				"item_code": item.item_code,
-				"rate": item.rate,
-				"qty": qty,
+				"item_code": item_code,
+				"rate": item["sellingPrice"],
+				"qty": 1,
 				"stock_uom": "Nos",
-				"warehouse": item.warehouse or default_warehouse,
+				"warehouse": warehouse,
+				ORDER_ITEM_CODE_FIELD: item.get("code"),
 			}
 		)
 	return so_items
@@ -264,20 +266,6 @@ def _get_facility_code(line_items) -> str:
 		frappe.throw("Multiple facility codes found in single order")
 
 	return list(facility_codes)[0]
-
-
-def _get_consolidate_qty(line_items, wh_map) -> Dict[SoItem, int]:
-	consolidated_item_qty = defaultdict(int)
-	for item in line_items:
-		item_code = ecommerce_item.get_erpnext_item_code(
-			integration=MODULE_NAME, integration_item_code=item["itemSku"]
-		)
-		so_item = SoItem(
-			item_code=item_code, rate=item["sellingPrice"], warehouse=wh_map.get(item["facilityCode"]),
-		)
-		consolidated_item_qty[so_item] += 1
-
-	return consolidated_item_qty
 
 
 def update_shipping_info(doc, method=None):

@@ -25,6 +25,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ITEM_SYNC_CHECKBOX,
 	ITEM_WIDTH_FIELD,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
@@ -226,6 +227,15 @@ def setup_custom_fields():
 				options="Unicommerce Package Type",
 				insert_after=ORDER_STATUS_FIELD,
 				allow_on_submit=1,
+			),
+		],
+		"Sales Order Item": [
+			dict(
+				fieldname=ORDER_ITEM_CODE_FIELD,
+				label="Unicommerce Order Item Code",
+				fieldtype="Data",
+				insert_after="item_code",
+				read_only=1,
 			),
 		],
 		"Item Group": [
