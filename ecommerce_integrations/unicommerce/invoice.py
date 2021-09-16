@@ -25,11 +25,11 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get
 JsonDict = Dict[str, Any]
 SOCode = NewType("SOCode", str)
 
-
-class ItemWHAlloc:  # TypedDict
-	sales_order_row: str
-	item_code: str
-	warehouse: str
+# TypedDict
+# 	sales_order_row: str
+# 	item_code: str
+# 	warehouse: str
+ItemWHAlloc = Dict[str, str]
 
 
 WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
@@ -230,7 +230,9 @@ def create_sales_invoice(
 		submit = False
 
 	si = make_sales_invoice(so.name)
-	si_line_items = _get_line_items(uni_line_items, warehouse, so.name, channel_config.cost_center)
+	si_line_items = _get_line_items(
+		uni_line_items, warehouse, so.name, channel_config.cost_center, warehouse_allocations
+	)
 	si.set("items", si_line_items)
 	si.set("taxes", get_taxes(uni_line_items, channel_config))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
@@ -301,7 +303,7 @@ def _get_line_items(
 	warehouse: str,
 	so_code: str,
 	cost_center: str,
-	warehouse_allocation: Optional[WHAllocation] = None,
+	warehouse_allocations: Optional[WHAllocation] = None,
 ) -> List[Dict[str, Any]]:
 	""" Invoice items can be different and are consolidated, hence recomputing is required """
 
@@ -323,7 +325,33 @@ def _get_line_items(
 					"sales_order": so_code,
 				}
 			)
+
+	if warehouse_allocations:
+		return _assign_wh_and_so_row(si_items, warehouse_allocations, so_code)
+
 	return si_items
+
+
+def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], so_code: str):
+
+	so_items = frappe.get_doc("Sales Order", so_code).items
+	so_item_price_map = {d.name: d.rate for d in so_items}
+
+	# update price
+	for item in warehouse_allocation:
+		item["rate"] = so_item_price_map.get(item["sales_order_row"])
+
+	sort_key = lambda item: (item.get("item_code"), item.get("rate"))  # noqa
+
+	warehouse_allocation.sort(key=sort_key)
+	line_items.sort(key=sort_key)
+
+	# update references
+	for item, wh_alloc in zip(line_items, warehouse_allocation):
+		item["so_detail"] = wh_alloc["sales_order_row"]
+		item["warehouse"] = wh_alloc["warehouse"]
+
+	return line_items
 
 
 def _verify_total(si, si_data) -> None:
