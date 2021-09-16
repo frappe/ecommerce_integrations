@@ -77,7 +77,7 @@ def generate_unicommerce_invoices(
 	             "sales_order_row": "5hh123k1", `name` of SO child table row
 	          },
 	       ]
-	        }
+	    }
 	"""
 
 	if isinstance(sales_orders, str):
@@ -310,18 +310,19 @@ def _get_line_items(
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
-		si_items.append(
-			{
-				"item_code": item_code,
-				# Note: Discount is already removed from this price.
-				"rate": item["unitPrice"],
-				"qty": item["quantity"],
-				"stock_uom": "Nos",
-				"warehouse": warehouse,
-				"cost_center": cost_center,
-				"sales_order": so_code,
-			}
-		)
+		for __ in range(cint(item["quantity"])):
+			si_items.append(
+				{
+					"item_code": item_code,
+					# Note: Discount is already removed from this price.
+					"rate": item["unitPrice"],
+					"qty": 1,
+					"stock_uom": "Nos",
+					"warehouse": warehouse,
+					"cost_center": cost_center,
+					"sales_order": so_code,
+				}
+			)
 	return si_items
 
 
