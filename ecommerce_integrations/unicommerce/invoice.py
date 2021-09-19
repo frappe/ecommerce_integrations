@@ -89,14 +89,60 @@ def generate_unicommerce_invoices(
 	if warehouse_allocation:
 		_validate_wh_allocation(warehouse_allocation)
 
-	client = UnicommerceAPIClient()
+	if len(sales_orders) == 1:
+		# perform in web request
+		bulk_generate_invoices(sales_orders, warehouse_allocation)
+	else:
+		# send to background job
 
+		log = create_unicommerce_log(
+			method="ecommerce_integrations.unicommerce.invoice.bulk_generate_invoices",
+			request_data={"sales_orders": sales_orders, "warehouse_allocation": warehouse_allocation},
+		)
+
+		frappe.enqueue(
+			method="ecommerce_integrations.unicommerce.invoice.bulk_generate_invoices",
+			queue="long",
+			timeout=max(1500, len(sales_orders) * 30),
+			sales_orders=sales_orders,
+			warehouse_allocation=warehouse_allocation,
+			request_id=log.name,
+		)
+
+
+def bulk_generate_invoices(
+	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None, request_id=None
+):
+	client = UnicommerceAPIClient()
+	frappe.flags.request_id = request_id  #  for auto-picking current log
+
+	failed_orders = []
 	for so_code in sales_orders:
-		so = frappe.get_doc("Sales Order", so_code)
-		channel = so.get(CHANNEL_ID_FIELD)
-		channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
-		wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
-		_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
+		try:
+			so = frappe.get_doc("Sales Order", so_code)
+			channel = so.get(CHANNEL_ID_FIELD)
+			channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
+			wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
+			_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
+		except Exception as e:
+			create_unicommerce_log(status="Failure", exception=e, rollback=True, make_new=True)
+			failed_orders.append(so_code)
+
+	_log_invoice_generation(sales_orders, failed_orders)
+
+
+def _log_invoice_generation(sales_orders, failed_orders):
+
+	percent_success = (len(sales_orders) - len(failed_orders)) / len(sales_orders)
+
+	failure_message = "\n".join(
+		[
+			f"generate invoices: f{percent_success} invoices successful",
+			f"Failred orders = {', '.join(failed_orders)}",
+			f"Requested orders = {', '.join(sales_orders)}",
+		]
+	)
+	create_unicommerce_log(status="Failure", rollback=True, message=failure_message)
 
 
 def _validate_wh_allocation(warehouse_allocation: WHAllocation):
