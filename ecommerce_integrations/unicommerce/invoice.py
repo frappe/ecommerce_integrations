@@ -16,6 +16,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	INVOICE_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_INVOICE_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
@@ -116,6 +117,8 @@ def bulk_generate_invoices(
 	client = UnicommerceAPIClient()
 	frappe.flags.request_id = request_id  #  for auto-picking current log
 
+	update_invoicing_status(sales_orders, "Queued")
+
 	failed_orders = []
 	for so_code in sales_orders:
 		try:
@@ -142,7 +145,24 @@ def _log_invoice_generation(sales_orders, failed_orders):
 			f"Requested orders = {', '.join(sales_orders)}",
 		]
 	)
+
+	successful_orders = list(set(sales_orders) - set(failed_orders))
+	update_invoicing_status(failed_orders, "Failed")
+	update_invoicing_status(successful_orders, "Success")
+
 	create_unicommerce_log(status="Failure", rollback=True, message=failure_message)
+
+
+def update_invoicing_status(sales_orders: List[str], status: str) -> None:
+	if not sales_orders:
+		return
+
+	frappe.db.sql(
+		f"""update `tabSales Order`
+			set {ORDER_INVOICE_STATUS_FIELD} = %s
+			where name in %s""",
+		(status, sales_orders),
+	)
 
 
 def _validate_wh_allocation(warehouse_allocation: WHAllocation):
