@@ -322,6 +322,46 @@ class UnicommerceAPIClient:
 		if status and "label" in response:
 			return response["label"]
 
+	def create_and_close_shipping_manifest(
+		self,
+		channel: str,
+		shipping_provider_code: str,
+		shipping_method_code: str,
+		shipping_packages: List[str],
+		facility_code: str,
+		third_party_shipping: bool = True,
+	):
+		"""Create and close the shipping manifest in Unicommerce
+
+		Ref: https://documentation.unicommerce.com/docs/pos-shippingmanifest-create-close.html"""
+
+		# Even though docs dont mention it, facility code is a required header.
+		extra_headers = {"Facility": facility_code}
+		body = {
+			"channel": channel,
+			"shippingProviderCode": shipping_provider_code,
+			"shippingMethodCode": shipping_method_code,
+			"thirdPartyShipping": third_party_shipping,
+			"shippingPackageCodes": shipping_packages,
+		}
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingManifest/createclose", body=body, headers=extra_headers,
+		)
+
+		if status:
+			return response
+
+	def get_shipping_manifest(self, shipping_manifest_code, facility_code):
+		extra_headers = {"Facility": facility_code}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingManifest/get",
+			body={"shippingManifestCode": shipping_manifest_code},
+			headers=extra_headers,
+		)
+		if status:
+			return response
+
 
 def _utc_timeformat(datetime) -> str:
 	""" Get datetime in UTC/GMT as required by Unicommerce"""
