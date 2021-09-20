@@ -136,21 +136,36 @@ def bulk_generate_invoices(
 
 def _log_invoice_generation(sales_orders, failed_orders):
 
-	percent_success = (len(sales_orders) - len(failed_orders)) / len(sales_orders)
+	failed_orders = set(failed_orders)
+	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
+	successful_orders = list(set(sales_orders) - set(failed_orders))
+
+	percent_success = len(successful_orders) / len(sales_orders)
 
 	failure_message = "\n".join(
 		[
-			f"generate invoices: f{percent_success} invoices successful",
+			f"generate invoices: {percent_success:.3%} invoices successful\n",
 			f"Failred orders = {', '.join(failed_orders)}",
 			f"Requested orders = {', '.join(sales_orders)}",
 		]
 	)
 
-	successful_orders = list(set(sales_orders) - set(failed_orders))
 	update_invoicing_status(failed_orders, "Failed")
 	update_invoicing_status(successful_orders, "Success")
 
 	create_unicommerce_log(status="Failure", rollback=True, message=failure_message)
+
+
+def _get_orders_with_missing_invoice(sales_orders):
+	missing_invoices = set()
+
+	for order in sales_orders:
+		uni_so_code = frappe.db.get_value("Sales Order", order, ORDER_CODE_FIELD)
+		invoice_exists = frappe.db.exists("Sales Invoice", {ORDER_CODE_FIELD: uni_so_code})
+		if not invoice_exists:
+			missing_invoices.add(order)
+
+	return missing_invoices
 
 
 def update_invoicing_status(sales_orders: List[str], status: str) -> None:
