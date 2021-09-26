@@ -22,7 +22,9 @@ frappe.ui.form.on("Sales Order", {
 				__("Unicommerce")
 			);
 		}
-		if (frm.doc.unicommerce_order_code && frm.doc.docstatus == 1) {
+		if (frm.doc.unicommerce_order_code && frm.doc.docstatus == 1 && flt(frm.doc.per_billed, 6) < 100) {
+			// remove default button
+			frm.remove_custom_button("Sales Invoice", "Create");
 			const so_code = frm.doc.name;
 
 			const item_details = frm.doc.items.map((item) => {
