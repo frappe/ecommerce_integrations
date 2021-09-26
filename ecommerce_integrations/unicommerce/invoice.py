@@ -157,7 +157,8 @@ def _log_invoice_generation(sales_orders, failed_orders):
 	update_invoicing_status(failed_orders, "Failed")
 	update_invoicing_status(successful_orders, "Success")
 
-	create_unicommerce_log(status="Failure", rollback=True, message=failure_message)
+	status = {0.0: "Failure", 100.0: "Success"}.get(percent_success) or "Partial Success"
+	create_unicommerce_log(status=status, message=failure_message)
 
 
 def _get_orders_with_missing_invoice(sales_orders):
@@ -272,11 +273,13 @@ def _fetch_and_sync_invoice(
 
 	so_data = client.get_sales_order(unicommerce_so_code)
 	shipping_packages = [
-		d["code"] for d in so_data["shippingPackages"] if d["status"] in ("PACKED", "READY_TO_SHIP")
+		d["code"]
+		for d in so_data["shippingPackages"]
+		if d["status"] in ("PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED")
 	]
 
 	for package in shipping_packages:
-		invoice_response = invoice_responses.get(package)
+		invoice_response = invoice_responses.get(package) or {}
 		invoice_data = client.get_sales_invoice(package, facility_code)["invoice"]
 		label_pdf = fetch_label_pdf(
 			package, invoice_response, client=client, facility_code=facility_code
