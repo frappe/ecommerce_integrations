@@ -31,6 +31,8 @@ from ecommerce_integrations.unicommerce.constants import (
 	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PROVIDER_CODE,
+	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -299,6 +301,20 @@ def setup_custom_fields():
 				label="Unicommerce Shipping Package Code",
 				fieldtype="Small Text",
 				insert_after=INVOICE_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=SHIPPING_PROVIDER_CODE,
+				label="Unicommerce Shipping Provider",
+				fieldtype="Small Text",
+				insert_after=SHIPPING_PACKAGE_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=TRACKING_CODE_FIELD,
+				label="Unicommerce Tracking Code",
+				fieldtype="Small Text",
+				insert_after=SHIPPING_PROVIDER_CODE,
 				read_only=1,
 			),
 		],

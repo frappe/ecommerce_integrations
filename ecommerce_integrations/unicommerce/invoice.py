@@ -21,6 +21,8 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_INVOICE_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PROVIDER_CODE,
+	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import get_taxes
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
@@ -233,7 +235,6 @@ def _generate_invoice(
 	package_invoice_response_map = {}
 
 	for package in shipping_packages:
-		# TODO: error and status logging
 		response = None
 		if cint(channel_config.shipping_handled_by_marketplace):
 			response = client.create_invoice_and_label_by_shipping_code(
@@ -286,6 +287,7 @@ def _fetch_and_sync_invoice(
 			update_stock=1,
 			shipping_label=label_pdf,
 			warehouse_allocations=warehouse_allocation,
+			invoice_response=invoice_response,
 		)
 
 
@@ -296,11 +298,14 @@ def create_sales_invoice(
 	submit=True,
 	shipping_label=None,
 	warehouse_allocations=None,
+	invoice_response=None,
 ):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
 	"""
+	if not invoice_response:
+		invoice_response = {}
 	so = frappe.get_doc("Sales Order", so_code)
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
@@ -329,6 +334,8 @@ def create_sales_invoice(
 	si.set("taxes", get_taxes(uni_line_items, channel_config))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, si_data.get("shippingPackageCode"))
+	si.set(SHIPPING_PROVIDER_CODE, invoice_response.get("shippingProviderCode"))
+	si.set(TRACKING_CODE_FIELD, invoice_response.get("trackingNumber"))
 	si.set_posting_time = 1
 	si.posting_date = get_unicommerce_date(si_data["created"])
 	si.transaction_date = si.posting_date
