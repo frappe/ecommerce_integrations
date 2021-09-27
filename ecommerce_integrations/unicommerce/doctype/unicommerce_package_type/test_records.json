@@ -1,0 +1,10 @@
+[
+	{
+		"doctype": "Unicommerce Package Type",
+		"package_type": "DEFAULT",
+		"package_type_code": "DEFAULT",
+		"length": 30,
+		"width": 20,
+		"height": 10
+	}
+]

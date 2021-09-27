@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "creation": "2021-09-20 19:30:34.709746",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "shipping_package_code",
+  "sales_invoice",
+  "unicommerce_sales_order",
+  "awb_no",
+  "shipping_address"
+ ],
+ "fields": [
+  {
+   "fieldname": "shipping_package_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shipping Package Code",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unicommerce_sales_order",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Unicommerce Sales Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "awb_no",
+   "fieldtype": "Data",
+   "label": "AWB Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shipping_address",
+   "fieldtype": "Text",
+   "label": "Shipping Address",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2021-09-20 19:34:19.937705",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Manifest Item",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

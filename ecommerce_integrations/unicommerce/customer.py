@@ -7,6 +7,7 @@ from frappe.utils.nestedset import get_root_of
 
 from ecommerce_integrations.unicommerce.constants import (
 	ADDRESS_JSON_FIELD,
+	CUSTOMER_CODE_FIELD,
 	SETTINGS_DOCTYPE,
 	UNICOMMERCE_COUNTRY_MAPPING,
 )
@@ -26,8 +27,9 @@ def _create_new_customer(order):
 
 	address = order.get("billingAddress") or (order.get("addresses") and order.get("addresses")[0])
 	address.pop("id", None)  # this is not important and can be different for same address
+	customer_code = order.get("customerCode")
 
-	customer = _check_if_customer_exists(address)
+	customer = _check_if_customer_exists(address, customer_code)
 	if customer:
 		return customer
 
@@ -48,6 +50,7 @@ def _create_new_customer(order):
 			"territory": get_root_of("Territory"),
 			"customer_type": "Individual",
 			ADDRESS_JSON_FIELD: json.dumps(address),
+			CUSTOMER_CODE_FIELD: customer_code,
 		}
 	)
 
@@ -57,12 +60,19 @@ def _create_new_customer(order):
 	return customer
 
 
-def _check_if_customer_exists(address):
+def _check_if_customer_exists(address, customer_code):
 	"""Very crude method to determine if same customer exists.
 
 	If ALL address fields match then new customer is not created"""
 
-	customer_name = frappe.db.get_value("Customer", {ADDRESS_JSON_FIELD: json.dumps(address)})
+	customer_name = None
+
+	if customer_code:
+		customer_name = frappe.db.get_value("Customer", {CUSTOMER_CODE_FIELD: customer_code})
+
+	if not customer_name:
+		customer_name = frappe.db.get_value("Customer", {ADDRESS_JSON_FIELD: json.dumps(address)})
+
 	if customer_name:
 		return frappe.get_doc("Customer", customer_name)
 

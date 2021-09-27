@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import frappe
 import requests
 from frappe import _
-from frappe.utils import get_datetime
+from frappe.utils import cint, cstr, get_datetime
 from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
@@ -58,7 +58,7 @@ class UnicommerceAPIClient:
 			url = f"URL: {req.url}"
 			body = f"body:  {req.body.decode('utf-8')}"
 			request_data = "\n\n".join([url, body])
-			message = ", ".join(error["message"] for error in data.errors)
+			message = ", ".join(cstr(error["message"]) for error in data.errors)
 			create_unicommerce_log(
 				status="Error", response_data=data, request_data=request_data, message=message, make_new=True
 			)
@@ -200,7 +200,6 @@ class UnicommerceAPIClient:
 	def create_sales_invoice(
 		self, so_code: str, so_item_codes: List[str], facility_code: str
 	) -> Optional[JsonDict]:
-
 		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
 		extra_headers = {"Facility": facility_code}
 
@@ -221,6 +220,43 @@ class UnicommerceAPIClient:
 
 		return response
 
+	def create_invoice_and_assign_shipper(self, shipping_package_code: str, facility_code: str):
+		"""
+		 Invoice and label generation API for self-shipped orders.
+
+		ref: https://documentation.unicommerce.com/docs/pos-shippingpackage-createinvoice-allocateshippingprovider.html
+		"""
+		body = {
+			"shippingPackageCode": shipping_package_code,
+		}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
+			body=body,
+			headers={"Facility": facility_code},
+		)
+
+		return response
+
+	def create_invoice_and_label_by_shipping_code(
+		self, shipping_package_code: str, facility_code: str, generate_label: bool = True
+	):
+		"""
+		 Invoice and label generation API for marketplace orders.
+
+		ref: https://documentation.unicommerce.com/docs/create_invoiceandlabel_by_shippingpackagecode.html
+		"""
+		body = {
+			"shippingPackageCode": shipping_package_code,
+			"generateUniwareShippingLabel": generate_label,
+		}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			body=body,
+			headers={"Facility": facility_code},
+		)
+
+		return response
+
 	def get_sales_invoice(
 		self, shipping_package_code: str, facility_code: str, is_return: bool = False
 	) -> Optional[JsonDict]:
@@ -231,6 +267,98 @@ class UnicommerceAPIClient:
 			headers=extra_headers,
 		)
 
+		if status:
+			return response
+
+	def update_shipping_package(
+		self,
+		shipping_package_code: str,
+		facility_code: str,
+		package_type_code: str,
+		weight: int = 0,
+		length: int = 0,
+		width: int = 0,
+		height: int = 0,
+	):
+		"""Update shipping package dimensions and other details on Unicommerce.
+
+		ref: https://documentation.unicommerce.com/docs/shippingpackage-edit.html
+		"""
+
+		body = {
+			"shippingPackageCode": shipping_package_code,
+			"shippingPackageTypeCode": package_type_code,
+		}
+
+		def _positive(numbers):
+			for number in numbers:
+				if cint(number) <= 0:
+					return False
+			return True
+
+		if _positive([weight]):
+			body["actualWeight"] = weight
+
+		if _positive([length, width, height]):
+			body["shippingBox"] = {"length": length, "width": width, "height": height}
+
+		extra_headers = {"Facility": facility_code}
+		return self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
+		)
+
+	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> Optional[str]:
+		"""Get the generated label for a given shipping package.
+
+		ref: https://documentation.unicommerce.com/docs/shippingpackage-getinvoicelabel.html
+		"""
+		# XXX: this is actually returning invoice PDF and not label
+		extra_headers = {"Facility": facility_code}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
+			body={"shippingPackageCode": shipping_package_code},
+			headers=extra_headers,
+		)
+		if status and "label" in response:
+			return response["label"]
+
+	def create_and_close_shipping_manifest(
+		self,
+		channel: str,
+		shipping_provider_code: str,
+		shipping_method_code: str,
+		shipping_packages: List[str],
+		facility_code: str,
+		third_party_shipping: bool = True,
+	):
+		"""Create and close the shipping manifest in Unicommerce
+
+		Ref: https://documentation.unicommerce.com/docs/pos-shippingmanifest-create-close.html"""
+
+		# Even though docs dont mention it, facility code is a required header.
+		extra_headers = {"Facility": facility_code}
+		body = {
+			"channel": channel,
+			"shippingProviderCode": shipping_provider_code,
+			"shippingMethodCode": shipping_method_code,
+			"thirdPartyShipping": third_party_shipping,
+			"shippingPackageCodes": shipping_packages,
+		}
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingManifest/createclose", body=body, headers=extra_headers,
+		)
+
+		if status:
+			return response
+
+	def get_shipping_manifest(self, shipping_manifest_code, facility_code):
+		extra_headers = {"Facility": facility_code}
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/shippingManifest/get",
+			body={"shippingManifestCode": shipping_manifest_code},
+			headers=extra_headers,
+		)
 		if status:
 			return response
 

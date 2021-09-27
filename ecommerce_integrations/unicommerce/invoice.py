@@ -1,31 +1,314 @@
-from typing import Any, Dict, List
+import base64
+import json
+from collections import defaultdict
+from typing import Any, Dict, List, NewType, Optional
 
 import frappe
+import requests
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from frappe.utils import flt, nowdate
+from frappe import _
+from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
+from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_INVOICE_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PROVIDER_CODE,
+	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import get_taxes
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 
 JsonDict = Dict[str, Any]
+SOCode = NewType("SOCode", str)
+
+# TypedDict
+# 	sales_order_row: str
+# 	item_code: str
+# 	warehouse: str
+ItemWHAlloc = Dict[str, str]
 
 
-def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
+WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
+
+
+@frappe.whitelist()
+def generate_unicommerce_invoices(
+	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None
+):
+	"""Request generation of invoice to Unicommerce and sync that invoice.
+
+	1. Get shipping package details using get_sale_order
+	2. Ask for invoice generation
+	        - marketplace - create_invoice_and_label_by_shipping_code
+	        - self-shipped - create_invoice_and_assign_shipper
+
+	3. Sync invoice.
+
+	args:
+	        sales_orders: list of sales order codes to invoice.
+	        warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
+
+	    Example of warehouse_allocation:
+
+	    {
+	      "SO0042": [
+	          {
+	            "item_code": "SKU",
+	            # "qty": 1, always assumed to be 1 for Unicommerce orders.
+	            "warehouse": "Stores - WP",
+	            "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	          {
+	             "item_code": "SKU2",
+	             # "qty": 1,
+	             "warehouse": "Stores - WP",
+	             "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	       ],
+	       "SO0101": [
+	          {
+	             "item_code": "SKU3",
+	             # "qty": 1
+	             "warehouse": "Stores - WP",
+	             "sales_order_row": "5hh123k1", `name` of SO child table row
+	          },
+	       ]
+	    }
+	"""
+
+	if isinstance(sales_orders, str):
+		sales_orders = json.loads(sales_orders)
+
+	if isinstance(warehouse_allocation, str):
+		warehouse_allocation = json.loads(warehouse_allocation)
+
+	if warehouse_allocation:
+		_validate_wh_allocation(warehouse_allocation)
+
+	if len(sales_orders) == 1:
+		# perform in web request
+		bulk_generate_invoices(sales_orders, warehouse_allocation)
+	else:
+		# send to background job
+
+		log = create_unicommerce_log(
+			method="ecommerce_integrations.unicommerce.invoice.bulk_generate_invoices",
+			request_data={"sales_orders": sales_orders, "warehouse_allocation": warehouse_allocation},
+		)
+
+		frappe.enqueue(
+			method="ecommerce_integrations.unicommerce.invoice.bulk_generate_invoices",
+			queue="long",
+			timeout=max(1500, len(sales_orders) * 30),
+			sales_orders=sales_orders,
+			warehouse_allocation=warehouse_allocation,
+			request_id=log.name,
+		)
+
+
+def bulk_generate_invoices(
+	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None, request_id=None
+):
+	client = UnicommerceAPIClient()
+	frappe.flags.request_id = request_id  #  for auto-picking current log
+
+	update_invoicing_status(sales_orders, "Queued")
+
+	failed_orders = []
+	for so_code in sales_orders:
+		try:
+			so = frappe.get_doc("Sales Order", so_code)
+			channel = so.get(CHANNEL_ID_FIELD)
+			channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
+			wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
+			_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
+		except Exception as e:
+			create_unicommerce_log(status="Failure", exception=e, rollback=True, make_new=True)
+			failed_orders.append(so_code)
+
+	_log_invoice_generation(sales_orders, failed_orders)
+
+
+def _log_invoice_generation(sales_orders, failed_orders):
+
+	failed_orders = set(failed_orders)
+	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
+	successful_orders = list(set(sales_orders) - set(failed_orders))
+
+	percent_success = len(successful_orders) / len(sales_orders)
+
+	failure_message = "\n".join(
+		[
+			f"generate invoices: {percent_success:.3%} invoices successful\n",
+			f"Failred orders = {', '.join(failed_orders)}",
+			f"Requested orders = {', '.join(sales_orders)}",
+		]
+	)
+
+	update_invoicing_status(failed_orders, "Failed")
+	update_invoicing_status(successful_orders, "Success")
+
+	status = {0.0: "Failure", 100.0: "Success"}.get(percent_success) or "Partial Success"
+	create_unicommerce_log(status=status, message=failure_message)
+
+
+def _get_orders_with_missing_invoice(sales_orders):
+	missing_invoices = set()
+
+	for order in sales_orders:
+		uni_so_code = frappe.db.get_value("Sales Order", order, ORDER_CODE_FIELD)
+		invoice_exists = frappe.db.exists("Sales Invoice", {ORDER_CODE_FIELD: uni_so_code})
+		if not invoice_exists:
+			missing_invoices.add(order)
+
+	return missing_invoices
+
+
+def update_invoicing_status(sales_orders: List[str], status: str) -> None:
+	if not sales_orders:
+		return
+
+	frappe.db.sql(
+		f"""update `tabSales Order`
+			set {ORDER_INVOICE_STATUS_FIELD} = %s
+			where name in %s""",
+		(status, sales_orders),
+	)
+
+
+def _validate_wh_allocation(warehouse_allocation: WHAllocation):
+	"""Validate that provided warehouse allocation is exactly sufficient for fulfilling the orders."""
+
+	if not warehouse_allocation:
+		return
+
+	so_codes = list(warehouse_allocation.keys())
+	so_item_data = frappe.db.sql(
+		"""
+			select item_code, sum(qty) as qty, parent as sales_order
+			from `tabSales Order Item`
+			where
+				parent in %s
+			group by parent, item_code""",
+		(so_codes,),
+		as_dict=True,
+	)
+
+	expected_item_qty = {}
+	for item in so_item_data:
+		expected_item_qty.setdefault(item.sales_order, {})[item.item_code] = item.qty
+
+	for order, item_details in warehouse_allocation.items():
+		item_wise_qty = defaultdict(int)
+		for item in item_details:
+			item_wise_qty[item["item_code"]] += 1
+
+		# group item details for total qty
+		for item_code, total_qty in item_wise_qty.items():
+			expected_qty = expected_item_qty.get(order, {}).get(item_code)
+			if abs(total_qty - expected_qty) > 0.1:
+				msg = _("Mismatch in quantity for order {}, item {} exepcted {} qty, received {}").format(
+					order, item_code, expected_qty, total_qty
+				)
+				frappe.throw(msg)
+
+
+def _generate_invoice(
+	client: UnicommerceAPIClient, erpnext_order, channel_config, warehouse_allocation=None
+):
+	unicommerce_so_code = erpnext_order.get(ORDER_CODE_FIELD)
+
+	so_data = client.get_sales_order(unicommerce_so_code)
+	shipping_packages = [d["code"] for d in so_data["shippingPackages"] if d["status"] == "CREATED"]
+
+	# TODO:  check if already generated by erpnext invoice unsyced
+	facility_code = erpnext_order.get(FACILITY_CODE_FIELD)
+
+	package_invoice_response_map = {}
+
+	for package in shipping_packages:
+		response = None
+		if cint(channel_config.shipping_handled_by_marketplace):
+			response = client.create_invoice_and_label_by_shipping_code(
+				shipping_package_code=package, facility_code=facility_code
+			)
+		else:
+			response = client.create_invoice_and_assign_shipper(
+				shipping_package_code=package, facility_code=facility_code
+			)
+		package_invoice_response_map[package] = response
+
+	_fetch_and_sync_invoice(
+		client,
+		unicommerce_so_code,
+		erpnext_order.name,
+		facility_code,
+		warehouse_allocation=warehouse_allocation,
+		invoice_responses=package_invoice_response_map,
+	)
+
+
+def _fetch_and_sync_invoice(
+	client: UnicommerceAPIClient,
+	unicommerce_so_code,
+	erpnext_so_code,
+	facility_code,
+	warehouse_allocation=None,
+	invoice_responses=None,
+):
+	"""Use the invoice generation response to fetch actual invoice and sync them to ERPNext.
+
+	args:
+	        invoice_response: response returned by either of two invoice generation methods
+	"""
+
+	so_data = client.get_sales_order(unicommerce_so_code)
+	shipping_packages = [
+		d["code"]
+		for d in so_data["shippingPackages"]
+		if d["status"] in ("PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED")
+	]
+
+	for package in shipping_packages:
+		invoice_response = invoice_responses.get(package) or {}
+		invoice_data = client.get_sales_invoice(package, facility_code)["invoice"]
+		label_pdf = fetch_label_pdf(
+			package, invoice_response, client=client, facility_code=facility_code
+		)
+		create_sales_invoice(
+			invoice_data,
+			erpnext_so_code,
+			update_stock=1,
+			shipping_label=label_pdf,
+			warehouse_allocations=warehouse_allocation,
+			invoice_response=invoice_response,
+		)
+
+
+def create_sales_invoice(
+	si_data: JsonDict,
+	so_code: str,
+	update_stock=0,
+	submit=True,
+	shipping_label=None,
+	warehouse_allocations=None,
+	invoice_response=None,
+):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
 	"""
+	if not invoice_response:
+		invoice_response = {}
 	so = frappe.get_doc("Sales Order", so_code)
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
@@ -39,14 +322,23 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	channel_config = frappe.get_cached_doc("Unicommerce Channel", channel)
 
-	line_items = si_data["invoiceItems"]
+	uni_line_items = si_data["invoiceItems"]
 	warehouse = settings.get_integration_to_erpnext_wh_mapping(all_wh=True).get(facility_code)
 
+	if cint(frappe.db.get_value("Warehouse", warehouse, "is_group")) and update_stock:
+		# can't submit stock transaction where warehouse is group
+		submit = False
+
 	si = make_sales_invoice(so.name)
-	si.set("items", _get_line_items(line_items, warehouse, so.name, channel_config.cost_center))
-	si.set("taxes", get_taxes(line_items, channel_config))
+	si_line_items = _get_line_items(
+		uni_line_items, warehouse, so.name, channel_config.cost_center, warehouse_allocations
+	)
+	si.set("items", si_line_items)
+	si.set("taxes", get_taxes(uni_line_items, channel_config))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, si_data.get("shippingPackageCode"))
+	si.set(SHIPPING_PROVIDER_CODE, invoice_response.get("shippingProviderCode"))
+	si.set(TRACKING_CODE_FIELD, invoice_response.get("trackingNumber"))
 	si.set_posting_time = 1
 	si.posting_date = get_unicommerce_date(si_data["created"])
 	si.transaction_date = si.posting_date
@@ -55,28 +347,65 @@ def create_sales_invoice(si_data: JsonDict, so_code: str, update_stock=0):
 	si.ignore_pricing_rule = 1
 	si.update_stock = update_stock
 	si.insert()
-	si.submit()
+	if submit:
+		si.submit()
 
 	_verify_total(si, si_data)
 
-	if si_data.get("encodedInvoice"):
-		# attach file to the sales invoice
-		save_file(
-			f"unicommerce-invoice-{si_data['code']}.pdf",
-			si_data["encodedInvoice"],
-			si.doctype,
-			si.name,
-			decode=True,
-			is_private=1,
-		)
+	attach_unicommerce_docs(
+		sales_invoice=si.name,
+		invoice=si_data.get("encodedInvoice"),
+		label=shipping_label,
+		invoice_code=si_data["code"],
+		package_code=si_data.get("shippingPackageCode"),
+	)
 
-	make_payment_entry(si, channel_config, si.posting_date)
+	if cint(channel_config.auto_payment_entry):
+		make_payment_entry(si, channel_config, si.posting_date)
 
 	return si
 
 
+def attach_unicommerce_docs(
+	sales_invoice: str,
+	invoice: Optional[str],
+	label: Optional[str],
+	invoice_code: Optional[str],
+	package_code: Optional[str],
+) -> None:
+	"""Attach invoice and label to specified sales invoice.
+
+	Both invoice and label are base64 encoded PDFs.
+
+	File names are generated using specified invoice and shipping package code."""
+
+	if invoice:
+		save_file(
+			f"unicommerce-invoice-{invoice_code}.pdf",
+			invoice,
+			"Sales Invoice",
+			sales_invoice,
+			decode=True,
+			is_private=1,
+		)
+
+	if label:
+		save_file(
+			f"unicommerce-label-{package_code}.pdf",
+			label,
+			"Sales Invoice",
+			sales_invoice,
+			decode=True,
+			is_private=1,
+		)
+
+
 def _get_line_items(
-	line_items, warehouse: str, so_code: str, cost_center: str
+	line_items,
+	warehouse: str,
+	so_code: str,
+	cost_center: str,
+	warehouse_allocations: Optional[WHAllocation] = None,
 ) -> List[Dict[str, Any]]:
 	""" Invoice items can be different and are consolidated, hence recomputing is required """
 
@@ -85,19 +414,46 @@ def _get_line_items(
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
-		si_items.append(
-			{
-				"item_code": item_code,
-				# Note: Discount is already removed from this price.
-				"rate": item["unitPrice"],
-				"qty": item["quantity"],
-				"stock_uom": "Nos",
-				"warehouse": warehouse,
-				"cost_center": cost_center,
-				"sales_order": so_code,
-			}
-		)
+		for __ in range(cint(item["quantity"])):
+			si_items.append(
+				{
+					"item_code": item_code,
+					# Note: Discount is already removed from this price.
+					"rate": item["unitPrice"],
+					"qty": 1,
+					"stock_uom": "Nos",
+					"warehouse": warehouse,
+					"cost_center": cost_center,
+					"sales_order": so_code,
+				}
+			)
+
+	if warehouse_allocations:
+		return _assign_wh_and_so_row(si_items, warehouse_allocations, so_code)
+
 	return si_items
+
+
+def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], so_code: str):
+
+	so_items = frappe.get_doc("Sales Order", so_code).items
+	so_item_price_map = {d.name: d.rate for d in so_items}
+
+	# update price
+	for item in warehouse_allocation:
+		item["rate"] = so_item_price_map.get(item["sales_order_row"])
+
+	sort_key = lambda item: (item.get("item_code"), item.get("rate"))  # noqa
+
+	warehouse_allocation.sort(key=sort_key)
+	line_items.sort(key=sort_key)
+
+	# update references
+	for item, wh_alloc in zip(line_items, warehouse_allocation):
+		item["so_detail"] = wh_alloc["sales_order_row"]
+		item["warehouse"] = wh_alloc["warehouse"]
+
+	return line_items
 
 
 def _verify_total(si, si_data) -> None:
@@ -119,3 +475,22 @@ def make_payment_entry(invoice, channel_config, invoice_posting_date=None):
 
 	payment_entry.insert(ignore_permissions=True)
 	payment_entry.submit()
+
+
+def fetch_label_pdf(package, invoicing_response, client, facility_code):
+
+	if invoicing_response and invoicing_response.get("shippingLabelLink"):
+		link = invoicing_response.get("shippingLabelLink")
+		return fetch_pdf_as_base64(link)
+	else:
+		return client.get_invoice_label(package, facility_code)
+
+
+def fetch_pdf_as_base64(link):
+	try:
+		response = requests.get(link)
+		response.raise_for_status()
+
+		return base64.b64encode(response.content)
+	except Exception:
+		return

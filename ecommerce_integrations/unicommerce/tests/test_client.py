@@ -57,6 +57,10 @@ class TestCaseApiClient(TestCase):
 		self.addCleanup(self.responses.stop)
 		self.addCleanup(self.responses.reset)
 
+	def assert_last_request_headers(self, header, value):
+		req_headers = self.responses.calls[0].request.headers
+		self.assertEqual(req_headers[header], value)
+
 
 class TestUnicommerceClient(TestCaseApiClient):
 	def test_authorization_headers(self):
@@ -74,8 +78,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		)
 		self.assertEqual(ret["status"], "fail")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Authorization"], "Bearer AUTH_TOKEN")
+		self.assert_last_request_headers("Authorization", "Bearer AUTH_TOKEN")
 
 	def test_get_item(self):
 		"""requirement: When querying correct item, item is returned as _dict"""
@@ -158,8 +161,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		inventory_map = {"A": 1, "B": 2}
 		response, status = self.client.bulk_inventory_update("42", inventory_map)
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "42")
+		self.assert_last_request_headers("Facility", "42")
 
 		self.assertTrue(status)
 		self.assertDictEqual(response, {k: True for k in inventory_map})
@@ -179,8 +181,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.client.create_sales_invoice("SO_CODE", ["1", "2", "3"], "TEST")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_create_sales_invoice_with_shipping_package(self):
 		self.responses.add(
@@ -193,8 +194,35 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.client.create_invoice_by_shipping_code("SP_CODE", "TEST")
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_create_invoice_and_label_with_shipping_package(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{"shippingPackageCode": "SP_CODE", "generateUniwareShippingLabel": True}
+				)
+			],
+		)
+
+		self.client.create_invoice_and_label_by_shipping_code("SP_CODE", "TEST")
+
+	def test_create_invoice_and_assign_shipper(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
+			status=200,
+			json={"successful": True},
+			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
+		)
+
+		self.client.create_invoice_and_assign_shipper("SP_CODE", "TEST")
+
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_sales_invoice(self):
 		self.responses.add(
@@ -221,8 +249,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", "TEST", is_return=True)
 		self.assertTrue(res["return"])
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_inventory_snapshot(self):
 		self.responses.add(
@@ -241,5 +268,42 @@ class TestUnicommerceClient(TestCaseApiClient):
 			sku_codes=["BOOK", "KINDLE"], facility_code="TEST", updated_since=120
 		)
 
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers["Facility"], "TEST")
+		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_update_shipping_package(self):
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/edit",
+			status=200,
+			json={"successful": True},
+			match=[
+				responses.json_params_matcher(
+					{
+						"shippingPackageCode": "SP_CODE",
+						"shippingPackageTypeCode": "DEFAULT",
+						"shippingBox": {"length": 100, "width": 200, "height": 300},
+					}
+				)
+			],
+		)
+
+		self.client.update_shipping_package(
+			"SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300
+		)
+		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_get_invoice_label(self):
+		label_response = self.load_fixture("invoice_label_response")
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
+			status=200,
+			json=label_response,
+			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
+		)
+
+		label = self.client.get_invoice_label("SP_CODE", "TEST")
+		self.assertEqual(label, label_response["label"])
+
+		self.assert_last_request_headers("Facility", "TEST")

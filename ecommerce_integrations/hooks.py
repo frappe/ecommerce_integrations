@@ -101,7 +101,10 @@ doc_events = {
 			"ecommerce_integrations.utils.taxation.validate_tax_template",
 			"ecommerce_integrations.unicommerce.product.validate_item",
 		],
-	}
+	},
+	"Sales Order": {
+		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info"
+	},
 }
 
 # Scheduled Tasks
@@ -125,7 +128,9 @@ scheduler_events = {
 		"*/5 * * * *": [
 			"ecommerce_integrations.unicommerce.order.sync_new_orders",
 			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
-		]
+		],
+		# Every thirty minutes
+		"*/30 * * * *": ["ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",],
 	},
 }
 

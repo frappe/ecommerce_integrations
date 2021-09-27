@@ -29,6 +29,7 @@
   "sales_order_series",
   "sales_invoice_series",
   "delivery_note_series",
+  "order_status_days",
   "inventory_sync_settings_section",
   "enable_inventory_sync",
   "inventory_sync_frequency",
@@ -226,12 +227,20 @@
    "fieldname": "only_sync_completed_orders",
    "fieldtype": "Check",
    "label": "Only Sync Completed Orders"
+  },
+  {
+   "default": "2",
+   "description": "Status of orders updated in specified days will be synced",
+   "fieldname": "order_status_days",
+   "fieldtype": "Int",
+   "label": "Sync Order Status Days ",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-08-16 14:45:35.320200",
+ "modified": "2021-09-14 11:39:59.994872",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
