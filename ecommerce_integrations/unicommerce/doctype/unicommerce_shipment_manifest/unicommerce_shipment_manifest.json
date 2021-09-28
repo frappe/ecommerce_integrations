@@ -14,7 +14,9 @@
   "shipping_method_code",
   "third_party_shipping",
   "section_break_8",
-  "manifest_items"
+  "manifest_items",
+  "unicommerce_manifest_code",
+  "unicommerce_manifest_id"
  ],
  "fields": [
   {
@@ -76,12 +78,24 @@
   {
    "fieldname": "section_break_8",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "unicommerce_manifest_code",
+   "fieldtype": "Data",
+   "label": "Unicommerce Manifest Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unicommerce_manifest_id",
+   "fieldtype": "Data",
+   "label": "Unicommerce Manifest Id",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-09-28 17:58:15.752386",
+ "modified": "2021-09-28 20:47:51.314868",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Shipment Manifest",

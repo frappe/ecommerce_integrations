@@ -5,7 +5,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
+from frappe.utils.file_manager import save_file
 
+from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
@@ -15,6 +17,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
 )
+from ecommerce_integrations.unicommerce.invoice import fetch_pdf_as_base64
 
 # mapping of invoice field to manifest package fields
 FIELD_MAPPING = {
@@ -33,6 +36,7 @@ class UnicommerceShipmentManifest(Document):
 		self.set_unicommerce_details()
 
 	def on_submit(self):
+		self.create_and_close_manifest_on_unicommerce()
 		self.update_manifest_status()
 
 	def set_shipping_method(self):
@@ -70,6 +74,51 @@ class UnicommerceShipmentManifest(Document):
 				)
 			)
 		return list(facility_codes)[0]
+
+	def create_and_close_manifest_on_unicommerce(self):
+		shipping_packages = [d.shipping_package_code for d in self.manifest_items]
+
+		facility_code = self.get_facility_code()
+
+		client = UnicommerceAPIClient()
+
+		response = client.create_and_close_shipping_manifest(
+			channel=self.channel_id,
+			shipping_provider_code=self.shipping_provider_code,
+			shipping_method_code=self.shipping_method_code,
+			shipping_packages=shipping_packages,
+			facility_code=facility_code,
+		)
+
+		if not response:
+			frappe.throw(_("Failed to Generate Manifest on Unicommerce"))
+
+		status = response.get("shippingManifestStatus")
+
+		pdf_link = status.get("shippingManifestLink")
+		manifest_code = status.get("shippingManifestCode")
+		manifest_id = status.get("id")
+		self.db_set("unicommerce_manifest_code", manifest_code)
+		self.db_set("unicommerce_manifest_id", manifest_id)
+
+		self.attach_unicommerce_manifest_pdf(pdf_link, manifest_code)
+
+	def attach_unicommerce_manifest_pdf(self, link, manifest_code):
+		if not link:
+			return
+
+		pdf_b64 = fetch_pdf_as_base64(link)
+		if not pdf_b64:
+			return
+
+		save_file(
+			f"unicommerce-manifest-{manifest_code}.pdf",
+			pdf_b64,
+			self.doctype,
+			self.name,
+			decode=True,
+			is_private=1,
+		)
 
 	def update_manifest_status(self):
 		si_codes = [package.sales_invoice for package in self.manifest_items]
