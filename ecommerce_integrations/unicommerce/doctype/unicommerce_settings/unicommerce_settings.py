@@ -221,7 +221,7 @@ def setup_custom_fields():
 				fieldname=ORDER_STATUS_FIELD,
 				label="Unicommerce Order Status",
 				fieldtype="Small Text",
-				insert_after=CHANNEL_ID_FIELD,
+				insert_after=FACILITY_CODE_FIELD,
 				read_only=1,
 			),
 			dict(
@@ -284,10 +284,18 @@ def setup_custom_fields():
 				read_only=1,
 			),
 			dict(
+				fieldname=CHANNEL_ID_FIELD,
+				label="Unicommerce Channel",
+				fieldtype="Link",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+				options="Unicommerce Channel",
+			),
+			dict(
 				fieldname=FACILITY_CODE_FIELD,
 				label="Unicommerce Facility Code",
 				fieldtype="Small Text",
-				insert_after=ORDER_CODE_FIELD,
+				insert_after=CHANNEL_ID_FIELD,
 				read_only=1,
 			),
 			dict(

@@ -339,6 +339,7 @@ def create_sales_invoice(
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, si_data.get("shippingPackageCode"))
 	si.set(SHIPPING_PROVIDER_CODE, invoice_response.get("shippingProviderCode"))
 	si.set(TRACKING_CODE_FIELD, invoice_response.get("trackingNumber"))
+	si.set(CHANNEL_ID_FIELD, channel)
 	si.set_posting_time = 1
 	si.posting_date = get_unicommerce_date(si_data["created"])
 	si.transaction_date = si.posting_date
