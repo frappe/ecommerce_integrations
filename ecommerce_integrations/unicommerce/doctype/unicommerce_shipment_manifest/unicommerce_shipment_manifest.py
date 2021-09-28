@@ -2,12 +2,14 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint
 
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
+	MANIFEST_STATUS_FIELD,
 	ORDER_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PROVIDER_CODE,
@@ -30,22 +32,30 @@ class UnicommerceShipmentManifest(Document):
 		self.set_shipping_method()
 		self.set_unicommerce_details()
 
+	def on_submit(self):
+		self.update_manifest_status()
+
 	def set_shipping_method(self):
 		self.third_party_shipping = cint(
 			frappe.db.get_value("Unicommerce Channel", self.channel_id, "shipping_handled_by_marketplace")
 		)
 
 	def set_unicommerce_details(self):
-		"""In packages table fetch all relevant info."""
+		"""In packages table fetch all relevant info and validate invoices."""
 
 		for package in self.manifest_items:
 			package_info = get_sales_invoice_details(package.sales_invoice)
 
 			if self.channel_id != package_info.get(CHANNEL_ID_FIELD):
 				frappe.throw(
-					frappe._("Row #{} : Only {} channel packages can be added in this manifest").format(
+					_("Row #{} : Only {} channel packages can be added in this manifest").format(
 						package.idx, self.channel_id
 					)
+				)
+
+			if cint(package_info.get(MANIFEST_STATUS_FIELD)):
+				frappe.throw(
+					_("Row #{}: Manifest is already generated, please remove package.").format(package.idx)
 				)
 
 			for invoice_field, manifest_field in FIELD_MAPPING.items():
@@ -55,11 +65,15 @@ class UnicommerceShipmentManifest(Document):
 		facility_codes = {package.facility_code for package in self.manifest_items}
 		if len(facility_codes) != 1:
 			frappe.throw(
-				frappe._("Shipping manifest should only have one facility code, found: {}").format(
+				_("Shipping manifest should only have one facility code, found: {}").format(
 					",".join(facility_codes)
 				)
 			)
 		return list(facility_codes)[0]
+
+	def update_manifest_status(self):
+		si_codes = [package.sales_invoice for package in self.manifest_items]
+		frappe.db.set_value("Sales Invoice", {"name": ("in", si_codes)}, MANIFEST_STATUS_FIELD, 1)
 
 
 def get_sales_invoice_details(sales_invoice):
@@ -74,6 +88,7 @@ def get_sales_invoice_details(sales_invoice):
 			SHIPPING_PACKAGE_CODE_FIELD,
 			SHIPPING_PROVIDER_CODE,
 			TRACKING_CODE_FIELD,
+			MANIFEST_STATUS_FIELD,
 		],
 		as_dict=True,
 	)

@@ -328,8 +328,8 @@ def setup_custom_fields():
 			),
 			dict(
 				fieldname=MANIFEST_STATUS_FIELD,
-				label="Manifest status",
-				fieldtype="Small Text",
+				label="Manifest generated",
+				fieldtype="Check",
 				insert_after=TRACKING_CODE_FIELD,
 				read_only=1,
 			),
