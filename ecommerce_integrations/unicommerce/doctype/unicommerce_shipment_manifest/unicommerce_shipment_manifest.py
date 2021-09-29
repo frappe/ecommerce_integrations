@@ -161,10 +161,10 @@ def get_sales_invoice_details(sales_invoice):
 def search_packages(
 	search_term: str, channel: Optional[str] = None, shipper: Optional[str] = None
 ):
-	filters = {CHANNEL_ID_FIELD: channel, SHIPPING_PROVIDER_CODE: shipper}
+	filters = {CHANNEL_ID_FIELD: channel, SHIPPING_PROVIDER_CODE: shipper, MANIFEST_STATUS_FIELD: 0}
 
 	# remove non-existing values
-	filters = {k: v for k, v in filters.items() if v}
+	filters = {k: v for k, v in filters.items() if v is not None}
 
 	or_filters = {
 		TRACKING_CODE_FIELD: search_term,

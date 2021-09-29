@@ -26,6 +26,16 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 				}
 
 				let cur_grid = frm.fields_dict.manifest_items.grid;
+
+				const already_exists = frm.doc.manifest_items.find(d => d.sales_invoice === invoice);
+				if (already_exists) {
+					frappe.show_alert({
+						message: __("Package already added in this manifest"),
+						indicator: "red",
+					});
+					return;
+				}
+
 				let new_row = frappe.model.add_child(
 					frm.doc,
 					cur_grid.doctype,
