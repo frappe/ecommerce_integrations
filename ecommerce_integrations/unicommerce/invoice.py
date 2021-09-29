@@ -21,6 +21,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_INVOICE_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
 )
@@ -291,6 +292,7 @@ def _fetch_and_sync_invoice(
 			shipping_label=label_pdf,
 			warehouse_allocations=warehouse_allocation,
 			invoice_response=invoice_response,
+			so_data=so_data,
 		)
 
 
@@ -302,6 +304,7 @@ def create_sales_invoice(
 	shipping_label=None,
 	warehouse_allocations=None,
 	invoice_response=None,
+	so_data: Optional[JsonDict] = None,
 ):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
@@ -309,6 +312,9 @@ def create_sales_invoice(
 	"""
 	if not invoice_response:
 		invoice_response = {}
+	if not so_data:
+		so_data = {}
+
 	so = frappe.get_doc("Sales Order", so_code)
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
@@ -329,6 +335,17 @@ def create_sales_invoice(
 		# can't submit stock transaction where warehouse is group
 		submit = False
 
+	shipping_package_code = si_data.get("shippingPackageCode")
+	shipping_package_info = _get_shipping_package(so_data, shipping_package_code) or {}
+
+	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get(
+		"trackingNumber"
+	)
+	shipping_provider_code = invoice_response.get(
+		"shippingProviderCode"
+	) or shipping_package_info.get("shippingCourier")
+	shipping_package_status = shipping_package_info.get("status")
+
 	si = make_sales_invoice(so.name)
 	si_line_items = _get_line_items(
 		uni_line_items, warehouse, so.name, channel_config.cost_center, warehouse_allocations
@@ -336,9 +353,11 @@ def create_sales_invoice(
 	si.set("items", si_line_items)
 	si.set("taxes", get_taxes(uni_line_items, channel_config))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
-	si.set(SHIPPING_PACKAGE_CODE_FIELD, si_data.get("shippingPackageCode"))
-	si.set(SHIPPING_PROVIDER_CODE, invoice_response.get("shippingProviderCode"))
-	si.set(TRACKING_CODE_FIELD, invoice_response.get("trackingNumber"))
+	si.set(SHIPPING_PACKAGE_CODE_FIELD, shipping_package_code)
+	si.set(SHIPPING_PROVIDER_CODE, shipping_provider_code)
+	si.set(TRACKING_CODE_FIELD, tracking_no)
+	si.set(SHIPPING_PACKAGE_STATUS_FIELD, shipping_package_status)
+	si.set(CHANNEL_ID_FIELD, channel)
 	si.set_posting_time = 1
 	si.posting_date = get_unicommerce_date(si_data["created"])
 	si.transaction_date = si.posting_date
@@ -460,6 +479,15 @@ def _verify_total(si, si_data) -> None:
 	""" Leave a comment if grand total does not match unicommerce total"""
 	if abs(si.grand_total - flt(si_data["total"])) > 0.5:
 		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")
+
+
+def _get_shipping_package(si_data, package_code):
+	if not package_code:
+		return
+	packages = si_data.get("shippingPackages") or []
+	for package in packages:
+		if package.get("code") == package_code:
+			return package
 
 
 def make_payment_entry(invoice, channel_config, invoice_posting_date=None):
