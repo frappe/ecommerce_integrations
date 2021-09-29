@@ -35,7 +35,7 @@ class UnicommerceShipmentManifest(Document):
 		self.set_shipping_method()
 		self.set_unicommerce_details()
 
-	def on_submit(self):
+	def before_submit(self):
 		self.create_and_close_manifest_on_unicommerce()
 		self.update_manifest_status()
 
@@ -88,6 +88,7 @@ class UnicommerceShipmentManifest(Document):
 			shipping_method_code=self.shipping_method_code,
 			shipping_packages=shipping_packages,
 			facility_code=facility_code,
+			third_party_shipping=self.third_party_shipping,
 		)
 
 		if not response:
@@ -98,8 +99,8 @@ class UnicommerceShipmentManifest(Document):
 		pdf_link = status.get("shippingManifestLink")
 		manifest_code = status.get("shippingManifestCode")
 		manifest_id = status.get("id")
-		self.db_set("unicommerce_manifest_code", manifest_code)
-		self.db_set("unicommerce_manifest_id", manifest_id)
+		self.unicommerce_manifest_code = manifest_code
+		self.unicommerce_manifest_id = manifest_id
 
 		self.attach_unicommerce_manifest_pdf(pdf_link, manifest_code)
 
