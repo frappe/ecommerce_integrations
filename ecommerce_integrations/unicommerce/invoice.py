@@ -40,6 +40,8 @@ ItemWHAlloc = Dict[str, str]
 
 WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
 
+INVOICED_STATE = ["PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED"]
+
 
 @frappe.whitelist()
 def generate_unicommerce_invoices(
@@ -117,9 +119,13 @@ def generate_unicommerce_invoices(
 
 
 def bulk_generate_invoices(
-	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None, request_id=None
+	sales_orders: List[SOCode],
+	warehouse_allocation: Optional[WHAllocation] = None,
+	request_id=None,
+	client=None,
 ):
-	client = UnicommerceAPIClient()
+	if client is None:
+		client = UnicommerceAPIClient()
 	frappe.flags.request_id = request_id  #  for auto-picking current log
 
 	update_invoicing_status(sales_orders, "Queued")
@@ -274,9 +280,7 @@ def _fetch_and_sync_invoice(
 
 	so_data = client.get_sales_order(unicommerce_so_code)
 	shipping_packages = [
-		d["code"]
-		for d in so_data["shippingPackages"]
-		if d["status"] in ("PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED")
+		d["code"] for d in so_data["shippingPackages"] if d["status"] in INVOICED_STATE
 	]
 
 	for package in shipping_packages:
