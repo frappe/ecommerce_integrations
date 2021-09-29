@@ -32,6 +32,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
 )
@@ -327,10 +328,17 @@ def setup_custom_fields():
 				read_only=1,
 			),
 			dict(
+				fieldname=SHIPPING_PACKAGE_STATUS_FIELD,
+				label="Unicommerce Tracking Code",
+				fieldtype="Small Text",
+				insert_after=TRACKING_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
 				fieldname=MANIFEST_STATUS_FIELD,
 				label="Manifest generated",
 				fieldtype="Check",
-				insert_after=TRACKING_CODE_FIELD,
+				insert_after=SHIPPING_PACKAGE_STATUS_FIELD,
 				read_only=1,
 			),
 		],

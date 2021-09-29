@@ -27,6 +27,7 @@ PACKAGE_TYPE_FIELD = "unicommerce_package_type"
 ITEM_LENGTH_FIELD = "unicommerce_item_length"
 ITEM_WIDTH_FIELD = "unicommerce_item_width"
 ITEM_HEIGHT_FIELD = "unicommerce_item_height"
+SHIPPING_PACKAGE_STATUS_FIELD = "unicommerce_shipping_package_status"
 
 
 # Tax -> Unicommerce tax amount field mapping

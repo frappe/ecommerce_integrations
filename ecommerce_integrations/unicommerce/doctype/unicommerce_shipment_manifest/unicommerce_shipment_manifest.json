@@ -68,8 +68,7 @@
    "fieldname": "manifest_items",
    "fieldtype": "Table",
    "label": "Manifest Items",
-   "options": "Unicommerce Manifest Item",
-   "reqd": 1
+   "options": "Unicommerce Manifest Item"
   },
   {
    "fieldname": "column_break_5",
@@ -95,7 +94,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-09-28 20:47:51.314868",
+ "modified": "2021-09-29 10:15:10.164178",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Shipment Manifest",
