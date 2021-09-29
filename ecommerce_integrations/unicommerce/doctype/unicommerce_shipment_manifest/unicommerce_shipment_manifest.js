@@ -3,27 +3,20 @@
 
 frappe.ui.form.on("Unicommerce Shipment Manifest", {
 	scan_barcode: function (frm) {
-		let scan_barcode_field = frm.fields_dict.scan_barcode;
-
 		if (!frm.doc.scan_barcode) {
 			return false;
 		}
 
 		frappe
-			.call({
-				method:
-					"ecommerce_integrations.unicommerce.doctype.unicommerce_shipment_manifest.unicommerce_shipment_manifest.search_packages",
-				args: {
+			.xcall(
+				"ecommerce_integrations.unicommerce.doctype.unicommerce_shipment_manifest.unicommerce_shipment_manifest.search_packages",
+				{
 					search_term: frm.doc.scan_barcode,
 					shipper: frm.doc.shipping_provider_code,
 					channel: frm.doc.channel_id,
-				},
-				freeze: true,
-				freeze_message: __("Fetching package with specified AWB code"),
-			})
-			.then((r) => {
-				const invoice = r && r.message;
-
+				}
+			)
+			.then((invoice) => {
 				if (!invoice) {
 					frappe.show_alert({
 						message: __("Could not find the package."),
@@ -45,8 +38,9 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 					"sales_invoice",
 					invoice
 				);
-
-				scan_barcode_field.set_value("");
+			})
+			.finally(() => {
+				frm.fields_dict.scan_barcode.set_value("");
 				refresh_field("manifest_items");
 			});
 	},

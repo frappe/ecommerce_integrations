@@ -1,6 +1,8 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+from typing import Optional
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -156,8 +158,13 @@ def get_sales_invoice_details(sales_invoice):
 
 
 @frappe.whitelist()
-def search_packages(search_term: str, channel: str, shipper: str):
+def search_packages(
+	search_term: str, channel: Optional[str] = None, shipper: Optional[str] = None
+):
 	filters = {CHANNEL_ID_FIELD: channel, SHIPPING_PROVIDER_CODE: shipper}
+
+	# remove non-existing values
+	filters = {k: v for k, v in filters.items() if v}
 
 	or_filters = {
 		TRACKING_CODE_FIELD: search_term,
