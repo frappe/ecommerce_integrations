@@ -10,7 +10,8 @@
   "awb_no",
   "shipping_address",
   "item_list",
-  "facility_code"
+  "facility_code",
+  "awb_barcode"
  ],
  "fields": [
   {
@@ -58,12 +59,17 @@
    "fieldtype": "Data",
    "label": "Facility Code",
    "read_only": 1
+  },
+  {
+   "fieldname": "awb_barcode",
+   "fieldtype": "Barcode",
+   "label": "AWB Barcode"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-09-28 18:52:21.856414",
+ "modified": "2021-09-29 14:55:16.946709",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Manifest Item",

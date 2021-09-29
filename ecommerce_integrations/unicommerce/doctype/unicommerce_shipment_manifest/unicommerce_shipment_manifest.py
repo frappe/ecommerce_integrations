@@ -64,6 +64,7 @@ class UnicommerceShipmentManifest(Document):
 
 			for invoice_field, manifest_field in FIELD_MAPPING.items():
 				package.set(manifest_field, package_info[invoice_field])
+				package.awb_barcode = package.awb_no
 
 	def get_facility_code(self) -> str:
 		facility_codes = {package.facility_code for package in self.manifest_items}
