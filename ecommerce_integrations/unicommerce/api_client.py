@@ -260,6 +260,10 @@ class UnicommerceAPIClient:
 	def get_sales_invoice(
 		self, shipping_package_code: str, facility_code: str, is_return: bool = False
 	) -> Optional[JsonDict]:
+		"""Get invoice details
+
+		ref: https://documentation.unicommerce.com/docs/invoice-getdetails.html
+		"""
 		extra_headers = {"Facility": facility_code}
 		response, status = self.request(
 			endpoint="/services/rest/v1/invoice/details/get",

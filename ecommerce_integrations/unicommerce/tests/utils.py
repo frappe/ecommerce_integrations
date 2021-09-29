@@ -49,6 +49,7 @@ class TestCase(unittest.TestCase):
 		settings.save()
 		setup_custom_fields()
 		_setup_test_item_categories()
+		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 1)
 
 	@classmethod
 	def tearDownClass(cls):
@@ -64,6 +65,7 @@ class TestCase(unittest.TestCase):
 		settings.flags.ignore_validate = True  # to prevent hitting the API
 		settings.flags.ignore_mandatory = True
 		settings.save()
+		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 0)
 
 	def load_fixture(self, name):
 		with open(os.path.dirname(__file__) + f"/fixtures/{name}.json", "rb") as f:
