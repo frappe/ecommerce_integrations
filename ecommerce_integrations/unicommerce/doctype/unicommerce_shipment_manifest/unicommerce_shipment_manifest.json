@@ -13,6 +13,8 @@
   "column_break_5",
   "shipping_method_code",
   "third_party_shipping",
+  "section_break_9",
+  "scan_barcode",
   "section_break_8",
   "manifest_items",
   "unicommerce_manifest_code",
@@ -89,12 +91,22 @@
    "fieldtype": "Data",
    "label": "Unicommerce Manifest Id",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_barcode",
+   "fieldtype": "Data",
+   "label": "Scan AWB Code",
+   "options": "Barcode"
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2021-09-29 14:46:09.221363",
+ "modified": "2021-09-29 16:38:57.619675",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Shipment Manifest",

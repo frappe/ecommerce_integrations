@@ -11,6 +11,7 @@ from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
+	INVOICE_CODE_FIELD,
 	MANIFEST_STATUS_FIELD,
 	ORDER_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
@@ -152,3 +153,21 @@ def get_sales_invoice_details(sales_invoice):
 	si_data["item_list"] = ",".join(unique_items)
 
 	return si_data
+
+
+@frappe.whitelist()
+def search_packages(search_term: str, channel: str, shipper: str):
+	filters = {CHANNEL_ID_FIELD: channel, SHIPPING_PROVIDER_CODE: shipper}
+
+	or_filters = {
+		TRACKING_CODE_FIELD: search_term,
+		SHIPPING_PACKAGE_CODE_FIELD: search_term,
+		INVOICE_CODE_FIELD: search_term,
+	}
+
+	packages = frappe.get_list(
+		"Sales Invoice", filters=filters, or_filters=or_filters, limit_page_length=1
+	)
+
+	if packages:
+		return packages[0].name
