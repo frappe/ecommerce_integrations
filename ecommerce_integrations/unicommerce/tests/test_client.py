@@ -1,3 +1,4 @@
+import base64
 import json
 from unittest.mock import patch
 
@@ -293,17 +294,14 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_invoice_label(self):
-		label_response = self.load_fixture("invoice_label_response")
-
 		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
+			responses.GET,
+			"https://demostaging.unicommerce.com/services/rest/v1/oms/shipment/show?shippingPackageCodes=SP_CODE",
 			status=200,
-			json=label_response,
-			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
+			body="pdf",
 		)
 
-		label = self.client.get_invoice_label("SP_CODE", "TEST")
-		self.assertEqual(label, label_response["label"])
+		pdf = self.client.get_invoice_label("SP_CODE", "TEST")
+		self.assertEqual(pdf, base64.b64encode(b"pdf"))
 
 		self.assert_last_request_headers("Facility", "TEST")
