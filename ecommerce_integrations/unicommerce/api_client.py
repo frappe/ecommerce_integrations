@@ -1,3 +1,4 @@
+import base64
 from typing import Any, Dict, List, Optional, Tuple
 
 import frappe
@@ -35,8 +36,14 @@ class UnicommerceAPIClient:
 		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
 
 	def request(
-		self, endpoint: str, method: str = "POST", headers: JsonDict = None, body: JsonDict = None,
+		self,
+		endpoint: str,
+		method: str = "POST",
+		headers: Optional[JsonDict] = None,
+		body: Optional[JsonDict] = None,
+		params: Optional[JsonDict] = None,
 	) -> Tuple[JsonDict, bool]:
+
 		if headers is None:
 			headers = {}
 
@@ -45,10 +52,14 @@ class UnicommerceAPIClient:
 		url = self.base_url + endpoint
 
 		try:
-			response = requests.request(url=url, method=method, headers=headers, json=body)
+			response = requests.request(url=url, method=method, headers=headers, json=body, params=params)
 			response.raise_for_status()
 		except Exception:
 			create_unicommerce_log(status="Error", make_new=True)
+			return None, False
+
+		if method == "GET" and "application/json" not in response.headers.get("content-type"):
+			return response.content, True
 
 		data = frappe._dict(response.json())
 		status = data.successful if data.successful is not None else True
@@ -314,17 +325,17 @@ class UnicommerceAPIClient:
 	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> Optional[str]:
 		"""Get the generated label for a given shipping package.
 
-		ref: https://documentation.unicommerce.com/docs/shippingpackage-getinvoicelabel.html
+		ref: undocumented.
 		"""
-		# XXX: this is actually returning invoice PDF and not label
 		extra_headers = {"Facility": facility_code}
-		response, status = self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/getInvoiceLabel",
-			body={"shippingPackageCode": shipping_package_code},
+		pdf, status = self.request(
+			endpoint="/services/rest/v1/oms/shipment/show",
+			method="GET",
+			params={"shippingPackageCodes": shipping_package_code},
 			headers=extra_headers,
 		)
-		if status and "label" in response:
-			return response["label"]
+		if status and pdf:
+			return base64.b64encode(pdf)
 
 	def create_and_close_shipping_manifest(
 		self,
