@@ -345,9 +345,11 @@ def create_sales_invoice(
 	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get(
 		"trackingNumber"
 	)
-	shipping_provider_code = invoice_response.get(
-		"shippingProviderCode"
-	) or shipping_package_info.get("shippingCourier")
+	shipping_provider_code = (
+		invoice_response.get("shippingProviderCode")
+		or shipping_package_info.get("shippingProvider")
+		or shipping_package_info.get("shippingCourier")
+	)
 	shipping_package_status = shipping_package_info.get("status")
 
 	si = make_sales_invoice(so.name)
