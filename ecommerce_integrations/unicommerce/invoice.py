@@ -26,7 +26,11 @@ from ecommerce_integrations.unicommerce.constants import (
 	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import get_taxes
-from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
+from ecommerce_integrations.unicommerce.utils import (
+	create_unicommerce_log,
+	get_unicommerce_date,
+	remove_non_alphanumeric_chars,
+)
 
 JsonDict = Dict[str, Any]
 SOCode = NewType("SOCode", str)
@@ -403,6 +407,9 @@ def attach_unicommerce_docs(
 	Both invoice and label are base64 encoded PDFs.
 
 	File names are generated using specified invoice and shipping package code."""
+
+	invoice_code = remove_non_alphanumeric_chars(invoice_code)
+	package_code = remove_non_alphanumeric_chars(package_code)
 
 	if invoice:
 		save_file(

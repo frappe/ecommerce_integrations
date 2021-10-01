@@ -47,3 +47,7 @@ def force_sync(document) -> None:
 def get_unicommerce_date(timestamp: int) -> datetime.date:
 	""" Convert unicommerce ms timestamp to datetime."""
 	return datetime.date.fromtimestamp(timestamp // 1000)
+
+
+def remove_non_alphanumeric_chars(filename: str) -> str:
+	return "".join(c for c in filename if c.isalpha() or c.isdigit()).strip()
