@@ -26,7 +26,7 @@ After installation follow user documentation for each integration to set it up.
 - Follow general [ERPNext contribution guideline](https://github.com/frappe/erpnext/wiki/Contribution-Guidelines)
 - Send PRs to `develop` branch only.
 
-### Currently supported intgrations:
+### Currently supported integrations:
 
 - Shopify - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/shopify_integration)
 
