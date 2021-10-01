@@ -21,6 +21,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.invoice import fetch_pdf_as_base64
+from ecommerce_integrations.unicommerce.utils import remove_non_alphanumeric_chars
 
 # mapping of invoice field to manifest package fields
 FIELD_MAPPING = {
@@ -115,6 +116,8 @@ class UnicommerceShipmentManifest(Document):
 		pdf_b64 = fetch_pdf_as_base64(link)
 		if not pdf_b64:
 			return
+
+		manifest_code = remove_non_alphanumeric_chars(manifest_code)
 
 		save_file(
 			f"unicommerce-manifest-{manifest_code}.pdf",
