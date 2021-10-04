@@ -376,8 +376,6 @@ def create_sales_invoice(
 	si.ignore_pricing_rule = 1
 	si.update_stock = update_stock
 	si.insert()
-	if submit:
-		si.submit()
 
 	_verify_total(si, si_data)
 
@@ -388,6 +386,9 @@ def create_sales_invoice(
 		invoice_code=si_data["code"],
 		package_code=si_data.get("shippingPackageCode"),
 	)
+
+	if submit:
+		si.submit()
 
 	if cint(channel_config.auto_payment_entry):
 		make_payment_entry(si, channel_config, si.posting_date)
