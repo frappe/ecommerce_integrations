@@ -25,6 +25,7 @@
   "gift_wrap_account",
   "cost_center",
   "auto_payment_entry",
+  "submit_payment_entry",
   "naming_series_config_section",
   "sales_order_series",
   "sales_invoice_series",
@@ -190,11 +191,18 @@
    "fieldname": "fulfilment_settings_section",
    "fieldtype": "Section Break",
    "label": "Fulfilment Settings"
+  },
+  {
+   "default": "0",
+   "depends_on": "auto_payment_entry",
+   "fieldname": "submit_payment_entry",
+   "fieldtype": "Check",
+   "label": "Submit Payment Entry"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-09-06 16:23:14.571581",
+ "modified": "2021-10-04 14:58:27.962917",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
