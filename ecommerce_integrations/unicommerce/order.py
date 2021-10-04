@@ -250,7 +250,7 @@ def get_taxes(line_items, channel_config) -> List:
 				"charge_type": "Actual",
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
-				"description": tax_head.replace("_", " "),
+				"description": tax_head.replace("_", " ").upper(),
 				"item_wise_tax_detail": json.dumps(item_wise_tax_map[tax_head]),
 				"dont_recompute_tax": 1,
 			}
