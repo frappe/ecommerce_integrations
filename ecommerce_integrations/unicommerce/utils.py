@@ -16,6 +16,7 @@ SYNC_METHODS = {
 DOCUMENT_URL_FORMAT = {
 	"Sales Order": "https://{site}/order/orderitems?orderCode={code}",
 	"Item": "https://{site}/products/edit?sku={code}",
+	"Unicommerce Shipment Manifest": "https://{site}/manifests/edit?code={code}",
 }
 
 
