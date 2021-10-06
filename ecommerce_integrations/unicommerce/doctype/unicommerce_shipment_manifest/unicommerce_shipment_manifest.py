@@ -14,7 +14,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
-	MANIFEST_STATUS_FIELD,
+	MANIFEST_GENERATED_CHECK,
 	ORDER_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PROVIDER_CODE,
@@ -61,7 +61,7 @@ class UnicommerceShipmentManifest(Document):
 					)
 				)
 
-			if cint(package_info.get(MANIFEST_STATUS_FIELD)):
+			if cint(package_info.get(MANIFEST_GENERATED_CHECK)):
 				frappe.throw(
 					_("Row #{}: Manifest is already generated, please remove package.").format(package.idx)
 				)
@@ -130,7 +130,7 @@ class UnicommerceShipmentManifest(Document):
 
 	def update_manifest_status(self):
 		si_codes = [package.sales_invoice for package in self.manifest_items]
-		frappe.db.set_value("Sales Invoice", {"name": ("in", si_codes)}, MANIFEST_STATUS_FIELD, 1)
+		frappe.db.set_value("Sales Invoice", {"name": ("in", si_codes)}, MANIFEST_GENERATED_CHECK, 1)
 
 
 def get_sales_invoice_details(sales_invoice):
@@ -145,7 +145,7 @@ def get_sales_invoice_details(sales_invoice):
 			SHIPPING_PACKAGE_CODE_FIELD,
 			SHIPPING_PROVIDER_CODE,
 			TRACKING_CODE_FIELD,
-			MANIFEST_STATUS_FIELD,
+			MANIFEST_GENERATED_CHECK,
 		],
 		as_dict=True,
 	)
@@ -164,7 +164,11 @@ def get_sales_invoice_details(sales_invoice):
 def search_packages(
 	search_term: str, channel: Optional[str] = None, shipper: Optional[str] = None
 ):
-	filters = {CHANNEL_ID_FIELD: channel, SHIPPING_PROVIDER_CODE: shipper, MANIFEST_STATUS_FIELD: 0}
+	filters = {
+		CHANNEL_ID_FIELD: channel,
+		SHIPPING_PROVIDER_CODE: shipper,
+		MANIFEST_GENERATED_CHECK: 0,
+	}
 
 	# remove non-existing values
 	filters = {k: v for k, v in filters.items() if v is not None}
