@@ -339,10 +339,6 @@ def create_sales_invoice(
 	uni_line_items = si_data["invoiceItems"]
 	warehouse = settings.get_integration_to_erpnext_wh_mapping(all_wh=True).get(facility_code)
 
-	if cint(frappe.db.get_value("Warehouse", warehouse, "is_group")) and update_stock:
-		# can't submit stock transaction where warehouse is group
-		submit = False
-
 	shipping_package_code = si_data.get("shippingPackageCode")
 	shipping_package_info = _get_shipping_package(so_data, shipping_package_code) or {}
 
@@ -386,6 +382,12 @@ def create_sales_invoice(
 		invoice_code=si_data["code"],
 		package_code=si_data.get("shippingPackageCode"),
 	)
+
+	item_warehouses = {d.warehouse for d in si.items}
+	for wh in item_warehouses:
+		if update_stock and cint(frappe.db.get_value("Warehouse", wh, "is_group")):
+			# can't submit stock transaction where warehouse is group
+			return si
 
 	if submit:
 		si.submit()
