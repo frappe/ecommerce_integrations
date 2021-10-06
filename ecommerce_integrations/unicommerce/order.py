@@ -187,6 +187,9 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	so.save()
 	so.submit()
 
+	if so.get(ORDER_STATUS_FIELD) == "CANCELLED":
+		so.cancel()
+
 	return so
 
 
