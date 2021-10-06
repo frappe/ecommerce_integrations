@@ -1,11 +1,13 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+import json
 from typing import Optional
 
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.model.mapper import get_mapped_doc
 from frappe.utils import cint
 from frappe.utils.file_manager import save_file
 
@@ -185,3 +187,14 @@ def search_packages(
 
 	if packages:
 		return packages[0].name
+
+
+@frappe.whitelist()
+def get_shipping_package_list(source_name, target_doc=None):
+
+	if target_doc and isinstance(target_doc, str):
+		target_doc = json.loads(target_doc)
+
+	target_doc["manifest_items"].append({"sales_invoice": source_name})
+
+	return target_doc
