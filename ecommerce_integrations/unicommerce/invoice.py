@@ -16,10 +16,12 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
+	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	ORDER_INVOICE_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
+	SHIPPING_METHOD_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
@@ -362,6 +364,8 @@ def create_sales_invoice(
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, shipping_package_code)
 	si.set(SHIPPING_PROVIDER_CODE, shipping_provider_code)
 	si.set(TRACKING_CODE_FIELD, tracking_no)
+	si.set(IS_COD_CHECKBOX, so_data["cod"])
+	si.set(SHIPPING_METHOD_FIELD, shipping_package_info.get("shippingMethod"))
 	si.set(SHIPPING_PACKAGE_STATUS_FIELD, shipping_package_status)
 	si.set(CHANNEL_ID_FIELD, channel)
 	si.set_posting_time = 1
