@@ -2,6 +2,33 @@
 // For license information, please see license.txt
 
 frappe.ui.form.on("Unicommerce Shipment Manifest", {
+
+	refresh(frm) {
+		if (frm.doc.unicommerce_manifest_code) {
+			// add button to open unicommerce order from SO page
+			frm.add_custom_button(
+				__("Open on Unicommerce"),
+				function () {
+					frappe.call({
+						method:
+							"ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
+						args: {
+							code: frm.doc.unicommerce_manifest_code,
+							doctype: frm.doc.doctype,
+						},
+						callback: function (r) {
+							if (!r.exc) {
+								window.open(r.message, "_blank");
+							}
+						},
+					});
+				},
+				__("Unicommerce")
+			);
+		}
+	},
+
+
 	scan_barcode: function (frm) {
 		if (!frm.doc.scan_barcode) {
 			return false;
