@@ -25,7 +25,9 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 				__("Unicommerce")
 			);
 		}
-
+		if (frm.doc.docstatus != 0) {
+			return;
+		}
 		frm.add_custom_button(__("Get Packages"), () => {
 			if (
 				!(
