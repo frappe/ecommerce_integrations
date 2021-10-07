@@ -324,8 +324,14 @@ def create_sales_invoice(
 		invoice_response = {}
 	if not so_data:
 		so_data = {}
-
 	so = frappe.get_doc("Sales Order", so_code)
+
+	if so_data:
+		fully_cancelled = update_cancellation_status(so_data, so)
+		if fully_cancelled:
+			create_unicommerce_log(status="Invalid", message="Sales order was cancelled before invoicing.")
+			return
+
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
 
@@ -543,3 +549,16 @@ def fetch_pdf_as_base64(link):
 		return base64.b64encode(response.content)
 	except Exception:
 		return
+
+
+def update_cancellation_status(so_data, so) -> bool:
+	"""Check and update cancellation status, if fully cancelled return True"""
+	# fully cancelled
+	if so_data.get("status") == "CANCELLED":
+		so.cancel()
+		return True
+
+	# partial cancels
+	from ecommerce_integrations.unicommerce.status_updater import update_erpnext_order_items
+
+	update_erpnext_order_items(so_data, so)
