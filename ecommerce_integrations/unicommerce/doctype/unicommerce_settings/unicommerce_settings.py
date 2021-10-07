@@ -53,6 +53,7 @@ class UnicommerceSettings(SettingController):
 			self.expires_on = now_datetime()
 			return
 
+		self.validate_warehouse_mapping()
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens()
@@ -110,6 +111,15 @@ class UnicommerceSettings(SettingController):
 		if grant_type == "password":
 			return
 		self.update_tokens(grant_type="password")
+
+	def validate_warehouse_mapping(self):
+		erpnext_whs = {wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping}
+		integration_whs = {wh_map.unicommerce_facility_code for wh_map in self.warehouse_mapping}
+
+		if len(erpnext_whs) != len(integration_whs):
+			frappe.throw(
+				_("Warehouse Mapping should be unique and one-to-one without repeating same warehouses.")
+			)
 
 	def get_erpnext_warehouses(self, all_wh=False) -> List[ERPNextWarehouse]:
 		"""Get list of configured ERPNext warehouses.
