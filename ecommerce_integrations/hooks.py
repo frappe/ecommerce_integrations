@@ -122,6 +122,7 @@ scheduler_events = {
 	"hourly_long": [
 		"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_invoices",
 		"ecommerce_integrations.unicommerce.product.upload_new_items",
+		"ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",
 	],
 	"weekly": [],
 	"monthly": [],
@@ -131,8 +132,6 @@ scheduler_events = {
 			"ecommerce_integrations.unicommerce.order.sync_new_orders",
 			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
 		],
-		# Every thirty minutes
-		"*/30 * * * *": ["ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",],
 	},
 }
 
