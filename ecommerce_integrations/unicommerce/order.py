@@ -200,6 +200,9 @@ def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List
 	so_items = []
 
 	for item in line_items:
+		if item.get("statusCode") == "CANCELLED":
+			continue
+
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
