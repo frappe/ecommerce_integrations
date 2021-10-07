@@ -204,6 +204,7 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="unicommerce_section",
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=CHANNEL_ID_FIELD,
@@ -212,6 +213,7 @@ def setup_custom_fields():
 				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 				options="Unicommerce Channel",
+				search_index=1,
 			),
 			dict(
 				fieldname=FACILITY_CODE_FIELD,
@@ -289,9 +291,10 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_CODE_FIELD,
 				label="Unicommerce Order No.",
-				fieldtype="Small Text",
+				fieldtype="Data",
 				insert_after="unicommerce_section",
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=CHANNEL_ID_FIELD,
@@ -300,6 +303,7 @@ def setup_custom_fields():
 				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 				options="Unicommerce Channel",
+				search_index=1,
 			),
 			dict(
 				fieldname=FACILITY_CODE_FIELD,
@@ -311,9 +315,10 @@ def setup_custom_fields():
 			dict(
 				fieldname=INVOICE_CODE_FIELD,
 				label="Unicommerce Invoice Code",
-				fieldtype="Small Text",
+				fieldtype="Data",
 				insert_after=FACILITY_CODE_FIELD,
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=SHIPPING_PACKAGE_CODE_FIELD,
