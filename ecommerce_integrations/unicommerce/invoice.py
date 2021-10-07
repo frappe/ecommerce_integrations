@@ -484,11 +484,16 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 	so_items = frappe.get_doc("Sales Order", so_code).items
 	so_item_price_map = {d.name: d.rate for d in so_items}
 
+	# remove cancelled items
+	warehouse_allocation = [
+		d for d in warehouse_allocation if d["sales_order_row"] in so_item_price_map
+	]
+
 	# update price
 	for item in warehouse_allocation:
 		item["rate"] = so_item_price_map.get(item["sales_order_row"])
 
-	sort_key = lambda item: (item.get("item_code"), item.get("rate"))  # noqa
+	sort_key = lambda d: (d.get("item_code"), d.get("rate"))  # noqa
 
 	warehouse_allocation.sort(key=sort_key)
 	line_items.sort(key=sort_key)
