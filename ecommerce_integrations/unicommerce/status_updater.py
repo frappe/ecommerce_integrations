@@ -130,17 +130,18 @@ def _filter_recent_orders(orders, time_limit=60 * 6):
 	return [order for order in orders if int(order["updated"]) >= check_timestamp]
 
 
-def update_erpnext_order_items(so_data):
+def update_erpnext_order_items(so_data, so=None):
 	"""Update cancelled items in ERPNext order."""
-	so_name = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: so_data["code"]})
-	if not so_name:
-		return
-
 	cancelled_items = [d["code"] for d in so_data["saleOrderItems"] if d["statusCode"] == "CANCELLED"]
 	if not cancelled_items:
 		return
 
-	so = frappe.get_doc("Sales Order", so_name)
+	if not so:
+		so_name = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: so_data["code"]})
+		if not so_name:
+			return
+		so = frappe.get_doc("Sales Order", so_name)
+
 	if so.docstatus > 1:
 		return
 
