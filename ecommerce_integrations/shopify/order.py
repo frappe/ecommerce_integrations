@@ -95,7 +95,7 @@ def create_sales_order(shopify_order, setting, company=None):
 			{
 				"doctype": "Sales Order",
 				"naming_series": setting.sales_order_series or "SO-Shopify-",
-				ORDER_ID_FIELD: shopify_order.get("id"),
+				ORDER_ID_FIELD: str(shopify_order.get("id")),
 				ORDER_NUMBER_FIELD: shopify_order.get("name"),
 				"customer": customer or setting.default_customer,
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
