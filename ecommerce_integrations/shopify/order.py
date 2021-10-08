@@ -112,6 +112,7 @@ def create_sales_order(shopify_order, setting, company=None):
 		if company:
 			so.update({"company": company, "status": "Draft"})
 		so.flags.ignore_mandatory = True
+		so.flags.shopiy_order_json = json.dumps(shopify_order)
 		so.save(ignore_permissions=True)
 		so.submit()
 
