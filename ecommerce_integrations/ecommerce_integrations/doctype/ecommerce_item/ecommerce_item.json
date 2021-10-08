@@ -30,11 +30,10 @@
   },
   {
    "fieldname": "integration",
-   "fieldtype": "Link",
+   "fieldtype": "Data",
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Integration",
-   "options": "Module Def",
    "read_only": 1,
    "reqd": 1,
    "search_index": 1
@@ -96,7 +95,7 @@
  "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-06-17 15:04:03.927948",
+ "modified": "2021-10-08 15:04:03.927948",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
