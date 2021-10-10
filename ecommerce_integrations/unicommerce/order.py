@@ -164,6 +164,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	channel_config = frappe.get_doc("Unicommerce Channel", order["channel"])
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
+	is_cancelled = order["status"] == "CANCELLED"
+
 	so = frappe.get_doc(
 		{
 			"doctype": "Sales Order",
@@ -177,7 +179,9 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"transaction_date": get_unicommerce_date(order["displayOrderDateTime"]),
 			"delivery_date": get_unicommerce_date(order["fulfillmentTat"]),
 			"ignore_pricing_rule": 1,
-			"items": _get_line_items(order["saleOrderItems"], default_warehouse=channel_config.warehouse),
+			"items": _get_line_items(
+				order["saleOrderItems"], default_warehouse=channel_config.warehouse, is_cancelled=is_cancelled
+			),
 			"company": channel_config.company,
 			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
@@ -187,20 +191,22 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	so.save()
 	so.submit()
 
-	if so.get(ORDER_STATUS_FIELD) == "CANCELLED":
+	if is_cancelled:
 		so.cancel()
 
 	return so
 
 
-def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List[Dict[str, Any]]:
+def _get_line_items(
+	line_items, default_warehouse: Optional[str] = None, is_cancelled: bool = False
+) -> List[Dict[str, Any]]:
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping(all_wh=True)
 	so_items = []
 
 	for item in line_items:
-		if item.get("statusCode") == "CANCELLED":
+		if not is_cancelled and item.get("statusCode") == "CANCELLED":
 			continue
 
 		item_code = ecommerce_item.get_erpnext_item_code(
