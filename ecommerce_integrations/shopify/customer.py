@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional
 
 import frappe
 from frappe import _
+from frappe.utils import validate_phone_number
 
 from ecommerce_integrations.controllers.customer import EcommerceCustomer
 from ecommerce_integrations.shopify.constants import (
@@ -102,7 +103,7 @@ class ShopifyCustomer(EcommerceCustomer):
 			"phone"
 		)
 
-		if phone_no:
+		if validate_phone_number(phone_no, throw=False):
 			contact_fields["phone_nos"] = [{"phone": phone_no, "is_primary_phone": True}]
 
 		super().create_customer_contact(contact_fields)
@@ -120,7 +121,7 @@ def _map_address_fields(shopify_address, customer_name, address_type, email):
 		"state": shopify_address.get("province"),
 		"pincode": shopify_address.get("zip"),
 		"country": shopify_address.get("country"),
-		"phone": shopify_address.get("phone"),
+		"phone": validate_phone_number(shopify_address.get("phone"), throw=False) or None,
 		"email_id": email,
 	}
 	return address_fields

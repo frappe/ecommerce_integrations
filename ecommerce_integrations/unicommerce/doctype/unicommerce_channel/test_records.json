@@ -15,7 +15,8 @@
 		"ugst_account": "Output Tax SGST - WP",
 		"cost_center": "Main - WP",
 		"cash_or_bank_account": "Cash - WP",
-		"gift_wrap_account": "Miscellaneous Expenses - WP"
+		"gift_wrap_account": "Miscellaneous Expenses - WP",
+		"shipping_handled_by_marketplace": 0
 	},
 	{
 		"doctype": "Unicommerce Channel",

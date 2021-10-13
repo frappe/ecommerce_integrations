@@ -17,13 +17,26 @@ from ecommerce_integrations.controllers.setting import (
 from ecommerce_integrations.unicommerce.constants import (
 	ADDRESS_JSON_FIELD,
 	CHANNEL_ID_FIELD,
+	CUSTOMER_CODE_FIELD,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
+	IS_COD_CHECKBOX,
+	ITEM_HEIGHT_FIELD,
+	ITEM_LENGTH_FIELD,
 	ITEM_SYNC_CHECKBOX,
+	ITEM_WIDTH_FIELD,
+	MANIFEST_GENERATED_CHECK,
 	ORDER_CODE_FIELD,
+	ORDER_INVOICE_STATUS_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
+	SHIPPING_METHOD_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PACKAGE_STATUS_FIELD,
+	SHIPPING_PROVIDER_CODE,
+	TRACKING_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -40,6 +53,7 @@ class UnicommerceSettings(SettingController):
 			self.expires_on = now_datetime()
 			return
 
+		self.validate_warehouse_mapping()
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens()
@@ -47,7 +61,9 @@ class UnicommerceSettings(SettingController):
 				create_unicommerce_log(
 					status="Error", message="Failed to authenticate with Unicommerce", exception=e
 				)
-		setup_custom_fields()
+
+		if not self.flags.ignore_custom_fields:
+			setup_custom_fields()
 
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
@@ -57,6 +73,7 @@ class UnicommerceSettings(SettingController):
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
 				raise e
 		if save:
+			self.flags.ignore_custom_fields = True
 			self.save()
 			frappe.db.commit()
 			self.load_from_db()
@@ -94,6 +111,15 @@ class UnicommerceSettings(SettingController):
 		if grant_type == "password":
 			return
 		self.update_tokens(grant_type="password")
+
+	def validate_warehouse_mapping(self):
+		erpnext_whs = {wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping}
+		integration_whs = {wh_map.unicommerce_facility_code for wh_map in self.warehouse_mapping}
+
+		if len(erpnext_whs) != len(integration_whs):
+			frappe.throw(
+				_("Warehouse Mapping should be unique and one-to-one without repeating same warehouses.")
+			)
 
 	def get_erpnext_warehouses(self, all_wh=False) -> List[ERPNextWarehouse]:
 		"""Get list of configured ERPNext warehouses.
@@ -158,7 +184,28 @@ def setup_custom_fields():
 				fieldtype="Check",
 				insert_after="item_code",
 				print_hide=1,
-			)
+			),
+			dict(
+				fieldname=ITEM_LENGTH_FIELD,
+				label="Length (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after="over_billing_allowance",
+				print_hide=1,
+			),
+			dict(
+				fieldname=ITEM_WIDTH_FIELD,
+				label="Width (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after=ITEM_LENGTH_FIELD,
+				print_hide=1,
+			),
+			dict(
+				fieldname=ITEM_HEIGHT_FIELD,
+				label="Height (mm) (Unicommerce)",
+				fieldtype="Int",
+				insert_after=ITEM_WIDTH_FIELD,
+				print_hide=1,
+			),
 		],
 		"Sales Order": [
 			dict(
@@ -167,6 +214,7 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="unicommerce_section",
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=CHANNEL_ID_FIELD,
@@ -175,19 +223,44 @@ def setup_custom_fields():
 				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 				options="Unicommerce Channel",
+				search_index=1,
 			),
 			dict(
 				fieldname=FACILITY_CODE_FIELD,
 				label="Unicommerce Facility Code",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=CHANNEL_ID_FIELD,
 				read_only=1,
 			),
 			dict(
 				fieldname=ORDER_STATUS_FIELD,
 				label="Unicommerce Order Status",
+				fieldtype="Small Text",
+				insert_after=FACILITY_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=ORDER_INVOICE_STATUS_FIELD,
+				label="Unicommerce Invoice generation Status",
+				fieldtype="Small Text",
+				insert_after=ORDER_STATUS_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=PACKAGE_TYPE_FIELD,
+				label="Unicommerce Package Type",
+				fieldtype="Link",
+				options="Unicommerce Package Type",
+				insert_after=ORDER_INVOICE_STATUS_FIELD,
+				allow_on_submit=1,
+			),
+		],
+		"Sales Order Item": [
+			dict(
+				fieldname=ORDER_ITEM_CODE_FIELD,
+				label="Unicommerce Order Item Code",
 				fieldtype="Data",
-				insert_after=CHANNEL_ID_FIELD,
+				insert_after="item_code",
 				read_only=1,
 			),
 		],
@@ -209,6 +282,20 @@ def setup_custom_fields():
 				read_only=1,
 				hidden=1,
 			),
+			dict(
+				fieldname=CUSTOMER_CODE_FIELD,
+				label="Unicommerce customer code",
+				fieldtype="Data",
+				insert_after="naming_series",
+				read_only=1,
+			),
+			dict(
+				fieldname=IS_COD_CHECKBOX,
+				label="Is COD?",
+				fieldtype="Check",
+				insert_after=CUSTOMER_CODE_FIELD,
+				read_only=1,
+			),
 		],
 		"Sales Invoice": [
 			dict(
@@ -217,12 +304,22 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="unicommerce_section",
 				read_only=1,
+				search_index=1,
+			),
+			dict(
+				fieldname=CHANNEL_ID_FIELD,
+				label="Unicommerce Channel",
+				fieldtype="Link",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+				options="Unicommerce Channel",
+				search_index=1,
 			),
 			dict(
 				fieldname=FACILITY_CODE_FIELD,
 				label="Unicommerce Facility Code",
-				fieldtype="Data",
-				insert_after=ORDER_CODE_FIELD,
+				fieldtype="Small Text",
+				insert_after=CHANNEL_ID_FIELD,
 				read_only=1,
 			),
 			dict(
@@ -231,12 +328,55 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after=FACILITY_CODE_FIELD,
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=SHIPPING_PACKAGE_CODE_FIELD,
 				label="Unicommerce Shipping Package Code",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=INVOICE_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=SHIPPING_PROVIDER_CODE,
+				label="Unicommerce Shipping Provider",
+				fieldtype="Small Text",
+				insert_after=SHIPPING_PACKAGE_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=SHIPPING_METHOD_FIELD,
+				label="Unicommerce Shipping Method",
+				fieldtype="Small Text",
+				insert_after=SHIPPING_PROVIDER_CODE,
+				read_only=1,
+			),
+			dict(
+				fieldname=TRACKING_CODE_FIELD,
+				label="Unicommerce Tracking Code",
+				fieldtype="Small Text",
+				insert_after=SHIPPING_METHOD_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=SHIPPING_PACKAGE_STATUS_FIELD,
+				label="Unicommerce Package Status",
+				fieldtype="Small Text",
+				insert_after=TRACKING_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=MANIFEST_GENERATED_CHECK,
+				label="Manifest generated",
+				fieldtype="Check",
+				insert_after=SHIPPING_PACKAGE_STATUS_FIELD,
+				read_only=1,
+			),
+			dict(
+				fieldname=IS_COD_CHECKBOX,
+				label="Is COD?",
+				fieldtype="Check",
+				insert_after=MANIFEST_GENERATED_CHECK,
 				read_only=1,
 			),
 		],

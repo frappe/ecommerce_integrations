@@ -12,9 +12,12 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
 	FACILITY_CODE_FIELD,
+	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	PACKAGE_TYPE_FIELD,
 	SETTINGS_DOCTYPE,
 	TAX_FIELDS_MAPPING,
 	TAX_RATE_FIELDS_MAPPING,
@@ -25,8 +28,6 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
-
-SoItem = namedtuple("SoItem", ["item_code", "rate", "warehouse"])
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
@@ -163,6 +164,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	channel_config = frappe.get_doc("Unicommerce Channel", order["channel"])
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
+	is_cancelled = order["status"] == "CANCELLED"
+
 	so = frappe.get_doc(
 		{
 			"doctype": "Sales Order",
@@ -172,10 +175,13 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
 			FACILITY_CODE_FIELD: _get_facility_code(order["saleOrderItems"]),
+			IS_COD_CHECKBOX: bool(order["cod"]),
 			"transaction_date": get_unicommerce_date(order["displayOrderDateTime"]),
 			"delivery_date": get_unicommerce_date(order["fulfillmentTat"]),
 			"ignore_pricing_rule": 1,
-			"items": _get_line_items(order["saleOrderItems"], default_warehouse=channel_config.warehouse),
+			"items": _get_line_items(
+				order["saleOrderItems"], default_warehouse=channel_config.warehouse, is_cancelled=is_cancelled
+			),
 			"company": channel_config.company,
 			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
@@ -185,26 +191,37 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 	so.save()
 	so.submit()
 
+	if is_cancelled:
+		so.cancel()
+
 	return so
 
 
-def _get_line_items(line_items, default_warehouse: Optional[str] = None) -> List[Dict[str, Any]]:
+def _get_line_items(
+	line_items, default_warehouse: Optional[str] = None, is_cancelled: bool = False
+) -> List[Dict[str, Any]]:
 
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping(all_wh=True)
-
-	consolidated_item_qty = _get_consolidate_qty(line_items, wh_map)
-
 	so_items = []
 
-	for item, qty in consolidated_item_qty.items():
+	for item in line_items:
+		if not is_cancelled and item.get("statusCode") == "CANCELLED":
+			continue
+
+		item_code = ecommerce_item.get_erpnext_item_code(
+			integration=MODULE_NAME, integration_item_code=item["itemSku"]
+		)
+		warehouse = wh_map.get(item["facilityCode"]) or default_warehouse
+
 		so_items.append(
 			{
-				"item_code": item.item_code,
-				"rate": item.rate,
-				"qty": qty,
+				"item_code": item_code,
+				"rate": item["sellingPrice"],
+				"qty": 1,
 				"stock_uom": "Nos",
-				"warehouse": item.warehouse or default_warehouse,
+				"warehouse": warehouse,
+				ORDER_ITEM_CODE_FIELD: item.get("code"),
 			}
 		)
 	return so_items
@@ -247,7 +264,7 @@ def get_taxes(line_items, channel_config) -> List:
 				"charge_type": "Actual",
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
-				"description": tax_head.replace("_", " "),
+				"description": tax_head.replace("_", " ").upper(),
 				"item_wise_tax_detail": json.dumps(item_wise_tax_map[tax_head]),
 				"dont_recompute_tax": 1,
 			}
@@ -265,15 +282,53 @@ def _get_facility_code(line_items) -> str:
 	return list(facility_codes)[0]
 
 
-def _get_consolidate_qty(line_items, wh_map) -> Dict[SoItem, int]:
-	consolidated_item_qty = defaultdict(int)
-	for item in line_items:
-		item_code = ecommerce_item.get_erpnext_item_code(
-			integration=MODULE_NAME, integration_item_code=item["itemSku"]
-		)
-		so_item = SoItem(
-			item_code=item_code, rate=item["sellingPrice"], warehouse=wh_map.get(item["facilityCode"]),
-		)
-		consolidated_item_qty[so_item] += 1
+def update_shipping_info(doc, method=None):
+	"""When package type is changed, update the shipping information on unicommerce."""
 
-	return consolidated_item_qty
+	so = doc
+
+	if not so.has_value_changed(PACKAGE_TYPE_FIELD):
+		return
+	package_type = so.get(PACKAGE_TYPE_FIELD)
+
+	if not package_type:
+		return
+	frappe.enqueue(_update_package_info_on_unicommerce, queue="short", so_code=so.name)
+
+
+def _update_package_info_on_unicommerce(so_code):
+	try:
+		client = UnicommerceAPIClient()
+
+		so = frappe.get_doc("Sales Order", so_code)
+		package_type = so.get(PACKAGE_TYPE_FIELD)
+		package_info = frappe.get_doc("Unicommerce Package Type", package_type)
+
+		updated_so_data = client.get_sales_order(so.get(ORDER_CODE_FIELD))
+		shipping_packages = updated_so_data.get("shippingPackages")
+
+		if not shipping_packages:
+			frappe.throw(
+				frappe._("Shipping package not present on Unicommerce for order {}").format(so.name)
+			)
+
+		shipping_package_code = shipping_packages[0].get("code")
+
+		facility_code = so.get(FACILITY_CODE_FIELD)
+		response, status = client.update_shipping_package(
+			shipping_package_code=shipping_package_code,
+			facility_code=facility_code,
+			package_type_code=package_info.package_type_code or "DEFAULT",
+			length=package_info.length,
+			width=package_info.width,
+			height=package_info.height,
+		)
+
+		if not status:
+			error_message = "Unicommerce integration: Could not update package size\n" + json.dumps(
+				response.get("errors"), indent=4
+			)
+			so.add_comment(text=error_message)
+	except Exception as e:
+		create_unicommerce_log(status="Error", exception=e)
+		raise

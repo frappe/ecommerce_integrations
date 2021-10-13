@@ -21,6 +21,7 @@ from ecommerce_integrations.shopify.constants import (
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
+	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
 	SUPPLIER_ID_FIELD,
@@ -146,7 +147,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_ID_FIELD,
 				label="Shopify Order Id",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="title",
 				read_only=1,
 				print_hide=1,
@@ -154,7 +155,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_ID_FIELD,
 				read_only=1,
 				print_hide=1,
@@ -162,17 +163,26 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_STATUS_FIELD,
 				label="Shopify Order Status",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_NUMBER_FIELD,
 				read_only=1,
 				print_hide=1,
+			),
+		],
+		"Sales Order Item": [
+			dict(
+				fieldname=ORDER_ITEM_DISCOUNT_FIELD,
+				label="Shopify Discount per unit",
+				fieldtype="Float",
+				insert_after="discount_and_margin",
+				read_only=1,
 			),
 		],
 		"Delivery Note": [
 			dict(
 				fieldname=ORDER_ID_FIELD,
 				label="Shopify Order Id",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="title",
 				read_only=1,
 				print_hide=1,
@@ -180,7 +190,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_ID_FIELD,
 				read_only=1,
 				print_hide=1,
@@ -188,7 +198,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_STATUS_FIELD,
 				label="Shopify Order Status",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_NUMBER_FIELD,
 				read_only=1,
 				print_hide=1,
@@ -196,7 +206,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=FULLFILLMENT_ID_FIELD,
 				label="Shopify Fulfillment Id",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="title",
 				read_only=1,
 				print_hide=1,
@@ -206,7 +216,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_ID_FIELD,
 				label="Shopify Order Id",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after="title",
 				read_only=1,
 				print_hide=1,
@@ -214,7 +224,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_NUMBER_FIELD,
 				label="Shopify Order Number",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_ID_FIELD,
 				read_only=1,
 				print_hide=1,
@@ -222,7 +232,7 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_STATUS_FIELD,
 				label="Shopify Order Status",
-				fieldtype="Data",
+				fieldtype="Small Text",
 				insert_after=ORDER_ID_FIELD,
 				read_only=1,
 				print_hide=1,

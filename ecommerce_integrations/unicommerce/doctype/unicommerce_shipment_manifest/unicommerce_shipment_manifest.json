@@ -1,0 +1,165 @@
+{
+ "actions": [],
+ "autoname": "format:UNI-MNFST-{YY}-{#####}",
+ "creation": "2021-09-20 12:36:12.691753",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "manifest_code",
+  "amended_from",
+  "channel_id",
+  "shipping_provider_code",
+  "column_break_5",
+  "shipping_method_code",
+  "third_party_shipping",
+  "section_break_9",
+  "scan_barcode",
+  "section_break_8",
+  "manifest_items",
+  "unicommerce_manifest_code",
+  "unicommerce_manifest_id"
+ ],
+ "fields": [
+  {
+   "fieldname": "manifest_code",
+   "fieldtype": "Data",
+   "label": "Manifest Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Unicommerce Shipment Manifest",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "channel_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Channel ID",
+   "options": "Unicommerce Channel",
+   "reqd": 1
+  },
+  {
+   "fieldname": "shipping_provider_code",
+   "fieldtype": "Link",
+   "label": "Shipping Provider Code",
+   "options": "Unicommerce Shipping Provider",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "third_party_shipping",
+   "fieldtype": "Check",
+   "label": "Marketplace Shipping",
+   "options": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shipping_method_code",
+   "fieldtype": "Link",
+   "label": "Shipping Method",
+   "options": "Unicommerce Shipping Method",
+   "reqd": 1
+  },
+  {
+   "fieldname": "manifest_items",
+   "fieldtype": "Table",
+   "label": "Manifest Items",
+   "options": "Unicommerce Manifest Item"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "unicommerce_manifest_code",
+   "fieldtype": "Data",
+   "label": "Unicommerce Manifest Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "unicommerce_manifest_id",
+   "fieldtype": "Data",
+   "label": "Unicommerce Manifest Id",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_9",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "scan_barcode",
+   "fieldtype": "Data",
+   "label": "Scan AWB Code",
+   "options": "Barcode"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2021-10-07 15:39:49.456739",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Shipment Manifest",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Stock User",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "manifest_code",
+ "track_changes": 1
+}

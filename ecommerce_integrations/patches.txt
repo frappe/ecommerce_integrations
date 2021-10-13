@@ -1,0 +1,1 @@
+ecommerce_integrations.patches.update_shopify_custom_fields

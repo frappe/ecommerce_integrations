@@ -11,6 +11,7 @@ from ecommerce_integrations.shopify.constants import (
 	CUSTOMER_ID_FIELD,
 	EVENT_MAPPER,
 	ORDER_ID_FIELD,
+	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTING_DOCTYPE,
@@ -95,7 +96,7 @@ def create_sales_order(shopify_order, setting, company=None):
 			{
 				"doctype": "Sales Order",
 				"naming_series": setting.sales_order_series or "SO-Shopify-",
-				ORDER_ID_FIELD: shopify_order.get("id"),
+				ORDER_ID_FIELD: str(shopify_order.get("id")),
 				ORDER_NUMBER_FIELD: shopify_order.get("name"),
 				"customer": customer or setting.default_customer,
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
@@ -112,6 +113,7 @@ def create_sales_order(shopify_order, setting, company=None):
 		if company:
 			so.update({"company": company, "status": "Draft"})
 		so.flags.ignore_mandatory = True
+		so.flags.shopiy_order_json = json.dumps(shopify_order)
 		so.save(ignore_permissions=True)
 		so.submit()
 
@@ -148,6 +150,9 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
 					"warehouse": setting.warehouse,
+					ORDER_ITEM_DISCOUNT_FIELD: (
+						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
+					),
 				}
 			)
 		else:
@@ -162,8 +167,7 @@ def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 	qty = cint(line_item.get("quantity"))
 
 	# remove line item level discounts
-	discount_allocations = line_item.get("discount_allocations") or []
-	total_discount = sum(flt(discount.get("amount")) for discount in discount_allocations)
+	total_discount = _get_total_discount(line_item)
 
 	if not taxes_inclusive:
 		return price - (total_discount / qty)
@@ -173,6 +177,11 @@ def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 		total_taxes += flt(tax.get("price"))
 
 	return price - (total_taxes + total_discount) / qty
+
+
+def _get_total_discount(line_item) -> float:
+	discount_allocations = line_item.get("discount_allocations") or []
+	return sum(flt(discount.get("amount")) for discount in discount_allocations)
 
 
 def get_order_taxes(shopify_order, setting):

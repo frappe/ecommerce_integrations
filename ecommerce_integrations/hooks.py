@@ -34,6 +34,7 @@ app_license = "GNU GPL v3.0"
 doctype_js = {
 	"Shopify Settings": "public/js/shopify/old_settings.js",
 	"Sales Order": "public/js/unicommerce/sales_order.js",
+	"Sales Invoice": "public/js/unicommerce/sales_invoice.js",
 	"Item": "public/js/unicommerce/item.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
@@ -101,7 +102,11 @@ doc_events = {
 			"ecommerce_integrations.utils.taxation.validate_tax_template",
 			"ecommerce_integrations.unicommerce.product.validate_item",
 		],
-	}
+	},
+	"Sales Order": {
+		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info",
+		"on_cancel": "ecommerce_integrations.unicommerce.status_updater.ignore_pick_list_on_sales_order_cancel",
+	},
 }
 
 # Scheduled Tasks
@@ -117,6 +122,7 @@ scheduler_events = {
 	"hourly_long": [
 		"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_invoices",
 		"ecommerce_integrations.unicommerce.product.upload_new_items",
+		"ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",
 	],
 	"weekly": [],
 	"monthly": [],
@@ -125,7 +131,7 @@ scheduler_events = {
 		"*/5 * * * *": [
 			"ecommerce_integrations.unicommerce.order.sync_new_orders",
 			"ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
-		]
+		],
 	},
 }
 

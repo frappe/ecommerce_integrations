@@ -1,0 +1,82 @@
+{
+ "actions": [],
+ "autoname": "field:package_type",
+ "creation": "2021-09-08 12:09:43.333415",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "package_type",
+  "package_type_code",
+  "length",
+  "width",
+  "height"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "in_list_view": 1,
+   "label": "Title"
+  },
+  {
+   "fieldname": "package_type",
+   "fieldtype": "Data",
+   "label": "Package Type",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "length",
+   "fieldtype": "Int",
+   "label": "Length (mm)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "width",
+   "fieldtype": "Int",
+   "label": "Width (mm)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "height",
+   "fieldtype": "Int",
+   "label": "Height (mm)",
+   "reqd": 1
+  },
+  {
+   "default": "DEFAULT",
+   "fieldname": "package_type_code",
+   "fieldtype": "Data",
+   "label": "Unicommerce Package Type Code",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-09-13 10:45:34.722118",
+ "modified_by": "Administrator",
+ "module": "unicommerce",
+ "name": "Unicommerce Package Type",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "title",
+ "track_changes": 1
+}

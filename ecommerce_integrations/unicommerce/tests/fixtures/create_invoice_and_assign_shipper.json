@@ -1,0 +1,30 @@
+{
+   "successful": true,
+   "message": "string",
+   "errors": [
+      {
+         "code": 0,
+         "fieldName": "string",
+         "description": "string",
+         "message": "string",
+         "errorParams": {
+            "additionalProp1": {},
+            "additionalProp2": {},
+            "additionalProp3": {}
+         }
+      }
+   ],
+   "warnings": [
+      {
+         "code": 0,
+         "message": "string",
+         "description": "string"
+      }
+   ],
+   "invoiceCode": "SICODE",
+   "invoiceDisplayCode": "SICODE",
+   "shippingPackageCode": "SPCODE",
+   "shippingProviderCode": "SHIPPER",
+   "trackingNumber": "123456789",
+   "shippingLabelLink": "https://example.com"
+}
