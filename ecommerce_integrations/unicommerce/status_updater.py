@@ -12,6 +12,8 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTINGS_DOCTYPE,
+	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PACKAGE_STATUS_FIELD,
 )
 
 ORDER_STATES = ["PENDING_VERIFICATION", "CREATED", "PROCESSING", "COMPLETE", "CANCELLED"]
@@ -184,3 +186,52 @@ def ignore_pick_list_on_sales_order_cancel(doc, method=None):
 	ignored_links = list(doc.ignore_linked_doctypes or [])
 	ignored_links.append("Pick List")
 	doc.ignore_linked_doctypes = ignored_links
+
+
+def update_shipping_package_status():
+	"""Periodically update changed shipping package info in ERPNext."""
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
+	client = UnicommerceAPIClient()
+
+	days_to_sync = min(settings.get("order_status_days") or 2, 14)
+	minutes = days_to_sync * 24 * 60
+
+	# find all Facilities
+	enabled_facilities = list(settings.get_integration_to_erpnext_wh_mapping().keys())
+	enabled_channels = frappe.db.get_list(
+		"Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id"
+	)
+
+	for facility in enabled_facilities:
+		updated_packages = client.search_shipping_packages(updated_since=minutes, facility_code=facility)
+		valid_packages = [p for p in updated_packages if p.get("channel") in enabled_channels]
+
+		if valid_packages:
+			_update_package_status_fields(valid_packages)
+
+
+def _update_package_status_fields(packages):
+
+	package_status_map = {d["code"]: d["status"] for d in packages}
+	package_codes = list(package_status_map.keys())
+
+	current_package_status = frappe.db.get_values(
+		"Sales Invoice",
+		{SHIPPING_PACKAGE_CODE_FIELD: ("in", package_codes)},
+		fieldname=["name", SHIPPING_PACKAGE_STATUS_FIELD, SHIPPING_PACKAGE_CODE_FIELD],
+		as_dict=True,
+	)
+
+	for invoice in current_package_status:
+		uni_code = invoice.get(SHIPPING_PACKAGE_CODE_FIELD)
+		old_status = invoice.get(SHIPPING_PACKAGE_STATUS_FIELD)
+		new_status = package_status_map.get(uni_code)
+
+		if old_status != new_status:
+			si_code = invoice["name"]
+			frappe.db.set_value(
+				"Sales Invoice", si_code, SHIPPING_PACKAGE_STATUS_FIELD, new_status, for_update=True
+			)

@@ -377,6 +377,33 @@ class UnicommerceAPIClient:
 		if status:
 			return response
 
+	def search_shipping_packages(
+		self,
+		facility_code: str,
+		channel: Optional[str] = None,
+		statuses: Optional[List[str]] = None,
+		updated_since: Optional[int] = 6 * 60,
+	):
+		"""Search shipping packages on unicommerce matching specified criterias.
+
+		Ref: https://documentation.unicommerce.com/docs/pos-shippingpackage-search.html"""
+		body = {
+			"statuses": statuses,
+			"channelCode": channel,
+			"updatedSinceInMinutes": updated_since,
+		}
+		extra_headers = {"Facility": facility_code}
+
+		# remove None values.
+		body = {k: v for k, v in body.items() if v is not None}
+
+		search_results, statuses = self.request(
+			endpoint="/services/rest/v1/oms/shippingPackage/search", body=body, headers=extra_headers,
+		)
+
+		if statuses and "elements" in search_results:
+			return search_results["elements"]
+
 
 def _utc_timeformat(datetime) -> str:
 	""" Get datetime in UTC/GMT as required by Unicommerce"""
