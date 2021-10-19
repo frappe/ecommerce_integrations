@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import List
 
 import frappe
+from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from erpnext.controllers.accounts_controller import update_child_qty_rate
 from frappe.utils import now_datetime
 
@@ -11,6 +12,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	SHIPPING_PACKAGE_CODE_FIELD,
 )
 
 
@@ -100,3 +102,34 @@ def _serialize_items(trans_items) -> str:
 				item[k] = str(v)
 
 	return json.dumps(trans_items)
+
+
+def create_rto_return(package_info, client: UnicommerceAPIClient):
+	"""When RTO is expected create a credit note in draft state with required details.
+
+	RTO => Return To Origin. Entire package is being returned.
+	"""
+
+	package_code = package_info["code"]
+
+	invoice = frappe.db.get_value(
+		"Sales Invoice",
+		{SHIPPING_PACKAGE_CODE_FIELD: package_code},
+		["name", ORDER_CODE_FIELD],
+		as_dict=True,
+	)
+
+	already_returned = frappe.db.get_value(
+		"Sales Invoice", {SHIPPING_PACKAGE_CODE_FIELD: package_code, "is_return": 1}
+	)
+	if not invoice or already_returned:
+		return
+
+	so_data = client.get_sales_order(invoice.get(ORDER_CODE_FIELD))
+
+	rto_returns = [
+		r for r in so_data["returns"] if r["type"] == "Courier Returned" and r["code"] == package_code
+	]
+	if rto_returns:
+		credit_note = make_sales_return(invoice.name)
+		credit_note.save()
