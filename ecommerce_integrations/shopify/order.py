@@ -219,7 +219,7 @@ def get_order_taxes(shopify_order, setting):
 
 
 def get_tax_account_head(tax):
-	tax_title = tax.get("title").encode("utf-8")
+	tax_title = str(tax.get("title"))
 
 	tax_account = frappe.db.get_value(
 		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_account",
