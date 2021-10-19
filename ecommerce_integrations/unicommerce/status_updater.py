@@ -2,6 +2,7 @@ import frappe
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.cancellation_and_returns import (
+	create_rto_return,
 	fully_cancel_orders,
 	update_partially_cancelled_orders,
 )
@@ -124,6 +125,11 @@ def update_shipping_package_status():
 		if not valid_packages:
 			continue
 		_update_package_status_fields(valid_packages)
+
+		returning_packages = [p for p in valid_packages if p["status"] in SHIPMENT_RETURN_STATES]
+		if returning_packages:
+			for package in returning_packages:
+				create_rto_return(package, client=client)
 
 
 def _update_package_status_fields(packages):
