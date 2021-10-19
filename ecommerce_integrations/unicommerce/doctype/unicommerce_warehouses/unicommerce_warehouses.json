@@ -4,10 +4,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "enabled",
   "unicommerce_facility_code",
   "column_break_2",
-  "erpnext_warehouse",
-  "enabled"
+  "erpnext_warehouse"
  ],
  "fields": [
   {
@@ -26,7 +26,7 @@
    "reqd": 1
   },
   {
-   "default": "0",
+   "default": "1",
    "fieldname": "enabled",
    "fieldtype": "Check",
    "in_list_view": 1,
@@ -40,7 +40,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-06-17 12:47:52.087208",
+ "modified": "2021-10-19 12:35:16.072506",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Warehouses",

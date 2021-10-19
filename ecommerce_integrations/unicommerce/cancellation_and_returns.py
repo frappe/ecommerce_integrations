@@ -9,6 +9,7 @@ from frappe.utils import now_datetime
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
+	CHANNEL_ID_FIELD,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
@@ -115,7 +116,7 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 	invoice = frappe.db.get_value(
 		"Sales Invoice",
 		{SHIPPING_PACKAGE_CODE_FIELD: package_code},
-		["name", ORDER_CODE_FIELD],
+		["name", ORDER_CODE_FIELD, CHANNEL_ID_FIELD],
 		as_dict=True,
 	)
 
@@ -132,4 +133,13 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 	]
 	if rto_returns:
 		credit_note = make_sales_return(invoice.name)
+		return_warehouse = get_return_warehouse(invoice.get(CHANNEL_ID_FIELD))
+
+		for item in credit_note.items:
+			item.warehouse = return_warehouse or item.warehouse
+
 		credit_note.save()
+
+
+def get_return_warehouse(channel):
+	return frappe.db.get_value("Unicommerce Channel", channel, "return_warehouse")

@@ -31,7 +31,9 @@
   "sales_invoice_series",
   "delivery_note_series",
   "fulfilment_settings_section",
-  "shipping_handled_by_marketplace"
+  "shipping_handled_by_marketplace",
+  "returns_section",
+  "return_warehouse"
  ],
  "fields": [
   {
@@ -198,11 +200,23 @@
    "fieldname": "submit_payment_entry",
    "fieldtype": "Check",
    "label": "Submit Payment Entry"
+  },
+  {
+   "fieldname": "returns_section",
+   "fieldtype": "Section Break",
+   "label": "Returns"
+  },
+  {
+   "fieldname": "return_warehouse",
+   "fieldtype": "Link",
+   "label": "Return Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-10-04 14:58:27.962917",
+ "modified": "2021-10-19 12:36:24.383561",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",

@@ -16,13 +16,14 @@ frappe.ui.form.on("Unicommerce Channel", {
 			filters: { company: frm.doc.company, is_group: 0 },
 		}));
 
-		frm.set_query("warehouse", () => ({
+		["warehouse", "return_warehouse"].forEach(wh_field => frm.set_query(wh_field, () => ({
 			filters: {
 				company: frm.doc.company,
 				is_group: 0,
 				disabled: 0,
 			},
-		}));
+		})));
+
 
 		const tax_accounts = [
 			"igst_account",
