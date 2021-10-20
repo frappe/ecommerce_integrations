@@ -2,6 +2,7 @@ import frappe
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.cancellation_and_returns import (
+	check_and_update_customer_initiated_returns,
 	create_rto_return,
 	fully_cancel_orders,
 	update_partially_cancelled_orders,
@@ -16,6 +17,8 @@ from ecommerce_integrations.unicommerce.constants import (
 
 ORDER_STATES = ["PENDING_VERIFICATION", "CREATED", "PROCESSING", "COMPLETE", "CANCELLED"]
 PARTIAL_CANCELLED_STATES = ["PENDING_VERIFICATION", "CREATED", "PROCESSING"]
+RETURN_POSSIBLE_STATE = ["COMPLETE"]
+
 SHIPMENT_STATES = [
 	"CREATED",
 	"LOCATION_NOT_SERVICEABLE",
@@ -69,6 +72,10 @@ def update_sales_order_status():
 	probable_partial_cancels = [d for d in valid_orders if d["status"] in PARTIAL_CANCELLED_STATES]
 	if probable_partial_cancels:
 		update_partially_cancelled_orders(probable_partial_cancels, client=client)
+
+	probable_returns = [d for d in valid_orders if d["status"] in RETURN_POSSIBLE_STATE]
+	if probable_returns:
+		check_and_update_customer_initiated_returns(probable_returns, client=client)
 
 
 def _update_order_status_fields(orders):
