@@ -13,7 +13,10 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	RETURN_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
+	SHIPPING_PROVIDER_CODE,
+	TRACKING_CODE_FIELD,
 )
 
 
@@ -132,14 +135,72 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 		r for r in so_data["returns"] if r["type"] == "Courier Returned" and r["code"] == package_code
 	]
 	if rto_returns:
-		credit_note = make_sales_return(invoice.name)
-		return_warehouse = get_return_warehouse(invoice.get(CHANNEL_ID_FIELD))
-
-		for item in credit_note.items:
-			item.warehouse = return_warehouse or item.warehouse
-
+		credit_note = create_credit_note(invoice.name, invoice.get(CHANNEL_ID_FIELD))
 		credit_note.save()
 
 
 def get_return_warehouse(channel):
 	return frappe.db.get_value("Unicommerce Channel", channel, "return_warehouse")
+
+
+def create_credit_note(invoice_name, channel):
+	credit_note = make_sales_return(invoice_name)
+	return_warehouse = get_return_warehouse(channel)
+
+	for item in credit_note.items:
+		item.warehouse = return_warehouse or item.warehouse
+
+	return credit_note
+
+
+def check_and_update_customer_initiated_returns(orders, client: UnicommerceAPIClient) -> None:
+	"""Create credit note if order contains customer intiated returns."""
+
+	recently_changed_orders = _filter_recent_orders(orders)
+
+	for order in recently_changed_orders:
+		so_data = client.get_sales_order(order["code"])
+		if not so_data:
+			continue
+		sync_customer_initiated_returns(so_data)
+
+
+def sync_customer_initiated_returns(so_data):
+
+	customer_returns = [r for r in so_data.get("returns", []) if r["type"] == "Customer Returned"]
+	if not customer_returns:
+		return
+
+	for customer_return in customer_returns:
+		if not frappe.db.exists("Sales Invoice", {RETURN_CODE_FIELD, customer_return["code"]}):
+			create_cir_credit_note(so_data, customer_return)
+
+
+def create_cir_credit_note(so_data, return_data):
+	sales_order_name = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: so_data["code"]})
+	so = frappe.get_doc("Sales Order", sales_order_name)
+
+	# Get items from SO which are returned, map SO item -> SI item with linked rows.
+	so_item_code_map = {item.get(ORDER_ITEM_CODE_FIELD): item.name for item in so.items}
+
+	invoice_name = frappe.db.get_value(
+		"Sales Invoice", {ORDER_CODE_FIELD: so_data["code"], "is_return": 0}
+	)
+	si = frappe.get_doc("Sales Invoice", invoice_name)
+	so_si_item_map = {item.so_detail: item.name for item in si.items}
+
+	credit_note = create_credit_note(si.name, so.get(CHANNEL_ID_FIELD))
+
+	credit_note.set(TRACKING_CODE_FIELD, return_data.get("trackingNumber"))
+	credit_note.set(SHIPPING_PROVIDER_CODE, return_data.get("shippingProvider"))
+
+	returned_so_codes = [item.get("saleOrderItemCode") for item in return_data.get("returnItems")]
+	returned_si_items = [so_si_item_map.get(so_item_code_map.get(code)) for code in returned_so_codes]
+
+	if set(returned_si_items) != set(so_si_item_map.values()):
+		# all items returned
+		# remove unknown items
+		# TODO
+		pass
+
+	credit_note.save()
