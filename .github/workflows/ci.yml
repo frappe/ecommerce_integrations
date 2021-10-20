@@ -94,8 +94,6 @@ jobs:
       - name: Install
         run: |
           bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
-          cd ~/frappe-bench/ && source env/bin/activate
-          cd apps/ecommerce_integrations && pip install -r dev-requirements.txt
 
 
       - name: Run Tests
