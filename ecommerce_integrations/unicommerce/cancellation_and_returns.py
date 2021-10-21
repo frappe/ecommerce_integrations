@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from datetime import date, datetime
 from typing import List
 
@@ -150,6 +151,12 @@ def create_credit_note(invoice_name, channel):
 	for item in credit_note.items:
 		item.warehouse = return_warehouse or item.warehouse
 
+	for tax in credit_note.taxes:
+		tax.item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
+		for item, tax_distribution in tax.item_wise_tax_detail.items():
+			tax_distribution[1] *= -1
+		tax.item_wise_tax_detail = json.dumps(tax.item_wise_tax_detail)
+
 	return credit_note
 
 
@@ -198,9 +205,38 @@ def create_cir_credit_note(so_data, return_data):
 	returned_si_items = [so_si_item_map.get(so_item_code_map.get(code)) for code in returned_so_codes]
 
 	if set(returned_si_items) != set(so_si_item_map.values()):
-		# all items returned
-		# remove unknown items
-		# TODO
+		_handle_partial_returns(credit_note, returned_si_items)
 		pass
 
 	credit_note.save()
+
+
+def _handle_partial_returns(credit_note, returned_items: List[str]) -> None:
+	""" Remove non-returned item from credit note and update taxes """
+
+	item_code_to_qty_map = defaultdict(float)
+	for item in credit_note.items:
+		item_code_to_qty_map[item.item_code] += item.qty
+
+	# remove non-returned items
+	credit_note.items = [
+		item for item in credit_note.items if item.sales_invoice_item in returned_items
+	]
+
+	returned_qty_map = defaultdict(float)
+	for item in credit_note.items:
+		returned_qty_map[item.item_code] += item.qty
+
+	for tax in credit_note.taxes:
+		# reduce total value
+		item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
+		new_tax_amt = 0.0
+
+		for item_code, tax_distribution in item_wise_tax_detail.items():
+			# item_code: [rate, amount]
+			return_percent = returned_qty_map.get(item_code, 0.0) / item_code_to_qty_map.get(item_code)
+			tax_distribution[1] *= return_percent
+			new_tax_amt += tax_distribution[1]
+
+		tax.tax_amount = new_tax_amt
+		tax.item_wise_tax_detail = json.dumps(item_wise_tax_detail)
