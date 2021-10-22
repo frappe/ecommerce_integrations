@@ -234,6 +234,9 @@ def _handle_partial_returns(credit_note, returned_items: List[str]) -> None:
 
 		for item_code, tax_distribution in item_wise_tax_detail.items():
 			# item_code: [rate, amount]
+			if not tax_distribution[1]:
+				# Ignore 0 values
+				continue
 			return_percent = returned_qty_map.get(item_code, 0.0) / item_code_to_qty_map.get(item_code)
 			tax_distribution[1] *= return_percent
 			new_tax_amt += tax_distribution[1]
