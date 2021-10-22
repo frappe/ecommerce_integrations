@@ -64,7 +64,7 @@ class UnicommerceSettings(SettingController):
 				)
 
 		if not self.flags.ignore_custom_fields:
-			setup_custom_fields()
+			setup_custom_fields(update=False)
 
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
@@ -154,7 +154,7 @@ class UnicommerceSettings(SettingController):
 		return {v: k for k, v in reverse_map.items()}
 
 
-def setup_custom_fields():
+def setup_custom_fields(update=True):
 
 	custom_sections = {
 		"Sales Order": [
@@ -391,5 +391,5 @@ def setup_custom_fields():
 	}
 
 	# create sections first for proper ordering
-	create_custom_fields(custom_sections)
-	create_custom_fields(custom_fields)
+	create_custom_fields(custom_sections, update=update)
+	create_custom_fields(custom_fields, update=update)
