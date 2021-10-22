@@ -14,21 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  linters:
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: Checkout Code Repository
-        uses: actions/checkout@v2
-
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-
-      - name: Install and Run Pre-commit
-        uses: pre-commit/action@v2.0.0
-
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
