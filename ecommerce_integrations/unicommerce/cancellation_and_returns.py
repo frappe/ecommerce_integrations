@@ -11,6 +11,7 @@ from frappe.utils import now_datetime
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	FACILITY_CODE_FIELD,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
@@ -140,13 +141,16 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 		credit_note.save()
 
 
-def get_return_warehouse(channel):
-	return frappe.db.get_value("Unicommerce Channel", channel, "return_warehouse")
+def get_return_warehouse(facility_code):
+	return frappe.db.get_value(
+		"Unicommerce Warehouses", {"unicommerce_facility_code": facility_code}, "return_warehouse"
+	)
 
 
-def create_credit_note(invoice_name, channel):
+def create_credit_note(invoice_name):
 	credit_note = make_sales_return(invoice_name)
-	return_warehouse = get_return_warehouse(channel)
+	facility_code = credit_note.get(FACILITY_CODE_FIELD)
+	return_warehouse = get_return_warehouse(facility_code)
 
 	for item in credit_note.items:
 		item.warehouse = return_warehouse or item.warehouse
@@ -196,7 +200,7 @@ def create_cir_credit_note(so_data, return_data):
 	si = frappe.get_doc("Sales Invoice", invoice_name)
 	so_si_item_map = {item.so_detail: item.name for item in si.items}
 
-	credit_note = create_credit_note(si.name, so.get(CHANNEL_ID_FIELD))
+	credit_note = create_credit_note(si.name)
 
 	credit_note.set(TRACKING_CODE_FIELD, return_data.get("trackingNumber"))
 	credit_note.set(SHIPPING_PROVIDER_CODE, return_data.get("shippingProvider"))
