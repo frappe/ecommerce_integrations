@@ -137,7 +137,7 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 		r for r in so_data["returns"] if r["type"] == "Courier Returned" and r["code"] == package_code
 	]
 	if rto_returns:
-		credit_note = create_credit_note(invoice.name, invoice.get(CHANNEL_ID_FIELD))
+		credit_note = create_credit_note(invoice.name)
 		credit_note.save()
 
 
