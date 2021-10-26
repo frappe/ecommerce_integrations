@@ -13,7 +13,6 @@ class UnicommerceChannel(Document):
 	def __check_compnay(self):
 		company_fields = {
 			"warehouse": "Warehouse",
-			"return_warehouse": "Warehouse",
 			"fnf_account": "Account",
 			"cod_account": "Account",
 			"gift_wrap_account": "Account",
@@ -21,6 +20,7 @@ class UnicommerceChannel(Document):
 			"cgst_account": "Account",
 			"sgst_account": "Account",
 			"ugst_account": "Account",
+			"tcs_account": "Account",
 			"cash_or_bank_account": "Account",
 			"cost_center": "Cost Center",
 		}

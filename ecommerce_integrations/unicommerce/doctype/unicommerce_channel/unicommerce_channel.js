@@ -30,6 +30,7 @@ frappe.ui.form.on("Unicommerce Channel", {
 			"cgst_account",
 			"sgst_account",
 			"ugst_account",
+			"tcs_account",
 		];
 
 		const misc_accounts = [
