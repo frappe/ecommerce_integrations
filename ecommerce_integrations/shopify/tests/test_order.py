@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and Contributors
-# See license.txt
+# See LICESNE
 
 import json
 import unittest

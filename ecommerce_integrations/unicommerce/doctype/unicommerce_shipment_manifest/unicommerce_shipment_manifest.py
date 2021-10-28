@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and contributors
-# For license information, please see license.txt
+# For license information, please see LICESNE
 
 import json
 from typing import Optional
