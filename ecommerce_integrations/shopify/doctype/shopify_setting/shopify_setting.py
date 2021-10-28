@@ -47,7 +47,7 @@ class ShopifySetting(SettingController):
 			setup_custom_fields()
 
 	def on_update(self):
-		if not self.is_old_data_migrated:
+		if self.is_enabled() and not self.is_old_data_migrated:
 			migrate_from_old_connector()
 
 	def _handle_webhooks(self):
