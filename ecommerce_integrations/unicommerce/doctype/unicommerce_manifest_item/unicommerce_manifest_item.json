@@ -19,6 +19,7 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Shipping Package Code",
+   "print_hide": 1,
    "read_only": 1
   },
   {
@@ -27,6 +28,7 @@
    "in_list_view": 1,
    "label": "Sales Invoice",
    "options": "Sales Invoice",
+   "print_hide": 1,
    "reqd": 1
   },
   {
@@ -69,7 +71,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-09-29 14:55:16.946709",
+ "modified": "2021-11-08 12:57:33.054917",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Manifest Item",
