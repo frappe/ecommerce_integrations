@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and Contributors
-# See LICESNE
+# See LICENSE
 
 # import frappe
 import unittest
