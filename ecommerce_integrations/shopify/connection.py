@@ -121,6 +121,6 @@ def _validate_request(req, hmac_header):
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
-	if hmac_header and sig != bytes(hmac_header.encode()):
+	if sig != bytes(hmac_header.encode()):
 		create_shopify_log(status="Error", request_data=req.data)
 		frappe.throw(_("Unverified Webhook Data"))
