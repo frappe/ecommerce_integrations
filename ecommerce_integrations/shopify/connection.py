@@ -41,6 +41,9 @@ def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 	"""Register required webhooks with shopify and return registered webhooks."""
 	new_webhooks = []
 
+	# clear all stale webhooks matching current site url before registering new ones
+	unregister_webhooks(shopify_url, password)
+
 	with Session.temp(shopify_url, API_VERSION, password):
 		for topic in WEBHOOK_EVENTS:
 			webhook = Webhook.create({"topic": topic, "address": get_callback_url(), "format": "json"})
@@ -57,12 +60,12 @@ def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 
 def unregister_webhooks(shopify_url: str, password: str) -> None:
 	"""Unregister all webhooks from shopify that correspond to current site url."""
-	callback_url = get_callback_url()
+	url = get_current_domain_name()
 
 	with Session.temp(shopify_url, API_VERSION, password):
 
 		for webhook in Webhook.find():
-			if webhook.address == callback_url:
+			if webhook.address.startswith(url):
 				webhook.destroy()
 
 
