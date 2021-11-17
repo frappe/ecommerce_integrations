@@ -18,8 +18,7 @@ class WoocommerceSetting(Document):
 
 	def create_delete_custom_fields(self):
 		if self.enable_sync:
-			custom_fields = {}
-			# create
+			custom_fields = {} 
 			for doctype in ["Customer", "Sales Order", "Item", "Address"]:
 				df = dict(fieldname='woocommerce_id', label='Woocommerce ID', fieldtype='Data', read_only=1, print_hide=1)
 				create_custom_field(doctype, df)
@@ -57,8 +56,7 @@ class WoocommerceSetting(Document):
 				url = frappe.conf.localtunnel_url
 			else: 
 				url = frappe.request.url
-		except RuntimeError:
-			# for CI Test to work
+		except RuntimeError: 
 			url = "http://localhost:8000"
 
 		server_url = '{uri.scheme}://{uri.netloc}'.format(
