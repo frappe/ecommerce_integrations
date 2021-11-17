@@ -18,6 +18,7 @@
   "cgst_account",
   "sgst_account",
   "ugst_account",
+  "tcs_account",
   "cash_or_bank_account",
   "column_break_12",
   "fnf_account",
@@ -198,14 +199,22 @@
    "fieldname": "submit_payment_entry",
    "fieldtype": "Check",
    "label": "Submit Payment Entry"
+  },
+  {
+   "fieldname": "tcs_account",
+   "fieldtype": "Link",
+   "label": "TCS Account",
+   "options": "Account",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-10-04 14:58:27.962917",
+ "modified": "2021-10-26 18:16:58.824908",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

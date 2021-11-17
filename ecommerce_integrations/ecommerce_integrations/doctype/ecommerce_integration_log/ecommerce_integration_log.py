@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and contributors
-# For license information, please see license.txt
+# For license information, please see LICENSE
 
 import json
 
@@ -84,6 +84,10 @@ def resync(method, name, request_data):
 
 	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
 	frappe.db.set_value("Ecommerce Integration Log", name, "traceback", "", update_modified=False)
+
+	if not method.startswith("ecommerce_integrations."):
+		return
+
 	frappe.enqueue(
 		method=method,
 		queue="short",

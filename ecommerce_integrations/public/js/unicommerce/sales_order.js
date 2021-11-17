@@ -51,6 +51,9 @@ frappe.ui.form.on("Sales Order", {
 						},
 						freeze: true,
 						freeze_message: "Requesting Invoice generation. Once synced, invoice will appear in linked documents.",
+						callback: function (r) {
+							frm.reload_doc();
+						}
 					});
 				},
 				__("Unicommerce")

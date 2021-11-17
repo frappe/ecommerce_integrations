@@ -18,6 +18,7 @@ PRODUCT_CATEGORY_FIELD = "unicommerce_product_category"
 FACILITY_CODE_FIELD = "unicommerce_facility_code"
 INVOICE_CODE_FIELD = "unicommerce_invoice_code"
 SHIPPING_PACKAGE_CODE_FIELD = "unicommerce_shipping_package_code"
+RETURN_CODE_FIELD = "unicommerce_return_code"
 TRACKING_CODE_FIELD = "unicommerce_tracking_code"
 SHIPPING_PROVIDER_CODE = "unicommerce_shipping_provider"
 MANIFEST_GENERATED_CHECK = "unicommerce_manifest_generated"
@@ -38,6 +39,7 @@ TAX_FIELDS_MAPPING = {
 	"cgst": "centralGst",
 	"sgst": "stateGst",
 	"ugst": "unionTerritoryGst",
+	"tcs": "tcsAmount",
 	"cash_on_delivery_charges": "cashOnDeliveryCharges",
 	"gift_wrap_charges": "giftWrapCharges",
 	"shipping_charges": "shippingCharges",
@@ -58,6 +60,7 @@ CHANNEL_TAX_ACCOUNT_FIELD_MAP = {
 	"cgst": "cgst_account",
 	"sgst": "sgst_account",
 	"ugst": "ugst_account",
+	"tcs": "tcs_account",
 	"cash_on_delivery_charges": "cod_account",
 	"gift_wrap_charges": "gift_wrap_account",
 	"shipping_charges": "fnf_account",

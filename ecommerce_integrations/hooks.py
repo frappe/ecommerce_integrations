@@ -123,6 +123,7 @@ scheduler_events = {
 		"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_invoices",
 		"ecommerce_integrations.unicommerce.product.upload_new_items",
 		"ecommerce_integrations.unicommerce.status_updater.update_sales_order_status",
+		"ecommerce_integrations.unicommerce.status_updater.update_shipping_package_status",
 	],
 	"weekly": [],
 	"monthly": [],

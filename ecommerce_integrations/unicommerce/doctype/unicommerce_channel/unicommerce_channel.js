@@ -1,5 +1,5 @@
 // Copyright (c) 2021, Frappe and contributors
-// For license information, please see license.txt
+// For license information, please see LICENSE
 
 frappe.ui.form.on("Unicommerce Channel", {
 	onload: function (frm) {
@@ -16,19 +16,21 @@ frappe.ui.form.on("Unicommerce Channel", {
 			filters: { company: frm.doc.company, is_group: 0 },
 		}));
 
-		frm.set_query("warehouse", () => ({
+		["warehouse", "return_warehouse"].forEach(wh_field => frm.set_query(wh_field, () => ({
 			filters: {
 				company: frm.doc.company,
 				is_group: 0,
 				disabled: 0,
 			},
-		}));
+		})));
+
 
 		const tax_accounts = [
 			"igst_account",
 			"cgst_account",
 			"sgst_account",
 			"ugst_account",
+			"tcs_account",
 		];
 
 		const misc_accounts = [

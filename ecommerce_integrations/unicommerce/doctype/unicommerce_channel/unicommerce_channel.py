@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and contributors
-# For license information, please see license.txt
+# For license information, please see LICENSE
 
 import frappe
 from frappe import _
@@ -20,6 +20,7 @@ class UnicommerceChannel(Document):
 			"cgst_account": "Account",
 			"sgst_account": "Account",
 			"ugst_account": "Account",
+			"tcs_account": "Account",
 			"cash_or_bank_account": "Account",
 			"cost_center": "Cost Center",
 		}

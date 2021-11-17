@@ -1,5 +1,5 @@
 # Copyright (c) 2021, Frappe and contributors
-# For license information, please see license.txt
+# For license information, please see LICENSE
 
 from typing import Dict, List
 
@@ -32,6 +32,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
+	RETURN_CODE_FIELD,
 	SHIPPING_METHOD_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PACKAGE_STATUS_FIELD,
@@ -63,7 +64,7 @@ class UnicommerceSettings(SettingController):
 				)
 
 		if not self.flags.ignore_custom_fields:
-			setup_custom_fields()
+			setup_custom_fields(update=False)
 
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
@@ -153,7 +154,7 @@ class UnicommerceSettings(SettingController):
 		return {v: k for k, v in reverse_map.items()}
 
 
-def setup_custom_fields():
+def setup_custom_fields(update=True):
 
 	custom_sections = {
 		"Sales Order": [
@@ -379,9 +380,16 @@ def setup_custom_fields():
 				insert_after=MANIFEST_GENERATED_CHECK,
 				read_only=1,
 			),
+			dict(
+				fieldname=RETURN_CODE_FIELD,
+				label="Unicommerce Return Code",
+				fieldtype="Small Text",
+				insert_after=IS_COD_CHECKBOX,
+				read_only=1,
+			),
 		],
 	}
 
 	# create sections first for proper ordering
-	create_custom_fields(custom_sections)
-	create_custom_fields(custom_fields)
+	create_custom_fields(custom_sections, update=update)
+	create_custom_fields(custom_fields, update=update)

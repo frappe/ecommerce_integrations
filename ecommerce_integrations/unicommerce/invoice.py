@@ -564,6 +564,6 @@ def update_cancellation_status(so_data, so) -> bool:
 		return True
 
 	# partial cancels
-	from ecommerce_integrations.unicommerce.status_updater import update_erpnext_order_items
+	from ecommerce_integrations.unicommerce.cancellation_and_returns import update_erpnext_order_items
 
 	update_erpnext_order_items(so_data, so)
