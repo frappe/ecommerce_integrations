@@ -65,7 +65,7 @@ def unregister_webhooks(shopify_url: str, password: str) -> None:
 	with Session.temp(shopify_url, API_VERSION, password):
 
 		for webhook in Webhook.find():
-			if webhook.address.startswith(url):
+			if url in webhook.address:
 				webhook.destroy()
 
 
