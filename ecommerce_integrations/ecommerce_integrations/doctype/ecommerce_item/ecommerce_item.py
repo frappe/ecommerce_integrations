@@ -115,7 +115,7 @@ def get_erpnext_item(
 		item_code = frappe.db.get_value(
 			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
 		)
-	elif not item_code:
+	if not item_code:
 		item_code = get_erpnext_item_code(
 			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
 		)
