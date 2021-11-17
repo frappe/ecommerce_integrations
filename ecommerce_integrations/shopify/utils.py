@@ -85,7 +85,10 @@ def _get_items_to_migrate() -> List[_dict]:
 
 def _create_ecommerce_items(items: List[_dict]) -> None:
 	for item in items:
-		frappe.get_doc(
+		if not all((item.erpnext_item_code, item.shopify_product_id, item.shopify_variant_id)):
+			continue
+
+		ecommerce_item = frappe.get_doc(
 			{
 				"doctype": "Ecommerce Item",
 				"integration": MODULE_NAME,
@@ -95,4 +98,5 @@ def _create_ecommerce_items(items: List[_dict]) -> None:
 				"variant_of": item.variant_of,
 				"has_variants": item.has_variants,
 			}
-		).save()
+		)
+		ecommerce_item.save()
