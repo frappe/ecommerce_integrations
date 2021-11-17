@@ -119,7 +119,7 @@
    "label": "Sales Order Series"
   },
   {
-   "description": "This is the default UOM used for items and Sales orders. The fallback UOM is \\\"Nos\\\".",
+   "description": "This is the default UOM used for Items and Sales orders. The fallback UOM is \\\"Nos\\\".",
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",
