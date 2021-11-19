@@ -70,3 +70,11 @@ class TestUnicommerceSettings(TestCase):
 		self.assertEqual(self.settings.token_type, "bearer")
 		self.assertTrue(str(self.settings.expires_on) > now())
 		self.assertTrue(responses.assert_call_count(url, 1))
+
+	def test_wh_map(self):
+
+		addresses = self.settings.get_company_addresses("Test-123")
+		self.assertEqual(addresses, ("test_company_address", "test_dispatch_address"))
+
+		addresses = self.settings.get_company_addresses("What")
+		self.assertEqual(addresses, (None, None))
