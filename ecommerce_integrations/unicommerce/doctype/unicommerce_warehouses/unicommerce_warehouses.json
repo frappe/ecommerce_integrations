@@ -6,9 +6,11 @@
  "field_order": [
   "enabled",
   "unicommerce_facility_code",
-  "column_break_2",
   "erpnext_warehouse",
-  "return_warehouse"
+  "column_break_2",
+  "return_warehouse",
+  "company_address",
+  "dispatch_address"
  ],
  "fields": [
   {
@@ -43,13 +45,24 @@
    "label": "Return Warehouse",
    "options": "Warehouse",
    "reqd": 1
+  },
+  {
+   "fieldname": "company_address",
+   "fieldtype": "Link",
+   "label": "Company Address",
+   "options": "Address"
+  },
+  {
+   "fieldname": "dispatch_address",
+   "fieldtype": "Link",
+   "label": "Dispatch Address",
+   "options": "Address"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "migration_hash": "96607cef80f8c80f564ce90ec01dc792",
- "modified": "2021-10-25 10:23:04.154782",
+ "modified": "2021-11-19 16:39:01.415522",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Warehouses",
