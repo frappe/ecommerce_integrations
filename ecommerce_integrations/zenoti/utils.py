@@ -24,7 +24,6 @@ def make_api_call(url):
 	response = requests.request("GET", url=url, headers=headers)
 	if response.status_code != 200:
 		content = json.loads(response._content.decode('utf-8'))
-		print(content)
 		frappe.get_doc({
 			"doctype": "Zenoti Error Logs",
 			"title": content["Message"],
