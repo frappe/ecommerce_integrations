@@ -19,7 +19,6 @@ item_type = {
 
 
 def make_api_call(url):
-	err_msg = ""
 	headers = get_headers()
 	response = requests.request("GET", url=url, headers=headers)
 	if response.status_code != 200:
