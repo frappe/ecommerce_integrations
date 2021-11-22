@@ -17,13 +17,7 @@ class TestCase(unittest.TestCase):
 		"enable_inventory_sync": 1,
 		"default_customer_group": "Individual",
 		"warehouse_mapping": [
-			{
-				"unicommerce_facility_code": "Test-123",
-				"erpnext_warehouse": "Stores - WP",
-				"enabled": 1,
-				"company_address": "test_company_address",
-				"dispatch_address": "test_dispatch_address",
-			},
+			{"unicommerce_facility_code": "Test-123", "erpnext_warehouse": "Stores - WP", "enabled": 1},
 			{"unicommerce_facility_code": "B", "erpnext_warehouse": "Work In Progress - WP", "enabled": 1},
 		],
 	}
@@ -51,10 +45,9 @@ class TestCase(unittest.TestCase):
 			settings.append("warehouse_mapping", wh_map)
 
 		settings.flags.ignore_validate = True  # to prevent hitting the API
-		settings.flags.ignore_links = True
 		settings.flags.ignore_mandatory = True
 		settings.save()
-		setup_custom_fields(update=False)
+		setup_custom_fields()
 		_setup_test_item_categories()
 		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 1)
 
@@ -70,7 +63,6 @@ class TestCase(unittest.TestCase):
 			settings.append("warehouse_mapping", wh_map)
 
 		settings.flags.ignore_validate = True  # to prevent hitting the API
-		settings.flags.ignore_links = True
 		settings.flags.ignore_mandatory = True
 		settings.save()
 		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 0)
