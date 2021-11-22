@@ -30,7 +30,7 @@ def make_api_call(url):
 				"title": content["Message"],
 				"error_message": content["InternalMessage"],
 				"request_url": url,
-				"status_code": content["StatusCode"]
+				"status_code": content["StatusCode"],
 			}
 		).insert(ignore_permissions=True)
 
