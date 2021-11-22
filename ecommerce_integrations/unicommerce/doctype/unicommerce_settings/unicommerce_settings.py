@@ -1,7 +1,7 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 import frappe
 import requests
@@ -152,6 +152,13 @@ class UnicommerceSettings(SettingController):
 		reverse_map = self.get_erpnext_to_integration_wh_mapping(all_wh=all_wh)
 
 		return {v: k for k, v in reverse_map.items()}
+
+	def get_company_addresses(self, facility_code: str) -> Tuple[Optional[str], Optional[str]]:
+		""" Get mapped company billing and shipping addresses."""
+		for wh_map in self.warehouse_mapping:
+			if wh_map.unicommerce_facility_code == facility_code:
+				return wh_map.company_address, wh_map.dispatch_address
+		return None, None
 
 
 def setup_custom_fields(update=True):
