@@ -24,13 +24,15 @@ def make_api_call(url):
 	response = requests.request("GET", url=url, headers=headers)
 	if response.status_code != 200:
 		content = json.loads(response._content.decode('utf-8'))
-		frappe.get_doc({
-			"doctype": "Zenoti Error Logs",
-			"title": content["Message"],
-			"error_message" : content["InternalMessage"],
-			"request_url" : url,
-			"status_code" : content["StatusCode"]
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Zenoti Error Logs",
+				"title": content["Message"],
+				"error_message" : content["InternalMessage"],
+				"request_url" : url,
+				"status_code" : content["StatusCode"]
+			}
+		).insert(ignore_permissions=True)
 
 		return
 
