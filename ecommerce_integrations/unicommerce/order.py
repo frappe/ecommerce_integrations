@@ -1,6 +1,6 @@
 import json
 from collections import defaultdict, namedtuple
-from typing import Any, Dict, Iterator, List, NewType, Optional, Set
+from typing import Any, Dict, Iterator, List, NewType, Optional, Set, Tuple
 
 import frappe
 from frappe.utils import add_to_date, flt
@@ -166,6 +166,9 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 
 	is_cancelled = order["status"] == "CANCELLED"
 
+	facility_code = _get_facility_code(order["saleOrderItems"])
+	company_address, dispatch_address = settings.get_company_addresses(facility_code)
+
 	so = frappe.get_doc(
 		{
 			"doctype": "Sales Order",
@@ -174,7 +177,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			ORDER_CODE_FIELD: order["code"],
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
-			FACILITY_CODE_FIELD: _get_facility_code(order["saleOrderItems"]),
+			FACILITY_CODE_FIELD: facility_code,
 			IS_COD_CHECKBOX: bool(order["cod"]),
 			"transaction_date": get_unicommerce_date(order["displayOrderDateTime"]),
 			"delivery_date": get_unicommerce_date(order["fulfillmentTat"]),
@@ -185,6 +188,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"company": channel_config.company,
 			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
+			"company_address": company_address,
+			"dispatch_address_name": dispatch_address,
 		}
 	)
 

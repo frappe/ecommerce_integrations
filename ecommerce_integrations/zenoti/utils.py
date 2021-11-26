@@ -19,15 +19,20 @@ item_type = {
 
 
 def make_api_call(url):
-	err_msg = ""
 	headers = get_headers()
 	response = requests.request("GET", url=url, headers=headers)
 	if response.status_code != 200:
-		err_msg = _("Call to URL {} was not successful").format(frappe.bold(url))
-		log = frappe.new_doc("Zenoti Error Logs")
-		log.title = "Unsuccessful API call"
-		log.error_message = err_msg
-		log.insert()
+		content = json.loads(response._content.decode("utf-8"))
+		frappe.get_doc(
+			{
+				"doctype": "Zenoti Error Logs",
+				"title": content["Message"],
+				"error_message": content["InternalMessage"],
+				"request_url": url,
+				"status_code": content["StatusCode"],
+			}
+		).insert(ignore_permissions=True)
+
 		return
 
 	response_details = convert_str_to_json(response.text)

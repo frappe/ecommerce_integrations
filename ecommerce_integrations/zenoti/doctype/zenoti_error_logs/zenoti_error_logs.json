@@ -5,6 +5,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "request_url",
+  "status_code",
   "title",
   "error_message"
  ],
@@ -12,36 +14,46 @@
   {
    "fieldname": "error_message",
    "fieldtype": "Text Editor",
+   "in_list_view": 1,
    "label": "Error Message",
    "read_only": 1
   },
   {
    "fieldname": "title",
-   "fieldtype": "Data",
+   "fieldtype": "Small Text",
    "in_list_view": 1,
-   "label": "Title",
+   "label": "Error Title",
+   "read_only": 1
+  },
+  {
+   "fieldname": "request_url",
+   "fieldtype": "Small Text",
+   "label": "Request URL",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status_code",
+   "fieldtype": "Int",
+   "label": "Status Code",
    "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-08-09 17:11:41.401957",
+ "modified": "2021-11-25 12:17:13.764323",
  "modified_by": "Administrator",
  "module": "Zenoti",
  "name": "Zenoti Error Logs",
  "owner": "Administrator",
  "permissions": [
   {
-   "create": 1,
-   "delete": 1,
    "email": 1,
    "export": 1,
    "print": 1,
    "read": 1,
    "report": 1,
    "role": "System Manager",
-   "share": 1,
-   "write": 1
+   "share": 1
   }
  ],
  "sort_field": "modified",

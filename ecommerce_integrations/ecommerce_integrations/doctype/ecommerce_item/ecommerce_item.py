@@ -110,11 +110,12 @@ def get_erpnext_item(
 	Note: If variant_id is not specified then item is assumed to be single OR template.
 	"""
 
+	item_code = None
 	if sku:
 		item_code = frappe.db.get_value(
 			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
 		)
-	else:
+	if not item_code:
 		item_code = get_erpnext_item_code(
 			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
 		)
