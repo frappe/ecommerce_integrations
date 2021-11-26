@@ -377,7 +377,7 @@ def create_sales_invoice(
 	si.set_posting_time = 1
 	si.posting_date = get_unicommerce_date(si_data["created"])
 	si.transaction_date = si.posting_date
-	si.naming_series = channel_config.sales_invoice_series or settings.sales_order_series
+	si.naming_series = channel_config.sales_invoice_series or settings.sales_invoice_series
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
 	si.update_stock = update_stock
