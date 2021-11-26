@@ -188,7 +188,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"company": channel_config.company,
 			"taxes": get_taxes(order["saleOrderItems"], channel_config),
 			"tax_category": get_dummy_tax_category(),
-			"company_adress": company_address,
+			"company_address": company_address,
 			"dispatch_address_name": dispatch_address,
 		}
 	)
