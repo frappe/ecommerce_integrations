@@ -1,13 +1,14 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
-
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_root_of
 from six.moves.urllib.parse import urlparse
+
+from ecommerce_integrations.woocommerce.constants import PRODUCT_GROUP
 
 
 class WoocommerceSetting(Document):
@@ -38,9 +39,12 @@ class WoocommerceSetting(Document):
 				)
 				create_custom_field(doctype, df)
 
-			if not frappe.get_value("Item Group", {"name": _("WooCommerce Products")}):
+			sku_dict = dict(fieldname="sku", label="SKU", fieldtype="Data", read_only=1, print_hide=1,)
+			create_custom_field("Item", sku_dict)
+
+			if not frappe.get_value("Item Group", {"name": PRODUCT_GROUP}):
 				item_group = frappe.new_doc("Item Group")
-				item_group.item_group_name = _("WooCommerce Products")
+				item_group.item_group_name = PRODUCT_GROUP
 				item_group.parent_item_group = get_root_of("Item Group")
 				item_group.insert()
 
