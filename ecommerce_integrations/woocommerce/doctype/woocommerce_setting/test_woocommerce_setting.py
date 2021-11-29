@@ -7,9 +7,9 @@ import frappe
 
 from ecommerce_integrations.woocommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
 from ecommerce_integrations.woocommerce.doctype.woocommerce_setting.woocommerce_setting import (
-	WoocommerceSetting,
 	generate_secret,
 )
+
 
 class TestWoocommerceSetting(unittest.TestCase):
 	@classmethod
