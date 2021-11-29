@@ -149,7 +149,9 @@ def get_list_of_items_in_a_center(center, item_group):
 				page = math.ceil(size / 100)
 				for i in range(page):
 					pg = i + 1
-					url = api_url + "centers/" + center + "/" + item_type[item_group] + "?size=100" + "page=" + str(pg)
+					url = (
+						api_url + "centers/" + center + "/" + item_type[item_group] + "?size=100" + "page=" + str(pg)
+					)
 					pagewise_items_in_center = make_api_call(url)
 					for item in pagewise_items_in_center[item_type[item_group]]:
 						list_of_all_items_in_center.append(item)
