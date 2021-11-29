@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import frappe
 import responses
+from responses.matchers import query_param_matcher
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.tests.utils import TestCase
@@ -304,4 +305,29 @@ class TestUnicommerceClient(TestCaseApiClient):
 		pdf = self.client.get_invoice_label("SP_CODE", "TEST")
 		self.assertEqual(pdf, base64.b64encode(b"pdf"))
 
+		self.assert_last_request_headers("Facility", "TEST")
+
+	def test_bulk_import(self):
+		from frappe.utils.file_manager import save_file
+
+		from ecommerce_integrations.unicommerce.inventory import create_auto_grn_import
+
+		csv_file = b"a,b,c\n1,2,3"
+		csv_filename = "test_file.csv"
+
+		item = frappe.get_last_doc("Item")
+
+		save_file(fname=csv_filename, content=csv_file, dt=item.doctype, dn=item.name, is_private=1)
+
+		self.responses.add(
+			responses.POST,
+			"https://demostaging.unicommerce.com/services/rest/v1/data/import/job/create",
+			status=200,
+			match=[query_param_matcher({"name": "Auto GRN Items", "importOption": "CREATE_NEW"}),],
+			json={"successful": True},
+		)
+
+		resp = create_auto_grn_import(csv_filename, "TEST", client=self.client)
+
+		self.assertEqual(resp.successful, True)
 		self.assert_last_request_headers("Facility", "TEST")

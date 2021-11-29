@@ -86,3 +86,14 @@ def _update_inventory_sync_status(ecom_item_success_map: Dict[str, bool], timest
 	for ecom_item, status in ecom_item_success_map.items():
 		if status:
 			update_inventory_sync_status(ecom_item, timestamp)
+
+
+@frappe.whitelist()
+def create_auto_grn_import(csv_filename: str, facility_code: str, client=None):
+	""" Create new import job for Auto GRN items"""
+	if client is None:
+		client = UnicommerceAPIClient()
+	resp = client.create_import_job(
+		job_name="Auto GRN Items", csv_filename=csv_filename, facility_code=facility_code
+	)
+	return resp
