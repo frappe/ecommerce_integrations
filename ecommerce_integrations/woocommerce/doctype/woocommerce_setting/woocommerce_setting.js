@@ -22,7 +22,7 @@ frappe.ui.form.on('Woocommerce Setting', {
 	add_button_generate_secret(frm) {
 		frm.add_custom_button(__('Generate Secret'), () => {
 			frappe.confirm(
-				__("Apps using current key won't be able to access, are you sure? "),
+				__("Apps using current key won't be able to access, are you sure?"),
 				() => {
 					frappe.call({
 						type:"POST",
