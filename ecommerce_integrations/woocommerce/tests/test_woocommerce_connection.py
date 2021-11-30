@@ -18,12 +18,15 @@ class TestWooCommerceConnection(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
+		settings = frappe.get_doc(SETTINGS_DOCTYPE)
+		settings.woocommerce_server_url = "http://localhost:8080/wordpress"
+		settings.api_consumer_key = "ck_2b74b3b862a3bd168735ccbf89cdc31087e5fcd3"
+		settings.api_consumer_secret = "cs_63735c2528de30a8ab8f26e10202099b24112f60"
+		cls.settings = settings
 
-	# @unittest.skip("Can't run these tests in CI")
 	def test_verify_incorrect_header(self):
 		self.assertRaises(Exception, verify_request)
 
-	# @unittest.skip("Can't run these tests in CI")
 	def test_order_creation(self):
 
 		with open(os.path.join(os.path.dirname(__file__), "test_order.json")) as f:
