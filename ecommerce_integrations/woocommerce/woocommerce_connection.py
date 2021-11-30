@@ -7,20 +7,23 @@ import frappe
 from frappe import _
 from frappe.utils import cstr
 
-from ecommerce_integrations.woocommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
+from ecommerce_integrations.woocommerce.constants import (
+	MODULE_NAME,
+	PRODUCT_GROUP,
+	SETTINGS_DOCTYPE,
+)
 
 
 def verify_request():
-	woocommerce_settings = frappe.get_doc("Woocommerce Setting")
+	woocommerce_settings = frappe.get_doc(SETTINGS_DOCTYPE)
 	sig = base64.b64encode(
 		hmac.new(
 			woocommerce_settings.secret.encode("utf8"), frappe.request.data, hashlib.sha256
 		).digest()
 	)
-
 	if (
 		frappe.request.data
-		and frappe.get_request_header("X-Wc-Webhook-Signature")
 		and not sig == frappe.get_request_header("X-Wc-Webhook-Signature", "").encode()
 	):
 		frappe.throw(_("Unverified Webhook Data"))
@@ -40,7 +43,7 @@ def order(*args, **kwargs):
 
 
 def _order(*args, **kwargs):
-	woocommerce_settings = frappe.get_doc("Woocommerce Setting")
+	woocommerce_settings = frappe.get_doc(SETTINGS_DOCTYPE)
 	if frappe.flags.woocomm_test_order_data:
 		order = frappe.flags.woocomm_test_order_data
 		event = "created"
@@ -49,12 +52,10 @@ def _order(*args, **kwargs):
 		verify_request()
 		try:
 			order = json.loads(frappe.request.data)
-			print(order)
 		except ValueError:
 			# woocommerce returns 'webhook_id=value' for the first request which is not JSON
 			order = frappe.request.data
 		event = frappe.get_request_header("X-Wc-Webhook-Event")
-
 	else:
 		return "success"
 
@@ -71,14 +72,14 @@ def _order(*args, **kwargs):
 def link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name):
 	customer_woo_com_email = raw_billing_data.get("email")
 	customer_exists = frappe.get_value(
-		"Customer", {"woocommerce_email": customer_woo_com_email, "customer_name": customer_name}
+		"Customer", {"woocommerce_email": customer_woo_com_email, "name": customer_name}
 	)
 
 	if not customer_exists:
 		customer = frappe.new_doc("Customer")
 	else:
 		customer = frappe.get_doc(
-			"Customer", {"woocommerce_email": customer_woo_com_email, "customer_name": customer_name}
+			"Customer", {"woocommerce_email": customer_woo_com_email, "name": customer_name}
 		)
 		old_name = customer.customer_name
 
@@ -86,6 +87,7 @@ def link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name
 	customer.woocommerce_email = customer_woo_com_email
 	customer.flags.ignore_mandatory = True
 	customer.save(ignore_permissions=True)
+
 	if customer_exists:
 		frappe.rename_doc("Customer", old_name, customer_name, ignore_permissions=True, force=True)
 		for address_type in (
@@ -97,7 +99,7 @@ def link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name
 					"Address",
 					{
 						"woocommerce_email": customer_woo_com_email,
-						"customer_name": customer_name,
+						"name": customer_name,
 						"address_type": address_type,
 					},
 				)
@@ -172,30 +174,27 @@ def rename_address(address, customer):
 def link_items(items_list, woocommerce_settings, sys_lang):
 	for item_data in items_list:
 		item_woo_com_id = cstr(item_data.get("product_id"))
-
-		if not frappe.db.get_value("Ecommerce Item", {"erpnext_item_code": item_woo_com_id}, "name"):
-			item = frappe.new_doc("Ecommerce Item")
-			item.integration = MODULE_NAME
-			if not frappe.db.get_value("Item", {"woocommerce_id": item_woo_com_id}, "name"):
-				create_erp_item(item_woo_com_id, woocommerce_settings, item_data, sys_lang)
-			item.erpnext_item_code = item_woo_com_id
-			item.integration_item_code = item_data.get("sku")
-			item.has_variants: 0  # to check
-			item.sku = item_data.get("sku")
-			item.flags.ignore_mandatory = True
-			item.save(ignore_permissions=True)
-
-
-def create_erp_item(item_woo_com_id, woocommerce_settings, item_data, sys_lang):
-	item = frappe.new_doc("Item")
-	item.item_code = _("woocommerce - {0}", sys_lang).format(item_woo_com_id)
-	item.stock_uom = woocommerce_settings.uom or _("Nos", sys_lang)
-	item.item_group = _("WooCommerce Products", sys_lang)
-
-	item.item_name = item_data.get("name")
-	item.woocommerce_id = item_woo_com_id
-	item.flags.ignore_mandatory = True
-	item.save(ignore_permissions=True)
+		tmp_erpnext_item_code = _("woocommerce - {0}", sys_lang).format(item_woo_com_id)
+		if not frappe.db.get_value(
+			"Ecommerce Item", {"erpnext_item_code": tmp_erpnext_item_code}, "name"
+		):
+			item_dict = {
+				"is_stock_item": 1,
+				"item_code": tmp_erpnext_item_code,
+				"item_name": cstr(item_data.get("name")),
+				"description": cstr(item_data.get("name")),
+				"item_group": PRODUCT_GROUP,
+				"has_variants": 0,
+				"woocommerce_id": item_woo_com_id,
+				"stock_uom": woocommerce_settings.uom or _("Nos", sys_lang),
+				"sku": item_data.get("sku"),
+			}
+			ecommerce_item.create_ecommerce_item(
+				integration=MODULE_NAME,
+				integration_item_code=item_data.get("sku"),
+				item_dict=item_dict,
+				sku=item_data.get("sku"),
+			)
 
 
 def create_sales_order(order, woocommerce_settings, customer_name, sys_lang):
@@ -217,15 +216,13 @@ def create_sales_order(order, woocommerce_settings, customer_name, sys_lang):
 	new_sales_order.insert(ignore_permissions=True)
 	new_sales_order.submit()
 
-	frappe.db.commit()
-
 
 def set_items_in_sales_order(new_sales_order, woocommerce_settings, order, sys_lang):
 	company_abbr = frappe.db.get_value("Company", woocommerce_settings.company, "abbr")
 
 	default_warehouse = _("Stores - {0}", sys_lang).format(company_abbr)
 	if not frappe.db.exists("Warehouse", default_warehouse) and not woocommerce_settings.warehouse:
-		frappe.throw(_("Please set Warehouse in Woocommerce Setting "))
+		frappe.throw(_("Please set Warehouse in Woocommerce Setting"))
 
 	for item in order.get("line_items"):
 		woocomm_item_id = item.get("product_id")
