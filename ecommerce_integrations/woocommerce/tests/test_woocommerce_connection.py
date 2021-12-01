@@ -19,6 +19,7 @@ class TestWooCommerceConnection(unittest.TestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 		settings = frappe.get_doc(SETTINGS_DOCTYPE)
+		settings.enable_sync = 1
 		settings.create_delete_custom_fields()
 		cls.settings = settings
 
