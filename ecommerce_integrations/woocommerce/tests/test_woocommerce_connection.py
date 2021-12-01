@@ -50,6 +50,3 @@ class TestWooCommerceConnection(unittest.TestCase):
 		self.assertTrue(entry_exists, "ecoomm not added")
 		entry_exists = frappe.get_value("Item", {"item_name": params.get("line_items")[0].get("name")})
 		self.assertTrue(entry_exists, "item not added")
-		create_sales_order(params, woocommerce_settings, customer_name, sys_lang)
-		entry_exists = frappe.get_value("Sales Order", {"po_no": params.get("id")})
-		self.assertTrue(entry_exists, "Sales order not added")
