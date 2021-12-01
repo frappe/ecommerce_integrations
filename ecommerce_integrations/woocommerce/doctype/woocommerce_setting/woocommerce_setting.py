@@ -8,6 +8,7 @@ from frappe.model.document import Document
 from frappe.utils.nestedset import get_root_of
 from six.moves.urllib.parse import urlparse
 
+from ecommerce_integrations.patches.update_woocommerce_items import create_ecommerce_items
 from ecommerce_integrations.woocommerce.constants import PRODUCT_GROUP
 
 
@@ -16,6 +17,8 @@ class WoocommerceSetting(Document):
 		self.validate_settings()
 		self.create_delete_custom_fields()
 		self.create_webhook_url()
+		if self.enable_sync:
+			create_ecommerce_items()
 
 	def create_delete_custom_fields(self):
 		if self.enable_sync:

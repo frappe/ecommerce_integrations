@@ -19,9 +19,7 @@ class TestWooCommerceConnection(unittest.TestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 		settings = frappe.get_doc(SETTINGS_DOCTYPE)
-		settings.woocommerce_server_url = "http://localhost:8080/wordpress"
-		settings.api_consumer_key = "ck_2b74b3b862a3bd168735ccbf89cdc31087e5fcd3"
-		settings.api_consumer_secret = "cs_63735c2528de30a8ab8f26e10202099b24112f60"
+		settings.create_delete_custom_fields()
 		cls.settings = settings
 
 	def test_verify_incorrect_header(self):
