@@ -15,6 +15,6 @@ class TestWooCommerceItemMigration(unittest.TestCase):
 	def test_migrate_items(self):
 		create_ecommerce_items()
 		filters = {"item_group": _(PRODUCT_GROUP, frappe.get_single("System Settings").language or "en")}
-		items = frappe.db.get_all("Item", filters=filters, fields=["*"])
-		ecomm_items = frappe.db.get_all("Ecommerce Item", {"integration": MODULE_NAME})
-		self.assertEqual(len(items), len(ecomm_items))
+		items = frappe.db.count("Item", filters)
+		ecomm_items = frappe.db.count("Ecommerce Item", {"integration": MODULE_NAME})
+		self.assertEqual(items, ecomm_items)
