@@ -2,4 +2,3 @@ Ecommerce Integrations
 shopify
 Zenoti
 unicommerce
-Woocommerce
