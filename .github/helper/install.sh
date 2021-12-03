@@ -37,5 +37,5 @@ bench start &
 bench --site test_site reinstall --yes
 
 bench get-app ecommerce_integrations "${GITHUB_WORKSPACE}"
-bench --verbose --site test_site install-app ecommerce_integrations
+bench --site test_site install-app ecommerce_integrations
 bench setup requirements --dev
