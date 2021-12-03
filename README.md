@@ -11,8 +11,7 @@
 - Shopify - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/shopify_integration)
 - Unicommerce - [User Documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/unicommerce_integration)
 - Zenoti - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/zenoti_integration)
-
-
+- WooCommerce - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/woocommerce_integration)
 ### Installation
 
 - Frappe Cloud Users can install [from Marketplace](https://frappecloud.com/marketplace/apps/ecommerce-integrations).
