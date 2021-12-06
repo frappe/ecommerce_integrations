@@ -107,6 +107,10 @@ doc_events = {
 		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info",
 		"on_cancel": "ecommerce_integrations.unicommerce.status_updater.ignore_pick_list_on_sales_order_cancel",
 	},
+	"Stock Entry": {
+		"validate": "ecommerce_integrations.unicommerce.grn.validate_stock_entry_for_grn",
+		"on_submit": "ecommerce_integrations.unicommerce.grn.upload_grn",
+	},
 }
 
 # Scheduled Tasks
