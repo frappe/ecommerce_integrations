@@ -15,6 +15,8 @@ class TestCase(unittest.TestCase):
 	config = {
 		"is_enabled": 1,
 		"enable_inventory_sync": 1,
+		"use_stock_entry_for_grn": 1,
+		"vendor_code": "ERP",
 		"default_customer_group": "Individual",
 		"warehouse_mapping": [
 			{"unicommerce_facility_code": "Test-123", "erpnext_warehouse": "Stores - WP", "enabled": 1},
