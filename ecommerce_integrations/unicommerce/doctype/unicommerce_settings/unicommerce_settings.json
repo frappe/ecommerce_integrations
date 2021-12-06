@@ -34,6 +34,9 @@
   "enable_inventory_sync",
   "inventory_sync_frequency",
   "warehouse_mapping",
+  "grn_settings_section",
+  "use_stock_entry_for_grn",
+  "vendor_code",
   "sync_status_section",
   "last_order_sync",
   "column_break_20",
@@ -235,12 +238,30 @@
    "fieldtype": "Int",
    "label": "Sync Order Status Days ",
    "reqd": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "grn_settings_section",
+   "fieldtype": "Section Break",
+   "label": "GRN settings"
+  },
+  {
+   "default": "0",
+   "description": "Material Transfer entries can be used for transferring stock to Unicommerce using Auto GRN API",
+   "fieldname": "use_stock_entry_for_grn",
+   "fieldtype": "Check",
+   "label": "Use Stock Entry for GRN"
+  },
+  {
+   "fieldname": "vendor_code",
+   "fieldtype": "Data",
+   "label": "Vendor Code"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-09-14 11:39:59.994872",
+ "modified": "2021-12-06 12:30:48.168894",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

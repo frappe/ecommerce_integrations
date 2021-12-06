@@ -19,6 +19,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	CUSTOMER_CODE_FIELD,
 	FACILITY_CODE_FIELD,
+	GRN_STOCK_ENTRY_TYPE,
 	INVOICE_CODE_FIELD,
 	IS_COD_CHECKBOX,
 	ITEM_HEIGHT_FIELD,
@@ -55,6 +56,7 @@ class UnicommerceSettings(SettingController):
 			return
 
 		self.validate_warehouse_mapping()
+		self.validate_auto_grn_settings()
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
 				self.update_tokens()
@@ -112,6 +114,20 @@ class UnicommerceSettings(SettingController):
 		if grant_type == "password":
 			return
 		self.update_tokens(grant_type="password")
+
+	def validate_auto_grn_settings(self):
+		if not self.use_stock_entry_for_grn:
+			return
+
+		if not self.vendor_code:
+			frappe.throw(_("Vendor code required for Auto GRN upload."))
+
+		if not frappe.db.exists("Stock Entry Type", GRN_STOCK_ENTRY_TYPE):
+			entry_type = frappe.new_doc("Stock Entry Type")
+			entry_type.name = GRN_STOCK_ENTRY_TYPE
+			entry_type.purpose = "Material Transfer"
+			entry_type.insert()
+			entry_type.add_comment(text="Entry type used for Auto GRN on unicommerce, do not modify.")
 
 	def validate_warehouse_mapping(self):
 		erpnext_whs = {wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping}
