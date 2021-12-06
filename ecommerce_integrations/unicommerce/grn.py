@@ -194,3 +194,14 @@ def create_auto_grn_import(csv_filename: str, facility_code: str, client=None):
 		job_name="Auto GRN Items", csv_filename=csv_filename, facility_code=facility_code
 	)
 	return resp
+
+
+def prevent_grn_cancel(doc, method=None):
+	if not is_unicommerce_grn(doc):
+		return
+
+	msg = _("This Stock Entry can not be cancelled.")
+	msg += _("To undo this stock entry you need to move the Stock back") + " "
+	msg += _("and remove stock from Unicommerce.")
+
+	frappe.throw(msg, title="GRN Stock Entry can not be cancelled")
