@@ -115,7 +115,24 @@ def upload_grn(doc, method=None):
 	facility_code = get_facility_code(stock_entry, settings)
 	csv_file = _prepare_grn_import_csv(doc)
 
-	create_auto_grn_import(csv_file, facility_code=facility_code)
+	response = create_auto_grn_import(csv_file, facility_code=facility_code)
+
+	if not response or not response.successful:
+		frappe.throw(
+			_("GRN upload failed, Unicommerce reported errors.<br>{}").format(
+				"<br>".join(response.errors if response else [])
+			)
+		)
+
+	errors = response.errors
+	if response.successful and not errors:
+		msg = _("Successully queued GRN import to Unicommerce.")
+		msg += _("Confirm the status on Import Log in Uniware.")
+		frappe.msgprint(msg, title="Success")
+	elif response.successful and errors:
+		frappe.msgprint(
+			"Partial success, unicommerce reported errors:<br>{}".format("<br>".join(errors))
+		)
 
 
 def _prepare_grn_import_csv(stock_entry) -> str:
@@ -149,7 +166,7 @@ def _prepare_grn_import_csv(stock_entry) -> str:
 			vendor_invoice_number=stock_entry.name,
 			invoice_date=invoice_date,
 			sku=sku,
-			qty=cint(item.qty),
+			qty=cint(item.qty),  # implicitly round down
 			item_code=sku,
 			manufacturing_date=manufacturing_date,
 			expiry_date=expiry_date,
