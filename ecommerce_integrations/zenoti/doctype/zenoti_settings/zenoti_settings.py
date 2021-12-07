@@ -6,12 +6,12 @@ import requests
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
-from frappe.utils import add_to_date, cint, get_datetime
+from frappe.utils import add_to_date, cint, get_datetime, date_diff
 
 from ecommerce_integrations.zenoti.purchase_transactions import process_purchase_orders
 from ecommerce_integrations.zenoti.sales_transactions import process_sales_invoices
 from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_reconciliation
-from ecommerce_integrations.zenoti.utils import api_url, get_list_of_centers
+from ecommerce_integrations.zenoti.utils import api_url, get_list_of_centers, get_all_centers
 
 
 class ZenotiSettings(Document):
@@ -62,21 +62,21 @@ def check_for_opening_stock_reconciliation():
 			)
 		)
 
-
-def sync_invoices():
+def sync_invoices(center_id=None, start_date=None, end_date=None):
 	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
 		check_perpetual_inventory_disabled()
-		last_sync = frappe.db.get_single_value("Zenoti Settings", "last_sync")
 		interval = frappe.db.get_single_value("Zenoti Settings", "sync_interval")
-		if last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval))):
-			error_logs = []
-			list_of_centers = get_list_of_centers()
-			if len(list_of_centers):
-				process_sales_invoices(list_of_centers, error_logs)
-				frappe.db.set_value("Zenoti Settings", "Zenoti Settings", "last_sync", get_datetime())
+		list_of_centers = [center_id] if center_id else get_list_of_centers()
+		for row in list_of_centers:
+			center = frappe.get_doc("Zenoti Center", row)
+			last_sync = center.get("last_sync")
+			if (last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))) or (start_date and end_date):
+				error_logs = []
+				process_sales_invoices(center, error_logs, start_date, end_date)
+				center.db_set("last_sync", get_datetime())
+				frappe.db.commit()
 				if len(error_logs):
 					make_error_log(error_logs)
-
 
 def sync_stocks():
 	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
@@ -132,6 +132,23 @@ def make_item_tips():
 		item.stock_uom = "Nos"
 		item.insert()
 
+@frappe.whitelist()
+def update_centers():
+	list_of_centers = get_all_centers()
+	for center in list_of_centers:
+		if frappe.db.exists("Zenoti Center", center["id"]):
+			center_doc = frappe.get_doc("Zenoti Center", center["id"])
+			center_doc.code = center["code"]
+			center_doc.center_name = center["name"]
+			center_doc.save(ignore_permissions=True)
+		else:
+			frappe.get_doc({
+				"doctype": "Zenoti Center",
+				"id": center["id"],
+				"center_name": center["name"],
+				"code": center["code"]
+			}).insert(ignore_permissions=True)
+			
 
 def setup_custom_fields():
 	custom_fields = {
@@ -163,13 +180,30 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_guest_code",
+				options="Zenoti Center",
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Item": [
+			dict(
+				fieldname="zenoti_item_code",
+				label="Zenoti Item Code",
+				fieldtype="Data",
+				insert_after="item_code",
+				read_only=1,
+				print_hide=1
+			),
 			dict(
 				fieldname="zenoti_item_id",
 				label="Zenoti Item Id",
 				fieldtype="Data",
-				insert_after="item_code",
+				insert_after="zenoti_item_code",
 				read_only=1,
 				print_hide=1,
 				hidden=1,
@@ -207,6 +241,15 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_item_type",
+				options="Zenoti Center",
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Sales Invoice": [
 			dict(
@@ -225,6 +268,15 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_receipt_no",
+				options="Zenoti Center",
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Purchase Order": [
 			dict(
@@ -234,7 +286,17 @@ def setup_custom_fields():
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
-			)
+			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_order_no",
+				options="Zenoti Center",
+				read_only=1,
+				print_hide=1,
+			),
+			
 		],
 		"Purchase Invoice": [
 			dict(
@@ -244,7 +306,16 @@ def setup_custom_fields():
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
-			)
+			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_order_no",
+				options="Zenoti Center",
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Employee": [
 			dict(
@@ -268,6 +339,15 @@ def setup_custom_fields():
 				label="Zenoti Employee Username",
 				fieldtype="Data",
 				insert_after="zenoti_employee_code",
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_employee_username",
+				options="Zenoti Center",
 				read_only=1,
 				print_hide=1,
 			),
@@ -323,6 +403,15 @@ def setup_custom_fields():
 				label="Zenoti Order No",
 				fieldtype="Small Text",
 				insert_after="zenoti_order_id",
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname="zenoti_center",
+				label="Zenoti Center",
+				fieldtype="Link",
+				insert_after="zenoti_order_no",
+				options="Zenoti Center",
 				read_only=1,
 				print_hide=1,
 			),
