@@ -42,6 +42,7 @@ class UnicommerceAPIClient:
 		headers: Optional[JsonDict] = None,
 		body: Optional[JsonDict] = None,
 		params: Optional[JsonDict] = None,
+		files: Optional[JsonDict] = None,
 	) -> Tuple[JsonDict, bool]:
 
 		if headers is None:
@@ -52,7 +53,9 @@ class UnicommerceAPIClient:
 		url = self.base_url + endpoint
 
 		try:
-			response = requests.request(url=url, method=method, headers=headers, json=body, params=params)
+			response = requests.request(
+				url=url, method=method, headers=headers, json=body, params=params, files=files
+			)
 			response.raise_for_status()
 		except Exception:
 			create_unicommerce_log(status="Error", make_new=True)
@@ -404,7 +407,49 @@ class UnicommerceAPIClient:
 		if statuses and "elements" in search_results:
 			return search_results["elements"]
 
+	def create_import_job(
+		self, job_name: str, csv_filename: str, facility_code: str, job_type: str = "CREATE_NEW",
+	):
+		"""Create import job by specifying job name and CSV file
+
+		args:
+		        job_name: import job code string specified by unicommerce
+		        csv_filename: name of csv file.
+		        facility_code: facility where import should happen
+		        job_type: create / or update code.
+		"""
+
+		url_params = {"name": job_name, "importOption": job_type}
+
+		extra_headers = {
+			"Facility": facility_code,
+			"cache-control": "no-cache",
+		}
+
+		file_obj = _safe_open_csv(csv_filename)
+		files = [("file", (csv_filename, file_obj, "text/csv"))]
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/data/import/job/create",
+			params=url_params,
+			files=files,
+			headers=extra_headers,
+		)
+
+		file_obj.close()
+		return response
+
 
 def _utc_timeformat(datetime) -> str:
 	""" Get datetime in UTC/GMT as required by Unicommerce"""
 	return get_datetime(datetime).astimezone(timezone("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _safe_open_csv(csv_name):
+	from frappe.utils.file_manager import get_file_path
+
+	if csv_name.split(".")[-1].lower().strip() != "csv":
+		frappe.throw(_("Only CSV files can be uploaded."))
+
+	filepath = get_file_path(csv_name)
+	return open(filepath, "rb")
