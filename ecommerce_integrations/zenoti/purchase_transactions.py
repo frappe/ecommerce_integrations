@@ -26,7 +26,7 @@ def get_list_of_purchase_orders_for_center(center, date=None):
 		start_date = end_date = date
 	else:
 		end_date = frappe.utils.nowdate()
-		start_date = (end_date, days=-1)
+		start_date = add_to_date(end_date, days=-1)
 	route = "inventory/purchase_orders?center_id="
 	url_end = "&show_delivery_details=true&date_criteria=1&status=-1"
 	full_url = (
@@ -67,7 +67,7 @@ def sync_supplier():
 	url = api_url + "vendors"
 	suppliers = make_get_request(url, headers=get_headers())
 	if suppliers:
-		total_page = suppliers['page_info']['total'] // 100 
+		total_page = suppliers['page_info']['total'] // 100
 		for page in range(1, total_page+2):
 			url_ = url + "?size=100&page=" + str(page)
 			all_suppliers = make_get_request(url_, headers=get_headers())

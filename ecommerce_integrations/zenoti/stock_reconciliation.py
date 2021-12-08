@@ -48,7 +48,7 @@ def make_list_for_entry(center, data, list_for_entry, error_logs):
 				)
 				error_logs.append(err_msg)
 				continue
-			
+
 			record = {
 				"item_code": entry["product_code"],
 				"item_name": entry["product_name"],

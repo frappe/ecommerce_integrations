@@ -9,7 +9,7 @@ from ecommerce_integrations.zenoti.utils import (
 	add_taxes,
 	api_url,
 	check_for_item_tax_template,
-	create_item,	
+	create_item,
 	get_headers,
 	get_list_of_centers,
 	make_address,
@@ -187,7 +187,7 @@ def make_employee(emp_name, emp_code):
 
 def get_emp(employess, emp_name, emp_code, key):
 	employee = None
-	
+
 	if employess:
 		for emp in employess[key]:
 			if emp["personal_info"]["name"] == emp_name and emp["code"] == emp_code:

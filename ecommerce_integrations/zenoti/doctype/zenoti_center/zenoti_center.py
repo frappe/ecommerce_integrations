@@ -38,7 +38,7 @@ class ZenotiCenter(Document):
 		url = api_url + "guests?center_id=" + str(self.name)
 		customers = make_get_request(url, headers=get_headers())
 		if customers:
-			total_page = customers['page_Info']['total'] // 100 
+			total_page = customers['page_Info']['total'] // 100
 			for page in range(1, total_page+2):
 				url_ = url + "&size=100&page=" + str(page)
 				all_customers = make_get_request(url_, headers=get_headers())
@@ -55,7 +55,7 @@ class ZenotiCenter(Document):
 			url = api_url + "centers/" + str(self.name) + "/" + item_type
 			products = make_get_request(url, headers=get_headers())
 			if products:
-				total_page = products['page_info']['total'] // 100 
+				total_page = products['page_info']['total'] // 100
 				for page in range(1, total_page+2):
 					url_ = url + "?size=100&page=" + str(page)
 					all_products = make_get_request(url_, headers=get_headers())
@@ -70,7 +70,7 @@ class ZenotiCenter(Document):
 		url = api_url + "centers/" + str(self.name) + "/categories"
 		categories = make_get_request(url, headers=get_headers())
 		if categories:
-			total_page = categories['page_info']['total'] // 100 
+			total_page = categories['page_info']['total'] // 100
 			for page in range(1, total_page+2):
 				url_ = url + "?size=100&page=" + str(page)
 				all_categories = make_get_request(url_, headers=get_headers())
@@ -86,7 +86,7 @@ class ZenotiCenter(Document):
 		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
 		categories = make_get_request(url, headers=get_headers())
 		if categories:
-			total_page = categories['page_info']['total'] // 100 
+			total_page = categories['page_info']['total'] // 100
 			for page in range(1, total_page+2):
 				url_ = url + "&size=100&page=" + str(page)
 				all_categories = make_get_request(url_, headers=get_headers())
@@ -156,6 +156,7 @@ def sync(center, record_type, start_date=None, end_date=None):
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_items_', center_id=center)
 	elif record_type == "Categories":
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_category_', center_id=center)
+
 
 	
 

@@ -153,7 +153,7 @@ def update_centers():
 				"center_name": center["name"],
 				"code": center["code"]
 			}).insert(ignore_permissions=True)
-			
+
 
 def setup_custom_fields():
 	custom_fields = {
@@ -310,7 +310,6 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
-			
 		],
 		"Purchase Invoice": [
 			dict(
