@@ -3,51 +3,50 @@ from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import get_
 from frappe import _
 from frappe.utils import flt, now
 
-from ecommerce_integrations.zenoti.utils import (
-	api_url,
-	check_for_item,
-	get_center_code,
-	get_cost_center,
-	get_warehouse,
-	make_api_call,
-)
+from ecommerce_integrations.zenoti.utils import api_url, check_for_item, make_api_call
 
 
-def process_stock_reconciliation(list_of_centers, error_logs):
-	for center in list_of_centers:
-		list_for_entry = []
-		stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(center)
-		if stock_quantities_of_products_in_a_center:
-			center_code, center_code_err = get_center_code(center)
-			if center_code_err:
-				error_logs.append(center_code_err)
-			make_list_for_entry(stock_quantities_of_products_in_a_center, list_for_entry, error_logs)
-			if list_for_entry and center_code:
-				cost_center, err_msg = get_cost_center(center_code)
-				if err_msg:
-					error_logs.append(err_msg)
-				item_err_msg_list = check_for_item(list_for_entry, item_group="Products")
-				if len(item_err_msg_list):
-					item_err_msg = "\n".join(err for err in item_err_msg_list)
-					error_logs.append(item_err_msg)
-				if err_msg or len(item_err_msg_list):
-					continue
+def process_stock_reconciliation(center, error_logs, date=None):
+	list_for_entry = []
+	stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(
+		center.name, date
+	)
+	if stock_quantities_of_products_in_a_center:
+		cost_center = center.get("erpnext_cost_center")
+		if not cost_center:
+			err_msg = _("Center {0} is not linked to any ERPNext Cost Center.").format(
+				frappe.bold(center.get("center_name"))
+			)
+			error_logs.append(err_msg)
+		make_list_for_entry(center, stock_quantities_of_products_in_a_center, list_for_entry, error_logs)
+		if list_for_entry and center.get("code"):
+			item_err_msg_list = check_for_item(list_for_entry, "Products", center.name)
+			if len(item_err_msg_list):
+				item_err_msg = "\n".join(err for err in item_err_msg_list)
+				error_logs.append(item_err_msg)
+			if not (len(item_err_msg_list)):
 				make_stock_reconciliation(list_for_entry, cost_center)
 
 
-def retrieve_stock_quantities_of_products(center):
-	url = api_url + "inventory/stock?center_id={0}&inventory_date={1}".format(center, now())
+def retrieve_stock_quantities_of_products(center, date=None):
+	if not date:
+		date = now()
+	url = api_url + "inventory/stock?center_id={0}&inventory_date={1}".format(center, date)
 	stock_quantities_of_products = make_api_call(url)
 	return stock_quantities_of_products
 
 
-def make_list_for_entry(data, list_for_entry, error_logs):
+def make_list_for_entry(center, data, list_for_entry, error_logs):
 	for entry in data["list"]:
 		if entry["total_quantity"] > 0:
-			warehouse, err_msg = get_warehouse(entry["center_code"])
-			if err_msg:
+			warehouse = center.get("erpnext_warehouse")
+			if not warehouse:
+				err_msg = _("Center {0} is not linked to any ERPNext Warehouse.").format(
+					frappe.bold(center.get("center_name"))
+				)
 				error_logs.append(err_msg)
 				continue
+
 			record = {
 				"item_code": entry["product_code"],
 				"item_name": entry["product_name"],
@@ -79,6 +78,11 @@ def add_items_to_reconcile(doc, list_for_entry):
 		invoice_item = {}
 		for key, value in item.items():
 			invoice_item[key] = value
+			if key == "item_code":
+				item_code = frappe.db.get_value(
+					"Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, "item_code"
+				)
+				invoice_item["item_code"] = item_code
 		doc.append("items", invoice_item)
 
 
