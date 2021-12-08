@@ -208,7 +208,7 @@ def add_items(doc, item_data):
 			if key == "item_code":
 				item_code = frappe.db.get_value("Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, 'item_code')
 				invoice_item["item_code"] = item_code
- 
+
 		if invoice_item.get("item_tax_template"):
 			invoice_item["item_tax_template"] = frappe.db.get_value(
 				"Item Tax Template", filters={"title": invoice_item["item_tax_template"]}
