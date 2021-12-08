@@ -62,7 +62,7 @@ class ZenotiCenter(Document):
 					if all_products:
 						for product in all_products[item_type]:
 							if not frappe.db.exists(
-								"Item", {"zenoti_item_code": product["code"], "item_group": item_type}
+								"Item", {"zenoti_item_code": product["code"], "item_name": product["name"]}
 							):
 								create_item({}, product, item_type, self.name)
 			
@@ -120,8 +120,7 @@ class ZenotiCenter(Document):
 			"id": category["id"],
 			"category_name": category["name"],
 			"code": category["code"],
-			"zenoti_center": self.name,
-			"parent_category_id": category["parent_category_id"] if  category["parent_category_id"] else None
+			"zenoti_center": self.name
 		}).insert(ignore_permissions=True)
 
 def sync_employees_(center_id):

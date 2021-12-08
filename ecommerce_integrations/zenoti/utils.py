@@ -56,12 +56,12 @@ def convert_str_to_json(string):
 	return json_data
 
 
-def check_for_item(list_of_items, item_group):
+def check_for_item(list_of_items, item_group, center=None):
 	err_list = []
 	for item in list_of_items:
-		if not frappe.db.exists("Item", item["item_code"]):
-			item_to_search = {"code": item["item_code"], "name": item["item_name"]}
-			err_msg = make_item(item_to_search, item_group)
+		item_to_search = {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}
+		if not frappe.db.exists("Item", item_to_search):
+			err_msg = make_item(item_to_search, item_group, center)
 			if err_msg:
 				err_list.append(err_msg)
 	return err_list
@@ -83,7 +83,7 @@ def create_item(item_dict, item_details, item_group, center):
 	item.item_group = item_group
 	item.is_stock_item = 0
 	item.include_item_in_manufacturing = 0
-	if item_group == "Products":
+	if item_group.title() == "Products":
 		item.is_stock_item = 1
 	item.zenoti_item_type = get_zenoti_item_type(item_details)
 	item.stock_uom = "Nos"
@@ -105,7 +105,7 @@ def get_item_details(item_dict, item_group, center):
 			if item_dict["name"] == item["name"]:
 				item_found = True
 				break
-		elif "code" in item and item_dict["code"] == item["code"]:
+		elif "code" in item and item_dict["item_code"] == item["code"]:
 			item_found = True
 			break
 
@@ -141,7 +141,7 @@ def get_list_of_items_in_a_center(center, item_group):
 				for i in range(page):
 					pg = i + 1
 					url = (
-						api_url + "centers/" + center + "/" + item_type[item_group] + "?size=100" + "page=" + str(pg)
+						api_url + "centers/" + str(center) + "/" + item_type[item_group] + "?size=100" + "page=" + str(pg)
 					)
 					pagewise_items_in_center = make_api_call(url)
 					for item in pagewise_items_in_center[item_type[item_group]]:
@@ -295,49 +295,13 @@ def check_for_item_tax_template(item_tax_template):
 	return err_msg
 
 
-def get_center_code(center_id):
-	center = None
-	err = ""
-	url = api_url + "Centers/" + center_id
-	center_details = make_api_call(url)
-	if center_details and len(center_details.get("center")):
-		center = center_details["center"]["code"]
-		if not center:
-			err = _("Could not find Center Id {} in Zenoti.").format(center_id)
-	return center, err
-
-
-def get_cost_center(center_code):
-	err_msg = ""
-	cost_center = frappe.db.get_value(
-		"Zenoti Cost Center and Warehouse Mapping",
-		{"zenoti_centre": center_code},
-		["erpnext_cost_center"],
-	)
-	if not cost_center:
-		err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(
-			frappe.bold(center_code)
-		)
-	return cost_center, err_msg
-
-
-def get_warehouse(center_code):
-	err_msg = ""
-	warehouse = frappe.db.get_value(
-		"Zenoti Cost Center and Warehouse Mapping", {"zenoti_centre": center_code}, ["erpnext_warehouse"]
-	)
-	if not warehouse:
-		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(
-			frappe.bold(center_code)
-		)
-	return warehouse, err_msg
-
-
 def make_category(category):
-	frappe.get_doc({
-		"doctype": "Zenoti Category",
-		"category_name": category["name"],
-		"code": category["code"],
-		"zenoti_center": self.name,
-		"parent_category_id": category["parent_category_id"] if  category["parent_category_id"] else None
-	}).insert(ignore_permissions=True)
+	try:
+		frappe.get_doc({
+			"doctype": "Zenoti Category",
+			"id": category["id"],
+			"category_name": category["name"],
+			"code": category["code"]
+		}).insert(ignore_permissions=True)
+	except:
+		frappe.log_error()

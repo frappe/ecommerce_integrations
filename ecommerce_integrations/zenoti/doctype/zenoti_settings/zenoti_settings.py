@@ -64,30 +64,35 @@ def check_for_opening_stock_reconciliation():
 
 def sync_invoices(center_id=None, start_date=None, end_date=None):
 	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
-		check_perpetual_inventory_disabled()
-		interval = frappe.db.get_single_value("Zenoti Settings", "sync_interval")
-		list_of_centers = [center_id] if center_id else get_list_of_centers()
-		for row in list_of_centers:
-			center = frappe.get_doc("Zenoti Center", row)
-			last_sync = center.get("last_sync")
-			if (last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))) or (start_date and end_date):
-				error_logs = []
-				process_sales_invoices(center, error_logs, start_date, end_date)
-				center.db_set("last_sync", get_datetime())
-				frappe.db.commit()
+		if center_id or cint(frappe.db.get_single_value("Zenoti Settings", "enable_auto_syncing")):
+			check_perpetual_inventory_disabled()
+			interval = frappe.db.get_single_value("Zenoti Settings", "sync_interval")
+			list_of_centers = [center_id] if center_id else get_list_of_centers()
+			for row in list_of_centers:
+				center = frappe.get_doc("Zenoti Center", row)
+				last_sync = center.get("last_sync")
+				if (last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))) or (start_date and end_date):
+					error_logs = []
+					if not last_sync or get_datetime(last_sync) < get_datetime(end_date):
+						center.db_set("last_sync", get_datetime(end_date))
+					if len(error_logs):
+						make_error_log(error_logs)
+
+def sync_stocks(center=None, date=None):
+	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
+		if center or cint(frappe.db.get_single_value("Zenoti Settings", "enable_auto_syncing")):
+			check_perpetual_inventory_disabled()
+			error_logs = []
+			list_of_centers = [center] if center else get_list_of_centers()
+			for row in list_of_centers:
+				center = frappe.get_doc("Zenoti Center", row)
+				center.sync_category()
+				center.sync_sub_category()
+				center.sync_items()
+				process_stock_reconciliation(center, error_logs, date)
+				process_purchase_orders(center, error_logs, date)
 				if len(error_logs):
 					make_error_log(error_logs)
-
-def sync_stocks():
-	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
-		check_perpetual_inventory_disabled()
-		error_logs = []
-		list_of_centers = get_list_of_centers()
-		if len(list_of_centers):
-			process_stock_reconciliation(list_of_centers, error_logs)
-			process_purchase_orders(list_of_centers, error_logs)
-			if len(error_logs):
-				make_error_log(error_logs)
 
 
 def check_perpetual_inventory_disabled():
@@ -160,6 +165,15 @@ def setup_custom_fields():
 				insert_after="naming_series",
 				read_only=1,
 				print_hide=1,
+			),
+			dict(
+				fieldname="zenoti_supplier_id",
+				label="Zenoti Supplier ID",
+				fieldtype="Data",
+				insert_after="zenoti_supplier_code",
+				read_only=1,
+				print_hide=1,
+				hidden=1
 			)
 		],
 		"Customer": [

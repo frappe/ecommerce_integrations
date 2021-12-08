@@ -10,10 +10,8 @@ from ecommerce_integrations.zenoti.utils import (
 	api_url,
 	check_for_item_tax_template,
 	create_item,	
-	get_cost_center,
 	get_headers,
 	get_list_of_centers,
-	get_warehouse,
 	make_address,
 	make_api_call,
 	make_item,
@@ -122,12 +120,12 @@ def validate_details(invoice, center, error_logs):
 
 	cost_center = center.get("erpnext_cost_center")
 	if not cost_center:
-		cost_center_err_msg = _("Center {0} is not linked to any ERPNext Cost Center in Zenoti Settings").format(frappe.bold(center.get('code')))
-		make_error_log_msg(invoice, err_msg, error_logs)
+		cost_center_err_msg = _("Center {0} is not linked to any ERPNext Cost Center.").format(frappe.bold(center.get('center_name')))
+		make_error_log_msg(invoice, cost_center_err_msg, error_logs)
 
 	warehouse = center.get("erpnext_warehouse")
 	if not warehouse:
-		err_msg = _("Center {0} is not linked to any ERPNext Warehouse in Zenoti Settings").format(frappe.bold(center.get("code")))
+		err_msg = _("Center {0} is not linked to any ERPNext Warehouse.").format(frappe.bold(center.get("center_name")))
 		make_error_log_msg(invoice, err_msg, error_logs)
 
 	(
