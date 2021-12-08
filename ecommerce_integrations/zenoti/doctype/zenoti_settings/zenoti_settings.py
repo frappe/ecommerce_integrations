@@ -6,12 +6,12 @@ import requests
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
-from frappe.utils import add_to_date, cint, get_datetime, date_diff
+from frappe.utils import add_to_date, cint, date_diff, get_datetime
 
 from ecommerce_integrations.zenoti.purchase_transactions import process_purchase_orders
 from ecommerce_integrations.zenoti.sales_transactions import process_sales_invoices
 from ecommerce_integrations.zenoti.stock_reconciliation import process_stock_reconciliation
-from ecommerce_integrations.zenoti.utils import api_url, get_list_of_centers, get_all_centers
+from ecommerce_integrations.zenoti.utils import api_url, get_all_centers, get_list_of_centers
 
 
 class ZenotiSettings(Document):
@@ -62,6 +62,7 @@ def check_for_opening_stock_reconciliation():
 			)
 		)
 
+
 def sync_invoices(center_id=None, start_date=None, end_date=None):
 	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
 		if center_id or cint(frappe.db.get_single_value("Zenoti Settings", "enable_auto_syncing")):
@@ -71,12 +72,15 @@ def sync_invoices(center_id=None, start_date=None, end_date=None):
 			for row in list_of_centers:
 				center = frappe.get_doc("Zenoti Center", row)
 				last_sync = center.get("last_sync")
-				if (last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))) or (start_date and end_date):
+				if (
+					last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))
+				) or (start_date and end_date):
 					error_logs = []
 					if not last_sync or get_datetime(last_sync) < get_datetime(end_date):
 						center.db_set("last_sync", get_datetime(end_date))
 					if len(error_logs):
 						make_error_log(error_logs)
+
 
 def sync_stocks(center=None, date=None):
 	if cint(frappe.db.get_single_value("Zenoti Settings", "enable_zenoti")):
@@ -137,6 +141,7 @@ def make_item_tips():
 		item.stock_uom = "Nos"
 		item.insert()
 
+
 @frappe.whitelist()
 def update_centers():
 	list_of_centers = get_all_centers()
@@ -147,12 +152,14 @@ def update_centers():
 			center_doc.center_name = center["name"]
 			center_doc.save(ignore_permissions=True)
 		else:
-			frappe.get_doc({
-				"doctype": "Zenoti Center",
-				"id": center["id"],
-				"center_name": center["name"],
-				"code": center["code"]
-			}).insert(ignore_permissions=True)
+			frappe.get_doc(
+				{
+					"doctype": "Zenoti Center",
+					"id": center["id"],
+					"center_name": center["name"],
+					"code": center["code"],
+				}
+			).insert(ignore_permissions=True)
 
 
 def setup_custom_fields():
@@ -173,8 +180,8 @@ def setup_custom_fields():
 				insert_after="zenoti_supplier_code",
 				read_only=1,
 				print_hide=1,
-				hidden=1
-			)
+				hidden=1,
+			),
 		],
 		"Customer": [
 			dict(
@@ -211,7 +218,7 @@ def setup_custom_fields():
 				fieldtype="Data",
 				insert_after="item_code",
 				read_only=1,
-				print_hide=1
+				print_hide=1,
 			),
 			dict(
 				fieldname="zenoti_item_id",

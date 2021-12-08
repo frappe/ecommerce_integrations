@@ -114,14 +114,17 @@ def get_item_details(item_dict, item_group, center):
 	else:
 		return None, None
 
+
 def get_all_centers():
 	url = api_url + "centers"
 	all_center = make_api_call(url)
 	return all_center.get("centers")
 
+
 def get_list_of_centers():
-	list_of_all_centers = frappe.get_list('Zenoti Center', pluck='name')
+	list_of_all_centers = frappe.get_list("Zenoti Center", pluck="name")
 	return list_of_all_centers
+
 
 def get_list_of_items_in_a_center(center, item_group):
 	list_of_all_items_in_center = []
@@ -141,7 +144,14 @@ def get_list_of_items_in_a_center(center, item_group):
 				for i in range(page):
 					pg = i + 1
 					url = (
-						api_url + "centers/" + str(center) + "/" + item_type[item_group] + "?size=100" + "page=" + str(pg)
+						api_url
+						+ "centers/"
+						+ str(center)
+						+ "/"
+						+ item_type[item_group]
+						+ "?size=100"
+						+ "page="
+						+ str(pg)
 					)
 					pagewise_items_in_center = make_api_call(url)
 					for item in pagewise_items_in_center[item_type[item_group]]:
@@ -297,11 +307,13 @@ def check_for_item_tax_template(item_tax_template):
 
 def make_category(category):
 	try:
-		frappe.get_doc({
-			"doctype": "Zenoti Category",
-			"id": category["id"],
-			"category_name": category["name"],
-			"code": category["code"]
-		}).insert(ignore_permissions=True)
+		frappe.get_doc(
+			{
+				"doctype": "Zenoti Category",
+				"id": category["id"],
+				"category_name": category["name"],
+				"code": category["code"],
+			}
+		).insert(ignore_permissions=True)
 	except:
 		frappe.log_error()

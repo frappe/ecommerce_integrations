@@ -3,16 +3,14 @@ from erpnext.stock.doctype.stock_reconciliation.stock_reconciliation import get_
 from frappe import _
 from frappe.utils import flt, now
 
-from ecommerce_integrations.zenoti.utils import (
-	api_url,
-	check_for_item,
-	make_api_call,
-)
+from ecommerce_integrations.zenoti.utils import api_url, check_for_item, make_api_call
 
 
 def process_stock_reconciliation(center, error_logs, date=None):
 	list_for_entry = []
-	stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(center.name, date)
+	stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(
+		center.name, date
+	)
 	if stock_quantities_of_products_in_a_center:
 		cost_center = center.get("erpnext_cost_center")
 		if not cost_center:
@@ -26,7 +24,7 @@ def process_stock_reconciliation(center, error_logs, date=None):
 			if len(item_err_msg_list):
 				item_err_msg = "\n".join(err for err in item_err_msg_list)
 				error_logs.append(item_err_msg)
-			if not(len(item_err_msg_list)):
+			if not (len(item_err_msg_list)):
 				make_stock_reconciliation(list_for_entry, cost_center)
 
 
@@ -81,7 +79,9 @@ def add_items_to_reconcile(doc, list_for_entry):
 		for key, value in item.items():
 			invoice_item[key] = value
 			if key == "item_code":
-				item_code = frappe.db.get_value("Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, 'item_code')
+				item_code = frappe.db.get_value(
+					"Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, "item_code"
+				)
 				invoice_item["item_code"] = item_code
 		doc.append("items", invoice_item)
 

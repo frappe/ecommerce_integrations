@@ -2,6 +2,7 @@ import frappe
 from frappe import _
 from frappe.integrations.utils import make_get_request
 from frappe.utils import add_to_date
+
 from ecommerce_integrations.zenoti.utils import (
 	add_taxes,
 	api_url,
@@ -60,15 +61,16 @@ def check_for_supplier(supplier_code):
 	if not supplier_code:
 		err_msg = _("Vendor Code is empty")
 		return err_msg
-	elif not frappe.db.exists("Supplier", {"zenoti_supplier_code":supplier_code}):
+	elif not frappe.db.exists("Supplier", {"zenoti_supplier_code": supplier_code}):
 		sync_supplier()
+
 
 def sync_supplier():
 	url = api_url + "vendors"
 	suppliers = make_get_request(url, headers=get_headers())
 	if suppliers:
-		total_page = suppliers['page_info']['total'] // 100
-		for page in range(1, total_page+2):
+		total_page = suppliers["page_info"]["total"] // 100
+		for page in range(1, total_page + 2):
 			url_ = url + "?size=100&page=" + str(page)
 			all_suppliers = make_get_request(url_, headers=get_headers())
 			if all_suppliers:
@@ -200,13 +202,16 @@ def create_purchase_record(order):
 		doc.db_set("per_received", per_received)
 		doc.reload()
 
+
 def add_items(doc, item_data):
 	for item in item_data:
 		invoice_item = {}
 		for key, value in item.items():
 			invoice_item[key] = value
 			if key == "item_code":
-				item_code = frappe.db.get_value("Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, 'item_code')
+				item_code = frappe.db.get_value(
+					"Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, "item_code"
+				)
 				invoice_item["item_code"] = item_code
 
 		if invoice_item.get("item_tax_template"):
@@ -215,6 +220,7 @@ def add_items(doc, item_data):
 			)
 			invoice_item["item_tax_rate"] = get_item_tax_rate(invoice_item["item_tax_template"])
 		doc.append("items", invoice_item)
+
 
 def get_order_status(order):
 	status = "To Receive and Bill"
