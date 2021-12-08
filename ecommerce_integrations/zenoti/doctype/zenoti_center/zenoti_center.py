@@ -65,7 +65,7 @@ class ZenotiCenter(Document):
 								"Item", {"zenoti_item_code": product["code"], "item_name": product["name"]}
 							):
 								create_item({}, product, item_type, self.name)
-			
+
 	def sync_category(self):
 		url = api_url + "centers/" + str(self.name) + "/categories"
 		categories = make_get_request(url, headers=get_headers())
@@ -158,6 +158,7 @@ def sync(center, record_type, start_date=None, end_date=None):
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_category_', center_id=center)
 	elif record_type == "Stock Reconciliation":
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks', center=center, date=start_date)
+
 
 
 	
