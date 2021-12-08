@@ -80,6 +80,37 @@ frappe.ui.form.on('Zenoti Center', {
 			});
 			d.show();
 		}, 'Sync');
+
+		frm.add_custom_button('Stock Reconciliation', function() {
+			let d = new frappe.ui.Dialog({
+				title: __('Sync Stock Reconciliation'),
+				fields: [
+					{
+						"label" : "Date",
+						"fieldname": "date",
+						"fieldtype": "Date",
+						"reqd": 1
+					}
+				],
+				primary_action: function() {
+					let data = d.get_values();
+					frappe.call({
+						method:"ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync",
+						args:{
+							center: frm.doc.name,
+							record_type: "Stock Reconciliation",
+							start_date: data.date
+						},
+						callback: function(r){
+							frappe.show_alert({message:__("Attempting to sync"), indicator:'orange'});
+						}
+					})
+					d.hide();
+				},
+				primary_action_label: __('Sync Stock Reconciliation')
+			});
+			d.show();
+		}, 'Sync');
 	},
 
 	setup(frm) {

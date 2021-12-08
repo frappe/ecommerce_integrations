@@ -156,6 +156,8 @@ def sync(center, record_type, start_date=None, end_date=None):
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_items_', center_id=center)
 	elif record_type == "Categories":
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_category_', center_id=center)
+	elif record_type == "Stock Reconciliation":
+		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks', center=center, date=start_date)
 
 
 	
