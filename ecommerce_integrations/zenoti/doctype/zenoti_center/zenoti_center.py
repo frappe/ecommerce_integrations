@@ -160,6 +160,3 @@ def sync(center, record_type, start_date=None, end_date=None):
 		frappe.enqueue('ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks', center=center, date=start_date)
 
 
-
-	
-
