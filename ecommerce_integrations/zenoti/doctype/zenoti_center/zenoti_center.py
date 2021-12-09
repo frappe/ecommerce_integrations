@@ -84,7 +84,7 @@ class ZenotiCenter(Document):
 				all_categories = make_get_request(url_, headers=get_headers())
 				if all_categories:
 					for category in all_categories["categories"]:
-						if not frappe.db.exists("Zenoti Category", {"category_id", category["id"]}):
+						if not frappe.db.exists("Zenoti Category", {"category_id": category["id"]}):
 							self.make_category(category)
 
 	def create_emp(self, emp):
