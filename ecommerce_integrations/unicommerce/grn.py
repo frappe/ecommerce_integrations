@@ -199,7 +199,7 @@ def _get_csv_content(rows: List[GRNItemRow]) -> bytes:
 
 def _get_unicommerce_format_date(date) -> str:
 	if date:
-		return getdate(date).strftime("%Y/%m/%d")
+		return getdate(date).strftime("%d/%m/%Y")
 	return ""
 
 
