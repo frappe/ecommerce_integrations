@@ -182,7 +182,7 @@ def get_zenoti_category(category_id, center):
 		if category_data:
 			make_category(category_data)
 			category = category_data["id"]
-	return frappe.db.get_value("Zenoti Category", {"category_id", category_id}, "category_name")
+	return frappe.db.get_value("Zenoti Category", {"category_id": category_id}, "category_name")
 
 
 def add_items(doc, item_data):
