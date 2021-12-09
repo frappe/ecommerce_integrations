@@ -166,30 +166,36 @@ def sync(center, record_type, start_date=None, end_date=None):
 			center_id=center,
 			start_date=start_date,
 			end_date=end_date,
+			timeout=5000,
 		)
 	elif record_type == "Employees":
 		frappe.enqueue(
 			"ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_employees_",
 			center_id=center,
+			timeout=1000,
 		)
 	elif record_type == "Customers":
 		frappe.enqueue(
 			"ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_customers_",
 			center_id=center,
+			timeout=1000,
 		)
 	elif record_type == "Items":
 		frappe.enqueue(
 			"ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_items_",
 			center_id=center,
+			timeout=10000,
 		)
 	elif record_type == "Categories":
 		frappe.enqueue(
 			"ecommerce_integrations.zenoti.doctype.zenoti_center.zenoti_center.sync_category_",
 			center_id=center,
+			timeout=1000,
 		)
 	elif record_type == "Stock Reconciliation":
 		frappe.enqueue(
 			"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks",
 			center=center,
 			date=start_date,
+			timeout=5000,
 		)
