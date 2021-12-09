@@ -175,14 +175,14 @@ def get_zenoti_item_type(item_details):
 
 
 def get_zenoti_category(category_id, center):
-	category = frappe.db.exists("Zenoti Category", category_id)
+	category = frappe.db.exists("Zenoti Category", {"category_id", category_id})
 	if not category:
 		url = api_url + "centers/" + str(center) + "/categories/" + str(category_id)
 		category_data = make_get_request(url, headers=get_headers())
 		if category_data:
 			make_category(category_data)
 			category = category_data["id"]
-	return frappe.db.get_value("Zenoti Category", category_id, "category_name")
+	return frappe.db.get_value("Zenoti Category", {"category_id", category_id}, "category_name")
 
 
 def add_items(doc, item_data):
@@ -310,7 +310,7 @@ def make_category(category):
 		frappe.get_doc(
 			{
 				"doctype": "Zenoti Category",
-				"id": category["id"],
+				"category_id": category["id"],
 				"category_name": category["name"] or None,
 				"code": category["code"],
 			}

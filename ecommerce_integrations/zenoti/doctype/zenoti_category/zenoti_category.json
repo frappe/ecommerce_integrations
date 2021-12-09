@@ -1,25 +1,19 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "field:id",
+ "autoname": "format:ZEN-CAT-{######}",
  "creation": "2021-12-03 12:05:00.828334",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "id",
+  "category_id",
   "code",
   "category_name",
   "parent_category_id",
   "zenoti_center"
  ],
  "fields": [
-  {
-   "fieldname": "id",
-   "fieldtype": "Data",
-   "label": "Id",
-   "unique": 1
-  },
   {
    "fieldname": "code",
    "fieldtype": "Data",
@@ -43,11 +37,16 @@
    "fieldtype": "Link",
    "label": "Zenoti Center",
    "options": "Zenoti Center"
+  },
+  {
+   "fieldname": "category_id",
+   "fieldtype": "Data",
+   "label": "Category Id"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-12-06 20:41:51.194628",
+ "modified": "2021-12-09 20:00:09.732355",
  "modified_by": "Administrator",
  "module": "Zenoti",
  "name": "Zenoti Category",
