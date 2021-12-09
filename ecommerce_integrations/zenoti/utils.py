@@ -102,10 +102,10 @@ def get_item_details(item_dict, item_group, center):
 	list_of_items_in_a_center = get_list_of_items_in_a_center(center, item_group)
 	for item in list_of_items_in_a_center:
 		if item_group == "Memberships":
-			if item_dict["name"] == item["name"]:
+			if item_dict["item_name"] == item["name"]:
 				item_found = True
 				break
-		elif "code" in item and item_dict["item_code"] == item["code"]:
+		elif "code" in item and item_dict["zenoti_item_code"] == item["code"]:
 			item_found = True
 			break
 
@@ -311,7 +311,7 @@ def make_category(category):
 			{
 				"doctype": "Zenoti Category",
 				"id": category["id"],
-				"category_name": category["name"],
+				"category_name": category["name"] or None,
 				"code": category["code"],
 			}
 		).insert(ignore_permissions=True)
