@@ -9,6 +9,9 @@ frappe.ui.form.on('Zenoti Center', {
 				args:{
 					center: frm.doc.name,
 					record_type: "Employees",
+				},
+				callback: function(r){
+					frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 				}
 			})
 		}, 'Sync');
@@ -19,6 +22,9 @@ frappe.ui.form.on('Zenoti Center', {
 				args:{
 					center: frm.doc.name,
 					record_type: "Customers",
+				},
+				callback: function(r){
+					frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 				}
 			})
 		}, 'Sync');
@@ -29,6 +35,9 @@ frappe.ui.form.on('Zenoti Center', {
 				args:{
 					center: frm.doc.name,
 					record_type: "Items",
+				},
+				callback: function(r){
+					frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 				}
 			})
 		}, 'Sync');
@@ -39,6 +48,9 @@ frappe.ui.form.on('Zenoti Center', {
 				args:{
 					center: frm.doc.name,
 					record_type: "Categories",
+				},
+				callback: function(r){
+					frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 				}
 			})
 		}, 'Sync');
@@ -71,7 +83,7 @@ frappe.ui.form.on('Zenoti Center', {
 							end_date: data.end_date
 						},
 						callback: function(r){
-							frappe.show_alert({message:__("Attempting to sync"), indicator:'orange'});
+							frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 						}
 					})
 					d.hide();
@@ -102,7 +114,7 @@ frappe.ui.form.on('Zenoti Center', {
 							start_date: data.date
 						},
 						callback: function(r){
-							frappe.show_alert({message:__("Attempting to sync"), indicator:'orange'});
+							frappe.show_alert({message:__("Syncing"), indicator:'orange'});
 						}
 					})
 					d.hide();
