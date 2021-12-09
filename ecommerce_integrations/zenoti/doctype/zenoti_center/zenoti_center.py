@@ -166,6 +166,7 @@ def sync(center, record_type, start_date=None, end_date=None):
 			center_id=center,
 			start_date=start_date,
 			end_date=end_date,
+			timeout=5000,
 		)
 	elif record_type == "Employees":
 		frappe.enqueue(
@@ -192,4 +193,5 @@ def sync(center, record_type, start_date=None, end_date=None):
 			"ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks",
 			center=center,
 			date=start_date,
+			timeout=5000,
 		)
