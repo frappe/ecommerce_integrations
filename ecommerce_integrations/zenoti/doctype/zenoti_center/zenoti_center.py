@@ -75,7 +75,7 @@ class ZenotiCenter(Document):
 				frappe.db.commit()
 
 	def sync_category(self):
-		url = api_url + "centers/" + str(self.name) + "/categories"
+		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
 		categories = make_get_request(url, headers=get_headers())
 		if categories:
 			total_page = categories["page_info"]["total"] // 100
@@ -84,27 +84,8 @@ class ZenotiCenter(Document):
 				all_categories = make_get_request(url_, headers=get_headers())
 				if all_categories:
 					for category in all_categories["categories"]:
-						if not frappe.db.exists("Zenoti Category", category["id"]):
-							try:
-								self.make_category(category)
-							except Exception:
-								frappe.log_error()
-
-	def sync_sub_category(self):
-		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
-		categories = make_get_request(url, headers=get_headers())
-		if categories:
-			total_page = categories["page_info"]["total"] // 100
-			for page in range(1, total_page + 2):
-				url_ = url + "&size=100&page=" + str(page)
-				all_categories = make_get_request(url_, headers=get_headers())
-				if all_categories:
-					for category in all_categories["categories"]:
-						if not frappe.db.exists("Zenoti Category", category["id"]):
-							try:
-								self.make_category(category)
-							except Exception:
-								frappe.log_error()
+						if not frappe.db.exists("Zenoti Category", {"category_id", category["id"]}):
+							self.make_category(category)
 
 	def create_emp(self, emp):
 		doc = frappe.new_doc("Employee")
@@ -126,7 +107,7 @@ class ZenotiCenter(Document):
 		frappe.get_doc(
 			{
 				"doctype": "Zenoti Category",
-				"id": category["id"],
+				"category_id": category["id"],
 				"category_name": category["name"],
 				"code": category["code"],
 				"zenoti_center": self.name,
@@ -152,7 +133,6 @@ def sync_items_(center_id):
 def sync_category_(center_id):
 	center = frappe.get_doc("Zenoti Center", center_id)
 	center.sync_category()
-	center.sync_sub_category()
 
 
 @frappe.whitelist()
