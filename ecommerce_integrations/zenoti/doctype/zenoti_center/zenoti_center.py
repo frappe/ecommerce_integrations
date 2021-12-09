@@ -87,7 +87,7 @@ class ZenotiCenter(Document):
 						if not frappe.db.exists("Zenoti Category", category["id"]):
 							try:
 								self.make_category(category)
-							except:
+							except Exception:
 								frappe.log_error()
 
 	def sync_sub_category(self):
@@ -103,7 +103,7 @@ class ZenotiCenter(Document):
 						if not frappe.db.exists("Zenoti Category", category["id"]):
 							try:
 								self.make_category(category)
-							except:
+							except Exception:
 								frappe.log_error()
 
 	def create_emp(self, emp):

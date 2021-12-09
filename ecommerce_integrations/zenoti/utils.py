@@ -315,5 +315,5 @@ def make_category(category):
 				"code": category["code"],
 			}
 		).insert(ignore_permissions=True)
-	except:
+	except Exception:
 		frappe.log_error()

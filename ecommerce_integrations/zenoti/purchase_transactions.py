@@ -78,7 +78,7 @@ def sync_supplier():
 					if not frappe.db.exists("Supplier", {"zenoti_supplier_code": supplier["code"]}):
 						try:
 							create_supplier(supplier)
-						except:
+						except Exception:
 							frappe.log_error()
 
 
