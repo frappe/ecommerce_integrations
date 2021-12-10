@@ -76,10 +76,10 @@ def sync_invoices(center_id=None, start_date=None, end_date=None):
 					last_sync and get_datetime() > get_datetime(add_to_date(last_sync, hours=cint(interval)))
 				) or (start_date and end_date):
 					error_logs = []
+					process_sales_invoices(center, error_logs, start_date, end_date)
 					if not last_sync or get_datetime(last_sync) < get_datetime(end_date):
-						process_sales_invoices(center, error_logs, start_date, end_date)
 						center.db_set("last_sync", get_datetime(end_date))
-						frappe.db.commit()
+					frappe.db.commit()
 					if len(error_logs):
 						make_error_log(error_logs)
 
