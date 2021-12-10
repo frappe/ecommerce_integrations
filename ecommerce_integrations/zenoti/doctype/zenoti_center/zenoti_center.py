@@ -80,7 +80,7 @@ class ZenotiCenter(Document):
 		if categories:
 			total_page = categories["page_info"]["total"] // 100
 			for page in range(1, total_page + 2):
-				url_ = url + "?size=100&page=" + str(page)
+				url_ = url + "&size=100&page=" + str(page)
 				all_categories = make_get_request(url_, headers=get_headers())
 				if all_categories:
 					for category in all_categories["categories"]:
