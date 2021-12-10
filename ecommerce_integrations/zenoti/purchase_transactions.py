@@ -1,6 +1,5 @@
 import frappe
 from frappe import _
-from frappe.integrations.utils import make_get_request
 from frappe.utils import add_to_date
 
 from ecommerce_integrations.zenoti.utils import (
@@ -8,7 +7,6 @@ from ecommerce_integrations.zenoti.utils import (
 	api_url,
 	check_for_item,
 	check_for_item_tax_template,
-	get_headers,
 	get_item_tax_rate,
 	make_address,
 	make_api_call,
@@ -67,12 +65,12 @@ def check_for_supplier(supplier_code):
 
 def sync_supplier():
 	url = api_url + "vendors"
-	suppliers = make_get_request(url, headers=get_headers())
+	suppliers = make_api_call(url)
 	if suppliers:
 		total_page = suppliers["page_info"]["total"] // 100
 		for page in range(1, total_page + 2):
 			url_ = url + "?size=100&page=" + str(page)
-			all_suppliers = make_get_request(url_, headers=get_headers())
+			all_suppliers = make_api_call(url_)
 			if all_suppliers:
 				for supplier in all_suppliers["vendors"]:
 					if not frappe.db.exists("Supplier", {"zenoti_supplier_code": supplier["code"]}):

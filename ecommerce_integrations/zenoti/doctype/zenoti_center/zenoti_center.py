@@ -3,7 +3,6 @@
 
 import frappe
 from frappe import _
-from frappe.integrations.utils import make_get_request
 from frappe.model.document import Document
 from frappe.utils import add_to_date, date_diff, get_datetime, today
 
@@ -12,9 +11,7 @@ from ecommerce_integrations.zenoti.sales_transactions import (
 	create_customer,
 	prepare_customer_details,
 )
-from ecommerce_integrations.zenoti.utils import create_item, get_headers
-
-api_url = "https://api.zenoti.com/v1/"
+from ecommerce_integrations.zenoti.utils import api_url, create_item, make_api_call
 
 emp_gender_map = {
 	-1: "NotSpecified",
@@ -29,9 +26,9 @@ emp_gender_map = {
 class ZenotiCenter(Document):
 	def sync_employees(self):
 		url = api_url + "/centers/" + self.name + "/employees"
-		all_emps = make_get_request(url, headers=get_headers())
+		all_emps = make_api_call(url)
 		url = api_url + "/centers/" + self.name + "/therapists"
-		all_therapists = make_get_request(url, headers=get_headers())
+		all_therapists = make_api_call(url)
 		if all_therapists:
 			all_emps.update(all_therapists)
 		if all_emps:
@@ -43,12 +40,12 @@ class ZenotiCenter(Document):
 
 	def sync_customers(self):
 		url = api_url + "guests?center_id=" + str(self.name)
-		customers = make_get_request(url, headers=get_headers())
+		customers = make_api_call(url)
 		if customers:
 			total_page = customers["page_Info"]["total"] // 100
 			for page in range(1, total_page + 2):
 				url_ = url + "&size=100&page=" + str(page)
-				all_customers = make_get_request(url_, headers=get_headers())
+				all_customers = make_api_call(url_)
 				if all_customers:
 					for customer in all_customers["guests"]:
 						if not frappe.db.exists("Customer", {"zenoti_guest_id": customer["id"]}):
@@ -60,12 +57,12 @@ class ZenotiCenter(Document):
 		# item_types = ["memberships"]
 		for item_type in item_types:
 			url = api_url + "centers/" + str(self.name) + "/" + item_type
-			products = make_get_request(url, headers=get_headers())
+			products = make_api_call(url)
 			if products:
 				total_page = products["page_info"]["total"] // 100
 				for page in range(1, total_page + 2):
 					url_ = url + "?size=100&page=" + str(page)
-					all_products = make_get_request(url_, headers=get_headers())
+					all_products = make_api_call(url_)
 					if all_products:
 						for product in all_products[item_type]:
 							if not frappe.db.exists(
@@ -76,12 +73,12 @@ class ZenotiCenter(Document):
 
 	def sync_category(self):
 		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
-		categories = make_get_request(url, headers=get_headers())
+		categories = make_api_call(url)
 		if categories:
 			total_page = categories["page_info"]["total"] // 100
 			for page in range(1, total_page + 2):
 				url_ = url + "&size=100&page=" + str(page)
-				all_categories = make_get_request(url_, headers=get_headers())
+				all_categories = make_api_call(url_)
 				if all_categories:
 					for category in all_categories["categories"]:
 						if not frappe.db.exists("Zenoti Category", {"category_id": category["id"]}):
