@@ -28,6 +28,7 @@ def make_api_call(url):
 	if response.status_code == 429:
 		if not res_headers.get("RateLimit-Remaining"):
 			import time
+
 			time.sleep(frappe.flags.zenoti_rate_limit_reset_time + 1)
 			response = requests.request("GET", url=url, headers=headers)
 
