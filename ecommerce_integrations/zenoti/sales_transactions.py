@@ -421,7 +421,7 @@ def check_for_items(item, center):
 		if group == 6:
 			err_msg = make_card_item(item)
 		else:
-			item_to_search = {"code": item["item"]["code"], "name": item["item"]["name"]}
+			item_to_search = {"zenoti_item_code": item["item"]["code"], "name": item["item"]["name"]}
 			err_msg = make_item(item_to_search, item_type[group], center.name)
 		if err_msg:
 			err_list.append(err_msg)
