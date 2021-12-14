@@ -37,7 +37,11 @@ class ZenotiCenter(Document):
 		if all_emps:
 			for employee in all_emps["employees"] + all_emps["therapists"]:
 				if not frappe.db.exists(
-					"Employee", {"zenoti_employee_code": employee["code"], "employee_name": employee["personal_info"]["name"]}
+					"Employee",
+					{
+						"zenoti_employee_code": employee["code"],
+						"employee_name": employee["personal_info"]["name"],
+					},
 				):
 					self.create_emp(employee)
 
