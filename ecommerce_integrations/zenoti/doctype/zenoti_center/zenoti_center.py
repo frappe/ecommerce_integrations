@@ -74,7 +74,7 @@ class ZenotiCenter(Document):
 								"Item", {"zenoti_item_code": product["code"], "item_name": product["name"]}
 							):
 								create_item({}, product, item_type, self.name)
-					frappe.db.commit()
+						frappe.db.commit()
 
 	def sync_category(self):
 		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
