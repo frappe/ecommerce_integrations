@@ -264,7 +264,7 @@ def process_sales_line_items(invoice, cost_center, center):
 		)
 		if not sold_by:
 			msg = _("Employee {} not found in ERPNext.").format(frappe.bold(line_item["employee"]["name"]))
-			err_msg_list.append(msg)
+			frappe.log_error(msg)
 		err_msg = check_for_item_tax_template(line_item["tax_code"])
 		if err_msg:
 			err_msg_list.append(err_msg)

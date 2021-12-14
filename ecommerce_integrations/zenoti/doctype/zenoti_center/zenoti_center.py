@@ -34,7 +34,11 @@ class ZenotiCenter(Document):
 		if all_emps:
 			for employee in all_emps["employees"] + all_emps["therapists"]:
 				if not frappe.db.exists(
-					"Employee", {"zenoti_employee_code": employee["code"], "zenoti_employee_id": employee["id"]}
+					"Employee",
+					{
+						"zenoti_employee_code": employee["code"],
+						"employee_name": employee["personal_info"]["name"],
+					},
 				):
 					self.create_emp(employee)
 
@@ -51,6 +55,7 @@ class ZenotiCenter(Document):
 						if not frappe.db.exists("Customer", {"zenoti_guest_id": customer["id"]}):
 							customer_details = prepare_customer_details(customer)
 							create_customer(customer_details)
+					frappe.db.commit()
 
 	def sync_items(self):
 		item_types = ["services", "products", "packages"]
@@ -69,7 +74,7 @@ class ZenotiCenter(Document):
 								"Item", {"zenoti_item_code": product["code"], "item_name": product["name"]}
 							):
 								create_item({}, product, item_type, self.name)
-				frappe.db.commit()
+						frappe.db.commit()
 
 	def sync_category(self):
 		url = api_url + "centers/" + str(self.name) + "/categories?include_sub_categories=true"
