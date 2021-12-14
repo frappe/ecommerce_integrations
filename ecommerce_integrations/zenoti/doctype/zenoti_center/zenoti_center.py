@@ -128,10 +128,7 @@ def sync_customers_(center_id):
 
 def sync_items_(center_id):
 	center = frappe.get_doc("Zenoti Center", center_id)
-	frappe.db.auto_commit_on_many_writes = True
 	center.sync_items()
-	frappe.db.auto_commit_on_many_writes = True
-	frappe.db.commit()
 
 
 def sync_category_(center_id):
