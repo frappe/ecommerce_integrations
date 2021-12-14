@@ -26,7 +26,7 @@ emp_gender_map = {
 class ZenotiCenter(Document):
 	def sync_employees(self):
 		employees = []
-		for page in range(1,100):
+		for page in range(1, 100):
 			url = api_url + "/centers/" + self.name + "/employees?size=100&page=" + str(page)
 			all_emps = make_api_call(url)
 			if all_emps.get("employees"):
@@ -34,7 +34,7 @@ class ZenotiCenter(Document):
 			else:
 				break
 
-		for page in range(1,100):
+		for page in range(1, 100):
 			url = api_url + "/centers/" + self.name + "/therapists?size=100&page=" + str(page)
 			all_emps = make_api_call(url)
 			if all_emps.get("therapists"):
