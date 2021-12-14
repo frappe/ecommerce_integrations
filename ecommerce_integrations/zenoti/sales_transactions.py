@@ -1,6 +1,5 @@
 import frappe
 from frappe import _
-from frappe.integrations.utils import make_get_request
 from frappe.utils import add_days, add_to_date, cint, flt, get_date_str, today
 
 from ecommerce_integrations.zenoti.utils import (
@@ -10,7 +9,6 @@ from ecommerce_integrations.zenoti.utils import (
 	api_url,
 	check_for_item_tax_template,
 	create_item,
-	get_headers,
 	get_list_of_centers,
 	make_address,
 	make_api_call,

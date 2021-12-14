@@ -5,8 +5,7 @@ import frappe
 import requests
 from erpnext.controllers.accounts_controller import add_taxes_from_tax_template
 from frappe import _
-from frappe.integrations.utils import make_get_request
-from frappe.utils import flt
+from frappe.utils import cint, flt
 
 api_url = "https://api.zenoti.com/v1/"
 
@@ -22,15 +21,26 @@ item_type = {
 def make_api_call(url):
 	headers = get_headers()
 	response = requests.request("GET", url=url, headers=headers)
+	res_headers = dict(response.headers)
+	if res_headers.get("RateLimit-Reset"):
+		frappe.flags.zenoti_rate_limit_reset_time = cint(res_headers.get("RateLimit-Reset"))
+
+	if response.status_code == 429:
+		if not res_headers.get("RateLimit-Remaining"):
+			import time
+
+			time.sleep(frappe.flags.zenoti_rate_limit_reset_time + 1)
+			response = requests.request("GET", url=url, headers=headers)
+
 	if response.status_code != 200:
 		content = json.loads(response._content.decode("utf-8"))
 		frappe.get_doc(
 			{
 				"doctype": "Zenoti Error Logs",
-				"title": content["Message"],
-				"error_message": content["InternalMessage"],
+				"title": content.get("Message"),
+				"error_message": content.get("InternalMessage"),
 				"request_url": url,
-				"status_code": content["StatusCode"],
+				"status_code": content.get("StatusCode"),
 			}
 		).insert(ignore_permissions=True)
 
@@ -178,11 +188,11 @@ def get_zenoti_category(category_id, center):
 	category = frappe.db.exists("Zenoti Category", {"category_id", category_id})
 	if not category:
 		url = api_url + "centers/" + str(center) + "/categories/" + str(category_id)
-		category_data = make_get_request(url, headers=get_headers())
+		category_data = make_api_call(url)
 		if category_data:
 			make_category(category_data)
 			category = category_data["id"]
-	return frappe.db.get_value("Zenoti Category", {"category_id": category_id}, "category_name")
+	return frappe.db.get_value("Zenoti Category", {"category_id": category}, "category_name")
 
 
 def add_items(doc, item_data):
