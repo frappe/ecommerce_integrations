@@ -25,22 +25,32 @@ emp_gender_map = {
 
 class ZenotiCenter(Document):
 	def sync_employees(self):
-		url = api_url + "/centers/" + self.name + "/employees"
-		all_emps = make_api_call(url)
-		url = api_url + "/centers/" + self.name + "/therapists"
-		all_therapists = make_api_call(url)
-		if all_therapists:
-			all_emps.update(all_therapists)
-		if all_emps:
-			for employee in all_emps["employees"] + all_emps["therapists"]:
-				if not frappe.db.exists(
-					"Employee",
-					{
-						"zenoti_employee_code": employee["code"],
-						"employee_name": employee["personal_info"]["name"],
-					},
-				):
-					self.create_emp(employee)
+		employees = []
+		for page in range(1, 100):
+			url = api_url + "/centers/" + self.name + "/employees?size=100&page=" + str(page)
+			all_emps = make_api_call(url)
+			if all_emps.get("employees"):
+				employees = employees + all_emps.get("employees")
+			else:
+				break
+
+		for page in range(1, 100):
+			url = api_url + "/centers/" + self.name + "/therapists?size=100&page=" + str(page)
+			all_emps = make_api_call(url)
+			if all_emps.get("therapists"):
+				employees = employees + all_emps.get("therapists")
+			else:
+				break
+
+		for employee in employees:
+			if not frappe.db.exists(
+				"Employee",
+				{
+					"zenoti_employee_code": employee["code"],
+					"employee_name": employee["personal_info"]["name"],
+				},
+			):
+				self.create_emp(employee)
 
 	def sync_customers(self):
 		url = api_url + "guests?center_id=" + str(self.name)
