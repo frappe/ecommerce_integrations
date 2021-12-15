@@ -440,6 +440,7 @@ def make_card_item(item_details):
 def make_invoice(invoice_details):
 	doc = frappe.new_doc("Sales Invoice")
 	doc.is_pos = 1
+	doc.set_posting_time = 1
 	doc.zenoti_invoice_no = invoice_details["invoice_no"]
 	doc.zenoti_receipt_no = invoice_details["receipt_no"]
 	doc.is_return = invoice_details["is_return"]

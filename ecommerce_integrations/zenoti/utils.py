@@ -80,7 +80,9 @@ def check_for_item(list_of_items, item_group, center=None):
 def make_item(item, item_group, center=None):
 	item_details, center = get_item_details(item, item_group, center)
 	if not item_details:
-		err_msg = _("Details for Item {0} does not exist in Zenoti").format(frappe.bold(item["name"]))
+		err_msg = _("Details for Item {0} does not exist in Zenoti").format(
+			frappe.bold(item["item_name"])
+		)
 		return err_msg
 	create_item(item, item_details, item_group, center)
 
