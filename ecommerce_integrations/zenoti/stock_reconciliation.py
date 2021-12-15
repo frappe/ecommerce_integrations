@@ -7,6 +7,8 @@ from ecommerce_integrations.zenoti.utils import api_url, check_for_item, make_ap
 
 
 def process_stock_reconciliation(center, error_logs, date=None):
+	if not date:
+		date = now()
 	list_for_entry = []
 	stock_quantities_of_products_in_a_center = retrieve_stock_quantities_of_products(
 		center.name, date
@@ -25,12 +27,10 @@ def process_stock_reconciliation(center, error_logs, date=None):
 				item_err_msg = "\n".join(err for err in item_err_msg_list)
 				error_logs.append(item_err_msg)
 			if not (len(item_err_msg_list)):
-				make_stock_reconciliation(list_for_entry, cost_center)
+				make_stock_reconciliation(list_for_entry, date, cost_center)
 
 
-def retrieve_stock_quantities_of_products(center, date=None):
-	if not date:
-		date = now()
+def retrieve_stock_quantities_of_products(center, date):
 	url = api_url + "inventory/stock?center_id={0}&inventory_date={1}".format(center, date)
 	stock_quantities_of_products = make_api_call(url)
 	return stock_quantities_of_products
@@ -58,11 +58,12 @@ def make_list_for_entry(center, data, list_for_entry, error_logs):
 	return list_for_entry
 
 
-def make_stock_reconciliation(list_for_entry, cost_center):
+def make_stock_reconciliation(list_for_entry, date, cost_center):
 	doc = frappe.new_doc("Stock Reconciliation")
 	doc.purpose = "Stock Reconciliation"
-	doc.posting_date = frappe.utils.nowdate()
-	doc.posting_time = frappe.utils.nowtime()
+	doc.set_posting_time = 1
+	doc.posting_date = date
+	doc.posting_time = "00:00:00"
 	doc.cost_center = cost_center
 	doc.set("items", [])
 	doc.difference_amount = 0.0
