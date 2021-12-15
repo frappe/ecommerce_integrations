@@ -34,14 +34,6 @@ class ZenotiCenter(Document):
 			else:
 				break
 
-		for page in range(1, 100):
-			url = api_url + "/centers/" + self.name + "/therapists?size=100&page=" + str(page)
-			all_emps = make_api_call(url)
-			if all_emps.get("therapists"):
-				employees = employees + all_emps.get("therapists")
-			else:
-				break
-
 		for employee in employees:
 			if not frappe.db.exists(
 				"Employee",
