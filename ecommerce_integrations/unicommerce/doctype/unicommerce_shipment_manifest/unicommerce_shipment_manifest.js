@@ -47,7 +47,7 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 				method:
 					"ecommerce_integrations.unicommerce.doctype.unicommerce_shipment_manifest.unicommerce_shipment_manifest.get_shipping_package_list",
 				source_doctype: "Sales Invoice",
-				target: frm,
+				target: frm.doc,
 				setters: [
 					{
 						fieldtype: "Data",

@@ -33,6 +33,9 @@ IS_COD_CHECKBOX = "unicommerce_is_cod"
 SHIPPING_METHOD_FIELD = "unicommerce_shipping_method"
 
 
+GRN_STOCK_ENTRY_TYPE = "GRN on Unicommerce"
+
+
 # Tax -> Unicommerce tax amount field mapping
 TAX_FIELDS_MAPPING = {
 	"igst": "integratedGst",

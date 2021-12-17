@@ -36,6 +36,7 @@ doctype_js = {
 	"Sales Order": "public/js/unicommerce/sales_order.js",
 	"Sales Invoice": "public/js/unicommerce/sales_invoice.js",
 	"Item": "public/js/unicommerce/item.js",
+	"Stock Entry": "public/js/unicommerce/stock_entry.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -106,6 +107,11 @@ doc_events = {
 	"Sales Order": {
 		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info",
 		"on_cancel": "ecommerce_integrations.unicommerce.status_updater.ignore_pick_list_on_sales_order_cancel",
+	},
+	"Stock Entry": {
+		"validate": "ecommerce_integrations.unicommerce.grn.validate_stock_entry_for_grn",
+		"on_submit": "ecommerce_integrations.unicommerce.grn.upload_grn",
+		"on_cancel": "ecommerce_integrations.unicommerce.grn.prevent_grn_cancel",
 	},
 }
 

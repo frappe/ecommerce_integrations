@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:id",
+ "creation": "2021-12-06 11:15:29.407643",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "id",
+  "code",
+  "center_name",
+  "column_break_3",
+  "last_sync",
+  "cost_center_and_warehouse_mapping_section",
+  "erpnext_cost_center",
+  "column_break_7",
+  "erpnext_warehouse"
+ ],
+ "fields": [
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "Id",
+   "unique": 1
+  },
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "center_name",
+   "fieldtype": "Data",
+   "label": "Center Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cost_center_and_warehouse_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Cost Center and Warehouse Mapping"
+  },
+  {
+   "fieldname": "erpnext_cost_center",
+   "fieldtype": "Link",
+   "label": "ERPNext Cost Center",
+   "options": "Cost Center"
+  },
+  {
+   "fieldname": "column_break_7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "erpnext_warehouse",
+   "fieldtype": "Link",
+   "label": "ERPNext Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "last_sync",
+   "fieldtype": "Datetime",
+   "in_list_view": 1,
+   "label": "Last Sync",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-12-06 12:39:22.869440",
+ "modified_by": "Administrator",
+ "module": "Zenoti",
+ "name": "Zenoti Center",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "center_name, code",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "center_name"
+}
