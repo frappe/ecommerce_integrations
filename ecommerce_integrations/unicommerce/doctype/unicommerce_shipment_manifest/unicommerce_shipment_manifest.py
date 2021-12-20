@@ -195,6 +195,6 @@ def get_shipping_package_list(source_name, target_doc=None):
 	if target_doc and isinstance(target_doc, str):
 		target_doc = json.loads(target_doc)
 
-	target_doc["manifest_items"].append({"sales_invoice": source_name})
+	target_doc.set_default("manifest_items", []).append({"sales_invoice": source_name})
 
 	return target_doc
