@@ -15,6 +15,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_ITEM_BATCH_NO,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
@@ -101,7 +102,9 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 			invoice_data = client.get_sales_invoice(
 				shipping_package_code=package["code"], facility_code=facility_code
 			)
-			create_sales_invoice(invoice_data["invoice"], sales_order.name, update_stock=1)
+			create_sales_invoice(
+				invoice_data["invoice"], sales_order.name, update_stock=1, so_data=unicommerce_order
+			)
 		except Exception as e:
 			create_unicommerce_log(status="Error", exception=e, rollback=True, request_data=invoice_data)
 			frappe.flags.request_id = None
@@ -227,6 +230,7 @@ def _get_line_items(
 				"stock_uom": "Nos",
 				"warehouse": warehouse,
 				ORDER_ITEM_CODE_FIELD: item.get("code"),
+				ORDER_ITEM_BATCH_NO: _get_batch_no(item),
 			}
 		)
 	return so_items
@@ -337,3 +341,26 @@ def _update_package_info_on_unicommerce(so_code):
 	except Exception as e:
 		create_unicommerce_log(status="Error", exception=e)
 		raise
+
+
+def _get_batch_no(so_line_item) -> Optional[str]:
+	"""If specified vendor batch code is valid batch number in ERPNext then get batch no.
+
+	SO line items contain batch no detail like this:
+
+	"batchDTO": {
+	        "batchCode": "BA000002",
+	        "batchFieldsDTO": {
+	                "mrp": null,
+	                "cost": null,
+	                "vendorCode": null,
+	                "expiryDate": 1682793000000,
+	                "mfd": 1619807400000,
+	                "vendorBatchNumber": "1122",
+	                "status": "ACTIVE"
+	        }
+	},
+	"""
+	batch_no = so_line_item.get("batchDTO", {}).get("batchFieldsDTO", {}).get("vendorBatchNumber")
+	if batch_no and frappe.db.exists("Batch", batch_no):
+		return batch_no
