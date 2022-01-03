@@ -310,7 +310,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 	def test_bulk_import(self):
 		from frappe.utils.file_manager import save_file
 
-		from ecommerce_integrations.unicommerce.inventory import create_auto_grn_import
+		from ecommerce_integrations.unicommerce.grn import create_auto_grn_import
 
 		csv_file = b"a,b,c\n1,2,3"
 		csv_filename = "test_file.csv"

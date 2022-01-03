@@ -18,6 +18,7 @@ DOCUMENT_URL_FORMAT = {
 	"Sales Invoice": "https://{site}/order/orderitems?orderCode={code}",
 	"Item": "https://{site}/products/edit?sku={code}",
 	"Unicommerce Shipment Manifest": "https://{site}/manifests/edit?code={code}",
+	"Stock Entry": "https://{site}/grns",
 }
 
 

@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:ZEN-CAT-{######}",
+ "creation": "2021-12-03 12:05:00.828334",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "category_id",
+  "code",
+  "category_name",
+  "parent_category_id",
+  "zenoti_center"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Code"
+  },
+  {
+   "fieldname": "category_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Category Name"
+  },
+  {
+   "fieldname": "parent_category_id",
+   "fieldtype": "Link",
+   "label": "parent_category_id",
+   "options": "Zenoti Category"
+  },
+  {
+   "fieldname": "zenoti_center",
+   "fieldtype": "Link",
+   "label": "Zenoti Center",
+   "options": "Zenoti Center"
+  },
+  {
+   "fieldname": "category_id",
+   "fieldtype": "Data",
+   "label": "Category Id"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2021-12-09 20:00:09.732355",
+ "modified_by": "Administrator",
+ "module": "Zenoti",
+ "name": "Zenoti Category",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "select": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "category_name"
+}
