@@ -208,7 +208,6 @@ class SPAPI(object):
 		refresh_token: str,
 		aws_access_key: str,
 		aws_secret_key: str,
-		selling_region: str = "North America",
 		country_code: str = "US",
 	) -> None:
 		self.iam_arn = iam_arn
@@ -218,9 +217,7 @@ class SPAPI(object):
 		self.aws_access_key = aws_access_key
 		self.aws_secret_key = aws_secret_key
 		self.country_code = country_code
-		self.region, self.endpoint, self.marketplace_id = Util.get_marketplace_data(
-			selling_region, country_code
-		)
+		self.region, self.endpoint, self.marketplace_id = Util.get_marketplace_data(country_code)
 
 	def get_access_token(self) -> str:
 		data = {
@@ -695,24 +692,22 @@ class Reports(SPAPI):
 
 class Util:
 	@staticmethod
-	def get_marketplace_data(selling_region, country_code):
-		marketplace = MARKETPLACES.get(selling_region)
-
-		error_msg = ""
-
-		if marketplace:
-			region = marketplace.get("AWS Region")
-			endpoint = marketplace.get("Endpoint")
-			marketplace_id = marketplace.get(country_code)
-
-			if marketplace_id:
-				return region, endpoint, marketplace_id
-			else:
-				error_msg = f"Country Code: {country_code} not found in Selling Region: {selling_region}"
+	def get_marketplace(country_code):
+		for selling_region in MARKETPLACES:
+			for country in MARKETPLACES.get(selling_region):
+				if country_code == country:
+					return MARKETPLACES.get(selling_region)
 		else:
-			error_msg = f"Invalid Selling Region: {selling_region}"
+			raise KeyError(f"Invalid Country Code: {country_code}")
 
-		raise SPAPIError(error_msg)
+	@staticmethod
+	def get_marketplace_data(country_code):
+		marketplace = Util.get_marketplace(country_code)
+		region = marketplace.get("AWS Region")
+		endpoint = marketplace.get("Endpoint")
+		marketplace_id = marketplace.get(country_code)
+
+		return region, endpoint, marketplace_id
 
 	@staticmethod
 	def remove_empty(dict):
