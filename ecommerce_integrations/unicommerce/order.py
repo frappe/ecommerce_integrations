@@ -102,8 +102,13 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 			invoice_data = client.get_sales_invoice(
 				shipping_package_code=package["code"], facility_code=facility_code
 			)
+			warehouse_allocations = _get_warehouse_allocations(sales_order)
 			create_sales_invoice(
-				invoice_data["invoice"], sales_order.name, update_stock=1, so_data=unicommerce_order
+				invoice_data["invoice"],
+				sales_order.name,
+				update_stock=1,
+				so_data=unicommerce_order,
+				warehouse_allocations=warehouse_allocations,
 			)
 		except Exception as e:
 			create_unicommerce_log(status="Error", exception=e, rollback=True, request_data=invoice_data)
@@ -361,6 +366,22 @@ def _get_batch_no(so_line_item) -> Optional[str]:
 	        }
 	},
 	"""
-	batch_no = so_line_item.get("batchDTO", {}).get("batchFieldsDTO", {}).get("vendorBatchNumber")
+	batch_no = ((so_line_item.get("batchDTO") or {}).get("batchFieldsDTO") or {}).get(
+		"vendorBatchNumber"
+	)
 	if batch_no and frappe.db.exists("Batch", batch_no):
 		return batch_no
+
+
+def _get_warehouse_allocations(sales_order):
+	item_details = []
+	for item in sales_order.items:
+		item_details.append(
+			{
+				"sales_order_row": item.name,
+				"item_code": item.item_code,
+				"warehouse": item.warehouse,
+				"batch_no": item.get(ORDER_ITEM_BATCH_NO),
+			}
+		)
+	return item_details
