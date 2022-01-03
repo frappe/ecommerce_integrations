@@ -16,7 +16,6 @@
   "aws_secret_key",
   "column_break_2",
   "country",
-  "marketplace_id",
   "section_break_2",
   "company",
   "warehouse",
@@ -215,18 +214,11 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "marketplace_id",
-   "fieldtype": "Data",
-   "label": "Marketplace ID",
-   "read_only": 1,
-   "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-03 19:11:28.300145",
+ "modified": "2022-01-03 20:05:29.717578",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
