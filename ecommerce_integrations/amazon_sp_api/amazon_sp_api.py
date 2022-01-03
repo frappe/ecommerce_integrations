@@ -230,13 +230,18 @@ class SPAPI(object):
 			"refresh_token": self.refresh_token,
 		}
 
-		response = request(method="POST", url=self.AUTH_URL, data=data)
-		result = response.json()
+		try:
+			response = request(method="POST", url=self.AUTH_URL, data=data)
+			result = response.json()
 
-		if response.status_code == 200:
-			return result.get("access_token")
+			if response.status_code == 200:
+				return result.get("access_token")
 
-		raise SPAPIError(f"{result.get('error_description')}")
+			raise SPAPIError(f"{result.get('error_description')}")
+		except HTTPError as e:
+			error = SPAPIError(str(e))
+			error.response = e.response
+			raise error
 
 	def get_auth(self) -> AWSSigV4:
 		client = boto3.client(
