@@ -132,7 +132,8 @@
    "default": "3",
    "fieldname": "max_retry_limit",
    "fieldtype": "Int",
-   "label": "Max Retry Limit"
+   "label": "Max Retry Limit",
+   "non_negative": 1
   },
   {
    "fieldname": "app_id",
@@ -225,7 +226,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-03 18:52:09.323884",
+ "modified": "2022-01-03 19:11:28.300145",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
