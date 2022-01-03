@@ -96,7 +96,7 @@
   {
    "description": "Amazon will synch data updated after this date",
    "fieldname": "after_date",
-   "fieldtype": "Datetime",
+   "fieldtype": "Date",
    "label": "After Date",
    "reqd": 1
   },
@@ -219,12 +219,13 @@
    "fieldname": "marketplace_id",
    "fieldtype": "Data",
    "label": "Marketplace ID",
+   "read_only": 1,
    "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-03 17:54:38.686805",
+ "modified": "2022-01-03 18:52:09.323884",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
