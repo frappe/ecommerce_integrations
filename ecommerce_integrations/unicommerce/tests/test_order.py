@@ -41,6 +41,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			"rate": 312000.0,
 			"qty": 1,
 			"stock_uom": "Nos",
+			"unicommerce_batch_code": None,
 			"warehouse": "Stores - WP",
 			"unicommerce_order_item_code": "TITANIUM_WATCH-0",
 		}
