@@ -5,102 +5,38 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "enable_amazon",
-  "mws_credentials",
-  "seller_id",
-  "aws_access_key_id",
-  "mws_auth_token",
-  "secret_key",
-  "column_break_4",
-  "market_place_id",
-  "region",
-  "domain",
-  "section_break_13",
+  "app_id",
+  "iam_arn",
+  "refresh_token",
+  "column_break_1",
+  "client_id",
+  "client_secret",
+  "section_break_1",
+  "aws_access_key",
+  "aws_secret_key",
+  "column_break_2",
+  "country",
+  "marketplace_id",
+  "section_break_2",
   "company",
   "warehouse",
   "item_group",
   "price_list",
-  "column_break_17",
+  "column_break_3",
   "customer_group",
   "territory",
   "customer_type",
   "market_place_account_group",
-  "section_break_12",
+  "section_break_3",
   "after_date",
   "taxes_charges",
   "sync_products",
   "sync_orders",
-  "column_break_10",
+  "column_break_4",
   "enable_sync",
   "max_retry_limit"
  ],
  "fields": [
-  {
-   "default": "0",
-   "fieldname": "enable_amazon",
-   "fieldtype": "Check",
-   "label": "Enable Amazon"
-  },
-  {
-   "fieldname": "mws_credentials",
-   "fieldtype": "Section Break",
-   "label": "MWS Credentials"
-  },
-  {
-   "fieldname": "seller_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Seller ID",
-   "reqd": 1
-  },
-  {
-   "fieldname": "aws_access_key_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "AWS Access Key ID",
-   "reqd": 1
-  },
-  {
-   "fieldname": "mws_auth_token",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "MWS Auth Token",
-   "reqd": 1
-  },
-  {
-   "fieldname": "secret_key",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Secret Key",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_4",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "market_place_id",
-   "fieldtype": "Data",
-   "label": "Market Place ID",
-   "reqd": 1
-  },
-  {
-   "fieldname": "region",
-   "fieldtype": "Select",
-   "label": "Region",
-   "options": "\nAE\nAU\nBR\nCA\nCN\nDE\nES\nFR\nIN\nJP\nIT\nMX\nUK\nUS",
-   "reqd": 1
-  },
-  {
-   "fieldname": "domain",
-   "fieldtype": "Data",
-   "label": "Domain",
-   "reqd": 1
-  },
-  {
-   "fieldname": "section_break_13",
-   "fieldtype": "Section Break"
-  },
   {
    "fieldname": "company",
    "fieldtype": "Link",
@@ -128,10 +64,6 @@
    "label": "Price List",
    "options": "Price List",
    "reqd": 1
-  },
-  {
-   "fieldname": "column_break_17",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "customer_group",
@@ -162,10 +94,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "section_break_12",
-   "fieldtype": "Section Break"
-  },
-  {
    "description": "Amazon will synch data updated after this date",
    "fieldname": "after_date",
    "fieldtype": "Datetime",
@@ -194,10 +122,6 @@
    "options": "get_order_details"
   },
   {
-   "fieldname": "column_break_10",
-   "fieldtype": "Column Break"
-  },
-  {
    "default": "0",
    "description": "Check this to enable a scheduled Daily synchronization routine via scheduler",
    "fieldname": "enable_sync",
@@ -209,11 +133,98 @@
    "fieldname": "max_retry_limit",
    "fieldtype": "Int",
    "label": "Max Retry Limit"
+  },
+  {
+   "fieldname": "app_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "App ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "iam_arn",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "IAM ARN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Client ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Client Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "refresh_token",
+   "fieldtype": "Text",
+   "label": "Refresh Token",
+   "reqd": 1
+  },
+  {
+   "fieldname": "aws_access_key",
+   "fieldtype": "Data",
+   "label": "AWS Access Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "aws_secret_key",
+   "fieldtype": "Password",
+   "label": "AWS Secret Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Select",
+   "label": "Country",
+   "options": "\nCA\nUS\nMX\nBR\nES\nGB\nFR\nNL\nDE\nIT\nSE\nPL\nEG\nTR\nSA\nAE\nIN\nSG\nAU\nJP",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "marketplace_id",
+   "fieldtype": "Data",
+   "label": "Marketplace ID",
+   "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-03 15:57:44.865155",
+ "modified": "2022-01-03 17:54:38.686805",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
