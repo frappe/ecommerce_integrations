@@ -2,3 +2,4 @@ Ecommerce Integrations
 shopify
 Zenoti
 unicommerce
+Amazon SP-API
