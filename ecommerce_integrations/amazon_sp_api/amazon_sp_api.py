@@ -285,7 +285,7 @@ class SPAPI(object):
 				headers=self.get_headers(),
 				auth=self.get_auth(),
 			)
-			return response
+			return response.json()
 		except HTTPError as e:
 			error = SPAPIError(str(e))
 			error.response = e.response
@@ -406,17 +406,17 @@ class Orders(SPAPI):
 
 		return self.make_request(params=data)
 
-	def get_order(self, order_id: str) -> object:
+	def get_order(self, order_id: str) -> dict:
 		""" Returns the order indicated by the specified order ID. """
 		append_to_base_uri = f"/{order_id}"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
 
-	def get_order_buyer_info(self, order_id: str) -> object:
+	def get_order_buyer_info(self, order_id: str) -> dict:
 		""" Returns buyer information for the specified order. """
 		append_to_base_uri = f"/{order_id}/buyerInfo"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
 
-	def get_order_address(self, order_id: str) -> object:
+	def get_order_address(self, order_id: str) -> dict:
 		""" Returns the shipping address for the specified order. """
 		append_to_base_uri = f"/{order_id}/address"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
@@ -435,7 +435,7 @@ class Orders(SPAPI):
 
 	def update_shipment_status(
 		self, order_id: str, marketplace_id: str, shipment_status: str, order_items: list[dict]
-	) -> object:
+	) -> dict:
 		""" Update the shipment status. """
 		valid_shipment_statuses = ["ReadyForPickup", "PickedUp", "RefusedPickup"]
 		if shipment_status not in valid_shipment_statuses:
@@ -607,17 +607,17 @@ class Reports(SPAPI):
 
 		return self.make_request(method="POST", append_to_base_uri=append_to_base_uri, data=data)
 
-	def get_report(self, report_id: str) -> object:
+	def get_report(self, report_id: str) -> dict:
 		""" Returns report details (including the reportDocumentId, if available) for the report that you specify. """
 		append_to_base_uri = f"/reports/{report_id}"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
 
-	def cancel_report(self, report_id: str) -> object:
+	def cancel_report(self, report_id: str) -> dict:
 		""" Cancels the report that you specify. Only reports with processingStatus=IN_QUEUE can be cancelled. Cancelled reports are returned in subsequent calls to the getReport and getReports operations. """
 		append_to_base_uri = f"/reports/{report_id}"
 		return self.make_request(method="DELETE", append_to_base_uri=append_to_base_uri)
 
-	def get_report_schedules(self, report_types: list[str]) -> object:
+	def get_report_schedules(self, report_types: list[str]) -> dict:
 		""" Returns report schedule details that match the filters that you specify. """
 		append_to_base_uri = "/schedules"
 		data = {}
@@ -674,17 +674,17 @@ class Reports(SPAPI):
 
 		return self.make_request(method="POST", append_to_base_uri=append_to_base_uri, data=data)
 
-	def get_report_schedule(self, report_schedule_id: str) -> object:
+	def get_report_schedule(self, report_schedule_id: str) -> dict:
 		""" Returns report schedule details for the report schedule that you specify. """
 		append_to_base_uri = f"/schedules/{report_schedule_id}"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
 
-	def cancel_report_schedule(self, report_schedule_id: str) -> object:
+	def cancel_report_schedule(self, report_schedule_id: str) -> dict:
 		""" Cancels the report schedule that you specify. """
 		append_to_base_uri = f"/schedules/{report_schedule_id}"
 		return self.make_request(method="DELETE", append_to_base_uri=append_to_base_uri)
 
-	def get_report_document(self, report_document_id: str) -> object:
+	def get_report_document(self, report_document_id: str) -> dict:
 		""" Returns the information required for retrieving a report document's contents. """
 		append_to_base_uri = f"/documents/{report_document_id}"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
