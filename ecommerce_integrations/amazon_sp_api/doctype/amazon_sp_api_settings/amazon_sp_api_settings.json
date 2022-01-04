@@ -5,6 +5,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "enable_amazon",
+  "section_break_4",
   "app_id",
   "iam_arn",
   "refresh_token",
@@ -214,11 +216,21 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_amazon",
+   "fieldtype": "Check",
+   "label": "Enable Amazon"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-03 20:05:29.717578",
+ "modified": "2022-01-04 11:31:48.657816",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
