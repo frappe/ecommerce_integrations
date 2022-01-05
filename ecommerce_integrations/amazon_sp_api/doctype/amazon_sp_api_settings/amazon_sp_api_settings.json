@@ -97,7 +97,7 @@
   {
    "description": "Amazon will synch data updated after this date",
    "fieldname": "after_date",
-   "fieldtype": "Date",
+   "fieldtype": "Datetime",
    "label": "After Date",
    "reqd": 1
   },
@@ -230,7 +230,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-04 11:31:48.657816",
+ "modified": "2022-01-05 10:32:36.077159",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
