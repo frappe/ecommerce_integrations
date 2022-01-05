@@ -7,6 +7,8 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
 
+from ecommerce_integrations.amazon_sp_api.amazon_methods import get_orders
+
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
@@ -27,6 +29,14 @@ class AmazonSPAPISettings(Document):
 			frappe.enqueue(
 				"ecommerce_integrations.amazon_sp_api.amazon_methods.get_orders", created_after=after_date
 			)
+
+
+# Called via a hook in every hour.
+def schedule_get_order_details():
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
+	if amz_settings.enable_amazon and amz_settings.enable_sync:
+		after_date = dateutil.parser.parse(amz_settings.after_date).strftime("%Y-%m-%d")
+		get_orders(created_after=after_date)
 
 
 def setup_custom_fields():
