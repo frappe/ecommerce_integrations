@@ -1,9 +1,10 @@
 import time
 
-import amazon_sp_api as sp_api
 import dateutil
 import frappe
 from frappe import _
+
+import ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_sp_api as sp_api
 
 
 def get_orders(created_after):
