@@ -1,6 +1,8 @@
 # Copyright (c) 2022, Frappe and contributors
 # For license information, please see license.txt
 
+
+import dateutil
 import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
@@ -20,7 +22,11 @@ class AmazonSPAPISettings(Document):
 
 	@frappe.whitelist()
 	def get_order_details(self):
-		pass
+		if self.enable_amazon == 1:
+			after_date = dateutil.parser.parse(self.after_date).strftime("%Y-%m-%d")
+			frappe.enqueue(
+				"ecommerce_integrations.amazon_sp_api.amazon_methods.get_orders", created_after=after_date
+			)
 
 
 def setup_custom_fields():
