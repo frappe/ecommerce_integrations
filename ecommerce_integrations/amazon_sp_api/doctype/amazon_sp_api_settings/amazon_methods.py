@@ -381,3 +381,18 @@ def create_sales_order(order):
 			import traceback
 
 			frappe.log_error(message=traceback.format_exc(), title="Create Sales Order")
+
+
+def get_reports_instance():
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
+	reports = sp_api.Reports(
+		iam_arn=amz_settings.iam_arn,
+		client_id=amz_settings.client_id,
+		client_secret=amz_settings.client_secret,
+		refresh_token=amz_settings.refresh_token,
+		aws_access_key=amz_settings.aws_access_key,
+		aws_secret_key=amz_settings.aws_secret_key,
+		country_code=amz_settings.country,
+	)
+
+	return reports
