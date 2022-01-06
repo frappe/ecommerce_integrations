@@ -396,3 +396,18 @@ def get_reports_instance():
 	)
 
 	return reports
+
+
+def get_catalog_items_instance():
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
+	catalog_items = sp_api.CatalogItems(
+		iam_arn=amz_settings.iam_arn,
+		client_id=amz_settings.client_id,
+		client_secret=amz_settings.client_secret,
+		refresh_token=amz_settings.refresh_token,
+		aws_access_key=amz_settings.aws_access_key,
+		aws_secret_key=amz_settings.aws_secret_key,
+		country_code=amz_settings.country,
+	)
+
+	return catalog_items
