@@ -1,9 +1,0 @@
-{
-    "js/shopify.bundle.js": [
-        "public/js/shopify/importer.js"
-    ],
-
-    "js/shopify.product.js": [
-        "shopify/page/shopify_import_products/product_importer.js"
-    ]
-}
