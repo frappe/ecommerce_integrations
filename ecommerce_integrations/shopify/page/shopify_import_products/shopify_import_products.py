@@ -86,6 +86,7 @@ def sync_product(product):
 
 		return True
 	except Exception:
+		frappe.db.rollback()
 		return False
 
 
