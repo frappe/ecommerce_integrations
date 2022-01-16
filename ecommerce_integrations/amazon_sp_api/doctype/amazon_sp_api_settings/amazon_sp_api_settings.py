@@ -44,16 +44,6 @@ def schedule_get_order_details():
 
 def setup_custom_fields():
 	custom_fields = {
-		"Item": [
-			dict(
-				fieldname="amazon_item_code",
-				label="Amazon Item Code",
-				fieldtype="Data",
-				insert_after="series",
-				read_only=1,
-				print_hide=1,
-			)
-		],
 		"Sales Order": [
 			dict(
 				fieldname="amazon_order_id",
