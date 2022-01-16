@@ -199,6 +199,36 @@ def get_finances_instance():
 	return finances
 
 
+def get_reports_instance():
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
+	reports = sp_api.Reports(
+		iam_arn=amz_settings.iam_arn,
+		client_id=amz_settings.client_id,
+		client_secret=amz_settings.client_secret,
+		refresh_token=amz_settings.refresh_token,
+		aws_access_key=amz_settings.aws_access_key,
+		aws_secret_key=amz_settings.aws_secret_key,
+		country_code=amz_settings.country,
+	)
+
+	return reports
+
+
+def get_catalog_items_instance():
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
+	catalog_items = sp_api.CatalogItems(
+		iam_arn=amz_settings.iam_arn,
+		client_id=amz_settings.client_id,
+		client_secret=amz_settings.client_secret,
+		refresh_token=amz_settings.refresh_token,
+		aws_access_key=amz_settings.aws_access_key,
+		aws_secret_key=amz_settings.aws_secret_key,
+		country_code=amz_settings.country,
+	)
+
+	return catalog_items
+
+
 def return_as_list(input):
 	if isinstance(input, list):
 		return input
@@ -383,31 +413,87 @@ def create_sales_order(order):
 			frappe.log_error(message=traceback.format_exc(), title="Create Sales Order")
 
 
-def get_reports_instance():
-	amz_settings = frappe.get_doc("Amazon SP API Settings")
-	reports = sp_api.Reports(
-		iam_arn=amz_settings.iam_arn,
-		client_id=amz_settings.client_id,
-		client_secret=amz_settings.client_secret,
-		refresh_token=amz_settings.refresh_token,
-		aws_access_key=amz_settings.aws_access_key,
-		aws_secret_key=amz_settings.aws_secret_key,
-		country_code=amz_settings.country,
+def create_manufacturer(amazon_item):
+	manufacturer_name = amazon_item.get("AttributeSets")[0].get("Manufacturer")
+
+	if not manufacturer_name:
+		return None
+
+	existing_manufacturer = frappe.db.get_value(
+		"Manufacturer", filters={"short_name": manufacturer_name}
 	)
 
-	return reports
+	if not existing_manufacturer:
+		manufacturer = frappe.new_doc("Manufacturer")
+		manufacturer.short_name = manufacturer_name
+		manufacturer.insert()
+		return manufacturer.short_name
+	else:
+		return existing_manufacturer
 
 
-def get_catalog_items_instance():
+def create_brand(amazon_item):
+	brand_name = amazon_item.get("AttributeSets")[0].get("Brand")
+
+	if not brand_name:
+		return None
+
+	existing_brand = frappe.db.get_value("Brand", filters={"brand": brand_name})
+
+	if not existing_brand:
+		brand = frappe.new_doc("Brand")
+		brand.brand = brand_name
+		brand.insert()
+		return brand.brand
+	else:
+		return existing_brand
+
+
+def create_item_code(amazon_item, sku):
+	if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
+		return
+
 	amz_settings = frappe.get_doc("Amazon SP API Settings")
-	catalog_items = sp_api.CatalogItems(
-		iam_arn=amz_settings.iam_arn,
-		client_id=amz_settings.client_id,
-		client_secret=amz_settings.client_secret,
-		refresh_token=amz_settings.refresh_token,
-		aws_access_key=amz_settings.aws_access_key,
-		aws_secret_key=amz_settings.aws_secret_key,
-		country_code=amz_settings.country,
-	)
 
-	return catalog_items
+	item_group_name = amazon_item.get("AttributeSets")[0].get("ProductGroup")
+	if item_group_name:
+		item_group = frappe.db.get_value("Item Group", filters={"item_group_name": item_group_name})
+
+		if not item_group:
+			new_item_group = frappe.new_doc("Item Group")
+			new_item_group.item_group_name = item_group_name
+			new_item_group.parent_item_group = amz_settings.item_group
+			new_item_group.insert()
+			item_group = new_item_group
+
+	# Create Item
+	item = frappe.new_doc("Item")
+	item.item_code = sku
+	item.item_group = item_group
+	item.description = amazon_item.get("AttributeSets")[0].get("Title")
+	item.brand = create_brand(amazon_item)
+	item.manufacturer = create_manufacturer(amazon_item)
+	item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
+	item.append("item_defaults", {"company": amz_settings.company})
+	item.insert(ignore_permissions=True)
+
+	# Create Ecommerce Item
+	ecommerce_item = frappe.new_doc("Ecommerce Item")
+	ecommerce_item.integration = frappe.get_meta("Amazon SP API Settings").module
+	ecommerce_item.erpnext_item_code = item.item_code
+	ecommerce_item.integration_item_code = (
+		amazon_item.get("Identifiers", {}).get("MarketplaceASIN", {}).get("ASIN")
+	)
+	ecommerce_item.sku = sku
+	ecommerce_item.insert(ignore_permissions=True)
+
+	# Create Item Price
+	item_price = frappe.new_doc("Item Price")
+	item_price.price_list = frappe.db.get_single_value("Amazon SP API Settings", "price_list")
+	item_price.price_list_rate = (
+		amazon_item.get("AttributeSets")[0].get("ListPrice", {}).get("Amount") or 0
+	)
+	item_price.item_code = item.item_code
+	item_price.insert()
+
+	return item.name
