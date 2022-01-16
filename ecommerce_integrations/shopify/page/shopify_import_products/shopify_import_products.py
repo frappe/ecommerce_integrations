@@ -112,10 +112,12 @@ def queue_sync_all_products(*args, **kwargs):
 
 	_sync = True
 	collection = _fetch_products_from_shopify(limit=100)
+	savepoint = "shopify_product_sync"
 	while _sync:
 		for product in collection:
 			try:
 				publish(f"Syncing product {product.id}", br=False)
+				frappe.db.savepoint(savepoint)
 				if is_synced(product.id):
 					publish(f"Product {product.id} already synced. Skipping...")
 					continue
@@ -127,10 +129,12 @@ def queue_sync_all_products(*args, **kwargs):
 
 			except UniqueValidationError as e:
 				publish(f"❌ Error Syncing Product {product.id} : {str(e)}", error=True)
+				frappe.db.rollback(save_point=savepoint)
 				continue
 
 			except Exception as e:
 				publish(f"❌ Error Syncing Product {product.id} : {str(e)}", error=True)
+				frappe.db.rollback(save_point=savepoint)
 				continue
 
 		if collection.has_next_page():
