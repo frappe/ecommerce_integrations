@@ -21,7 +21,7 @@
   "section_break_2",
   "company",
   "warehouse",
-  "item_group",
+  "parent_item_group",
   "price_list",
   "column_break_3",
   "customer_group",
@@ -50,13 +50,6 @@
    "fieldtype": "Link",
    "label": "Warehouse",
    "options": "Warehouse",
-   "reqd": 1
-  },
-  {
-   "fieldname": "item_group",
-   "fieldtype": "Link",
-   "label": "Item Group",
-   "options": "Item Group",
    "reqd": 1
   },
   {
@@ -226,11 +219,18 @@
   {
    "fieldname": "section_break_4",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "parent_item_group",
+   "fieldtype": "Link",
+   "label": "Parent Item Group",
+   "options": "Item Group",
+   "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-05 10:32:36.077159",
+ "modified": "2022-01-16 23:01:32.088592",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",

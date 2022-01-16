@@ -462,7 +462,7 @@ def create_item_code(amazon_item, sku):
 		if not item_group:
 			new_item_group = frappe.new_doc("Item Group")
 			new_item_group.item_group_name = item_group_name
-			new_item_group.parent_item_group = amz_settings.item_group
+			new_item_group.parent_item_group = amz_settings.parent_item_group
 			new_item_group.insert()
 			item_group = new_item_group
 
