@@ -133,10 +133,7 @@ def queue_sync_all_products(*args, **kwargs):
 				continue
 
 		if collection.has_next_page():
-			try:
-				frappe.db.commit()  # prevents too many write request error
-			except Exception as e:
-				publish(f"❌ Error commiting writes: {str(e)}", error=True)
+			frappe.db.commit()  # prevents too many write request error
 			collection = _fetch_products_from_shopify(from_=collection.next_page_url)
 		else:
 			_sync = False
