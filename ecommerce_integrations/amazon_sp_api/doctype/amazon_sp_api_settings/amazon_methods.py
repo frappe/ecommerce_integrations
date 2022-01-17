@@ -449,13 +449,9 @@ def create_brand(amazon_item):
 		return existing_brand
 
 
-def create_item_code(amazon_item, sku):
-	if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
-		return
-
-	amz_settings = frappe.get_doc("Amazon SP API Settings")
-
+def create_item_group(amazon_item, amz_settings):
 	item_group_name = amazon_item.get("AttributeSets")[0].get("ProductGroup")
+
 	if item_group_name:
 		item_group = frappe.db.get_value("Item Group", filters={"item_group_name": item_group_name})
 
@@ -464,12 +460,44 @@ def create_item_code(amazon_item, sku):
 			new_item_group.item_group_name = item_group_name
 			new_item_group.parent_item_group = amz_settings.parent_item_group
 			new_item_group.insert()
-			item_group = new_item_group
+			return new_item_group.item_group_name
+
+		return item_group.item_group_name
+
+	raise (KeyError("ProductGroup"))
+
+
+def create_ecommerce_item(amazon_item, item_code, sku):
+	ecommerce_item = frappe.new_doc("Ecommerce Item")
+	ecommerce_item.integration = frappe.get_meta("Amazon SP API Settings").module
+	ecommerce_item.erpnext_item_code = item_code
+	ecommerce_item.integration_item_code = (
+		amazon_item.get("Identifiers", {}).get("MarketplaceASIN", {}).get("ASIN")
+	)
+	ecommerce_item.sku = sku
+	ecommerce_item.insert(ignore_permissions=True)
+
+
+def create_item_price(amazon_item, item_code):
+	item_price = frappe.new_doc("Item Price")
+	item_price.price_list = frappe.db.get_single_value("Amazon SP API Settings", "price_list")
+	item_price.price_list_rate = (
+		amazon_item.get("AttributeSets")[0].get("ListPrice", {}).get("Amount") or 0
+	)
+	item_price.item_code = item_code
+	item_price.insert()
+
+
+def create_item(amazon_item, sku):
+	if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
+		return
+
+	amz_settings = frappe.get_doc("Amazon SP API Settings")
 
 	# Create Item
 	item = frappe.new_doc("Item")
 	item.item_code = sku
-	item.item_group = item_group
+	item.item_group = create_item_group(amazon_item, amz_settings)
 	item.description = amazon_item.get("AttributeSets")[0].get("Title")
 	item.brand = create_brand(amazon_item)
 	item.manufacturer = create_manufacturer(amazon_item)
@@ -478,22 +506,9 @@ def create_item_code(amazon_item, sku):
 	item.insert(ignore_permissions=True)
 
 	# Create Ecommerce Item
-	ecommerce_item = frappe.new_doc("Ecommerce Item")
-	ecommerce_item.integration = frappe.get_meta("Amazon SP API Settings").module
-	ecommerce_item.erpnext_item_code = item.item_code
-	ecommerce_item.integration_item_code = (
-		amazon_item.get("Identifiers", {}).get("MarketplaceASIN", {}).get("ASIN")
-	)
-	ecommerce_item.sku = sku
-	ecommerce_item.insert(ignore_permissions=True)
+	create_ecommerce_item(amazon_item, item.item_code, sku)
 
 	# Create Item Price
-	item_price = frappe.new_doc("Item Price")
-	item_price.price_list = frappe.db.get_single_value("Amazon SP API Settings", "price_list")
-	item_price.price_list_rate = (
-		amazon_item.get("AttributeSets")[0].get("ListPrice", {}).get("Amount") or 0
-	)
-	item_price.item_code = item.item_code
-	item_price.insert()
+	create_item_price(amazon_item, item.item_code)
 
 	return item.name
