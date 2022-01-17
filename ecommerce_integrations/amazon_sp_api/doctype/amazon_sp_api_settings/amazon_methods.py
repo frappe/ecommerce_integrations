@@ -1,4 +1,5 @@
 import time
+import urllib.request
 
 import dateutil
 import frappe
@@ -512,3 +513,66 @@ def create_item(amazon_item, sku):
 	create_item_price(amazon_item, item.item_code)
 
 	return item.name
+
+
+def create_report(
+	report_type="GET_FLAT_FILE_OPEN_LISTINGS_DATA", data_start_time=None, data_end_time=None
+):
+	try:
+		reports = get_reports_instance()
+		response = reports.create_report(
+			report_type=report_type, data_start_time=data_start_time, data_end_time=data_end_time,
+		)
+
+		return response.get("reportId")
+
+	except Exception as e:
+		frappe.log_error(title="create_report", message=e)
+
+
+def get_report_document(report_id):
+	try:
+		reports = get_reports_instance()
+
+		for x in range(3):
+			response = reports.get_report(report_id)
+			processingStatus = response.get("processingStatus")
+
+			if not processingStatus:
+				raise (KeyError("processingStatus"))
+			elif processingStatus == ("IN_PROGRESS" or "IN_QUEUE"):
+				time.sleep(15)
+				continue
+			elif processingStatus == ("CANCELLED" or "FATAL"):
+				raise (f"Report Processing Status: {processingStatus}")
+			elif processingStatus == "DONE":
+				report_document_id = response.get("reportDocumentId")
+
+				if report_document_id:
+					response = reports.get_report_document(report_document_id)
+					url = response.get("url")
+
+					if url:
+						rows = []
+
+						for line in urllib.request.urlopen(url):
+							decoded_line = line.decode("utf-8").replace("\t", "\n")
+							row = decoded_line.splitlines()
+							rows.append(row)
+
+						fields = rows[0]
+						rows.pop(0)
+
+						data = []
+
+						for row in rows:
+							data_row = {}
+							for index, value in enumerate(row):
+								data_row[fields[index]] = value
+							data.append(data_row)
+
+						return data
+					raise (KeyError("url"))
+				raise (KeyError("reportDocumentId"))
+	except Exception as e:
+		frappe.log_error(title="get_report_document", message=e)
