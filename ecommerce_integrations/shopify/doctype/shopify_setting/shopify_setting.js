@@ -28,7 +28,7 @@ frappe.ui.form.on("Shopify Setting", {
 	},
 
 	refresh: function (frm) {
-		frm.add_custom_button('Import Products', function () {
+		frm.add_custom_button(__('Import Products'), function () {
 			frappe.set_route('shopify-import-products');
 		});
 	}
