@@ -92,8 +92,6 @@ def sync_stocks(center=None, date=None):
 			list_of_centers = [center] if center else get_list_of_centers()
 			for row in list_of_centers:
 				center = frappe.get_doc("Zenoti Center", row)
-				center.sync_category()
-				center.sync_items()
 				process_stock_reconciliation(center, error_logs, date)
 				process_purchase_orders(center, error_logs, date)
 				if len(error_logs):
