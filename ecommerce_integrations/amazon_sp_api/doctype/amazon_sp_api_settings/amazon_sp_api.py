@@ -457,87 +457,15 @@ class Orders(SPAPI):
 class CatalogItems(SPAPI):
 	""" Amazon Catalog Items API """
 
-	BASE_URI = "/catalog/2020-12-01/items"
+	BASE_URI = "/catalog/v0"
 
-	def search_catalog_items(
-		self,
-		keywords: list[str],
-		marketplace_ids: list[str] = None,
-		included_data: list[str] = None,
-		brand_names: list[str] = None,
-		classification_ids: list[str] = None,
-		page_size: int = None,
-		page_token: str = None,
-		keywords_locale: str = None,
-		locale: str = None,
-	) -> object:
-		""" Search for and return a list of Amazon catalog items and associated information. """
-		valid_included_data = [
-			"IDENTIFIERS",
-			"IMAGES",
-			"PRODUCTTYPES",
-			"SALESRANKS",
-			"SUMMARIES",
-			"VARIATIONS",
-			"VENDORDETAILS",
-		]
-		if included_data:
-			for item in included_data:
-				if item.upper() not in valid_included_data:
-					raise SPAPIError(
-						f"Invalid Included Data: {item}, allowed data {', '.join(map(str, valid_included_data))}."
-					)
+	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> object:
+		""" Returns a specified item and its attributes. """
+		if not marketplace_id:
+			marketplace_id = self.marketplace_id
 
-		data = dict(
-			pageSize=page_size, pageToken=page_token, keywordsLocale=keywords_locale, locale=locale
-		)
-
-		self.list_to_dict("keywords", keywords, data)
-		self.list_to_dict("marketplaceIds", marketplace_ids, data)
-		self.list_to_dict("includedData", included_data, data)
-		self.list_to_dict("brandNames", brand_names, data)
-		self.list_to_dict("classificationIds", classification_ids, data)
-
-		if not marketplace_ids:
-			marketplace_ids = [self.marketplace_id]
-			data["marketplaceIds"] = marketplace_ids
-
-		return self.make_request(params=data)
-
-	def get_catalog_item(
-		self,
-		asin: str,
-		marketplace_ids: list[str] = None,
-		included_data: list[str] = None,
-		locale: str = None,
-	) -> object:
-		""" Retrieves details for an item in the Amazon catalog. """
-		valid_included_data = [
-			"ATTRIBUTES",
-			"IDENTIFIERS",
-			"IMAGES",
-			"PRODUCTTYPES",
-			"SALESRANKS",
-			"SUMMARIES",
-			"VARIATIONS",
-			"VENDORDETAILS",
-		]
-		if included_data:
-			for item in included_data:
-				if item.upper() not in valid_included_data:
-					raise SPAPIError(
-						f"Invalid Included Data: {item}, allowed data {', '.join(map(str, valid_included_data))}."
-					)
-
-		append_to_base_uri = f"/{asin}"
-		data = dict(locale=locale)
-
-		self.list_to_dict("marketplaceIds", marketplace_ids, data)
-		self.list_to_dict("includedData", included_data, data)
-
-		if not marketplace_ids:
-			marketplace_ids = [self.marketplace_id]
-			data["marketplaceIds"] = marketplace_ids
+		append_to_base_uri = f"/items/{asin}"
+		data = dict(MarketplaceId=marketplace_id)
 
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
