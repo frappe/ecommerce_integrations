@@ -1,0 +1,23 @@
+{
+ "content": null,
+ "creation": "2021-11-29 20:32:10.128244",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2021-11-29 20:32:46.663356",
+ "modified_by": "Administrator",
+ "module": "shopify",
+ "name": "shopify-import-products",
+ "owner": "Administrator",
+ "page_name": "shopify-import-products",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Shopify Import Products"
+}
