@@ -540,10 +540,10 @@ def get_report_document(report_id):
 
 			if not processingStatus:
 				raise (KeyError("processingStatus"))
-			elif processingStatus == ("IN_PROGRESS" or "IN_QUEUE"):
+			elif processingStatus in ["IN_PROGRESS", "IN_QUEUE"]:
 				time.sleep(15)
 				continue
-			elif processingStatus == ("CANCELLED" or "FATAL"):
+			elif processingStatus in ["CANCELLED", "FATAL"]:
 				raise (f"Report Processing Status: {processingStatus}")
 			elif processingStatus == "DONE":
 				report_document_id = response.get("reportDocumentId")
@@ -576,3 +576,16 @@ def get_report_document(report_id):
 				raise (KeyError("reportDocumentId"))
 	except Exception as e:
 		frappe.log_error(title="get_report_document", message=e)
+
+
+def get_products_details():
+	report_document = get_report_document(create_report())
+
+	if report_document:
+		catalog_items = get_catalog_items_instance()
+
+		for asin in report_document.get("asin1") or report_document.get("product-id"):
+			amazon_item = call_sp_api_method(sp_api_method=catalog_items.get_catalog_item, asin=asin)
+			create_item(amazon_item, asin)
+
+	raise ("No Product!")
