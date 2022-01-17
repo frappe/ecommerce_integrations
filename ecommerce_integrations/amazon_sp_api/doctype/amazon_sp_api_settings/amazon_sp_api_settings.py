@@ -22,7 +22,10 @@ class AmazonSPAPISettings(Document):
 
 	@frappe.whitelist()
 	def get_products_details(self):
-		pass
+		if self.enable_amazon == 1:
+			frappe.enqueue(
+				"ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_methods.get_products_details",
+			)
 
 	@frappe.whitelist()
 	def get_order_details(self):
