@@ -585,7 +585,7 @@ def get_products_details():
 		catalog_items = get_catalog_items_instance()
 
 		for asin in report_document.get("asin1") or report_document.get("product-id"):
-			amazon_item = call_sp_api_method(sp_api_method=catalog_items.get_catalog_item, asin=asin)
+			amazon_item = catalog_items.get_catalog_item(asin=asin)
 			create_item(amazon_item, asin)
 
 	raise ("No Product!")
