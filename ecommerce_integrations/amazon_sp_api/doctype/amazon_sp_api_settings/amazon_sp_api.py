@@ -302,54 +302,12 @@ class Finances(SPAPI):
 
 	BASE_URI = "/finances/v0/"
 
-	def list_financial_event_groups(
-		self,
-		max_results: int = None,
-		started_before: str = None,
-		started_after: str = None,
-		next_token: str = None,
-	) -> object:
-		""" Returns financial event groups for a given date range. """
-		append_to_base_uri = "financialEventGroups"
-		data = dict(
-			MaxResultsPerPage=max_results,
-			FinancialEventGroupStartedBefore=started_before,
-			FinancialEventGroupStartedAfter=started_after,
-			NextToken=next_token,
-		)
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-	def list_financial_events_by_group_id(
-		self, group_id: str, max_results: int = None, next_token: str = None
-	) -> object:
-		""" Returns all financial events for the specified financial event group. """
-		append_to_base_uri = f"financialEventGroups/{group_id}/financialEvents"
-		data = dict(MaxResultsPerPage=max_results, NextToken=next_token)
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
 	def list_financial_events_by_order_id(
 		self, order_id: str, max_results: int = None, next_token: str = None
 	) -> object:
 		""" Returns all financial events for the specified order. """
 		append_to_base_uri = f"orders/{order_id}/financialEvents"
 		data = dict(MaxResultsPerPage=max_results, NextToken=next_token)
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-	def list_financial_events(
-		self,
-		max_results: int = None,
-		posted_after: str = None,
-		posted_before: str = None,
-		next_token: str = None,
-	) -> object:
-		""" Returns financial events for the specified data range. """
-		append_to_base_uri = "financialEvents"
-		data = dict(
-			MaxResultsPerPage=max_results,
-			PostedAfter=posted_after,
-			PostedBefore=posted_before,
-			NextToken=next_token,
-		)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 
@@ -406,52 +364,11 @@ class Orders(SPAPI):
 
 		return self.make_request(params=data)
 
-	def get_order(self, order_id: str) -> dict:
-		""" Returns the order indicated by the specified order ID. """
-		append_to_base_uri = f"/{order_id}"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
-
-	def get_order_buyer_info(self, order_id: str) -> dict:
-		""" Returns buyer information for the specified order. """
-		append_to_base_uri = f"/{order_id}/buyerInfo"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
-
-	def get_order_address(self, order_id: str) -> dict:
-		""" Returns the shipping address for the specified order. """
-		append_to_base_uri = f"/{order_id}/address"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
-
 	def get_order_items(self, order_id: str, next_token: str = None) -> object:
 		""" Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items. """
 		append_to_base_uri = f"/{order_id}/orderItems"
 		data = dict(NextToken=next_token)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-	def get_order_items_buyer_info(self, order_id: str, next_token: str = None) -> object:
-		""" Returns buyer information for the order items in the specified order. """
-		append_to_base_uri = f"/{order_id}/orderItems/buyerInfo"
-		data = dict(NextToken=next_token)
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-	def update_shipment_status(
-		self, order_id: str, marketplace_id: str, shipment_status: str, order_items: list[dict]
-	) -> dict:
-		""" Update the shipment status. """
-		valid_shipment_statuses = ["ReadyForPickup", "PickedUp", "RefusedPickup"]
-		if shipment_status not in valid_shipment_statuses:
-			raise SPAPIError(
-				f"Invalid Shipment Status: {shipment_status}, valid statuses are"
-				f" {', '.join(map(str, valid_shipment_statuses))}."
-			)
-
-		append_to_base_uri = f"/{order_id}/shipment"
-		data = {
-			"marketplaceId": marketplace_id,
-			"shipmentStatus": shipment_status,
-			"orderItems": order_items,
-		}
-
-		return self.make_request(method="POST", append_to_base_uri=append_to_base_uri, data=data)
 
 
 class CatalogItems(SPAPI):
@@ -474,41 +391,6 @@ class Reports(SPAPI):
 	""" Amazon Reports API """
 
 	BASE_URI = "/reports/2021-06-30"
-
-	def get_reports(
-		self,
-		report_types: list[str] = None,
-		processing_statuses: list[str] = None,
-		marketplace_ids: list[str] = None,
-		page_size: int = None,
-		created_since: str = None,
-		created_until: str = None,
-		next_token: str = None,
-	) -> object:
-		""" Returns report details for the reports that match the filters that you specify. """
-		valid_processing_statuses = ["CANCELLED", "DONE", "FATAL", "IN_PROGRESS", "IN_QUEUE"]
-		if processing_statuses:
-			for processing_status in processing_statuses:
-				if processing_status.upper() not in valid_processing_statuses:
-					raise SPAPIError(
-						f"Invalid Processing Status: {processing_status}, valid statuses are"
-						f" {', '.join(map(str, valid_processing_statuses))}."
-					)
-
-		append_to_base_uri = "/reports"
-		data = dict(
-			pageSize=page_size, createdSince=created_since, createdUntil=created_until, nextToken=next_token
-		)
-
-		self.list_to_dict("reportTypes", report_types, data)
-		self.list_to_dict("processingStatuses", processing_statuses, data)
-		self.list_to_dict("marketplaceIds", marketplace_ids, data)
-
-		if not marketplace_ids:
-			marketplace_ids = [self.marketplace_id]
-			data["marketplaceIds"] = marketplace_ids
-
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 	def create_report(
 		self,
@@ -539,78 +421,6 @@ class Reports(SPAPI):
 		""" Returns report details (including the reportDocumentId, if available) for the report that you specify. """
 		append_to_base_uri = f"/reports/{report_id}"
 		return self.make_request(append_to_base_uri=append_to_base_uri)
-
-	def cancel_report(self, report_id: str) -> dict:
-		""" Cancels the report that you specify. Only reports with processingStatus=IN_QUEUE can be cancelled. Cancelled reports are returned in subsequent calls to the getReport and getReports operations. """
-		append_to_base_uri = f"/reports/{report_id}"
-		return self.make_request(method="DELETE", append_to_base_uri=append_to_base_uri)
-
-	def get_report_schedules(self, report_types: list[str]) -> dict:
-		""" Returns report schedule details that match the filters that you specify. """
-		append_to_base_uri = "/schedules"
-		data = {}
-		self.list_to_dict("reportTypes", report_types, data)
-		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-	def create_report_schedule(
-		self,
-		report_type: str,
-		period: str,
-		marketplace_ids: list[str] = None,
-		report_options: dict = None,
-		next_report_creation_time: str = None,
-	) -> object:
-		""" Creates a report schedule. If a report schedule with the same report type and marketplace IDs already exists, it will be cancelled and replaced with this one. """
-		valid_periods = [
-			"PT5M",
-			"PT15M",
-			"PT30M",
-			"PT1H",
-			"PT2H",
-			"PT4H",
-			"PT8H",
-			"PT12H",
-			"P1D",
-			"P2D",
-			"P3D",
-			"PT84H",
-			"P7D",
-			"P14D",
-			"P15D",
-			"P18D",
-			"P30D",
-			"P1M",
-		]
-		if period not in valid_periods:
-			raise SPAPIError(
-				f"Invalid Period: {period}, valid periods are {', '.join(map(str, valid_periods))}."
-			)
-
-		append_to_base_uri = "/schedules"
-		data = dict(
-			reportType=report_type,
-			reportOptions=report_options,
-			period=period,
-			nextReportCreationTime=next_report_creation_time,
-		)
-
-		self.list_to_dict("marketplaceIds", marketplace_ids, data)
-
-		if not marketplace_ids:
-			marketplace_ids = [self.marketplace_id]
-			data["marketplaceIds"] = marketplace_ids
-
-		return self.make_request(method="POST", append_to_base_uri=append_to_base_uri, data=data)
-
-	def get_report_schedule(self, report_schedule_id: str) -> dict:
-		""" Returns report schedule details for the report schedule that you specify. """
-		append_to_base_uri = f"/schedules/{report_schedule_id}"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
-
-	def cancel_report_schedule(self, report_schedule_id: str) -> dict:
-		""" Cancels the report schedule that you specify. """
-		append_to_base_uri = f"/schedules/{report_schedule_id}"
-		return self.make_request(method="DELETE", append_to_base_uri=append_to_base_uri)
 
 	def get_report_document(self, report_document_id: str) -> dict:
 		""" Returns the information required for retrieving a report document's contents. """
