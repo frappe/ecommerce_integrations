@@ -9,6 +9,18 @@ import ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazo
 
 
 class AmazonRepository:
+	def __init__(self) -> None:
+		self.amz_settings = frappe.get_doc("Amazon SP API Settings")
+		self.instance_params = dict(
+			iam_arn=self.amz_settings.iam_arn,
+			client_id=self.amz_settings.client_id,
+			client_secret=self.amz_settings.client_secret,
+			refresh_token=self.amz_settings.refresh_token,
+			aws_access_key=self.amz_settings.aws_access_key,
+			aws_secret_key=self.amz_settings.aws_secret_key,
+			country_code=self.amz_settings.country,
+		)
+
 	# Helper Methods
 	def return_as_list(input):
 		if isinstance(input, list):
@@ -16,9 +28,8 @@ class AmazonRepository:
 		else:
 			return [input]
 
-	def call_sp_api_method(sp_api_method, **kwargs):
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-		max_retries = amz_settings.max_retry_limit
+	def call_sp_api_method(self, sp_api_method, **kwargs):
+		max_retries = self.amz_settings.max_retry_limit
 
 		for x in range(max_retries):
 			try:
@@ -29,36 +40,24 @@ class AmazonRepository:
 				time.sleep(3)
 				continue
 
-		amz_settings.enable_sync = 0
-		amz_settings.save()
+		self.amz_settings.enable_sync = 0
+		self.amz_settings.save()
 
 		frappe.throw(_("Sync has been temporarily disabled because maximum retries have been exceeded!"))
 
 	# Related to Finances
-	def get_finances_instance():
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-		finances = sp_api.Finances(
-			iam_arn=amz_settings.iam_arn,
-			client_id=amz_settings.client_id,
-			client_secret=amz_settings.client_secret,
-			refresh_token=amz_settings.refresh_token,
-			aws_access_key=amz_settings.aws_access_key,
-			aws_secret_key=amz_settings.aws_secret_key,
-			country_code=amz_settings.country,
-		)
+	def get_finances_instance(self):
+		return sp_api.Finances(**self.instance_params)
 
-		return finances
-
-	def get_account(name):
+	def get_account(self, name):
 		account_name = frappe.db.get_value("Account", {"account_name": "Amazon {0}".format(name)})
 
 		if not account_name:
-			amz_settings = frappe.get_doc("Amazon SP API Settings")
 			try:
 				new_account = frappe.new_doc("Account")
 				new_account.account_name = "Amazon {0}".format(name)
-				new_account.company = amz_settings.company
-				new_account.parent_account = amz_settings.market_place_account_group
+				new_account.company = self.amz_settings.company
+				new_account.parent_account = self.amz_settings.market_place_account_group
 				new_account.insert(ignore_permissions=True)
 				account_name = new_account.name
 			except Exception as e:
@@ -138,21 +137,10 @@ class AmazonRepository:
 			frappe.log_error(title="get_charges_and_fees", message=e)
 
 	# Related to Orders
-	def get_orders_instance():
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-		orders = sp_api.Orders(
-			iam_arn=amz_settings.iam_arn,
-			client_id=amz_settings.client_id,
-			client_secret=amz_settings.client_secret,
-			refresh_token=amz_settings.refresh_token,
-			aws_access_key=amz_settings.aws_access_key,
-			aws_secret_key=amz_settings.aws_secret_key,
-			country_code=amz_settings.country,
-		)
+	def get_orders_instance(self):
+		return sp_api.Orders(**self.instance_params)
 
-		return orders
-
-	def create_customer(order):
+	def create_customer(self, order):
 		order_customer_name = ""
 		buyer_info = order.get("BuyerInfo")
 
@@ -182,12 +170,11 @@ class AmazonRepository:
 
 			return existing_customer_name
 		else:
-			amz_settings = frappe.get_doc("Amazon SP API Settings")
 			new_customer = frappe.new_doc("Customer")
 			new_customer.customer_name = order_customer_name
-			new_customer.customer_group = amz_settings.customer_group
-			new_customer.territory = amz_settings.territory
-			new_customer.customer_type = amz_settings.customer_type
+			new_customer.customer_group = self.amz_settings.customer_group
+			new_customer.territory = self.amz_settings.territory
+			new_customer.customer_type = self.amz_settings.customer_type
 			new_customer.save()
 
 			new_contact = frappe.new_doc("Contact")
@@ -376,21 +363,10 @@ class AmazonRepository:
 			frappe.log_error(title="get_orders", message=e)
 
 	# Related to CatalogItems or Products
-	def get_catalog_items_instance():
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-		catalog_items = sp_api.CatalogItems(
-			iam_arn=amz_settings.iam_arn,
-			client_id=amz_settings.client_id,
-			client_secret=amz_settings.client_secret,
-			refresh_token=amz_settings.refresh_token,
-			aws_access_key=amz_settings.aws_access_key,
-			aws_secret_key=amz_settings.aws_secret_key,
-			country_code=amz_settings.country,
-		)
+	def get_catalog_items_instance(self):
+		return sp_api.CatalogItems(**self.instance_params)
 
-		return catalog_items
-
-	def create_item_group(amazon_item, amz_settings):
+	def create_item_group(self, amazon_item):
 		item_group_name = amazon_item.get("AttributeSets")[0].get("ProductGroup")
 
 		if item_group_name:
@@ -399,7 +375,7 @@ class AmazonRepository:
 			if not item_group:
 				new_item_group = frappe.new_doc("Item Group")
 				new_item_group.item_group_name = item_group_name
-				new_item_group.parent_item_group = amz_settings.parent_item_group
+				new_item_group.parent_item_group = self.amz_settings.parent_item_group
 				new_item_group.insert()
 				return new_item_group.item_group_name
 
@@ -464,17 +440,15 @@ class AmazonRepository:
 		if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
 			return
 
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-
 		# Create Item
 		item = frappe.new_doc("Item")
 		item.item_code = sku
-		item.item_group = self.create_item_group(amazon_item, amz_settings)
+		item.item_group = self.create_item_group(amazon_item, self.amz_settings)
 		item.description = amazon_item.get("AttributeSets")[0].get("Title")
 		item.brand = self.create_brand(amazon_item)
 		item.manufacturer = self.create_manufacturer(amazon_item)
 		item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
-		item.append("item_defaults", {"company": amz_settings.company})
+		item.append("item_defaults", {"company": self.amz_settings.company})
 		item.insert(ignore_permissions=True)
 
 		# Create Ecommerce Item
@@ -498,19 +472,8 @@ class AmazonRepository:
 		raise ("No Product!")
 
 	# Related to Reports
-	def get_reports_instance():
-		amz_settings = frappe.get_doc("Amazon SP API Settings")
-		reports = sp_api.Reports(
-			iam_arn=amz_settings.iam_arn,
-			client_id=amz_settings.client_id,
-			client_secret=amz_settings.client_secret,
-			refresh_token=amz_settings.refresh_token,
-			aws_access_key=amz_settings.aws_access_key,
-			aws_secret_key=amz_settings.aws_secret_key,
-			country_code=amz_settings.country,
-		)
-
-		return reports
+	def get_reports_instance(self):
+		return sp_api.Reports(**self.instance_params)
 
 	def create_report(
 		self, report_type="GET_FLAT_FILE_OPEN_LISTINGS_DATA", data_start_time=None, data_end_time=None
