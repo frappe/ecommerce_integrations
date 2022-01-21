@@ -233,7 +233,7 @@ class AmazonRepository:
 			)
 
 			final_order_items = []
-			warehouse = frappe.db.get_single_value("Amazon SP API Settings", "warehouse")
+			warehouse = self.amz_settings.warehouse
 
 			while True:
 
@@ -294,11 +294,11 @@ class AmazonRepository:
 					"delivery_date": delivery_date,
 					"transaction_date": transaction_date,
 					"items": items,
-					"company": frappe.db.get_single_value("Amazon SP API Settings", "company"),
+					"company": self.amz_settings.company,
 				}
 			)
 
-			taxes_and_charges = frappe.db.get_single_value("Amazon SP API Settings", "taxes_charges")
+			taxes_and_charges = self.amz_settings.taxes_charges
 
 			try:
 				if taxes_and_charges:
@@ -427,9 +427,9 @@ class AmazonRepository:
 		ecommerce_item.sku = sku
 		ecommerce_item.insert(ignore_permissions=True)
 
-	def create_item_price(amazon_item, item_code):
+	def create_item_price(self, amazon_item, item_code):
 		item_price = frappe.new_doc("Item Price")
-		item_price.price_list = frappe.db.get_single_value("Amazon SP API Settings", "price_list")
+		item_price.price_list = self.amz_settings.price_list
 		item_price.price_list_rate = (
 			amazon_item.get("AttributeSets")[0].get("ListPrice", {}).get("Amount") or 0
 		)
