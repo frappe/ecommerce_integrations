@@ -85,7 +85,7 @@ DATA = {
 					{
 						"ASIN": "B008X9Z37A",
 						"OrderItemId": "05015851154158",
-						"SellerSKU": "NABetaASINB00551Q3CS",
+						"SellerSKU": "WNDR3400-N600",
 						"Title": "B00551Q3CS [Card Book]",
 						"QuantityOrdered": 1,
 						"QuantityShipped": 0,
@@ -109,78 +109,78 @@ DATA = {
 	"get_catalog_item_200": {
 		"status": 200,
 		"json": {
-			"asin": "B008X9Z37A",
-			"identifiers": [
-				{
-					"marketplaceId": "ATVPDKIKX0DER",
-					"identifiers": [
-						{"identifierType": "ean", "identifier": "0887276302195"},
-						{"identifierType": "upc", "identifier": "887276302195"},
-					],
-				}
-			],
-			"images": [
-				{
-					"marketplaceId": "ATVPDKIKX0DER",
-					"images": [
-						{
-							"variant": "MAIN",
-							"link": "https://m.media-amazon.com/images/I/51DZzp3w3vL.jpg",
-							"height": 333,
-							"width": 500,
-						}
-					],
-				}
-			],
-			"productTypes": [{"marketplaceId": "ATVPDKIKX0DER", "productType": "TELEVISION"}],
-			"salesRanks": [
-				{
-					"marketplaceId": "ATVPDKIKX0DER",
-					"ranks": [
-						{
-							"title": "OLED TVs",
-							"link": "http://www.amazon.com/gp/bestsellers/electronics/6463520011",
-							"rank": 3,
+			"payload": {
+				"Identifiers": {
+					"MarketplaceASIN": {"MarketplaceId": "ATVPDKIKX0DER", "ASIN": "B008X9Z37A"},
+					"SKUIdentifier": {"MarketplaceId": "", "SellerId": "", "SellerSKU": ""},
+				},
+				"AttributeSets": [
+					{
+						"NumberOfDiscs": 11,
+						"NumberOfIssues": 12,
+						"NumberOfItems": 1,
+						"NumberOfPages": 234,
+						"NumberOfTracks": 104,
+						"OpticalZoom": {"Units": "nm", "value": 101},
+						"PackageDimensions": {
+							"Height": {"value": 5.44, "Units": "mm"},
+							"Length": {"value": 4.5, "Units": "inches"},
+							"Width": {"value": 2.44, "Units": "cm"},
+							"Weight": {"value": 0.16, "Units": "pounds"},
 						},
-						{
-							"title": "Electronics",
-							"link": "http://www.amazon.com/gp/bestsellers/electronics",
-							"rank": 1544,
+						"Creator": [{"Role": "someRole", "value": "4.5"}, {"Role": "someRole2", "value": "45.5"}],
+						"PackageQuantity": 1,
+						"PartNumber": "2865",
+						"PegiRating": "PegiRating",
+						"ProcessorCount": 23,
+						"ProductGroup": "Health and Beauty",
+						"ProductTypeName": "HEALTH_PERSONAL_CARE",
+						"ProductTypeSubcategory": "ProductTypeSubcategory",
+						"PublicationDate": "2012-07-27",
+						"Publisher": "Pharmavite",
+						"RegionCode": "RegionCode",
+						"ReleaseDate": "ReleaseDate",
+						"RingSize": "RingSize",
+						"RunningTime": {"Units": "minutes", "value": 131},
+						"ShaftMaterial": "ShaftMaterial",
+						"Scent": "Scent",
+						"SeasonSequence": "Publisher",
+						"SeikodoProductCode": "SeikodoProductCode",
+						"Size": "Size",
+						"SizePerPearl": "SizePerPearl",
+						"SmallImage": {
+							"URL": "http://g-ecx.images-amazon.com/images/G/01/x-site/icons/no-img-sm._CB1535416344_.gif",
+							"Height": {"Units": "pixels", "value": 40},
+							"Width": {"Units": "pixels", "value": 60},
 						},
-					],
-				}
-			],
-			"summaries": [
-				{
-					"marketplaceId": "ATVPDKIKX0DER",
-					"brandName": "Samsung Electronics",
-					"browseNode": "6463520011",
-					"colorName": "Black",
-					"itemName": (
-						"Samsung QN82Q60RAFXZA Flat 82-Inch QLED 4K Q60 Series (2019) Ultra HD"
-						" Smart TV with HDR and Alexa Compatibility"
-					),
-					"manufacturer": "Samsung",
-					"modelNumber": "QN82Q60RAFXZA",
-					"sizeName": "82-Inch",
-					"styleName": "TV only",
-				}
-			],
-			"variations": [
-				{"marketplaceId": "ATVPDKIKX0DER", "asins": ["B08J7TQ9FL"], "variationType": "CHILD"}
-			],
-			"vendorDetails": [
-				{
-					"marketplaceId": "ATVPDKIKX0DER",
-					"brandCode": "SAMF9",
-					"categoryCode": "50400100",
-					"manufacturerCode": "SAMF9",
-					"manufacturerCodeParent": "SAMF9",
-					"productGroup": "Home Entertainment",
-					"replenishmentCategory": "NEW_PRODUCT",
-					"subcategoryCode": "50400150",
-				}
-			],
+						"Studio": "Pharmavite",
+						"SubscriptionLength": {"Units": "months", "value": 12},
+						"SystemMemorySize": {"Units": "GB", "value": 256},
+						"SystemMemoryType": "SystemMemoryType",
+						"TheatricalReleaseDate": "2020-11-11",
+						"Title": "Nature Made Super B Complex Full Strength Softgel, 60 Count",
+						"TotalDiamondWeight": {"Units": "gms", "value": 22},
+						"TotalGemWeight": {"Units": "carat", "value": 23},
+						"Warranty": "Warranty",
+						"WeeeTaxValue": {"Amount": 11.99, "CurrencyCode": "EUR"},
+					}
+				],
+				"Relationships": [
+					{"RingSize": "1", "ShaftMaterial": "Asbestos", "Scent": "Happy", "PackageQuantity": 102},
+					{
+						"SizePerPearl": "2",
+						"GemType": ["Gemmy1", "Gemmy2"],
+						"OperatingSystem": ["WIN", "MAC"],
+						"MaterialType": ["Steel", "Nickel"],
+						"ItemDimensions": {
+							"Height": {"value": 4.5, "Units": "mm"},
+							"Length": {"value": 1.44, "Units": "inches"},
+							"Width": {"value": 2.44, "Units": "cm"},
+							"Weight": {"value": 0.16, "Units": "pounds"},
+						},
+					},
+				],
+			}
 		},
 	},
 	"list_financial_events_by_order_id_200": {
