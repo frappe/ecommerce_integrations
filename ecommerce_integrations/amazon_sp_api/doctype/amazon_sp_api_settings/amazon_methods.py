@@ -440,22 +440,25 @@ class AmazonRepository:
 		if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
 			return
 
-		# Create Item
-		item = frappe.new_doc("Item")
-		item.item_code = sku
-		item.item_group = self.create_item_group(amazon_item)
-		item.description = amazon_item.get("AttributeSets")[0].get("Title")
-		item.brand = self.create_brand(amazon_item)
-		item.manufacturer = self.create_manufacturer(amazon_item)
-		item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
-		item.append("item_defaults", {"company": self.amz_settings.company})
-		item.insert(ignore_permissions=True)
+		if frappe.db.get_value("Item", {"item_code": sku}):
+			item = frappe.get_doc("Item", sku)
+		else:
+			# Create Item
+			item = frappe.new_doc("Item")
+			item.item_code = sku
+			item.item_group = self.create_item_group(amazon_item)
+			item.description = amazon_item.get("AttributeSets")[0].get("Title")
+			item.brand = self.create_brand(amazon_item)
+			item.manufacturer = self.create_manufacturer(amazon_item)
+			item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
+			item.append("item_defaults", {"company": self.amz_settings.company})
+			item.insert(ignore_permissions=True)
 
-		# Create Ecommerce Item
-		self.create_ecommerce_item(amazon_item, item.item_code, sku)
+			# Create Ecommerce Item
+			self.create_ecommerce_item(amazon_item, item.item_code, sku)
 
-		# Create Item Price
-		self.create_item_price(amazon_item, item.item_code)
+			# Create Item Price
+			self.create_item_price(amazon_item, item.item_code)
 
 		return item.name
 
