@@ -399,7 +399,7 @@ class AmazonRepository:
 		else:
 			return existing_brand
 
-	def create_manufacturer(amazon_item):
+	def create_manufacturer(self, amazon_item):
 		manufacturer_name = amazon_item.get("AttributeSets")[0].get("Manufacturer")
 
 		if not manufacturer_name:
