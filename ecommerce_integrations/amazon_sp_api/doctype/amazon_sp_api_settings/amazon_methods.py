@@ -451,7 +451,6 @@ class AmazonRepository:
 			item.brand = self.create_brand(amazon_item)
 			item.manufacturer = self.create_manufacturer(amazon_item)
 			item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
-			item.append("item_defaults", {"company": self.amz_settings.company})
 			item.insert(ignore_permissions=True)
 
 			# Create Ecommerce Item
