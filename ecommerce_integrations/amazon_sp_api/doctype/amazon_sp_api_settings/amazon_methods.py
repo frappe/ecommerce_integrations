@@ -443,7 +443,7 @@ class AmazonRepository:
 		# Create Item
 		item = frappe.new_doc("Item")
 		item.item_code = sku
-		item.item_group = self.create_item_group(amazon_item, self.amz_settings)
+		item.item_group = self.create_item_group(amazon_item)
 		item.description = amazon_item.get("AttributeSets")[0].get("Title")
 		item.brand = self.create_brand(amazon_item)
 		item.manufacturer = self.create_manufacturer(amazon_item)
