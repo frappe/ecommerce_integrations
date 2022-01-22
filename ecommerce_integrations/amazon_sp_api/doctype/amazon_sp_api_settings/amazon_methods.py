@@ -22,7 +22,7 @@ class AmazonRepository:
 		)
 
 	# Helper Methods
-	def return_as_list(input):
+	def return_as_list(self, input):
 		if isinstance(input, list):
 			return input
 		else:
@@ -185,7 +185,7 @@ class AmazonRepository:
 
 			return new_customer.name
 
-	def create_address(order, customer_name):
+	def create_address(self, order, customer_name):
 		shipping_address = order.get("ShippingAddress")
 
 		if not shipping_address:
@@ -216,7 +216,7 @@ class AmazonRepository:
 			make_address.address_type = "Shipping"
 			make_address.insert()
 
-	def get_item_code(order_item):
+	def get_item_code(self, order_item):
 		sku = order_item.get("SellerSKU")
 
 		if sku:
@@ -417,7 +417,7 @@ class AmazonRepository:
 		else:
 			return existing_manufacturer
 
-	def create_ecommerce_item(amazon_item, item_code, sku):
+	def create_ecommerce_item(self, amazon_item, item_code, sku):
 		ecommerce_item = frappe.new_doc("Ecommerce Item")
 		ecommerce_item.integration = frappe.get_meta("Amazon SP API Settings").module
 		ecommerce_item.erpnext_item_code = item_code
