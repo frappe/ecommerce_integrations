@@ -383,7 +383,7 @@ class AmazonRepository:
 
 		raise (KeyError("ProductGroup"))
 
-	def create_brand(amazon_item):
+	def create_brand(self, amazon_item):
 		brand_name = amazon_item.get("AttributeSets")[0].get("Brand")
 
 		if not brand_name:
