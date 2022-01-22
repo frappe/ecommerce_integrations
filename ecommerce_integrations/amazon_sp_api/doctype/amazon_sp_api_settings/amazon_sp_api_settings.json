@@ -7,7 +7,6 @@
  "field_order": [
   "enable_amazon",
   "section_break_4",
-  "app_id",
   "iam_arn",
   "refresh_token",
   "column_break_1",
@@ -130,13 +129,6 @@
    "non_negative": 1
   },
   {
-   "fieldname": "app_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "App ID",
-   "reqd": 1
-  },
-  {
    "fieldname": "iam_arn",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -230,7 +222,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-16 23:01:32.088592",
+ "modified": "2022-01-22 16:13:12.681766",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
