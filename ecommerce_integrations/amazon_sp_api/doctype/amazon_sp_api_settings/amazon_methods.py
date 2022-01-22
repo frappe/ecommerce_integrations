@@ -438,7 +438,7 @@ class AmazonRepository:
 
 	def create_item(self, amazon_item, sku):
 		if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
-			return
+			return sku
 
 		if frappe.db.get_value("Item", {"item_code": sku}):
 			item = frappe.get_doc("Item", sku)
@@ -467,10 +467,15 @@ class AmazonRepository:
 		if report_document:
 			catalog_items = self.get_catalog_items_instance()
 
+			products = []
+
 			for item in report_document:
 				asin = item.get("asin1") or item.get("product-id")
 				amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
-				self.create_item(amazon_item, asin)
+				item_name = self.create_item(amazon_item, asin)
+				products.append(item_name)
+
+			return products
 
 	# Related to Reports
 	def get_reports_instance(self):
