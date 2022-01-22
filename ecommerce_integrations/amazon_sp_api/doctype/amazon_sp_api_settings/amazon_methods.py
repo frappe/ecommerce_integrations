@@ -470,7 +470,7 @@ class AmazonRepository:
 
 			for item in report_document:
 				asin = item.get("asin1") or item.get("product-id")
-				amazon_item = catalog_items.get_catalog_item(asin=asin)
+				amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
 				self.create_item(amazon_item, asin)
 
 	# Related to Reports
