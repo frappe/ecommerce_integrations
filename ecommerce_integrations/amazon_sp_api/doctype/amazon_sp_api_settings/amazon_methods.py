@@ -465,11 +465,10 @@ class AmazonRepository:
 		if report_document:
 			catalog_items = self.get_catalog_items_instance()
 
-			for asin in report_document.get("asin1") or report_document.get("product-id"):
+			for item in report_document:
+				asin = item.get("asin1") or item.get("product-id")
 				amazon_item = catalog_items.get_catalog_item(asin=asin)
 				self.create_item(amazon_item, asin)
-
-		raise ("No Product!")
 
 	# Related to Reports
 	def get_reports_instance(self):
