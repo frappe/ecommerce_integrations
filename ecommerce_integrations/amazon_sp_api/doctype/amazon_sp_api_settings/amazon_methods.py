@@ -379,7 +379,7 @@ class AmazonRepository:
 				new_item_group.insert()
 				return new_item_group.item_group_name
 
-			return item_group.item_group_name
+			return item_group
 
 		raise (KeyError("ProductGroup"))
 
