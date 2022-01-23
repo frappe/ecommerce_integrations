@@ -267,7 +267,7 @@ class AmazonRepository:
 		)
 
 		if sales_order:
-			return
+			return sales_order
 		else:
 			items = self.get_order_items(order_id)
 			delivery_date = dateutil.parser.parse(order.get("LatestShipDate")).strftime("%Y-%m-%d")
@@ -298,6 +298,7 @@ class AmazonRepository:
 
 			sales_order.insert(ignore_permissions=True)
 			sales_order.submit()
+			return sales_order.name
 
 	def get_orders(self, created_after):
 		orders = self.get_orders_instance()
@@ -321,6 +322,8 @@ class AmazonRepository:
 			max_results=50,
 		)
 
+		sales_orders = []
+
 		while True:
 
 			orders_list = orders_payload.get("Orders")
@@ -330,7 +333,8 @@ class AmazonRepository:
 				break
 
 			for order in orders_list:
-				self.create_sales_order(order)
+				sales_order = self.create_sales_order(order)
+				sales_orders.append(sales_order)
 
 			if not next_token:
 				break
@@ -338,6 +342,8 @@ class AmazonRepository:
 			orders_payload = self.call_sp_api_method(
 				sp_api_method=orders.get_orders, created_after=created_after, next_token=next_token
 			)
+
+		return sales_orders
 
 	# Related to CatalogItems or Products
 	def get_catalog_items_instance(self):
