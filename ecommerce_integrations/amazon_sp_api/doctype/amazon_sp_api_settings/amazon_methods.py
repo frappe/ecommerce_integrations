@@ -53,88 +53,81 @@ class AmazonRepository:
 		account_name = frappe.db.get_value("Account", {"account_name": "Amazon {0}".format(name)})
 
 		if not account_name:
-			try:
-				new_account = frappe.new_doc("Account")
-				new_account.account_name = "Amazon {0}".format(name)
-				new_account.company = self.amz_settings.company
-				new_account.parent_account = self.amz_settings.market_place_account_group
-				new_account.insert(ignore_permissions=True)
-				account_name = new_account.name
-			except Exception as e:
-				frappe.log_error(message=e, title="Create Account")
+			new_account = frappe.new_doc("Account")
+			new_account.account_name = "Amazon {0}".format(name)
+			new_account.company = self.amz_settings.company
+			new_account.parent_account = self.amz_settings.market_place_account_group
+			new_account.insert(ignore_permissions=True)
+			account_name = new_account.name
 
 		return account_name
 
 	def get_charges_and_fees(self, order_id):
-		try:
-			finances = self.get_finances_instance()
+		finances = self.get_finances_instance()
+		financial_events_payload = self.call_sp_api_method(
+			sp_api_method=finances.list_financial_events_by_order_id, order_id=order_id
+		)
+
+		charges_and_fees = {"charges": [], "fees": []}
+
+		while True:
+
+			shipment_event_list = financial_events_payload.get("FinancialEvents", {}).get(
+				"ShipmentEventList", []
+			)
+			next_token = financial_events_payload.get("NextToken")
+
+			for shipment_event in shipment_event_list:
+
+				if shipment_event:
+
+					for shipment_item in shipment_event.get("ShipmentItemList", []):
+						charges = shipment_item.get("ItemChargeList", [])
+						fees = shipment_item.get("ItemFeeList", [])
+						seller_sku = shipment_item.get("SellerSKU")
+
+						for charge in charges:
+
+							charge_type = charge.get("ChargeType")
+							amount = charge.get("ChargeAmount", {}).get("CurrencyAmount", 0)
+
+							if charge_type != "Principal" and float(amount) != 0:
+								charge_account = self.get_account(charge_type)
+								charges_and_fees.get("charges").append(
+									{
+										"charge_type": "Actual",
+										"account_head": charge_account,
+										"tax_amount": amount,
+										"description": charge_type + " for " + seller_sku,
+									}
+								)
+
+						for fee in fees:
+
+							fee_type = fee.get("FeeType")
+							amount = fee.get("FeeAmount", {}).get("CurrencyAmount", 0)
+
+							if float(amount) != 0:
+								fee_account = self.get_account(fee_type)
+								charges_and_fees.get("fees").append(
+									{
+										"charge_type": "Actual",
+										"account_head": fee_account,
+										"tax_amount": amount,
+										"description": fee_type + " for " + seller_sku,
+									}
+								)
+
+			if not next_token:
+				break
+
 			financial_events_payload = self.call_sp_api_method(
-				sp_api_method=finances.list_financial_events_by_order_id, order_id=order_id
+				sp_api_method=finances.list_financial_events_by_order_id,
+				order_id=order_id,
+				next_token=next_token,
 			)
 
-			charges_and_fees = {"charges": [], "fees": []}
-
-			while True:
-
-				shipment_event_list = financial_events_payload.get("FinancialEvents", {}).get(
-					"ShipmentEventList", []
-				)
-				next_token = financial_events_payload.get("NextToken")
-
-				for shipment_event in shipment_event_list:
-
-					if shipment_event:
-
-						for shipment_item in shipment_event.get("ShipmentItemList", []):
-							charges = shipment_item.get("ItemChargeList", [])
-							fees = shipment_item.get("ItemFeeList", [])
-							seller_sku = shipment_item.get("SellerSKU")
-
-							for charge in charges:
-
-								charge_type = charge.get("ChargeType")
-								amount = charge.get("ChargeAmount", {}).get("CurrencyAmount", 0)
-
-								if charge_type != "Principal" and float(amount) != 0:
-									charge_account = self.get_account(charge_type)
-									charges_and_fees.get("charges").append(
-										{
-											"charge_type": "Actual",
-											"account_head": charge_account,
-											"tax_amount": amount,
-											"description": charge_type + " for " + seller_sku,
-										}
-									)
-
-							for fee in fees:
-
-								fee_type = fee.get("FeeType")
-								amount = fee.get("FeeAmount", {}).get("CurrencyAmount", 0)
-
-								if float(amount) != 0:
-									fee_account = self.get_account(fee_type)
-									charges_and_fees.get("fees").append(
-										{
-											"charge_type": "Actual",
-											"account_head": fee_account,
-											"tax_amount": amount,
-											"description": fee_type + " for " + seller_sku,
-										}
-									)
-
-				if not next_token:
-					break
-
-				financial_events_payload = self.call_sp_api_method(
-					sp_api_method=finances.list_financial_events_by_order_id,
-					order_id=order_id,
-					next_token=next_token,
-				)
-
-			return charges_and_fees
-
-		except Exception as e:
-			frappe.log_error(title="get_charges_and_fees", message=e)
+		return charges_and_fees
 
 	# Related to Orders
 	def get_orders_instance(self):
@@ -226,47 +219,43 @@ class AmazonRepository:
 			raise KeyError("SellerSKU")
 
 	def get_order_items(self, order_id):
-		try:
-			orders = self.get_orders_instance()
-			order_items_payload = self.call_sp_api_method(
-				sp_api_method=orders.get_order_items, order_id=order_id
-			)
+		orders = self.get_orders_instance()
+		order_items_payload = self.call_sp_api_method(
+			sp_api_method=orders.get_order_items, order_id=order_id
+		)
 
-			final_order_items = []
-			warehouse = self.amz_settings.warehouse
+		final_order_items = []
+		warehouse = self.amz_settings.warehouse
 
-			while True:
+		while True:
 
-				order_items_list = order_items_payload.get("OrderItems")
-				next_token = order_items_payload.get("NextToken")
+			order_items_list = order_items_payload.get("OrderItems")
+			next_token = order_items_payload.get("NextToken")
 
-				for order_item in order_items_list:
-					price = order_item.get("ItemPrice", {}).get("Amount", 0)
+			for order_item in order_items_list:
+				price = order_item.get("ItemPrice", {}).get("Amount", 0)
 
-					final_order_items.append(
-						{
-							"item_code": self.get_item_code(order_item),
-							"item_name": order_item.get("SellerSKU"),
-							"description": order_item.get("Title"),
-							"rate": price,
-							"qty": order_item.get("QuantityOrdered"),
-							"stock_uom": "Nos",
-							"warehouse": warehouse,
-							"conversion_factor": "1.0",
-						}
-					)
-
-				if not next_token:
-					break
-
-				order_items_payload = self.call_sp_api_method(
-					sp_api_method=orders.get_order_items, order_id=order_id, next_token=next_token
+				final_order_items.append(
+					{
+						"item_code": self.get_item_code(order_item),
+						"item_name": order_item.get("SellerSKU"),
+						"description": order_item.get("Title"),
+						"rate": price,
+						"qty": order_item.get("QuantityOrdered"),
+						"stock_uom": "Nos",
+						"warehouse": warehouse,
+						"conversion_factor": "1.0",
+					}
 				)
 
-			return final_order_items
+			if not next_token:
+				break
 
-		except Exception as e:
-			frappe.log_error(title="get_order_items", message=e)
+			order_items_payload = self.call_sp_api_method(
+				sp_api_method=orders.get_order_items, order_id=order_id, next_token=next_token
+			)
+
+		return final_order_items
 
 	def create_sales_order(self, order):
 		customer_name = self.create_customer(order)
@@ -300,67 +289,55 @@ class AmazonRepository:
 
 			taxes_and_charges = self.amz_settings.taxes_charges
 
-			try:
-				if taxes_and_charges:
-					charges_and_fees = self.get_charges_and_fees(order_id)
+			if taxes_and_charges:
+				charges_and_fees = self.get_charges_and_fees(order_id)
+				for charge in charges_and_fees.get("charges"):
+					sales_order.append("taxes", charge)
+				for fee in charges_and_fees.get("fees"):
+					sales_order.append("taxes", fee)
 
-					for charge in charges_and_fees.get("charges"):
-						sales_order.append("taxes", charge)
-
-					for fee in charges_and_fees.get("fees"):
-						sales_order.append("taxes", fee)
-
-				sales_order.insert(ignore_permissions=True)
-				sales_order.submit()
-
-			except Exception:
-				import traceback
-
-				frappe.log_error(message=traceback.format_exc(), title="Create Sales Order")
+			sales_order.insert(ignore_permissions=True)
+			sales_order.submit()
 
 	def get_orders(self, created_after):
-		try:
-			orders = self.get_orders_instance()
-			order_statuses = [
-				"PendingAvailability",
-				"Pending",
-				"Unshipped",
-				"PartiallyShipped",
-				"Shipped",
-				"InvoiceUnconfirmed",
-				"Canceled",
-				"Unfulfillable",
-			]
-			fulfillment_channels = ["FBA", "SellerFulfilled"]
+		orders = self.get_orders_instance()
+		order_statuses = [
+			"PendingAvailability",
+			"Pending",
+			"Unshipped",
+			"PartiallyShipped",
+			"Shipped",
+			"InvoiceUnconfirmed",
+			"Canceled",
+			"Unfulfillable",
+		]
+		fulfillment_channels = ["FBA", "SellerFulfilled"]
+
+		orders_payload = self.call_sp_api_method(
+			sp_api_method=orders.get_orders,
+			created_after=created_after,
+			order_statuses=order_statuses,
+			fulfillment_channels=fulfillment_channels,
+			max_results=50,
+		)
+
+		while True:
+
+			orders_list = orders_payload.get("Orders")
+			next_token = orders_payload.get("NextToken")
+
+			if not orders_list or len(orders_list) == 0:
+				break
+
+			for order in orders_list:
+				self.create_sales_order(order)
+
+			if not next_token:
+				break
 
 			orders_payload = self.call_sp_api_method(
-				sp_api_method=orders.get_orders,
-				created_after=created_after,
-				order_statuses=order_statuses,
-				fulfillment_channels=fulfillment_channels,
-				max_results=50,
+				sp_api_method=orders.get_orders, created_after=created_after, next_token=next_token
 			)
-
-			while True:
-
-				orders_list = orders_payload.get("Orders")
-				next_token = orders_payload.get("NextToken")
-
-				if not orders_list or len(orders_list) == 0:
-					break
-
-				for order in orders_list:
-					self.create_sales_order(order)
-
-				if not next_token:
-					break
-
-				orders_payload = self.call_sp_api_method(
-					sp_api_method=orders.get_orders, created_after=created_after, next_token=next_token
-				)
-
-		except Exception as e:
-			frappe.log_error(title="get_orders", message=e)
 
 	# Related to CatalogItems or Products
 	def get_catalog_items_instance(self):
@@ -485,63 +462,56 @@ class AmazonRepository:
 	def create_report(
 		self, report_type="GET_FLAT_FILE_OPEN_LISTINGS_DATA", data_start_time=None, data_end_time=None
 	):
-		try:
-			reports = self.get_reports_instance()
-			response = reports.create_report(
-				report_type=report_type, data_start_time=data_start_time, data_end_time=data_end_time,
-			)
+		reports = self.get_reports_instance()
+		response = reports.create_report(
+			report_type=report_type, data_start_time=data_start_time, data_end_time=data_end_time,
+		)
 
-			return response.get("reportId")
-
-		except Exception as e:
-			frappe.log_error(title="create_report", message=e)
+		return response.get("reportId")
 
 	def get_report_document(self, report_id):
-		try:
-			reports = self.get_reports_instance()
+		reports = self.get_reports_instance()
 
-			for x in range(3):
-				response = reports.get_report(report_id)
-				processingStatus = response.get("processingStatus")
+		for x in range(3):
+			response = reports.get_report(report_id)
+			processingStatus = response.get("processingStatus")
 
-				if not processingStatus:
-					raise (KeyError("processingStatus"))
-				elif processingStatus in ["IN_PROGRESS", "IN_QUEUE"]:
-					time.sleep(15)
-					continue
-				elif processingStatus in ["CANCELLED", "FATAL"]:
-					raise (f"Report Processing Status: {processingStatus}")
-				elif processingStatus == "DONE":
-					report_document_id = response.get("reportDocumentId")
+			if not processingStatus:
+				raise (KeyError("processingStatus"))
+			elif processingStatus in ["IN_PROGRESS", "IN_QUEUE"]:
+				time.sleep(15)
+				continue
+			elif processingStatus in ["CANCELLED", "FATAL"]:
+				raise (f"Report Processing Status: {processingStatus}")
+			elif processingStatus == "DONE":
+				report_document_id = response.get("reportDocumentId")
 
-					if report_document_id:
-						response = reports.get_report_document(report_document_id)
-						url = response.get("url")
+				if report_document_id:
+					response = reports.get_report_document(report_document_id)
+					url = response.get("url")
 
-						if url:
-							rows = []
+					if url:
+						rows = []
 
-							for line in urllib.request.urlopen(url):
-								decoded_line = line.decode("utf-8").replace("\t", "\n")
-								row = decoded_line.splitlines()
-								rows.append(row)
+						for line in urllib.request.urlopen(url):
+							decoded_line = line.decode("utf-8").replace("\t", "\n")
+							row = decoded_line.splitlines()
+							rows.append(row)
 
-							fields = rows[0]
-							rows.pop(0)
+						fields = rows[0]
+						rows.pop(0)
 
-							data = []
+						data = []
 
-							for row in rows:
-								data_row = {}
-								for index, value in enumerate(row):
-									data_row[fields[index]] = value
-								data.append(data_row)
+						for row in rows:
+							data_row = {}
+							for index, value in enumerate(row):
+								data_row[fields[index]] = value
+							data.append(data_row)
 
-							return data
-						raise (KeyError("url"))
-					raise (KeyError("reportDocumentId"))
-		except Exception as e:
-			frappe.log_error(title="get_report_document", message=e)
+						return data
+					raise (KeyError("url"))
+				raise (KeyError("reportDocumentId"))
 
 
 # Helper functions
