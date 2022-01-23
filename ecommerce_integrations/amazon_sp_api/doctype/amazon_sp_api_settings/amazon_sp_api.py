@@ -227,18 +227,11 @@ class SPAPI(object):
 			"refresh_token": self.refresh_token,
 		}
 
-		try:
-			response = request(method="POST", url=self.AUTH_URL, data=data)
-			result = response.json()
-
-			if response.status_code == 200:
-				return result.get("access_token")
-
-			raise SPAPIError(f"{result.get('error_description')}")
-		except HTTPError as e:
-			error = SPAPIError(str(e))
-			error.response = e.response
-			raise error
+		response = request(method="POST", url=self.AUTH_URL, data=data)
+		result = response.json()
+		if response.status_code == 200:
+			return result.get("access_token")
+		raise SPAPIError(f"{result.get('error_description')}")
 
 	def get_auth(self) -> AWSSigV4:
 		client = boto3.client(
@@ -276,20 +269,15 @@ class SPAPI(object):
 
 		url = self.endpoint + self.BASE_URI + append_to_base_uri
 
-		try:
-			response = request(
-				method=method,
-				url=url,
-				params=params,
-				data=data,
-				headers=self.get_headers(),
-				auth=self.get_auth(),
-			)
-			return response.json()
-		except HTTPError as e:
-			error = SPAPIError(str(e))
-			error.response = e.response
-			raise error
+		response = request(
+			method=method,
+			url=url,
+			params=params,
+			data=data,
+			headers=self.get_headers(),
+			auth=self.get_auth(),
+		)
+		return response.json()
 
 	def list_to_dict(self, key: str, values: list, data: dict) -> None:
 		if values and isinstance(values, list):
