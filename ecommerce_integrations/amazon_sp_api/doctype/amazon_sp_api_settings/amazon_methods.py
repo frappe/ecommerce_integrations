@@ -470,9 +470,10 @@ class AmazonRepository:
 			products = []
 
 			for item in report_document:
-				asin = item.get("asin1") or item.get("product-id")
+				asin = item.get("asin1")
+				sku = item.get("seller-sku")
 				amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
-				item_name = self.create_item(amazon_item, asin)
+				item_name = self.create_item(amazon_item, sku)
 				products.append(item_name)
 
 			return products
