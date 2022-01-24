@@ -17,10 +17,10 @@ class AmazonRepository:
 		self.instance_params = dict(
 			iam_arn=self.amz_settings.iam_arn,
 			client_id=self.amz_settings.client_id,
-			client_secret=self.amz_settings.client_secret,
+			client_secret=self.amz_settings.get_password("client_secret"),
 			refresh_token=self.amz_settings.refresh_token,
 			aws_access_key=self.amz_settings.aws_access_key,
-			aws_secret_key=self.amz_settings.aws_secret_key,
+			aws_secret_key=self.amz_settings.get_password("aws_secret_key"),
 			country_code=self.amz_settings.country,
 		)
 
