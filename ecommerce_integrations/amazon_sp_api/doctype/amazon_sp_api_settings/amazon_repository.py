@@ -459,21 +459,23 @@ class AmazonRepository:
 		return item.name
 
 	def get_products_details(self):
-		report_document = self.get_report_document(self.create_report())
+		products = []
+		report_id = self.create_report()
 
-		if report_document:
-			catalog_items = self.get_catalog_items_instance()
+		if report_id:
+			report_document = self.get_report_document(report_id)
 
-			products = []
+			if report_document:
+				catalog_items = self.get_catalog_items_instance()
 
-			for item in report_document:
-				asin = item.get("asin1")
-				sku = item.get("seller-sku")
-				amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
-				item_name = self.create_item(amazon_item, sku)
-				products.append(item_name)
+				for item in report_document:
+					asin = item.get("asin1")
+					sku = item.get("seller-sku")
+					amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
+					item_name = self.create_item(amazon_item, sku)
+					products.append(item_name)
 
-			return products
+		return products
 
 	# Related to Reports
 	def get_reports_instance(self):
