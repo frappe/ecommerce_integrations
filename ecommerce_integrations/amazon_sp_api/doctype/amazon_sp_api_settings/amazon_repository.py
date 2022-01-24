@@ -537,9 +537,9 @@ class AmazonRepository:
 # Helper functions
 def get_orders(created_after):
 	amazon_repository = AmazonRepository()
-	amazon_repository.get_orders(created_after)
+	return amazon_repository.get_orders(created_after)
 
 
 def get_products_details():
 	amazon_repository = AmazonRepository()
-	amazon_repository.get_products_details()
+	return amazon_repository.get_products_details()
