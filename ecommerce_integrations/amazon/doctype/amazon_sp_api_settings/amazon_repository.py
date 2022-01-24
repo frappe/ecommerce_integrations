@@ -8,7 +8,7 @@ import urllib.request
 import dateutil
 import frappe
 
-import ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_sp_api as sp_api
+import ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api as sp_api
 
 
 class AmazonRepository:

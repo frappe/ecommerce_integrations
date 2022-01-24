@@ -10,10 +10,10 @@ import responses
 from requests import request
 from requests.exceptions import HTTPError
 
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository import (
+from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
 	AmazonRepository,
 )
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_sp_api import (
+from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api import (
 	SPAPI,
 	CatalogItems,
 	Finances,
@@ -22,7 +22,7 @@ from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_
 	SPAPIError,
 	Util,
 )
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.test_data import DATA
+from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.test_data import DATA
 
 
 class TestSPAPI(SPAPI):

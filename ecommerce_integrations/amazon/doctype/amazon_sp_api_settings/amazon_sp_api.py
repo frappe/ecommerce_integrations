@@ -10,7 +10,6 @@ import boto3
 from requests import request
 from requests.auth import AuthBase
 from requests.compat import urlparse
-from requests.exceptions import HTTPError
 
 __all__ = [
 	"SPAPIError",

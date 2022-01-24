@@ -38,6 +38,78 @@
  ],
  "fields": [
   {
+   "default": "0",
+   "fieldname": "enable_amazon",
+   "fieldtype": "Check",
+   "label": "Enable Amazon"
+  },
+  {
+   "fieldname": "section_break_4",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "iam_arn",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "IAM ARN",
+   "reqd": 1
+  },
+  {
+   "fieldname": "refresh_token",
+   "fieldtype": "Text",
+   "label": "Refresh Token",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Client ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "in_list_view": 1,
+   "label": "Client Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_1",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "aws_access_key",
+   "fieldtype": "Data",
+   "label": "AWS Access Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "aws_secret_key",
+   "fieldtype": "Password",
+   "label": "AWS Secret Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "country",
+   "fieldtype": "Select",
+   "label": "Country",
+   "options": "\nCA\nUS\nMX\nBR\nES\nGB\nFR\nNL\nDE\nIT\nSE\nPL\nEG\nTR\nSA\nAE\nIN\nSG\nAU\nJP",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_2",
+   "fieldtype": "Section Break"
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
@@ -52,11 +124,22 @@
    "reqd": 1
   },
   {
+   "fieldname": "parent_item_group",
+   "fieldtype": "Link",
+   "label": "Parent Item Group",
+   "options": "Item Group",
+   "reqd": 1
+  },
+  {
    "fieldname": "price_list",
    "fieldtype": "Link",
    "label": "Price List",
    "options": "Price List",
    "reqd": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "customer_group",
@@ -87,6 +170,10 @@
    "reqd": 1
   },
   {
+   "fieldname": "section_break_3",
+   "fieldtype": "Section Break"
+  },
+  {
    "description": "Amazon will synch data updated after this date",
    "fieldname": "after_date",
    "fieldtype": "Date",
@@ -115,6 +202,10 @@
    "options": "get_order_details"
   },
   {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
    "default": "0",
    "description": "Check this to enable a scheduled Daily synchronization routine via scheduler",
    "fieldname": "enable_sync",
@@ -127,104 +218,13 @@
    "fieldtype": "Int",
    "label": "Max Retry Limit",
    "non_negative": 1
-  },
-  {
-   "fieldname": "iam_arn",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "IAM ARN",
-   "reqd": 1
-  },
-  {
-   "fieldname": "client_id",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Client ID",
-   "reqd": 1
-  },
-  {
-   "fieldname": "client_secret",
-   "fieldtype": "Password",
-   "in_list_view": 1,
-   "label": "Client Secret",
-   "reqd": 1
-  },
-  {
-   "fieldname": "refresh_token",
-   "fieldtype": "Text",
-   "label": "Refresh Token",
-   "reqd": 1
-  },
-  {
-   "fieldname": "aws_access_key",
-   "fieldtype": "Data",
-   "label": "AWS Access Key",
-   "reqd": 1
-  },
-  {
-   "fieldname": "aws_secret_key",
-   "fieldtype": "Password",
-   "label": "AWS Secret Key",
-   "reqd": 1
-  },
-  {
-   "fieldname": "country",
-   "fieldtype": "Select",
-   "label": "Country",
-   "options": "\nCA\nUS\nMX\nBR\nES\nGB\nFR\nNL\nDE\nIT\nSE\nPL\nEG\nTR\nSA\nAE\nIN\nSG\nAU\nJP",
-   "reqd": 1
-  },
-  {
-   "fieldname": "column_break_3",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_1",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_2",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "section_break_2",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "section_break_3",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "column_break_4",
-   "fieldtype": "Column Break"
-  },
-  {
-   "default": "0",
-   "fieldname": "enable_amazon",
-   "fieldtype": "Check",
-   "label": "Enable Amazon"
-  },
-  {
-   "fieldname": "section_break_4",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "parent_item_group",
-   "fieldtype": "Link",
-   "label": "Parent Item Group",
-   "options": "Item Group",
-   "reqd": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-24 15:26:17.587698",
+ "modified": "2022-01-24 21:49:08.360838",
  "modified_by": "Administrator",
- "module": "Amazon SP-API",
+ "module": "Amazon",
  "name": "Amazon SP API Settings",
  "owner": "Administrator",
  "permissions": [

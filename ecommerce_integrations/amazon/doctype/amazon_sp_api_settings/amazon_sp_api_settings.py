@@ -6,7 +6,7 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
 
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository import (
+from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
 	get_orders,
 	get_products_details,
 )
