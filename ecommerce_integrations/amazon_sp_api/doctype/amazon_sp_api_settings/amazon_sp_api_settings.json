@@ -101,14 +101,14 @@
    "label": "Sync Taxes and Charges"
   },
   {
-   "description": "Always sync your products from Amazon MWS before synching the Orders details",
+   "description": "Always sync your products from Amazon SP-API before synching the Orders details",
    "fieldname": "sync_products",
    "fieldtype": "Button",
    "label": "Sync Products",
    "options": "get_products_details"
   },
   {
-   "description": "Click this button to pull your Sales Order data from Amazon MWS.",
+   "description": "Click this button to pull your Sales Order data from Amazon SP-API.",
    "fieldname": "sync_orders",
    "fieldtype": "Button",
    "label": "Sync Orders",
@@ -222,7 +222,7 @@
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-22 16:13:12.681766",
+ "modified": "2022-01-24 15:21:05.281479",
  "modified_by": "Administrator",
  "module": "Amazon SP-API",
  "name": "Amazon SP API Settings",
