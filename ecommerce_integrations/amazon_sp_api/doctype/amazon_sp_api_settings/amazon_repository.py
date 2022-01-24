@@ -7,7 +7,6 @@ import urllib.request
 
 import dateutil
 import frappe
-from frappe import _
 
 import ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_sp_api as sp_api
 
@@ -33,21 +32,32 @@ class AmazonRepository:
 			return [input]
 
 	def call_sp_api_method(self, sp_api_method, **kwargs):
+		errors = {}
 		max_retries = self.amz_settings.max_retry_limit
 
 		for x in range(max_retries):
 			try:
 				result = sp_api_method(**kwargs)
 				return result.get("payload")
-			except Exception as e:
-				frappe.log_error(message=e, title=f'Method "{sp_api_method.__name__}" failed')
-				time.sleep(3)
+			except sp_api.SPAPIError as e:
+				if e.error not in errors:
+					errors[e.error] = e.error_description
+				time.sleep(1)
 				continue
+
+		for error in errors:
+			msg = f"<b>Error:</b> {error}<br/><b>Error Description:</b> {errors.get(error)}"
+			frappe.msgprint(msg, alert=True, indicator="red")
+			frappe.log_error(
+				message=f"{error}: {errors.get(error)}", title=f'Method "{sp_api_method.__name__}" failed'
+			)
 
 		self.amz_settings.enable_sync = 0
 		self.amz_settings.save()
 
-		frappe.throw(_("Sync has been temporarily disabled because maximum retries have been exceeded!"))
+		frappe.throw(
+			"Scheduled Sync has been temporarily disabled because maximum retries have been exceeded!"
+		)
 
 	# Related to Finances
 	def get_finances_instance(self):

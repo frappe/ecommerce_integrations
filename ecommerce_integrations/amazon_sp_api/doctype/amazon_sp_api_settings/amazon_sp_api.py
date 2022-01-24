@@ -191,9 +191,10 @@ class SPAPIError(Exception):
 	Main SP-API Exception class
 	"""
 
-	# Allows quick access to the response object.
-	# Do not rely on this attribute, always check if its not None.
-	response = None
+	def __init__(self, *args, **kwargs) -> None:
+		self.error = kwargs.get("error", "-")
+		self.error_description = kwargs.get("error_description", "-")
+		super().__init__(*args)
 
 
 class SPAPI(object):
@@ -235,7 +236,10 @@ class SPAPI(object):
 		result = response.json()
 		if response.status_code == 200:
 			return result.get("access_token")
-		raise SPAPIError(f"{result.get('error_description')}")
+		exception = SPAPIError(
+			error=result.get("error"), error_description=result.get("error_description")
+		)
+		raise exception
 
 	def get_auth(self) -> AWSSigV4:
 		client = boto3.client(
