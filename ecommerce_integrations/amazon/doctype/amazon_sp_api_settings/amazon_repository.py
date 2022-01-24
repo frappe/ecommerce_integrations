@@ -7,6 +7,7 @@ import urllib.request
 
 import dateutil
 import frappe
+from frappe import _
 
 import ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api as sp_api
 
@@ -56,7 +57,7 @@ class AmazonRepository:
 		self.amz_settings.save()
 
 		frappe.throw(
-			"Scheduled Sync has been temporarily disabled because maximum retries have been exceeded!"
+			_("Scheduled sync has been temporarily disabled because maximum retries have been exceeded!")
 		)
 
 	# Related to Finances
