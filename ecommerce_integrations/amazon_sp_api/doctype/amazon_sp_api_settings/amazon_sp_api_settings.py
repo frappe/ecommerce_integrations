@@ -18,6 +18,8 @@ class AmazonSPAPISettings(Document):
 			setup_custom_fields()
 		else:
 			self.enable_sync = 0
+		if self.max_retry_limit and self.max_retry_limit > 5:
+			frappe.throw("Value for <b>Max Retry Limit</b> must be less than or equal to 5.")
 
 	@frappe.whitelist()
 	def get_products_details(self):
