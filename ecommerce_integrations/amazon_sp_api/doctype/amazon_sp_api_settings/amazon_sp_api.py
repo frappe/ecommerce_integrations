@@ -1,3 +1,7 @@
+# Copyright (c) 2022, Frappe and contributors
+# For license information, please see license.txt
+
+
 import datetime
 import hashlib
 import hmac

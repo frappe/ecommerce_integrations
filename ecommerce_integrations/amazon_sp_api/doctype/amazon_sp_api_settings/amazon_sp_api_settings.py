@@ -7,7 +7,7 @@ import frappe
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
 
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_methods import (
+from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository import (
 	get_orders,
 )
 
@@ -24,7 +24,7 @@ class AmazonSPAPISettings(Document):
 	def get_products_details(self):
 		if self.enable_amazon == 1:
 			frappe.enqueue(
-				"ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_methods.get_products_details",
+				"ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository.get_products_details",
 			)
 
 	@frappe.whitelist()
@@ -32,7 +32,7 @@ class AmazonSPAPISettings(Document):
 		if self.enable_amazon == 1:
 			after_date = dateutil.parser.parse(self.after_date).strftime("%Y-%m-%d")
 			frappe.enqueue(
-				"ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_methods.get_orders",
+				"ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository.get_orders",
 				created_after=after_date,
 			)
 

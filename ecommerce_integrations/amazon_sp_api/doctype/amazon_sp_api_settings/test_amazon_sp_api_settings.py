@@ -10,7 +10,7 @@ import responses
 from requests import request
 from requests.exceptions import HTTPError
 
-from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_methods import (
+from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_repository import (
 	AmazonRepository,
 )
 from ecommerce_integrations.amazon_sp_api.doctype.amazon_sp_api_settings.amazon_sp_api import (

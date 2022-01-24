@@ -1,3 +1,7 @@
+# Copyright (c) 2022, Frappe and contributors
+# For license information, please see license.txt
+
+
 import time
 import urllib.request
 
@@ -522,10 +526,10 @@ class AmazonRepository:
 
 # Helper functions
 def get_orders(created_after):
-	amazon_repository = AmazonRepository
+	amazon_repository = AmazonRepository()
 	amazon_repository.get_orders(created_after)
 
 
 def get_products_details():
-	amazon_repository = AmazonRepository
+	amazon_repository = AmazonRepository()
 	amazon_repository.get_products_details()
