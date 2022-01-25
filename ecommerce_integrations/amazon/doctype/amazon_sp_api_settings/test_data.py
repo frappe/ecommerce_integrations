@@ -13,7 +13,7 @@ DATA = {
 						"FulfillmentChannel": "MFN",
 						"SalesChannel": "Amazon.com",
 						"ShipServiceLevel": "Std US D2D Dom",
-						"OrderTotal": {"CurrencyCode": "USD", "Amount": "11.01"},
+						"OrderTotal": {"CurrencyCode": "INR", "Amount": "11.01"},
 						"NumberOfItemsShipped": 0,
 						"NumberOfItemsUnshipped": 1,
 						"PaymentMethod": "Other",
@@ -53,7 +53,7 @@ DATA = {
 						"FulfillmentChannel": "MFN",
 						"SalesChannel": "Amazon.com",
 						"ShipServiceLevel": "Std US D2D Dom",
-						"OrderTotal": {"CurrencyCode": "USD", "Amount": "11.01"},
+						"OrderTotal": {"CurrencyCode": "INR", "Amount": "11.01"},
 						"NumberOfItemsShipped": 0,
 						"NumberOfItemsUnshipped": 1,
 						"PaymentMethod": "Other",
@@ -90,9 +90,9 @@ DATA = {
 						"QuantityOrdered": 1,
 						"QuantityShipped": 0,
 						"ProductInfo": {"NumberOfItems": 1},
-						"ItemPrice": {"CurrencyCode": "USD", "Amount": "10.00"},
-						"ItemTax": {"CurrencyCode": "USD", "Amount": "1.01"},
-						"PromotionDiscount": {"CurrencyCode": "USD", "Amount": "0.00"},
+						"ItemPrice": {"CurrencyCode": "INR", "Amount": "10.00"},
+						"ItemTax": {"CurrencyCode": "INR", "Amount": "1.01"},
+						"PromotionDiscount": {"CurrencyCode": "INR", "Amount": "0.00"},
 						"IsGift": False,
 						"ConditionId": "New",
 						"ConditionSubtypeId": "New",
@@ -193,14 +193,14 @@ DATA = {
 							"RetrochargeEventType": "Retrocharge",
 							"AmazonOrderId": "444-555-3343433",
 							"PostedDate": "2020-02-05T13:56:00.363Z",
-							"BaseTax": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
-							"ShippingTax": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
+							"BaseTax": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
+							"ShippingTax": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
 							"MarketplaceName": "1",
 							"RetrochargeTaxWithheldList": [
 								{
 									"TaxCollectionModel": "Free",
 									"TaxesWithheld": [
-										{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "USD", "CurrencyAmount": 25.37}}
+										{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "INR", "CurrencyAmount": 25.37}}
 									],
 								}
 							],
@@ -213,22 +213,22 @@ DATA = {
 							"ExtensionLength": 0,
 							"PostedDate": "2020-02-05T13:56:00.363Z",
 							"RentalChargeList": [
-								{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "USD", "CurrencyAmount": 25.37}}
+								{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "INR", "CurrencyAmount": 25.37}}
 							],
 							"RentalFeeList": [
 								{
 									"FeeType": "FixedClosingFee",
-									"FeeAmount": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
+									"FeeAmount": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
 								}
 							],
 							"MarketplaceName": "1",
-							"RentalInitialValue": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
-							"RentalReimbursement": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
+							"RentalInitialValue": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
+							"RentalReimbursement": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
 							"RentalTaxWithheldList": [
 								{
 									"TaxCollectionModel": "Free",
 									"TaxesWithheld": [
-										{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "USD", "CurrencyAmount": 25.37}}
+										{"ChargeType": "Tax", "ChargeAmount": {"CurrencyCode": "INR", "CurrencyAmount": 25.37}}
 									],
 								}
 							],
@@ -239,9 +239,9 @@ DATA = {
 							"postedDate": "2020-02-05T13:56:00.363Z",
 							"transactionType": "Free",
 							"invoiceId": "3454535453",
-							"baseValue": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
-							"taxValue": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
-							"transactionValue": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
+							"baseValue": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
+							"taxValue": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
+							"transactionValue": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
 						}
 					],
 					"ServiceFeeEventList": [
@@ -251,7 +251,7 @@ DATA = {
 							"FeeList": [
 								{
 									"FeeType": "FixedClosingFee",
-									"FeeAmount": {"CurrencyCode": "USD", "CurrencyAmount": 25.37},
+									"FeeAmount": {"CurrencyCode": "INR", "CurrencyAmount": 25.37},
 								}
 							],
 							"SellerSKU": "456454455464",

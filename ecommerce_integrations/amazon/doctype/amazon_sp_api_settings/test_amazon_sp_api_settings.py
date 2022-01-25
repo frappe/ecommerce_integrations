@@ -22,6 +22,9 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api 
 	SPAPIError,
 	Util,
 )
+from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_settings import (
+	setup_custom_fields,
+)
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.test_data import DATA
 
 
@@ -153,7 +156,7 @@ class TestAmazonSettings:
 		def get_company():
 			company_name = frappe.db.get_value(
 				"Company",
-				{"company_name": "Amazon Test Company", "country": "United States", "default_currency": "USD"},
+				{"company_name": "Amazon Test Company", "country": "India", "default_currency": "INR"},
 				"company_name",
 			)
 
@@ -163,8 +166,8 @@ class TestAmazonSettings:
 						"doctype": "Company",
 						"company_name": "Amazon Test Company",
 						"abbr": "ATC",
-						"country": "United States",
-						"default_currency": "USD",
+						"country": "India",
+						"default_currency": "INR",
 					}
 				)
 				company.insert(ignore_permissions=True)
@@ -266,17 +269,12 @@ class TestAmazonRepository(AmazonRepository):
 class TestAmazon(unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
-
-	def tearDown(self):
-		pass
-
-	def test_get_orders(self):
+		setup_custom_fields()
 		amazon_repository = TestAmazonRepository()
-		sales_orders = amazon_repository.get_orders("2000-07-23")
-		self.assertEqual(len(sales_orders), 2)
+		amazon_repository.get_products_details()
 
 	def test_get_products_details(self):
-		expected_result = [
+		expected_result = {
 			"packaging_asin_gating",
 			"vb554a-bl1915",
 			"ARRIS,SB6141",
@@ -285,7 +283,12 @@ class TestAmazon(unittest.TestCase):
 			"TLWR841N",
 			"WNDR3400-N600",
 			"WNR2000-N300",
-		]
+		}
 		amazon_repository = TestAmazonRepository()
 		products = amazon_repository.get_products_details()
-		self.assertListEqual(products, expected_result)
+		self.assertSetEqual(set(products), expected_result)
+
+	def test_get_orders(self):
+		amazon_repository = TestAmazonRepository()
+		sales_orders = amazon_repository.get_orders("2000-07-23")
+		self.assertEqual(len(sales_orders), 2)
