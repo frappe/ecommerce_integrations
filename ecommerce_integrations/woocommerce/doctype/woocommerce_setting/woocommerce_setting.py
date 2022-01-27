@@ -6,7 +6,7 @@ from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_root_of
-from six.moves.urllib.parse import urlparse
+from urllib.parse import urlparse
 
 from ecommerce_integrations.patches.update_woocommerce_items import create_ecommerce_items
 from ecommerce_integrations.woocommerce.constants import PRODUCT_GROUP
