@@ -275,14 +275,14 @@ class TestAmazon(unittest.TestCase):
 
 	def test_get_products_details(self):
 		expected_result = {
-			"packaging_asin_gating",
-			"vb554a-bl1915",
-			"ARRIS,SB6141",
-			"Chromecast",
-			"RTN66U-N9000",
-			"TLWR841N",
-			"WNDR3400-N600",
-			"WNR2000-N300",
+			"B008X9Z37A",
+			"B00H3LHY6C",
+			"B00AJHDZSI",
+			"B00DR0PDNE",
+			"B006QB1RPY",
+			"B001FWYGJS",
+			"B0041LYY6K",
+			"B001AZP8EW",
 		}
 		amazon_repository = TestAmazonRepository()
 		products = amazon_repository.get_products_details()

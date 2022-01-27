@@ -225,13 +225,13 @@ class AmazonRepository:
 			make_address.insert()
 
 	def get_item_code(self, order_item):
-		sku = order_item.get("SellerSKU")
+		asin = order_item.get("ASIN")
 
-		if sku:
-			if frappe.db.exists({"doctype": "Item", "item_code": sku}):
-				return sku
+		if asin:
+			if frappe.db.exists({"doctype": "Item", "item_code": asin}):
+				return asin
 		else:
-			raise KeyError("SellerSKU")
+			raise KeyError("ASIN")
 
 	def get_order_items(self, order_id):
 		orders = self.get_orders_instance()
@@ -415,13 +415,11 @@ class AmazonRepository:
 		else:
 			return existing_manufacturer
 
-	def create_ecommerce_item(self, amazon_item, item_code, sku):
+	def create_ecommerce_item(self, item_code, asin, sku):
 		ecommerce_item = frappe.new_doc("Ecommerce Item")
 		ecommerce_item.integration = frappe.get_meta("Amazon SP API Settings").module
 		ecommerce_item.erpnext_item_code = item_code
-		ecommerce_item.integration_item_code = (
-			amazon_item.get("Identifiers", {}).get("MarketplaceASIN", {}).get("ASIN")
-		)
+		ecommerce_item.integration_item_code = asin
 		ecommerce_item.sku = sku
 		ecommerce_item.insert(ignore_permissions=True)
 
@@ -434,16 +432,16 @@ class AmazonRepository:
 		item_price.item_code = item_code
 		item_price.insert()
 
-	def create_item(self, amazon_item, sku):
-		if frappe.db.get_value("Ecommerce Item", filters={"sku": sku}):
-			return sku
+	def create_item(self, amazon_item, asin, sku):
+		if frappe.db.get_value("Ecommerce Item", filters={"integration_item_code": asin}):
+			return asin
 
-		if frappe.db.get_value("Item", {"item_code": sku}):
-			item = frappe.get_doc("Item", sku)
+		if frappe.db.exists("Item", asin):
+			item = frappe.get_doc("Item", asin)
 		else:
 			# Create Item
 			item = frappe.new_doc("Item")
-			item.item_code = sku
+			item.item_code = asin
 			item.item_group = self.create_item_group(amazon_item)
 			item.description = amazon_item.get("AttributeSets")[0].get("Title")
 			item.brand = self.create_brand(amazon_item)
@@ -451,13 +449,13 @@ class AmazonRepository:
 			item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
 			item.insert(ignore_permissions=True)
 
-			# Create Ecommerce Item
-			self.create_ecommerce_item(amazon_item, item.item_code, sku)
+		# Create Ecommerce Item
+		self.create_ecommerce_item(item.item_code, asin, sku)
 
-			# Create Item Price
-			self.create_item_price(amazon_item, item.item_code)
+		# Create Item Price
+		self.create_item_price(amazon_item, item.item_code)
 
-		return item.name
+		return item.item_code
 
 	def get_products_details(self):
 		products = []
@@ -470,10 +468,10 @@ class AmazonRepository:
 				catalog_items = self.get_catalog_items_instance()
 
 				for item in report_document:
-					asin = item.get("asin1")
+					asin = item.get("asin1") or item.get("product-id")
 					sku = item.get("seller-sku")
 					amazon_item = catalog_items.get_catalog_item(asin=asin).get("payload")
-					item_name = self.create_item(amazon_item, sku)
+					item_name = self.create_item(amazon_item, asin, sku)
 					products.append(item_name)
 
 		return products
