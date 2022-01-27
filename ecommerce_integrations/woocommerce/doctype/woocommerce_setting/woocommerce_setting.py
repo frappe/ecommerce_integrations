@@ -49,7 +49,7 @@ class WoocommerceSetting(Document):
 				item_group = frappe.new_doc("Item Group")
 				item_group.item_group_name = PRODUCT_GROUP
 				item_group.parent_item_group = get_root_of("Item Group")
-				item_group.insert()
+				item_group.insert(ignore_mandatory=True)
 
 	def validate_settings(self):
 		if self.enable_sync:
