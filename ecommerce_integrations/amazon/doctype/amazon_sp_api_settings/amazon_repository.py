@@ -449,11 +449,11 @@ class AmazonRepository:
 			item.image = amazon_item.get("AttributeSets")[0].get("SmallImage", {}).get("URL")
 			item.insert(ignore_permissions=True)
 
+			# Create Item Price
+			self.create_item_price(amazon_item, item.item_code)
+
 		# Create Ecommerce Item
 		self.create_ecommerce_item(item.item_code, asin, sku)
-
-		# Create Item Price
-		self.create_item_price(amazon_item, item.item_code)
 
 		return item.item_code
 
