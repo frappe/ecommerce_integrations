@@ -5,7 +5,7 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import cstr
+from frappe.utils import cstr, flt
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.woocommerce.constants import (
@@ -239,7 +239,7 @@ def set_items_in_sales_order(new_sales_order, woocommerce_settings, order, sys_l
 				"delivery_date": new_sales_order.delivery_date,
 				"uom": woocommerce_settings.uom or _("Nos", sys_lang),
 				"qty": item.get("quantity"),
-				"rate": item.get("price"),
+				"rate": flt(item.get("price")),
 				"warehouse": woocommerce_settings.warehouse or default_warehouse,
 			},
 		)
