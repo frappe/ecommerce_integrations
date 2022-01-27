@@ -60,7 +60,7 @@ class AmazonRepository:
 			_("Scheduled sync has been temporarily disabled because maximum retries have been exceeded!")
 		)
 
-	# Related to Finances
+	# Finances Section
 	def get_finances_instance(self):
 		return sp_api.Finances(**self.instance_params)
 
@@ -144,7 +144,7 @@ class AmazonRepository:
 
 		return charges_and_fees
 
-	# Related to Orders
+	# Orders Section
 	def get_orders_instance(self):
 		return sp_api.Orders(**self.instance_params)
 
@@ -360,7 +360,7 @@ class AmazonRepository:
 
 		return sales_orders
 
-	# Related to CatalogItems or Products
+	# CatalogItems or Products Section
 	def get_catalog_items_instance(self):
 		return sp_api.CatalogItems(**self.instance_params)
 
@@ -385,7 +385,7 @@ class AmazonRepository:
 		brand_name = amazon_item.get("AttributeSets")[0].get("Brand")
 
 		if not brand_name:
-			return None
+			return
 
 		existing_brand = frappe.db.get_value("Brand", filters={"brand": brand_name})
 
@@ -401,7 +401,7 @@ class AmazonRepository:
 		manufacturer_name = amazon_item.get("AttributeSets")[0].get("Manufacturer")
 
 		if not manufacturer_name:
-			return None
+			return
 
 		existing_manufacturer = frappe.db.get_value(
 			"Manufacturer", filters={"short_name": manufacturer_name}

@@ -268,7 +268,7 @@ class SPAPI(object):
 
 	def make_request(
 		self, method: str = "GET", append_to_base_uri: str = "", params: dict = None, data: dict = None,
-	) -> object:
+	) -> dict:
 		if isinstance(params, dict):
 			params = Util.remove_empty(params)
 		if isinstance(data, dict):
@@ -299,7 +299,7 @@ class Finances(SPAPI):
 
 	def list_financial_events_by_order_id(
 		self, order_id: str, max_results: int = None, next_token: str = None
-	) -> object:
+	) -> dict:
 		""" Returns all financial events for the specified order. """
 		append_to_base_uri = f"orders/{order_id}/financialEvents"
 		data = dict(MaxResultsPerPage=max_results, NextToken=next_token)
@@ -330,7 +330,7 @@ class Orders(SPAPI):
 		actual_fulfillment_supply_source_id: str = None,
 		is_ispu: bool = False,
 		store_chain_store_id: str = None,
-	) -> object:
+	) -> dict:
 		""" Returns orders created or updated during the time frame indicated by the specified parameters. You can also apply a range of filtering criteria to narrow the list of orders returned. If NextToken is present, that will be used to retrieve the orders instead of other criteria. """
 		data = dict(
 			CreatedAfter=created_after,
@@ -359,7 +359,7 @@ class Orders(SPAPI):
 
 		return self.make_request(params=data)
 
-	def get_order_items(self, order_id: str, next_token: str = None) -> object:
+	def get_order_items(self, order_id: str, next_token: str = None) -> dict:
 		""" Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items. """
 		append_to_base_uri = f"/{order_id}/orderItems"
 		data = dict(NextToken=next_token)
@@ -371,7 +371,7 @@ class CatalogItems(SPAPI):
 
 	BASE_URI = "/catalog/v0"
 
-	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> object:
+	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> dict:
 		""" Returns a specified item and its attributes. """
 		if not marketplace_id:
 			marketplace_id = self.marketplace_id
@@ -394,7 +394,7 @@ class Reports(SPAPI):
 		data_start_time: str = None,
 		data_end_time: str = None,
 		marketplace_ids: list = None,
-	) -> object:
+	) -> dict:
 		""" Creates a report. """
 		append_to_base_uri = "/reports"
 		data = dict(
