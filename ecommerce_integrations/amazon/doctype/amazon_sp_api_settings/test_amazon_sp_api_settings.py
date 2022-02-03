@@ -2,6 +2,8 @@
 # See license.txt
 
 
+import json
+import os
 import time
 import unittest
 
@@ -25,7 +27,13 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api 
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_settings import (
 	setup_custom_fields,
 )
-from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.test_data import DATA
+
+file_path = os.path.join(os.path.dirname(__file__), "test_data.json")
+with open(file_path, "r") as json_file:
+	try:
+		DATA = json.load(json_file)
+	except json.decoder.JSONDecodeError as e:
+		frappe.throw(e)
 
 
 class TestSPAPI(SPAPI):
