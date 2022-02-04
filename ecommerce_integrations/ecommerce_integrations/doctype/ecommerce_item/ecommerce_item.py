@@ -148,6 +148,7 @@ def create_ecommerce_item(
 	item = {
 		"doctype": "Item",
 		"is_stock_item": 1,
+		"is_sales_item": 1,
 		"item_defaults": [{"company": get_default_company()}],
 	}
 

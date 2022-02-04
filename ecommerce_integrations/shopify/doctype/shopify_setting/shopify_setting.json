@@ -24,7 +24,6 @@
   "cash_bank_account",
   "column_break_19",
   "cost_center",
-  "price_list",
   "inventory_settings_section",
   "column_break_22",
   "section_break_25",
@@ -243,14 +242,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "This is only required for filling out required fields in Sales Order.",
-   "fieldname": "price_list",
-   "fieldtype": "Link",
-   "label": "Price List",
-   "mandatory_depends_on": "eval:doc.enable_shopify",
-   "options": "Price List"
-  },
-  {
    "fieldname": "erpnext_to_shopify_sync_section",
    "fieldtype": "Section Break",
    "label": "ERPNext to Shopify Sync"
@@ -349,7 +340,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-06-16 20:02:17.827016",
+ "modified": "2022-02-04 14:59:16.532113",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
@@ -368,5 +359,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
