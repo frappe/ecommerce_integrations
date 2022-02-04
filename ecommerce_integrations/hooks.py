@@ -113,6 +113,7 @@ doc_events = {
 		"on_submit": "ecommerce_integrations.unicommerce.grn.upload_grn",
 		"on_cancel": "ecommerce_integrations.unicommerce.grn.prevent_grn_cancel",
 	},
+	"Item Price": {"on_change": "ecommerce_integrations.utils.price_list.discard_item_prices"},
 }
 
 # Scheduled Tasks
