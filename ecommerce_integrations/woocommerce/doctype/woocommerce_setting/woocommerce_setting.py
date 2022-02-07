@@ -1,12 +1,13 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see license.txt
 
+from urllib.parse import urlparse
+
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
 from frappe.model.document import Document
 from frappe.utils.nestedset import get_root_of
-from urllib.parse import urlparse
 
 from ecommerce_integrations.patches.update_woocommerce_items import create_ecommerce_items
 from ecommerce_integrations.woocommerce.constants import PRODUCT_GROUP
@@ -22,7 +23,7 @@ class WoocommerceSetting(Document):
 
 	def create_delete_custom_fields(self):
 		if self.enable_sync:
-			for doctype in ["Customer", "Sales Order", "Item", "Address"]:
+			for doctype in ["Customer", "Sales Order", "Address"]:
 				df = dict(
 					fieldname="woocommerce_id",
 					label="Woocommerce ID",
@@ -41,9 +42,6 @@ class WoocommerceSetting(Document):
 					print_hide=1,
 				)
 				create_custom_field(doctype, df)
-
-			sku_dict = dict(fieldname="sku", label="SKU", fieldtype="Data", read_only=1, print_hide=1,)
-			create_custom_field("Item", sku_dict)
 
 			if not frappe.get_value("Item Group", {"name": PRODUCT_GROUP}):
 				item_group = frappe.new_doc("Item Group")
