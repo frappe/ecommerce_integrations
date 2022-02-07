@@ -3,6 +3,7 @@
 
 
 import frappe
+from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
 
@@ -20,6 +21,12 @@ class AmazonSPAPISettings(Document):
 			self.enable_sync = 0
 		if self.max_retry_limit and self.max_retry_limit > 5:
 			frappe.throw(frappe._("Value for <b>Max Retry Limit</b> must be less than or equal to 5."))
+
+	def after_save(self):
+		if not self.is_old_data_migrated:
+			migrate_old_data()
+			self.migrate_old_data = 1
+			self.save()
 
 	@frappe.whitelist()
 	def get_products_details(self):
@@ -54,3 +61,21 @@ def setup_custom_fields():
 	}
 
 	create_custom_fields(custom_fields)
+
+
+def migrate_old_data():
+	item = frappe.qb.DocType("Item")
+	items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(
+		as_dict=True
+	)
+
+	for item in items:
+		if not frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name}):
+			ecomm_item = frappe.new_doc("Ecommerce Item")
+			ecomm_item.integration = "Amazon"
+			ecomm_item.erpnext_item_code = item.name
+			ecomm_item.integration_item_code = item.amazon_item_code
+			ecomm_item.has_variants = 0
+			ecomm_item.sku = item.amazon_item_code
+			ecomm_item.flags.ignore_mandatory = True
+			ecomm_item.save(ignore_permissions=True)
