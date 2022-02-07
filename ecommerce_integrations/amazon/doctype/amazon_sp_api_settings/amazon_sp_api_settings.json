@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2022-01-03 15:57:44.865155",
+ "creation": "2022-02-07 16:03:29.514729",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -34,7 +34,8 @@
   "sync_orders",
   "column_break_4",
   "enable_sync",
-  "max_retry_limit"
+  "max_retry_limit",
+  "is_old_data_migrated"
  ],
  "fields": [
   {
@@ -218,11 +219,21 @@
    "fieldtype": "Int",
    "label": "Max Retry Limit",
    "non_negative": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_old_data_migrated",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Is old data migrated",
+   "print_hide": 1,
+   "read_only": 1,
+   "report_hide": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2022-01-24 21:49:08.360838",
+ "modified": "2022-02-07 16:16:17.733273",
  "modified_by": "Administrator",
  "module": "Amazon",
  "name": "Amazon SP API Settings",
