@@ -19,6 +19,7 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
 from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code
 from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.utils.price_list import get_dummy_price_list
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
 
@@ -102,7 +103,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"company": setting.company,
-				"selling_price_list": setting.price_list,
+				"selling_price_list": get_dummy_price_list(),
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": get_order_taxes(shopify_order, setting),

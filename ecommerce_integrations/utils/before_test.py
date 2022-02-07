@@ -1,5 +1,6 @@
 import frappe
 from erpnext.setup.utils import enable_all_roles_and_domains
+from frappe.utils import now_datetime
 
 
 def before_tests():
@@ -7,6 +8,7 @@ def before_tests():
 	# complete setup if missing
 	from frappe.desk.page.setup_wizard.setup_wizard import setup_complete
 
+	year = now_datetime().year
 	if not frappe.get_list("Company"):
 		setup_complete(
 			{
@@ -17,8 +19,8 @@ def before_tests():
 				"company_abbr": "WP",
 				"industry": "Manufacturing",
 				"country": "India",
-				"fy_start_date": "2021-01-01",
-				"fy_end_date": "2021-12-31",
+				"fy_start_date": f"{year}-01-01",
+				"fy_end_date": f"{year}-12-31",
 				"language": "english",
 				"company_tagline": "Testing",
 				"email": "test@erpnext.com",

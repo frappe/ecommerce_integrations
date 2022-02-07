@@ -312,7 +312,7 @@ def create_address(details, county_details, state_details, doctype, ref_docname)
 
 def check_for_item_tax_template(item_tax_template):
 	err_msg = ""
-	if item_tax_template and not frappe.db.exists("Item Tax Template", {"title": item_tax_template}):
+	if item_tax_template and not frappe.db.exists("Item Tax Template", item_tax_template):
 		err_msg = _("Item Tax Template {} does not exist.").format(frappe.bold(item_tax_template))
 	return err_msg
 

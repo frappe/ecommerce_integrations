@@ -41,6 +41,7 @@ SOCode = NewType("SOCode", str)
 # 	sales_order_row: str
 # 	item_code: str
 # 	warehouse: str
+# 	batch_no: str
 ItemWHAlloc = Dict[str, str]
 
 
@@ -502,6 +503,7 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 	for item, wh_alloc in zip(line_items, warehouse_allocation):
 		item["so_detail"] = wh_alloc["sales_order_row"]
 		item["warehouse"] = wh_alloc["warehouse"]
+		item["batch_no"] = wh_alloc.get("batch_no")
 
 	return line_items
 

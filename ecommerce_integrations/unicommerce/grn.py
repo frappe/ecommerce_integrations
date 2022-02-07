@@ -150,8 +150,10 @@ def _prepare_grn_import_csv(stock_entry) -> str:
 		batch_details = frappe.db.get_value(
 			"Batch", item.batch_no, fieldname=["manufacturing_date", "expiry_date"], as_dict=True
 		)
-		manufacturing_date = _get_unicommerce_format_date(batch_details.manufacturing_date)
-		expiry_date = _get_unicommerce_format_date(batch_details.expiry_date)
+		manufacturing_date = (
+			_get_unicommerce_format_date(batch_details.manufacturing_date) if batch_details else ""
+		)
+		expiry_date = _get_unicommerce_format_date(batch_details.expiry_date) if batch_details else ""
 
 		sku = frappe.db.get_value(
 			"Ecommerce Item",
