@@ -60,13 +60,12 @@ def _order(*args, **kwargs):
 		return "success"
 
 	if event == "created":
-		sys_lang = frappe.get_single("System Settings").language or "en"
 		raw_billing_data = order.get("billing")
 		raw_shipping_data = order.get("shipping")
 		customer_name = raw_billing_data.get("first_name") + " " + raw_billing_data.get("last_name")
 		link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name)
-		link_items(order.get("line_items"), woocommerce_settings, sys_lang)
-		create_sales_order(order, woocommerce_settings, customer_name, sys_lang)
+		link_items(order.get("line_items"), woocommerce_settings)
+		create_sales_order(order, woocommerce_settings, customer_name)
 
 
 def link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name):
@@ -171,10 +170,10 @@ def rename_address(address, customer):
 	)
 
 
-def link_items(items_list, woocommerce_settings, sys_lang):
+def link_items(items_list, woocommerce_settings):
 	for item_data in items_list:
 		item_woo_com_id = cstr(item_data.get("product_id"))
-		tmp_erpnext_item_code = _("woocommerce - {0}", sys_lang).format(item_woo_com_id)
+		tmp_erpnext_item_code = _("woocommerce - {0}").format(item_woo_com_id)
 		if not frappe.db.get_value(
 			"Ecommerce Item", {"erpnext_item_code": tmp_erpnext_item_code}, "name"
 		):
@@ -186,7 +185,7 @@ def link_items(items_list, woocommerce_settings, sys_lang):
 				"item_group": PRODUCT_GROUP,
 				"has_variants": 0,
 				"woocommerce_id": item_woo_com_id,
-				"stock_uom": woocommerce_settings.uom or _("Nos", sys_lang),
+				"stock_uom": woocommerce_settings.uom or _("Nos"),
 				"sku": item_data.get("sku"),
 			}
 			ecommerce_item.create_ecommerce_item(
@@ -197,7 +196,7 @@ def link_items(items_list, woocommerce_settings, sys_lang):
 			)
 
 
-def create_sales_order(order, woocommerce_settings, customer_name, sys_lang):
+def create_sales_order(order, woocommerce_settings, customer_name):
 	new_sales_order = frappe.new_doc("Sales Order")
 	new_sales_order.customer = customer_name
 
@@ -211,16 +210,16 @@ def create_sales_order(order, woocommerce_settings, customer_name, sys_lang):
 
 	new_sales_order.company = woocommerce_settings.company
 
-	set_items_in_sales_order(new_sales_order, woocommerce_settings, order, sys_lang)
+	set_items_in_sales_order(new_sales_order, woocommerce_settings, order)
 	new_sales_order.flags.ignore_mandatory = True
 	new_sales_order.insert(ignore_permissions=True)
 	new_sales_order.submit()
 
 
-def set_items_in_sales_order(new_sales_order, woocommerce_settings, order, sys_lang):
+def set_items_in_sales_order(new_sales_order, woocommerce_settings, order):
 	company_abbr = frappe.db.get_value("Company", woocommerce_settings.company, "abbr")
 
-	default_warehouse = _("Stores - {0}", sys_lang).format(company_abbr)
+	default_warehouse = _("Stores - {0}").format(company_abbr)
 	if not frappe.db.exists("Warehouse", default_warehouse) and not woocommerce_settings.warehouse:
 		frappe.throw(_("Please set Warehouse in Woocommerce Setting"))
 
@@ -237,7 +236,7 @@ def set_items_in_sales_order(new_sales_order, woocommerce_settings, order, sys_l
 				"item_name": found_item.item_name,
 				"description": found_item.item_name,
 				"delivery_date": new_sales_order.delivery_date,
-				"uom": woocommerce_settings.uom or _("Nos", sys_lang),
+				"uom": woocommerce_settings.uom or _("Nos"),
 				"qty": item.get("quantity"),
 				"rate": flt(item.get("price")),
 				"warehouse": woocommerce_settings.warehouse or default_warehouse,

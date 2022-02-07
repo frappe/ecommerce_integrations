@@ -30,7 +30,6 @@ class TestWooCommerceConnection(unittest.TestCase):
 
 		with open(os.path.join(os.path.dirname(__file__), "test_order.json")) as f:
 			params = json.load(f)
-		sys_lang = frappe.get_single("System Settings").language or "en"
 		woocommerce_settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		raw_billing_data = params.get("billing")
 		raw_shipping_data = params.get("shipping")
@@ -38,11 +37,11 @@ class TestWooCommerceConnection(unittest.TestCase):
 		link_customer_and_address(raw_billing_data, raw_shipping_data, customer_name)
 		entry_exists = frappe.get_value("Customer", {"name": customer_name})
 		self.assertTrue(entry_exists, "customer not added")
-		link_items(params.get("line_items"), woocommerce_settings, sys_lang)
+		link_items(params.get("line_items"), woocommerce_settings)
 		entry_exists = frappe.get_value(
 			"Ecommerce Item",
 			{
-				"erpnext_item_code": _("woocommerce - {0}", sys_lang).format(
+				"erpnext_item_code": _("woocommerce - {0}").format(
 					params.get("line_items")[0].get("product_id")
 				)
 			},
