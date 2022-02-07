@@ -82,3 +82,9 @@ def migrate_old_data():
 				ecomm_item.sku = item.amazon_item_code
 				ecomm_item.flags.ignore_mandatory = True
 				ecomm_item.save(ignore_permissions=True)
+		else:
+			# Delete custom field amazon_item_code.
+			custom_field = frappe.db.get_value(
+				"Custom Field", {"dt": "Item", "fieldname": "amazon_item_code"}
+			)
+			frappe.delete_doc("Custom Field", custom_field, ignore_missing=True)
