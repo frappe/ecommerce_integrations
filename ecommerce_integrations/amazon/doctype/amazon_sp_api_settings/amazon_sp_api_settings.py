@@ -64,18 +64,21 @@ def setup_custom_fields():
 
 
 def migrate_old_data():
-	item = frappe.qb.DocType("Item")
-	items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(
-		as_dict=True
-	)
+	meta = frappe.get_meta("Item")
 
-	for item in items:
-		if not frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name}):
-			ecomm_item = frappe.new_doc("Ecommerce Item")
-			ecomm_item.integration = "Amazon"
-			ecomm_item.erpnext_item_code = item.name
-			ecomm_item.integration_item_code = item.amazon_item_code
-			ecomm_item.has_variants = 0
-			ecomm_item.sku = item.amazon_item_code
-			ecomm_item.flags.ignore_mandatory = True
-			ecomm_item.save(ignore_permissions=True)
+	if meta.has_field("amazon_item_code"):
+		item = frappe.qb.DocType("Item")
+		items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(
+			as_dict=True
+		)
+
+		for item in items:
+			if not frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name}):
+				ecomm_item = frappe.new_doc("Ecommerce Item")
+				ecomm_item.integration = "Amazon"
+				ecomm_item.erpnext_item_code = item.name
+				ecomm_item.integration_item_code = item.amazon_item_code
+				ecomm_item.has_variants = 0
+				ecomm_item.sku = item.amazon_item_code
+				ecomm_item.flags.ignore_mandatory = True
+				ecomm_item.save(ignore_permissions=True)
