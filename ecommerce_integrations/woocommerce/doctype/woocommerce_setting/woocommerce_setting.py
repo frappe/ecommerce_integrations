@@ -18,8 +18,9 @@ class WoocommerceSetting(Document):
 		self.validate_settings()
 		self.create_delete_custom_fields()
 		self.create_webhook_url()
-		if self.enable_sync:
+		if self.enable_sync and self.item_to_ecommitem == 0:
 			create_ecommerce_items()
+			self.item_to_ecommitem = 1
 
 	def create_delete_custom_fields(self):
 		if self.enable_sync:

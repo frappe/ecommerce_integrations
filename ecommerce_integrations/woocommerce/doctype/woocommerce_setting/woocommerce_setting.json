@@ -26,7 +26,8 @@
   "endpoints_section",
   "endpoint",
   "company",
-  "delivery_after_days"
+  "delivery_after_days",
+  "item_to_ecommitem"
  ],
  "fields": [
   {
@@ -106,7 +107,8 @@
    "fieldname": "warehouse",
    "fieldtype": "Link",
    "label": "Warehouse",
-   "options": "Warehouse"
+   "options": "Warehouse",
+   "reqd": 1
   },
   {
    "fieldname": "column_break_15",
@@ -149,12 +151,19 @@
    "fieldname": "delivery_after_days",
    "fieldtype": "Int",
    "label": "Delivery After (Days)"
+  },
+  {
+   "default": "0",
+   "fieldname": "item_to_ecommitem",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Item to EcommItem"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2021-11-12 13:09:35.036311",
+ "modified": "2022-02-07 19:22:43.583318",
  "modified_by": "Administrator",
  "module": "Woocommerce",
  "name": "Woocommerce Setting",
