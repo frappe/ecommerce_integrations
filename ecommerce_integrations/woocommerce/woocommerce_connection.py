@@ -217,11 +217,6 @@ def create_sales_order(order, woocommerce_settings, customer_name):
 
 
 def set_items_in_sales_order(new_sales_order, woocommerce_settings, order):
-	company_abbr = frappe.db.get_value("Company", woocommerce_settings.company, "abbr")
-
-	default_warehouse = _("Stores - {0}").format(company_abbr)
-	if not frappe.db.exists("Warehouse", default_warehouse) and not woocommerce_settings.warehouse:
-		frappe.throw(_("Please set Warehouse in Woocommerce Setting"))
 
 	for item in order.get("line_items"):
 		woocomm_item_id = item.get("product_id")
@@ -239,7 +234,7 @@ def set_items_in_sales_order(new_sales_order, woocommerce_settings, order):
 				"uom": woocommerce_settings.uom or _("Nos"),
 				"qty": item.get("quantity"),
 				"rate": flt(item.get("price")),
-				"warehouse": woocommerce_settings.warehouse or default_warehouse,
+				"warehouse": woocommerce_settings.warehouse,
 			},
 		)
 
