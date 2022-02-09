@@ -39,12 +39,7 @@ class TestWooCommerceConnection(unittest.TestCase):
 		self.assertTrue(entry_exists, "customer not added")
 		link_items(params.get("line_items"), woocommerce_settings)
 		entry_exists = frappe.get_value(
-			"Ecommerce Item",
-			{
-				"erpnext_item_code": _("woocommerce - {0}").format(
-					params.get("line_items")[0].get("product_id")
-				)
-			},
+			"Ecommerce Item", {"erpnext_item_code": params.get("line_items")[0].get("product_id")}
 		)
 		self.assertTrue(entry_exists, "ecoomm not added")
 		entry_exists = frappe.get_value("Item", {"item_name": params.get("line_items")[0].get("name")})

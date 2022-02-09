@@ -172,19 +172,17 @@ def rename_address(address, customer):
 
 def link_items(items_list, woocommerce_settings):
 	for item_data in items_list:
-		item_woo_com_id = cstr(item_data.get("product_id"))
-		tmp_erpnext_item_code = _("woocommerce - {0}").format(item_woo_com_id)
 		if not frappe.db.get_value(
-			"Ecommerce Item", {"erpnext_item_code": tmp_erpnext_item_code}, "name"
+			"Ecommerce Item", {"erpnext_item_code": cstr(item_data.get("product_id"))}, "name"
 		):
 			item_dict = {
 				"is_stock_item": 1,
-				"item_code": tmp_erpnext_item_code,
+				"item_code": cstr(item_data.get("product_id")),
 				"item_name": cstr(item_data.get("name")),
 				"description": cstr(item_data.get("name")),
 				"item_group": PRODUCT_GROUP,
 				"has_variants": 0,
-				"woocommerce_id": item_woo_com_id,
+				"woocommerce_id": cstr(item_data.get("product_id")),
 				"stock_uom": woocommerce_settings.uom or _("Nos"),
 				"sku": item_data.get("sku"),
 			}
