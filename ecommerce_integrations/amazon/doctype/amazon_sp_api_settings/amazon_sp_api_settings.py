@@ -64,9 +64,9 @@ def setup_custom_fields():
 
 
 def migrate_old_data():
-	meta = frappe.get_meta("Item")
+	column_exists = frappe.db.has_column("Item", "amazon_item_code")
 
-	if meta.has_field("amazon_item_code"):
+	if column_exists:
 		item = frappe.qb.DocType("Item")
 		items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(
 			as_dict=True
@@ -82,9 +82,3 @@ def migrate_old_data():
 				ecomm_item.sku = item.amazon_item_code
 				ecomm_item.flags.ignore_mandatory = True
 				ecomm_item.save(ignore_permissions=True)
-		else:
-			# Delete custom field amazon_item_code.
-			custom_field = frappe.db.get_value(
-				"Custom Field", {"dt": "Item", "fieldname": "amazon_item_code"}
-			)
-			frappe.delete_doc("Custom Field", custom_field, ignore_missing=True)
