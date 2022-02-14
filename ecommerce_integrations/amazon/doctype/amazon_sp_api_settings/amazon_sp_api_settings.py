@@ -25,8 +25,7 @@ class AmazonSPAPISettings(Document):
 	def after_save(self):
 		if not self.is_old_data_migrated:
 			migrate_old_data()
-			self.migrate_old_data = 1
-			self.save()
+			self.db_set("is_old_data_migrated", 1)
 
 	@frappe.whitelist()
 	def get_products_details(self):
