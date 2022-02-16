@@ -30,7 +30,6 @@
   "naming_series_config_section",
   "sales_order_series",
   "sales_invoice_series",
-  "delivery_note_series",
   "fulfilment_settings_section",
   "shipping_handled_by_marketplace"
  ],
@@ -123,11 +122,6 @@
    "label": "Sales Order Series"
   },
   {
-   "fieldname": "delivery_note_series",
-   "fieldtype": "Select",
-   "label": "Delivery Note Series"
-  },
-  {
    "fieldname": "sales_invoice_series",
    "fieldtype": "Select",
    "label": "Sales Invoice Series"
@@ -210,7 +204,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-10-26 18:16:58.824908",
+ "modified": "2022-02-07 14:12:03.736661",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Channel",
@@ -232,6 +226,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "display_name",
  "track_changes": 1
 }

@@ -162,7 +162,7 @@ class ShopifyProduct:
 					"id": product_dict.get("id"),
 					"variant_id": variant.get("id"),
 					"item_code": variant.get("id"),
-					"title": variant.get("title"),
+					"title": product_dict.get("title", "").strip() + "-" + variant.get("title"),
 					"product_type": product_dict.get("product_type"),
 					"sku": variant.get("sku"),
 					"uom": template_item.stock_uom or _("Nos"),
