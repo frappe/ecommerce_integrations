@@ -12,7 +12,6 @@
   "column_break_3",
   "password",
   "shared_secret",
-  "access_token",
   "section_break_4",
   "webhooks",
   "customer_settings_section",
@@ -84,21 +83,14 @@
   {
    "fieldname": "password",
    "fieldtype": "Password",
-   "label": "Password",
+   "label": "Password / Access Token",
    "mandatory_depends_on": "eval:doc.enable_shopify"
   },
   {
    "fieldname": "shared_secret",
    "fieldtype": "Data",
-   "label": "Shared secret",
+   "label": "Shared secret / API Secret",
    "mandatory_depends_on": "eval:doc.enable_shopify"
-  },
-  {
-   "fieldname": "access_token",
-   "fieldtype": "Data",
-   "hidden": 1,
-   "label": "Access Token",
-   "read_only": 1
   },
   {
    "collapsible": 1,
@@ -340,7 +332,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-02-04 14:59:16.532113",
+ "modified": "2022-02-16 11:34:11.966616",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
