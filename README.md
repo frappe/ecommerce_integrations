@@ -16,7 +16,7 @@
 
 ### Installation
 
-- Frappe Cloud Users can install [from Marketplace](https://frappecloud.com/marketplace/apps/ecommerce-integrations).
+- Frappe Cloud Users can install [from Marketplace](https://frappecloud.com/marketplace/apps/ecommerce_integrations).
 - Self Hosted users can install using Bench:
 
 ```bash
