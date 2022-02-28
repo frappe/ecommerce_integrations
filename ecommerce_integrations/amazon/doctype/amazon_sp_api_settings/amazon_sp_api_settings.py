@@ -10,12 +10,14 @@ from frappe.model.document import Document
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
 	get_orders,
 	get_products_details,
+	validate_credentials,
 )
 
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
 		if self.enable_amazon == 1:
+			validate_credentials(self)
 			setup_custom_fields()
 		else:
 			self.enable_sync = 0
