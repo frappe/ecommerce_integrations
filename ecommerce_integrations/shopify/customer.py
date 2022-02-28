@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import validate_phone_number
+from frappe.utils import cstr, validate_phone_number
 
 from ecommerce_integrations.controllers.customer import EcommerceCustomer
 from ecommerce_integrations.shopify.constants import (
@@ -21,7 +21,7 @@ class ShopifyCustomer(EcommerceCustomer):
 	def sync_customer(self, customer: Dict[str, Any]) -> None:
 		"""Create Customer in ERPNext using shopify's Customer dict."""
 
-		customer_name = customer.get("first_name", "") + " " + customer.get("last_name", "")
+		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		if len(customer_name.strip()) == 0:
 			customer_name = customer.get("email")
 
@@ -57,7 +57,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
 		shipping_address = customer.get("shipping_address", {})
 
-		customer_name = customer.get("first_name", "") + " " + customer.get("last_name", "")
+		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		email = customer.get("email")
 
 		if billing_address:
