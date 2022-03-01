@@ -536,15 +536,15 @@ class AmazonRepository:
 
 
 # Helper functions
-def validate_credentials(credentials):
+def validate_amazon_sp_api_credentials(**kargs):
 	api = sp_api.SPAPI(
-		iam_arn=credentials.get("iam_arn"),
-		client_id=credentials.get("client_id"),
-		client_secret=credentials.get_password("client_secret"),
-		refresh_token=credentials.get("refresh_token"),
-		aws_access_key=credentials.get("aws_access_key"),
-		aws_secret_key=credentials.get_password("aws_secret_key"),
-		country_code=credentials.get("country"),
+		iam_arn=kargs.get("iam_arn"),
+		client_id=kargs.get("client_id"),
+		client_secret=kargs.get("client_secret"),
+		refresh_token=kargs.get("refresh_token"),
+		aws_access_key=kargs.get("aws_access_key"),
+		aws_secret_key=kargs.get("aws_secret_key"),
+		country_code=kargs.get("country"),
 	)
 
 	try:

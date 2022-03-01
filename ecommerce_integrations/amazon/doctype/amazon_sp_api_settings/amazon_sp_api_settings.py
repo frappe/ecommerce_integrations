@@ -10,19 +10,30 @@ from frappe.model.document import Document
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
 	get_orders,
 	get_products_details,
-	validate_credentials,
+	validate_amazon_sp_api_credentials,
 )
 
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
 		if self.enable_amazon == 1:
-			validate_credentials(self)
+			self.validate_credentials()
 			setup_custom_fields()
 		else:
 			self.enable_sync = 0
 		if self.max_retry_limit and self.max_retry_limit > 5:
 			frappe.throw(frappe._("Value for <b>Max Retry Limit</b> must be less than or equal to 5."))
+
+	def validate_credentials(self):
+		validate_amazon_sp_api_credentials(
+			iam_arn=self.get("iam_arn"),
+			client_id=self.get("client_id"),
+			client_secret=self.get_password("client_secret"),
+			refresh_token=self.get("refresh_token"),
+			aws_access_key=self.get("aws_access_key"),
+			aws_secret_key=self.get_password("aws_secret_key"),
+			country=self.get("country"),
+		)
 
 	def after_save(self):
 		if not self.is_old_data_migrated:

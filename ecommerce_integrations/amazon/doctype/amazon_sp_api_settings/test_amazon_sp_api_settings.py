@@ -9,11 +9,13 @@ import unittest
 
 import frappe
 import responses
+from frappe.exceptions import ValidationError
 from requests import request
 from requests.exceptions import HTTPError
 
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
 	AmazonRepository,
+	validate_amazon_sp_api_credentials,
 )
 from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api import (
 	SPAPI,
@@ -300,3 +302,16 @@ class TestAmazon(unittest.TestCase):
 		amazon_repository = TestAmazonRepository()
 		sales_orders = amazon_repository.get_orders("2000-07-23")
 		self.assertEqual(len(sales_orders), 2)
+
+	def test_validate_credentials(self):
+		credentials = dict(
+			iam_arn="********************",
+			client_id="********************",
+			client_secret="********************",
+			refresh_token="********************",
+			aws_access_key="********************",
+			aws_secret_key="********************",
+			country="US",
+		)
+
+		self.assertRaises(ValidationError, validate_amazon_sp_api_credentials, **credentials)
