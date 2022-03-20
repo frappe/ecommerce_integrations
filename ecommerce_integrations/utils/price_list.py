@@ -18,4 +18,8 @@ def get_dummy_price_list() -> str:
 def discard_item_prices(doc, method=None):
 	"""Discard any item prices added in dummy price list"""
 	if doc.price_list == DUMMY_PRICE_LIST:
-		frappe.db.delete("Item Price", {"price_list": DUMMY_PRICE_LIST, "selling": 1})
+		frappe.enqueue(method=_delete_all_dummy_prices, queue="short", enqueue_after_commit=True)
+
+
+def _delete_all_dummy_prices():
+	frappe.db.delete("Item Price", {"price_list": DUMMY_PRICE_LIST, "selling": 1})
