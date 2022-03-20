@@ -536,6 +536,29 @@ class AmazonRepository:
 
 
 # Helper functions
+def validate_amazon_sp_api_credentials(**kargs):
+	api = sp_api.SPAPI(
+		iam_arn=kargs.get("iam_arn"),
+		client_id=kargs.get("client_id"),
+		client_secret=kargs.get("client_secret"),
+		refresh_token=kargs.get("refresh_token"),
+		aws_access_key=kargs.get("aws_access_key"),
+		aws_secret_key=kargs.get("aws_secret_key"),
+		country_code=kargs.get("country"),
+	)
+
+	try:
+		# validate client_id, client_secret and refresh_token.
+		api.get_access_token()
+
+		# validate aws_access_key, aws_secret_key, region and iam_arn.
+		api.get_auth()
+
+	except sp_api.SPAPIError as e:
+		msg = f"<b>Error:</b> {e.error}<br/><b>Error Description:</b> {e.error_description}"
+		frappe.throw(msg)
+
+
 def get_orders(created_after):
 	amazon_repository = AmazonRepository()
 	return amazon_repository.get_orders(created_after)

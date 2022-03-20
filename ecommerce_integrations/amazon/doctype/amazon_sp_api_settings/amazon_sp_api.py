@@ -253,27 +253,30 @@ class SPAPI(object):
 		raise exception
 
 	def get_auth(self) -> AWSSigV4:
-		client = boto3.client(
-			"sts",
-			aws_access_key_id=self.aws_access_key,
-			aws_secret_access_key=self.aws_secret_key,
-			region_name=self.region,
-		)
+		try:
+			client = boto3.client(
+				"sts",
+				aws_access_key_id=self.aws_access_key,
+				aws_secret_access_key=self.aws_secret_key,
+				region_name=self.region,
+			)
 
-		response = client.assume_role(RoleArn=self.iam_arn, RoleSessionName="SellingPartnerAPI")
+			response = client.assume_role(RoleArn=self.iam_arn, RoleSessionName="SellingPartnerAPI")
 
-		credentials = response["Credentials"]
-		access_key_id = credentials["AccessKeyId"]
-		secret_access_key = credentials["SecretAccessKey"]
-		session_token = credentials["SessionToken"]
+			credentials = response["Credentials"]
+			access_key_id = credentials["AccessKeyId"]
+			secret_access_key = credentials["SecretAccessKey"]
+			session_token = credentials["SessionToken"]
 
-		return AWSSigV4(
-			service="execute-api",
-			aws_access_key_id=access_key_id,
-			aws_secret_access_key=secret_access_key,
-			aws_session_token=session_token,
-			region=self.region,
-		)
+			return AWSSigV4(
+				service="execute-api",
+				aws_access_key_id=access_key_id,
+				aws_secret_access_key=secret_access_key,
+				aws_session_token=session_token,
+				region=self.region,
+			)
+		except Exception as e:
+			raise SPAPIError(error="invalid_aws_credentials", error_description=e)
 
 	def get_headers(self) -> dict:
 		return {"x-amz-access-token": self.get_access_token()}
