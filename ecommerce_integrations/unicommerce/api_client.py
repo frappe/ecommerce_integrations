@@ -56,6 +56,8 @@ class UnicommerceAPIClient:
 			response = requests.request(
 				url=url, method=method, headers=headers, json=body, params=params, files=files
 			)
+			# unicommerce gives useful info in response text, show it in error logs
+			response.reason = cstr(response.reason) + cstr(response.text)
 			response.raise_for_status()
 		except Exception:
 			create_unicommerce_log(status="Error", make_new=True)
