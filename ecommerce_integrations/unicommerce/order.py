@@ -198,6 +198,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"tax_category": get_dummy_tax_category(),
 			"company_address": company_address,
 			"dispatch_address_name": dispatch_address,
+			"currency": order.get("currencyCode"),
 		}
 	)
 
