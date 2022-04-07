@@ -72,7 +72,7 @@ class UnicommerceSettings(SettingController):
 	def renew_tokens(self, save=True):
 		if now_datetime() >= get_datetime(self.expires_on):
 			try:
-				self.update_tokens(grant_type="refresh_token")
+				self.update_tokens()
 			except Exception as e:
 				create_unicommerce_log(status="Error", message="Failed to authenticate with Unicommerce")
 				raise e

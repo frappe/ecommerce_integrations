@@ -63,7 +63,7 @@ class TestUnicommerceSettings(TestCase):
 
 		self.settings.expires_on = now_datetime()  # to trigger refresh
 		self.settings.refresh_token = "REFRESH_TOKEN"
-		self.settings.renew_tokens(save=False)
+		self.settings.update_tokens(grant_type="refresh_token")
 
 		self.assertEqual(self.settings.access_token, "1211cf66-d9b3-498b-a8a4-04c76578b72e")
 		self.assertEqual(self.settings.refresh_token, "18f96b68-bdf4-4c5f-93f2-16e2c6e674c6")
