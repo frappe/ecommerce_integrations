@@ -382,6 +382,7 @@ def create_sales_invoice(
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
 	si.update_stock = update_stock
+	si.flags.raw_data = si_data
 	si.insert()
 
 	_verify_total(si, si_data)

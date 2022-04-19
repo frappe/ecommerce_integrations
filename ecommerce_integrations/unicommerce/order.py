@@ -202,6 +202,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 		}
 	)
 
+	so.flags.raw_data = order
 	so.save()
 	so.submit()
 
