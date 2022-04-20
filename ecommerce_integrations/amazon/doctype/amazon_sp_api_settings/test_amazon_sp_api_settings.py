@@ -217,7 +217,7 @@ class TestAmazonSettings:
 
 			return item_group_name
 
-		self.enable_amazon = 1
+		self.is_active = 1
 		self.iam_arn = "********************"
 		self.refresh_token = "********************"
 		self.client_id = "********************"
@@ -241,19 +241,19 @@ class TestAmazonSettings:
 
 class TestAmazonRepository(AmazonRepository):
 	def __init__(self) -> None:
-		self.amz_settings = TestAmazonSettings()
+		self.amz_setting = TestAmazonSettings()
 		self.instance_params = dict(
-			iam_arn=self.amz_settings.iam_arn,
-			client_id=self.amz_settings.client_id,
-			client_secret=self.amz_settings.client_secret,
-			refresh_token=self.amz_settings.refresh_token,
-			aws_access_key=self.amz_settings.aws_access_key,
-			aws_secret_key=self.amz_settings.aws_secret_key,
-			country_code=self.amz_settings.country,
+			iam_arn=self.amz_setting.iam_arn,
+			client_id=self.amz_setting.client_id,
+			client_secret=self.amz_setting.client_secret,
+			refresh_token=self.amz_setting.refresh_token,
+			aws_access_key=self.amz_setting.aws_access_key,
+			aws_secret_key=self.amz_setting.aws_secret_key,
+			country_code=self.amz_setting.country,
 		)
 
 	def call_sp_api_method(self, sp_api_method, **kwargs):
-		max_retries = self.amz_settings.max_retry_limit
+		max_retries = self.amz_setting.max_retry_limit
 
 		for x in range(max_retries):
 			try:
