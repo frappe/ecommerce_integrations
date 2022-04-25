@@ -13,16 +13,16 @@ import ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_ap
 
 
 class AmazonRepository:
-	def __init__(self) -> None:
-		self.amz_settings = frappe.get_doc("Amazon SP API Settings")
+	def __init__(self, amz_setting_name) -> None:
+		self.amz_setting = frappe.get_doc("Amazon SP API Settings", amz_setting_name)
 		self.instance_params = dict(
-			iam_arn=self.amz_settings.iam_arn,
-			client_id=self.amz_settings.client_id,
-			client_secret=self.amz_settings.get_password("client_secret"),
-			refresh_token=self.amz_settings.refresh_token,
-			aws_access_key=self.amz_settings.aws_access_key,
-			aws_secret_key=self.amz_settings.get_password("aws_secret_key"),
-			country_code=self.amz_settings.country,
+			iam_arn=self.amz_setting.iam_arn,
+			client_id=self.amz_setting.client_id,
+			client_secret=self.amz_setting.get_password("client_secret"),
+			refresh_token=self.amz_setting.refresh_token,
+			aws_access_key=self.amz_setting.aws_access_key,
+			aws_secret_key=self.amz_setting.get_password("aws_secret_key"),
+			country_code=self.amz_setting.country,
 		)
 
 	# Helper Methods
@@ -34,7 +34,7 @@ class AmazonRepository:
 
 	def call_sp_api_method(self, sp_api_method, **kwargs):
 		errors = {}
-		max_retries = self.amz_settings.max_retry_limit
+		max_retries = self.amz_setting.max_retry_limit
 
 		for x in range(max_retries):
 			try:
@@ -53,8 +53,8 @@ class AmazonRepository:
 				message=f"{error}: {errors.get(error)}", title=f'Method "{sp_api_method.__name__}" failed'
 			)
 
-		self.amz_settings.enable_sync = 0
-		self.amz_settings.save()
+		self.amz_setting.enable_sync = 0
+		self.amz_setting.save()
 
 		frappe.throw(
 			_("Scheduled sync has been temporarily disabled because maximum retries have been exceeded!")
@@ -70,8 +70,8 @@ class AmazonRepository:
 		if not account_name:
 			new_account = frappe.new_doc("Account")
 			new_account.account_name = "Amazon {0}".format(name)
-			new_account.company = self.amz_settings.company
-			new_account.parent_account = self.amz_settings.market_place_account_group
+			new_account.company = self.amz_setting.company
+			new_account.parent_account = self.amz_setting.market_place_account_group
 			new_account.insert(ignore_permissions=True)
 			account_name = new_account.name
 
@@ -180,9 +180,9 @@ class AmazonRepository:
 		else:
 			new_customer = frappe.new_doc("Customer")
 			new_customer.customer_name = order_customer_name
-			new_customer.customer_group = self.amz_settings.customer_group
-			new_customer.territory = self.amz_settings.territory
-			new_customer.customer_type = self.amz_settings.customer_type
+			new_customer.customer_group = self.amz_setting.customer_group
+			new_customer.territory = self.amz_setting.territory
+			new_customer.customer_type = self.amz_setting.customer_type
 			new_customer.save()
 
 			new_contact = frappe.new_doc("Contact")
@@ -240,7 +240,7 @@ class AmazonRepository:
 		)
 
 		final_order_items = []
-		warehouse = self.amz_settings.warehouse
+		warehouse = self.amz_setting.warehouse
 
 		while True:
 
@@ -298,11 +298,11 @@ class AmazonRepository:
 					"delivery_date": delivery_date,
 					"transaction_date": transaction_date,
 					"items": items,
-					"company": self.amz_settings.company,
+					"company": self.amz_setting.company,
 				}
 			)
 
-			taxes_and_charges = self.amz_settings.taxes_charges
+			taxes_and_charges = self.amz_setting.taxes_charges
 
 			if taxes_and_charges:
 				charges_and_fees = self.get_charges_and_fees(order_id)
@@ -373,7 +373,7 @@ class AmazonRepository:
 			if not item_group:
 				new_item_group = frappe.new_doc("Item Group")
 				new_item_group.item_group_name = item_group_name
-				new_item_group.parent_item_group = self.amz_settings.parent_item_group
+				new_item_group.parent_item_group = self.amz_setting.parent_item_group
 				new_item_group.insert()
 				return new_item_group.item_group_name
 
@@ -425,7 +425,7 @@ class AmazonRepository:
 
 	def create_item_price(self, amazon_item, item_code):
 		item_price = frappe.new_doc("Item Price")
-		item_price.price_list = self.amz_settings.price_list
+		item_price.price_list = self.amz_setting.price_list
 		item_price.price_list_rate = (
 			amazon_item.get("AttributeSets")[0].get("ListPrice", {}).get("Amount") or 0
 		)
@@ -536,15 +536,15 @@ class AmazonRepository:
 
 
 # Helper functions
-def validate_amazon_sp_api_credentials(**kargs):
+def validate_amazon_sp_api_credentials(**args):
 	api = sp_api.SPAPI(
-		iam_arn=kargs.get("iam_arn"),
-		client_id=kargs.get("client_id"),
-		client_secret=kargs.get("client_secret"),
-		refresh_token=kargs.get("refresh_token"),
-		aws_access_key=kargs.get("aws_access_key"),
-		aws_secret_key=kargs.get("aws_secret_key"),
-		country_code=kargs.get("country"),
+		iam_arn=args.get("iam_arn"),
+		client_id=args.get("client_id"),
+		client_secret=args.get("client_secret"),
+		refresh_token=args.get("refresh_token"),
+		aws_access_key=args.get("aws_access_key"),
+		aws_secret_key=args.get("aws_secret_key"),
+		country_code=args.get("country"),
 	)
 
 	try:
@@ -559,11 +559,11 @@ def validate_amazon_sp_api_credentials(**kargs):
 		frappe.throw(msg)
 
 
-def get_orders(created_after):
-	amazon_repository = AmazonRepository()
+def get_orders(amz_setting_name, created_after):
+	amazon_repository = AmazonRepository(amz_setting_name)
 	return amazon_repository.get_orders(created_after)
 
 
-def get_products_details():
-	amazon_repository = AmazonRepository()
+def get_products_details(amz_setting_name):
+	amazon_repository = AmazonRepository(amz_setting_name)
 	return amazon_repository.get_products_details()

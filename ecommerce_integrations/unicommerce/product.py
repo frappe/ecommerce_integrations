@@ -10,6 +10,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	DEFAULT_WEIGHT_UOM,
+	ITEM_BATCH_GROUP_FIELD,
 	ITEM_HEIGHT_FIELD,
 	ITEM_LENGTH_FIELD,
 	ITEM_SYNC_CHECKBOX,
@@ -37,6 +38,7 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 	"length": ITEM_LENGTH_FIELD,
 	"width": ITEM_WIDTH_FIELD,
 	"height": ITEM_HEIGHT_FIELD,
+	"batchGroupCode": ITEM_BATCH_GROUP_FIELD,
 }
 
 ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}

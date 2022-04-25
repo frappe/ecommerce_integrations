@@ -16,7 +16,7 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_reposit
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
-		if self.enable_amazon == 1:
+		if self.is_active == 1:
 			self.validate_credentials()
 			setup_custom_fields()
 		else:
@@ -42,20 +42,24 @@ class AmazonSPAPISettings(Document):
 
 	@frappe.whitelist()
 	def get_products_details(self):
-		if self.enable_amazon == 1:
-			get_products_details()
+		if self.is_active == 1:
+			get_products_details(amz_setting_name=self.name)
 
 	@frappe.whitelist()
 	def get_order_details(self):
-		if self.enable_amazon == 1:
-			get_orders(created_after=self.after_date)
+		if self.is_active == 1:
+			get_orders(amz_setting_name=self.name, created_after=self.after_date)
 
 
 # Called via a hook in every hour.
 def schedule_get_order_details():
-	amz_settings = frappe.get_doc("Amazon SP API Settings")
-	if amz_settings.enable_amazon and amz_settings.enable_sync:
-		get_orders(created_after=amz_settings.after_date)
+	amz_settings = frappe.get_all(
+		"Amazon SP API Settings", filters={"is_active": 1, "enable_sync": 1}, pluck="name"
+	)
+
+	for amz_setting in amz_settings:
+		after_date = frappe.get_value("Amazon SP API Settings", amz_setting, "after_date")
+		get_orders(amz_setting_name=amz_setting, created_after=after_date)
 
 
 def setup_custom_fields():
