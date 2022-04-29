@@ -99,6 +99,7 @@ def _create_item_dict(uni_item):
 	item_dict["barcodes"] = _get_barcode_data(uni_item)
 	item_dict["disabled"] = int(not uni_item.get("enabled"))
 	item_dict["item_group"] = _get_item_group(uni_item.get("categoryCode"))
+	item_dict["name"] = item_dict["item_code"]  # when naming is by item series
 
 	return item_dict
 
