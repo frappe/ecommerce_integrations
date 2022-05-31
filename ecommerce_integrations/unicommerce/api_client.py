@@ -92,14 +92,17 @@ class UnicommerceAPIClient:
 		if status:
 			return item
 
-	def create_update_item(self, item_dict: JsonDict) -> Tuple[JsonDict, bool]:
+	def create_update_item(self, item_dict: JsonDict, update=False) -> Tuple[JsonDict, bool]:
 		"""Create/update item on unicommerce.
 
 		ref: https://documentation.unicommerce.com/docs/createoredit-itemtype.html
 		"""
-		return self.request(
-			endpoint="/services/rest/v1/catalog/itemType/createOrEdit", body={"itemType": item_dict}
-		)
+
+		endpoint = "/services/rest/v1/catalog/itemType/createOrEdit"
+		if update:
+			# Edit has separate endpoint even though docs suggest otherwise
+			endpoint = "/services/rest/v1/catalog/itemType/edit"
+		return self.request(endpoint=endpoint, body={"itemType": item_dict})
 
 	def get_sales_order(self, order_code: str) -> Optional[JsonDict]:
 		"""Get details for a sales order.
