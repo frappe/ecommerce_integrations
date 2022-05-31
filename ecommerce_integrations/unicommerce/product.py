@@ -271,6 +271,9 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 	item_json["enabled"] = not bool(item.get("disabled"))
 
 	for barcode in item.barcodes:
+		if not item_json.get("scanIdentifier"):
+			# Set first barcode as scan identifier
+			item_json["scanIdentifier"] = barcode.barcode
 		if barcode.barcode_type == "EAN":
 			item_json["ean"] = barcode.barcode
 		elif barcode.barcode_type == "UPC-A":
