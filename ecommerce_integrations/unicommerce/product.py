@@ -245,7 +245,10 @@ def upload_items_to_unicommerce(
 
 	for item_code in item_codes:
 		item_data = _build_unicommerce_item(item_code)
-		_, status = client.create_update_item(item_data)
+		sku = item_data.get("skuCode")
+
+		item_exists = bool(client.get_unicommerce_item(sku))
+		_, status = client.create_update_item(item_data, update=item_exists)
 
 		if status:
 			_handle_ecommerce_item(item_code)
