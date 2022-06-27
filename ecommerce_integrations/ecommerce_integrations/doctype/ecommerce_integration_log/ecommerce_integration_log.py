@@ -6,6 +6,8 @@ import json
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.query_builder import Interval
+from frappe.query_builder.functions import Now
 from frappe.utils import strip_html
 from frappe.utils.data import cstr
 
@@ -26,6 +28,13 @@ class EcommerceIntegrationLog(Document):
 		if title:
 			title = strip_html(title)
 			self.title = title if len(title) < 100 else title[:100] + "..."
+
+	@staticmethod
+	def clear_old_logs(days=90):
+		table = frappe.qb.DocType("Ecommerce Integration Log")
+		frappe.db.delete(
+			table, filters=((table.modified < (Now() - Interval(days=days)))) & (table.status == "Success")
+		)
 
 
 def create_log(

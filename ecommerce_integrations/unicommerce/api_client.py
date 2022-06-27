@@ -43,6 +43,7 @@ class UnicommerceAPIClient:
 		body: Optional[JsonDict] = None,
 		params: Optional[JsonDict] = None,
 		files: Optional[JsonDict] = None,
+		log_error=True,
 	) -> Tuple[JsonDict, bool]:
 
 		if headers is None:
@@ -60,7 +61,8 @@ class UnicommerceAPIClient:
 			response.reason = cstr(response.reason) + cstr(response.text)
 			response.raise_for_status()
 		except Exception:
-			create_unicommerce_log(status="Error", make_new=True)
+			if log_error:
+				create_unicommerce_log(status="Error", make_new=True)
 			return None, False
 
 		if method == "GET" and "application/json" not in response.headers.get("content-type"):
@@ -81,13 +83,13 @@ class UnicommerceAPIClient:
 
 		return data, status
 
-	def get_unicommerce_item(self, sku: str) -> Optional[JsonDict]:
+	def get_unicommerce_item(self, sku: str, log_error=True) -> Optional[JsonDict]:
 		"""Get Unicommerce item data for specified SKU code.
 
 		ref: https://documentation.unicommerce.com/docs/itemtype-get.html
 		"""
 		item, status = self.request(
-			endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": sku}
+			endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": sku}, log_error=log_error
 		)
 		if status:
 			return item
