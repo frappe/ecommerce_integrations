@@ -9,8 +9,8 @@ on:
       - develop
       - main
   schedule:
-    # Run everday at midnight UTC / 5:30 IST
-    - cron: "0 0 * * *"
+    # Run every sunday at midnight UTC / 5:30 IST
+    - cron: "0 0 * * 0"
 
 concurrency:
   group: develop-${{ github.event.number }}
