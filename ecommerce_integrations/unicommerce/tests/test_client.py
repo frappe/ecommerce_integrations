@@ -317,7 +317,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		item = frappe.get_last_doc("Item")
 
-		save_file(fname=csv_filename, content=csv_file, dt=item.doctype, dn=item.name, is_private=1)
+		save_file(fname=csv_filename, content=csv_file, dt=item.doctype, dn=item.name)
 
 		self.responses.add(
 			responses.POST,

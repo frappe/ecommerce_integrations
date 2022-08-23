@@ -121,7 +121,11 @@ def _map_address_fields(shopify_address, customer_name, address_type, email):
 		"state": shopify_address.get("province"),
 		"pincode": shopify_address.get("zip"),
 		"country": shopify_address.get("country"),
-		"phone": validate_phone_number(shopify_address.get("phone"), throw=False) or None,
 		"email_id": email,
 	}
+
+	phone = shopify_address.get("phone")
+	if validate_phone_number(phone, throw=False):
+		address_fields["phone"] = phone
+
 	return address_fields

@@ -56,7 +56,6 @@ class TestUnicommerceProduct(TestCaseApiClient):
 			"brand": "TITANIUM",
 			"shelf_life_in_days": 0,
 			"disabled": 0,
-			"gst_hsn_code": "91011100",
 			"image": "https://user-images.githubusercontent.com/9079960/131f-650c52c07a0e.gif",
 		}
 		for field, value in expected_item.items():

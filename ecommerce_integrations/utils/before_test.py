@@ -32,5 +32,31 @@ def before_tests():
 
 	frappe.db.set_value("Stock Settings", None, "auto_insert_price_list_rate_if_missing", 0)
 	enable_all_roles_and_domains()
+	create_tax_account()
 
 	frappe.db.commit()
+
+
+def create_tax_account():
+	company = "Wind Power LLC"
+	account_name = "Output Tax GST"
+
+	parent = (
+		frappe.db.get_value("Account", {"company": company, "account_type": "Tax", "is_group": 1})
+		or "Duties and Taxes - WP"
+	)
+
+	frappe.get_doc(
+		{
+			"doctype": "Account",
+			"account_name": account_name,
+			"is_group": 0,
+			"company": company,
+			"root_type": "Liability",
+			"report_type": "Balance Sheet",
+			"account_currency": "INR",
+			"parent_account": parent,
+			"account_type": "Tax",
+			"tax_rate": 18,
+		}
+	).insert()
