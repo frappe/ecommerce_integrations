@@ -124,7 +124,8 @@ def _map_address_fields(shopify_address, customer_name, address_type, email):
 		"email_id": email,
 	}
 
-	if validate_phone_number(shopify_address.get("phone"), throw=False):
-		address_fields["phone"] = shopify_address.get("phone")
+	phone = shopify_address.get("phone")
+	if validate_phone_number(phone):
+		address_fields["phone"] = phone
 
 	return address_fields
