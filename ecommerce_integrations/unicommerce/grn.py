@@ -37,8 +37,8 @@ class GRNItemRow:
 	batch_number: str = ""
 	shelf_code: str = ""
 	item_details: str = ""
-	mrp: str = ""
-	unit_price: str = ""
+	mrp: str = 0.0
+	unit_price: str = 0.0
 
 	def get_ordered_fields(self):
 		return [
@@ -144,6 +144,7 @@ def _prepare_grn_import_csv(stock_entry) -> str:
 	vendor_code = frappe.db.get_single_value(SETTINGS_DOCTYPE, "vendor_code")
 
 	for item in stock_entry.items:
+		price = frappe.db.get_value("Item", item.item_code, "standard_rate") or ""
 		invoice_date = _get_unicommerce_format_date(stock_entry.posting_date)
 
 		batch_details = frappe.db.get_value(
@@ -174,6 +175,8 @@ def _prepare_grn_import_csv(stock_entry) -> str:
 			manufacturing_date=manufacturing_date,
 			expiry_date=expiry_date,
 			batch_number=item.batch_no,
+			mrp=price,
+			unit_price=price,
 		)
 		rows.append(row)
 
