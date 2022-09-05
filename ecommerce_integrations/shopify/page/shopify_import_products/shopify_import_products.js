@@ -174,7 +174,7 @@ shopify.ProductImporter = class {
 				// 'Image': product.image && product.image.src && `<img style="height: 50px" src="${product.image.src}">`,
 				'ID': product.id,
 				'Name': product.title,
-				'SKUs': product.variants && product.variants.reduce((a, b) => a + `${b.sku}, `, ''),
+				'SKUs': product.variants && product.variants.map(a => `${a.sku}`).join(', '),
 				'Status': this.getProductSyncStatus(product.synced),
 				'Action': !product.synced ? `<button type="button" class="btn btn-default btn-xs btn-sync mx-2" data-product="${product.id}"> Sync </button>` : '-',
 			}));
