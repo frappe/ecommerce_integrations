@@ -176,7 +176,9 @@ shopify.ProductImporter = class {
 				'Name': product.title,
 				'SKUs': product.variants && product.variants.map(a => `${a.sku}`).join(', '),
 				'Status': this.getProductSyncStatus(product.synced),
-				'Action': !product.synced ? `<button type="button" class="btn btn-default btn-xs btn-sync mx-2" data-product="${product.id}"> Sync </button>` : '-',
+                'Action': !product.synced ?
+                    `<button type="button" class="btn btn-default btn-xs btn-sync mx-2" data-product="${product.id}"> Sync </button>` :
+                    `<button type="button" class="btn btn-default btn-xs btn-resync mx-2" data-product="${product.id}"> Re-sync </button>`,
 			}));
 
 			return shopifyProducts;
@@ -217,11 +219,38 @@ shopify.ProductImporter = class {
 						.find('.indicator-pill')
 						.replaceWith(this.getProductSyncStatus(true));
 
-					_this.remove();
+                    _this.replaceWith(`<button type="button" class="btn btn-default btn-xs btn-resync mx-2" data-product="${product}"> Re-sync </button>`);
 
 				});
 
 		});
+
+        this.wrapper.on('click', '.btn-resync', e => {
+            const _this = $(e.currentTarget);
+
+            _this.prop('disabled', true).text('Syncing...');
+
+            const product = _this.attr('data-product');
+            this.resyncProduct(product)
+                .then(status => {
+
+                    if (!status) {
+                        frappe.throw(__('Error syncing product'));
+                        return;
+                    }
+
+                    _this.parents('.dt-row')
+                        .find('.indicator-pill')
+                        .replaceWith(this.getProductSyncStatus(true));
+
+                        _this.prop('disabled', false).text('Re-sync');
+
+                })
+                .catch(ex => {
+                    _this.prop('disabled', false).text('Re-sync');
+                    frappe.throw(__('Error syncing Product'));
+                });
+        });
 
 		// pagination
 		this.wrapper.on('click', '.btn-prev,.btn-next', e => this.switchPage(e));
@@ -244,6 +273,20 @@ shopify.ProductImporter = class {
 		return status;
 
 	}
+
+    async resyncProduct(product) {
+
+        const { message: status } = await frappe.call({
+            method: 'ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.resync_product',
+            args: { product },
+        });
+
+        if (status)
+            this.fetchProductCount();
+
+        return status;
+
+    }
 
 	async switchPage({ currentTarget }) {
 
