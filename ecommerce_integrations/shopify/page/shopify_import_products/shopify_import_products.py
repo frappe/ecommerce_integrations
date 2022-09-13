@@ -97,15 +97,18 @@ def resync_product(product):
 
 @temp_shopify_session
 def _resync_product(product):
+	savepoint = "shopify_resync_product"
 	try:
 		item = Product.find(product)
 
+		frappe.db.savepoint(savepoint)
 		for variant in item.variants:
 			shopify_product = ShopifyProduct(product, variant_id=variant.id)
 			shopify_product.sync_product()
 
 		return True
 	except Exception:
+		frappe.db.rollback(save_point=savepoint)
 		return False
 
 
