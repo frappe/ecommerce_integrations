@@ -191,7 +191,7 @@
    "default": "0",
    "fieldname": "sync_delivery_note",
    "fieldtype": "Check",
-   "label": "Import Delivery Notes from Shopify on Shipment"
+   "label": "Create Delivery Note when an order is marked as fulfilled in Shopify"
   },
   {
    "depends_on": "eval:doc.sync_delivery_note==1",
@@ -204,7 +204,7 @@
    "default": "0",
    "fieldname": "sync_sales_invoice",
    "fieldtype": "Check",
-   "label": "Import Sales Invoice from Shopify if Payment is marked"
+   "label": "Create Sales Invoice and Payment Entry when an order is marked as paid in Shopify"
   },
   {
    "depends_on": "eval:doc.sync_sales_invoice==1",
