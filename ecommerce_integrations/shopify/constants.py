@@ -13,6 +13,7 @@ WEBHOOK_EVENTS = [
 	"orders/paid",
 	"orders/fulfilled",
 	"orders/cancelled",
+	"orders/partially_fulfilled",
 ]
 
 EVENT_MAPPER = {
@@ -20,6 +21,7 @@ EVENT_MAPPER = {
 	"orders/paid": "ecommerce_integrations.shopify.invoice.prepare_sales_invoice",
 	"orders/fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
 	"orders/cancelled": "ecommerce_integrations.shopify.order.cancel_order",
+	"orders/partially_fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
 }
 
 SHOPIFY_VARIANTS_ATTR_LIST = ["option1", "option2", "option3"]
