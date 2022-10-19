@@ -329,7 +329,7 @@ def upload_erpnext_item(doc, method=None):
 	New items are pushed to shopify and changes to existing items are
 	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
-	item = doc  # alias for readability
+	template_item = item = doc  # alias for readability
 	# a new item recieved from ecommerce_integrations is being inserted
 	if item.flags.from_integration:
 		return
@@ -342,17 +342,20 @@ def upload_erpnext_item(doc, method=None):
 	if frappe.flags.in_import:
 		return
 
-	if doc.has_variants:
-		msgprint(_("Template items can not be uploaded to Shopify."))
+	if item.has_variants:
+		# msgprint(_("Template items can not be uploaded to Shopify."))
 		return
 
-	if doc.variant_of and not setting.upload_variants_as_items:
-		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
-		return
+	# if doc.variant_of and not setting.upload_variants_as_items:
+	# 	msgprint(_("Enable variant sync in setting to upload item to Shopify."))
+	# 	return
+
+	if item.variant_of:
+		template_item = frappe.get_doc("Item", item.variant_of)
 
 	product_id = frappe.db.get_value(
 		"Ecommerce Item",
-		{"erpnext_item_code": item.name, "integration": MODULE_NAME},
+		{"erpnext_item_code": template_item.name, "integration": MODULE_NAME},
 		"integration_item_code",
 	)
 	is_new_product = not bool(product_id)
@@ -362,33 +365,69 @@ def upload_erpnext_item(doc, method=None):
 		product.published = False
 		product.status = "draft"
 
-		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
+		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
 		is_successful = product.save()
 
 		if is_successful:
 			update_default_variant_properties(
-				product, sku=item.item_code, price=item.standard_rate, is_stock_item=item.is_stock_item,
+				product, sku=template_item.item_code, price=template_item.standard_rate, is_stock_item=template_item.is_stock_item,
 			)
+			if item.variant_of:
+				product.options = []
+				product.variants = []
+				variant_attributes = {'title': template_item.item_name}
+				max_index_range = min(4, len(template_item.attributes)+1)
+				for i in range(1, max_index_range):
+					attr = template_item.attributes[i-1]
+					product.options.append({
+						"name": attr.attribute,
+						"values": frappe.db.get_all("Item Attribute Value", {
+							"parent": attr.attribute
+						}, pluck="attribute_value")
+					})
+					variant_attributes[f"option{i}"] = item.attributes[i-1].attribute_value
+				product.variants.append(Variant(variant_attributes))
+
 			product.save()  # push variant
 
-			ecom_item = frappe.get_doc(
-				{
-					"doctype": "Ecommerce Item",
-					"erpnext_item_code": item.name,
-					"integration": MODULE_NAME,
-					"integration_item_code": str(product.id),
-					"variant_id": str(product.variants[0].id),
-					"sku": str(product.variants[0].sku),
-				}
-			)
-			ecom_item.insert()
+			ecom_items = list(set([item, template_item]))
+			for d in ecom_items:
+				ecom_item = frappe.get_doc(
+					{
+						"doctype": "Ecommerce Item",
+						"erpnext_item_code": d.name,
+						"integration": MODULE_NAME,
+						"integration_item_code": str(product.id),
+						"variant_id": "" if d.has_variants else str(product.variants[0].id),
+						"sku": "" if d.has_variants else str(product.variants[0].sku),
+						"has_variants": d.has_variants,
+						"variant_of": d.variant_of,
+					}
+				)
+				ecom_item.insert()
 
 		write_upload_log(status=is_successful, product=product, item=item)
 	elif setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
-			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
-			update_default_variant_properties(product, is_stock_item=item.is_stock_item)
+			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
+			update_default_variant_properties(product, is_stock_item=template_item.is_stock_item)
+
+			if item.variant_of:
+				product.options = []
+				variant_attributes = {}
+				max_index_range = min(4, len(template_item.attributes)+1)
+				for i in range(1, max_index_range):
+					attr = template_item.attributes[i-1]
+					product.options.append({
+						"name": attr.attribute,
+						"values": frappe.db.get_all("Item Attribute Value", {
+							"parent": attr.attribute
+						}, pluck="attribute_value")
+					})
+					variant_attributes[f"option{i}"] = item.attributes[i-1].attribute_value
+				product.variants.append(Variant(variant_attributes))
+
 			is_successful = product.save()
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
 
