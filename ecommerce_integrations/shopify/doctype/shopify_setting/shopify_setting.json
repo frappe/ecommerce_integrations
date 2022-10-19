@@ -38,6 +38,8 @@
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
+  "column_break_34",
+  "upload_variants_as_items",
   "inventory_sync_section",
   "warehouse",
   "update_erpnext_stock_levels_to_shopify",
@@ -327,12 +329,22 @@
    "hidden": 1,
    "label": "Last Inventory Sync",
    "read_only": 1
+  },
+  {
+   "fieldname": "column_break_34",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "upload_variants_as_items",
+   "fieldtype": "Check",
+   "label": "Upload ERPNext Variants as Shopify Items"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-02-16 11:34:11.966616",
+ "modified": "2022-10-19 14:53:21.861736",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
