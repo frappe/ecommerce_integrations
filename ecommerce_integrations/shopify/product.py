@@ -442,6 +442,25 @@ def upload_erpnext_item(doc, method=None):
 				product.variants.append(Variant(variant_attributes))
 
 			is_successful = product.save()
+			if is_successful and item.variant_of:
+				variant_product_id = frappe.db.get_value(
+					"Ecommerce Item",
+					{"erpnext_item_code": item.name, "integration": MODULE_NAME},
+					"integration_item_code",
+				)
+				if not variant_product_id:
+					frappe.get_doc(
+						{
+							"doctype": "Ecommerce Item",
+							"erpnext_item_code": item.name,
+							"integration": MODULE_NAME,
+							"integration_item_code": str(product.id),
+							"variant_id": str(product.variants[-1].id),
+							"sku": str(product.variants[-1].sku),
+							"variant_of": item.variant_of,
+						}
+					).insert()
+
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
 
 
