@@ -336,6 +336,7 @@
   },
   {
    "default": "0",
+   "description": "Caution: Only 3 attributes will be accepted by Shopify",
    "fieldname": "upload_variants_as_items",
    "fieldtype": "Check",
    "label": "Upload ERPNext Variants as Shopify Items"
@@ -344,7 +345,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-10-19 14:53:21.861736",
+ "modified": "2022-10-20 10:00:57.258917",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

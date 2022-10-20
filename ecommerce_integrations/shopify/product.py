@@ -346,9 +346,9 @@ def upload_erpnext_item(doc, method=None):
 		# msgprint(_("Template items can not be uploaded to Shopify."))
 		return
 
-	# if doc.variant_of and not setting.upload_variants_as_items:
-	# 	msgprint(_("Enable variant sync in setting to upload item to Shopify."))
-	# 	return
+	if doc.variant_of and not setting.upload_variants_as_items:
+		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
+		return
 
 	if item.variant_of:
 		template_item = frappe.get_doc("Item", item.variant_of)
@@ -370,22 +370,30 @@ def upload_erpnext_item(doc, method=None):
 
 		if is_successful:
 			update_default_variant_properties(
-				product, sku=template_item.item_code, price=template_item.standard_rate, is_stock_item=template_item.is_stock_item,
+				product,
+				sku=template_item.item_code,
+				price=template_item.standard_rate,
+				is_stock_item=template_item.is_stock_item,
 			)
 			if item.variant_of:
 				product.options = []
 				product.variants = []
-				variant_attributes = {'title': template_item.item_name}
-				max_index_range = min(4, len(template_item.attributes)+1)
-				for i in range(1, max_index_range):
-					attr = template_item.attributes[i-1]
-					product.options.append({
-						"name": attr.attribute,
-						"values": frappe.db.get_all("Item Attribute Value", {
-							"parent": attr.attribute
-						}, pluck="attribute_value")
-					})
-					variant_attributes[f"option{i}"] = item.attributes[i-1].attribute_value
+				variant_attributes = {"title": template_item.item_name}
+				max_index_range = min(3, len(template_item.attributes))
+				for i in range(0, max_index_range):
+					attr = template_item.attributes[i]
+					product.options.append(
+						{
+							"name": attr.attribute,
+							"values": frappe.db.get_all(
+								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+							),
+						}
+					)
+					try:
+						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+					except IndexError:
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
 				product.variants.append(Variant(variant_attributes))
 
 			product.save()  # push variant
@@ -416,16 +424,21 @@ def upload_erpnext_item(doc, method=None):
 			if item.variant_of:
 				product.options = []
 				variant_attributes = {}
-				max_index_range = min(4, len(template_item.attributes)+1)
-				for i in range(1, max_index_range):
-					attr = template_item.attributes[i-1]
-					product.options.append({
-						"name": attr.attribute,
-						"values": frappe.db.get_all("Item Attribute Value", {
-							"parent": attr.attribute
-						}, pluck="attribute_value")
-					})
-					variant_attributes[f"option{i}"] = item.attributes[i-1].attribute_value
+				max_index_range = min(3, len(template_item.attributes))
+				for i in range(0, max_index_range):
+					attr = template_item.attributes[i]
+					product.options.append(
+						{
+							"name": attr.attribute,
+							"values": frappe.db.get_all(
+								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+							),
+						}
+					)
+					try:
+						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+					except IndexError:
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
 				product.variants.append(Variant(variant_attributes))
 
 			is_successful = product.save()
