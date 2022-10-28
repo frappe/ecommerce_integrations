@@ -3,6 +3,7 @@ from typing import Dict
 
 import frappe
 from frappe.utils import cint, now
+from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import InventoryLevel, Variant
 
 from ecommerce_integrations.controllers.inventory import (
@@ -54,6 +55,10 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			)
 			update_inventory_sync_status(d.ecom_item, time=synced_on)
 			d.status = "Success"
+		except ResourceNotFound:
+			# Variant or location is deleted, mark as last synced and ignore.
+			update_inventory_sync_status(d.ecom_item, time=synced_on)
+			d.status = "Not Found"
 		except Exception as e:
 			d.status = "Failed"
 			d.failure_reason = str(e)
@@ -72,7 +77,7 @@ def _log_inventory_update_status(inventory_levels) -> None:
 
 	stats = Counter([d.status for d in inventory_levels])
 
-	percent_successful = stats["Success"] / (stats["Success"] + stats["Failed"])
+	percent_successful = stats["Success"] / len(inventory_levels)
 
 	if percent_successful == 0:
 		status = "Failed"
