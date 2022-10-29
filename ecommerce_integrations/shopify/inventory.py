@@ -3,6 +3,7 @@ from typing import Dict
 
 import frappe
 from frappe.utils import cint, now
+from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import InventoryLevel, Variant
 
 from ecommerce_integrations.controllers.inventory import (
@@ -54,24 +55,29 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			)
 			update_inventory_sync_status(d.ecom_item, time=synced_on)
 			d.status = "Success"
+		except ResourceNotFound:
+			# Variant or location is deleted, mark as last synced and ignore.
+			update_inventory_sync_status(d.ecom_item, time=synced_on)
+			d.status = "Not Found"
 		except Exception as e:
-			create_shopify_log(method="update_inventory_on_shopify", status="Error", exception=e)
 			d.status = "Failed"
+			d.failure_reason = str(e)
 
 	_log_inventory_update_status(inventory_levels)
 
 
 def _log_inventory_update_status(inventory_levels) -> None:
 	"""Create log of inventory update."""
-	log_message = "variant_id,location_id,status\n"
+	log_message = "variant_id,location_id,status,failure_reason\n"
 
 	log_message += "\n".join(
-		f"{d.variant_id},{d.shopify_location_id},{d.status}" for d in inventory_levels
+		f"{d.variant_id},{d.shopify_location_id},{d.status},{d.failure_reason or ''}"
+		for d in inventory_levels
 	)
 
 	stats = Counter([d.status for d in inventory_levels])
 
-	percent_successful = stats["Success"] / (stats["Success"] + stats["Failed"])
+	percent_successful = stats["Success"] / len(inventory_levels)
 
 	if percent_successful == 0:
 		status = "Failed"
