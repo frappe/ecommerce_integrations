@@ -363,7 +363,7 @@ def upload_erpnext_item(doc, method=None):
 	if is_new_product:
 		product = Product()
 		product.published = False
-		product.status = "draft"
+		product.status = "draft" if setting.sync_new_item_as_draft else "active"
 
 		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
 		is_successful = product.save()
