@@ -39,7 +39,7 @@
   "upload_erpnext_items",
   "update_shopify_item_on_update",
   "column_break_34",
-  "sync_new_item_as_draft",
+  "sync_new_item_as_active",
   "upload_variants_as_items",
   "inventory_sync_section",
   "warehouse",
@@ -343,16 +343,16 @@
    "label": "Upload ERPNext Variants as Shopify Items"
   },
   {
-   "default": "1",
-   "fieldname": "sync_new_item_as_draft",
+   "default": "0",
+   "fieldname": "sync_new_item_as_active",
    "fieldtype": "Check",
-   "label": "Sync New Items as Draft"
+   "label": "Sync New Items as Active"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-10-29 11:29:09.606865",
+ "modified": "2022-11-01 16:09:42.685577",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
