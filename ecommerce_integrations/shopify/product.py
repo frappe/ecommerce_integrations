@@ -342,8 +342,8 @@ def upload_erpnext_item(doc, method=None):
 	if frappe.flags.in_import:
 		return
 
-	if item.has_variants:
-		# msgprint(_("Template items can not be uploaded to Shopify."))
+	if item.has_variants or len(item.attributes) > 3:
+		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
 		return
 
 	if doc.variant_of and not setting.upload_variants_as_items:
@@ -421,9 +421,9 @@ def upload_erpnext_item(doc, method=None):
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
 			update_default_variant_properties(product, is_stock_item=template_item.is_stock_item)
 
+			variant_attributes = {}
 			if item.variant_of:
 				product.options = []
-				variant_attributes = {}
 				max_index_range = min(3, len(template_item.attributes))
 				for i in range(0, max_index_range):
 					attr = template_item.attributes[i]
@@ -449,17 +449,24 @@ def upload_erpnext_item(doc, method=None):
 					"integration_item_code",
 				)
 				if not variant_product_id:
-					frappe.get_doc(
-						{
-							"doctype": "Ecommerce Item",
-							"erpnext_item_code": item.name,
-							"integration": MODULE_NAME,
-							"integration_item_code": str(product.id),
-							"variant_id": str(product.variants[-1].id),
-							"sku": str(product.variants[-1].sku),
-							"variant_of": item.variant_of,
-						}
-					).insert()
+					for variant in product.variants:
+						if (
+							variant.option1 == variant_attributes.get("option1")
+							and variant.option2 == variant_attributes.get("option2")
+							and variant.option3 == variant_attributes.get("option3")
+						):
+							frappe.get_doc(
+								{
+									"doctype": "Ecommerce Item",
+									"erpnext_item_code": item.name,
+									"integration": MODULE_NAME,
+									"integration_item_code": str(product.id),
+									"variant_id": str(variant.id),
+									"sku": str(variant.sku),
+									"variant_of": item.variant_of,
+								}
+							).insert()
+							break
 
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
 
