@@ -443,32 +443,43 @@ def upload_erpnext_item(doc, method=None):
 
 			is_successful = product.save()
 			if is_successful and item.variant_of:
-				variant_product_id = frappe.db.get_value(
-					"Ecommerce Item",
-					{"erpnext_item_code": item.name, "integration": MODULE_NAME},
-					"integration_item_code",
-				)
-				if not variant_product_id:
-					for variant in product.variants:
-						if (
-							variant.option1 == variant_attributes.get("option1")
-							and variant.option2 == variant_attributes.get("option2")
-							and variant.option3 == variant_attributes.get("option3")
-						):
-							frappe.get_doc(
-								{
-									"doctype": "Ecommerce Item",
-									"erpnext_item_code": item.name,
-									"integration": MODULE_NAME,
-									"integration_item_code": str(product.id),
-									"variant_id": str(variant.id),
-									"sku": str(variant.sku),
-									"variant_of": item.variant_of,
-								}
-							).insert()
-							break
+				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
 
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+
+
+def map_erpnext_variant_to_shopify_variant(
+	shopify_product: Product, erpnext_item, variant_attributes
+):
+	variant_product_id = frappe.db.get_value(
+		"Ecommerce Item",
+		{"erpnext_item_code": erpnext_item.name, "integration": MODULE_NAME},
+		"integration_item_code",
+	)
+	if not variant_product_id:
+		for variant in shopify_product.variants:
+			if (
+				variant.option1 == variant_attributes.get("option1")
+				and variant.option2 == variant_attributes.get("option2")
+				and variant.option3 == variant_attributes.get("option3")
+			):
+				variant_product_id = str(variant.id)
+				if not frappe.flags.in_test:
+					frappe.get_doc(
+						{
+							"doctype": "Ecommerce Item",
+							"erpnext_item_code": erpnext_item.name,
+							"integration": MODULE_NAME,
+							"integration_item_code": str(shopify_product.id),
+							"variant_id": variant_product_id,
+							"sku": str(variant.sku),
+							"variant_of": erpnext_item.variant_of,
+						}
+					).insert()
+				break
+		if not variant_product_id:
+			msgprint(_("Shopify: Couldn't sync item variant."))
+	return variant_product_id
 
 
 def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
