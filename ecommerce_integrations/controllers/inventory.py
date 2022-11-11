@@ -24,7 +24,7 @@ def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict
 				ON ei.erpnext_item_code = bin.item_code
 			WHERE bin.warehouse in ({', '.join('%s' for _ in warehouses)})
 				AND bin.modified > ei.inventory_synced_on
-				AND integration = %s
+				AND ei.integration = %s
 		""",
 		values=warehouses + (integration,),
 		as_dict=1,

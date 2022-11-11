@@ -329,7 +329,7 @@ def upload_erpnext_item(doc, method=None):
 	New items are pushed to shopify and changes to existing items are
 	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
-	item = doc  # alias for readability
+	template_item = item = doc  # alias for readability
 	# a new item recieved from ecommerce_integrations is being inserted
 	if item.flags.from_integration:
 		return
@@ -342,52 +342,147 @@ def upload_erpnext_item(doc, method=None):
 	if frappe.flags.in_import:
 		return
 
-	if doc.has_variants or doc.variant_of:
-		msgprint(_("Item with variants or template items can not be uploaded to Shopify."))
+	if item.has_variants:
 		return
+
+	if len(item.attributes) > 3:
+		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
+		return
+
+	if doc.variant_of and not setting.upload_variants_as_items:
+		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
+		return
+
+	if item.variant_of:
+		template_item = frappe.get_doc("Item", item.variant_of)
 
 	product_id = frappe.db.get_value(
 		"Ecommerce Item",
-		{"erpnext_item_code": item.name, "integration": MODULE_NAME},
+		{"erpnext_item_code": template_item.name, "integration": MODULE_NAME},
 		"integration_item_code",
 	)
 	is_new_product = not bool(product_id)
 
 	if is_new_product:
-
 		product = Product()
 		product.published = False
-		product.status = "draft"
+		product.status = "active" if setting.sync_new_item_as_active else "draft"
 
-		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
+		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
 		is_successful = product.save()
 
 		if is_successful:
 			update_default_variant_properties(
-				product, sku=item.item_code, price=item.standard_rate, is_stock_item=item.is_stock_item,
+				product,
+				sku=template_item.item_code,
+				price=template_item.standard_rate,
+				is_stock_item=template_item.is_stock_item,
 			)
+			if item.variant_of:
+				product.options = []
+				product.variants = []
+				variant_attributes = {"title": template_item.item_name}
+				max_index_range = min(3, len(template_item.attributes))
+				for i in range(0, max_index_range):
+					attr = template_item.attributes[i]
+					product.options.append(
+						{
+							"name": attr.attribute,
+							"values": frappe.db.get_all(
+								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+							),
+						}
+					)
+					try:
+						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+					except IndexError:
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
+				product.variants.append(Variant(variant_attributes))
+
 			product.save()  # push variant
 
-			ecom_item = frappe.get_doc(
-				{
-					"doctype": "Ecommerce Item",
-					"erpnext_item_code": item.name,
-					"integration": MODULE_NAME,
-					"integration_item_code": str(product.id),
-					"variant_id": str(product.variants[0].id),
-					"sku": str(product.variants[0].sku),
-				}
-			)
-			ecom_item.insert()
+			ecom_items = list(set([item, template_item]))
+			for d in ecom_items:
+				ecom_item = frappe.get_doc(
+					{
+						"doctype": "Ecommerce Item",
+						"erpnext_item_code": d.name,
+						"integration": MODULE_NAME,
+						"integration_item_code": str(product.id),
+						"variant_id": "" if d.has_variants else str(product.variants[0].id),
+						"sku": "" if d.has_variants else str(product.variants[0].sku),
+						"has_variants": d.has_variants,
+						"variant_of": d.variant_of,
+					}
+				)
+				ecom_item.insert()
 
 		write_upload_log(status=is_successful, product=product, item=item)
 	elif setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
-			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=item)
-			update_default_variant_properties(product, is_stock_item=item.is_stock_item)
+			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
+			update_default_variant_properties(product, is_stock_item=template_item.is_stock_item)
+
+			variant_attributes = {}
+			if item.variant_of:
+				product.options = []
+				max_index_range = min(3, len(template_item.attributes))
+				for i in range(0, max_index_range):
+					attr = template_item.attributes[i]
+					product.options.append(
+						{
+							"name": attr.attribute,
+							"values": frappe.db.get_all(
+								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+							),
+						}
+					)
+					try:
+						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+					except IndexError:
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
+				product.variants.append(Variant(variant_attributes))
+
 			is_successful = product.save()
+			if is_successful and item.variant_of:
+				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
+
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+
+
+def map_erpnext_variant_to_shopify_variant(
+	shopify_product: Product, erpnext_item, variant_attributes
+):
+	variant_product_id = frappe.db.get_value(
+		"Ecommerce Item",
+		{"erpnext_item_code": erpnext_item.name, "integration": MODULE_NAME},
+		"integration_item_code",
+	)
+	if not variant_product_id:
+		for variant in shopify_product.variants:
+			if (
+				variant.option1 == variant_attributes.get("option1")
+				and variant.option2 == variant_attributes.get("option2")
+				and variant.option3 == variant_attributes.get("option3")
+			):
+				variant_product_id = str(variant.id)
+				if not frappe.flags.in_test:
+					frappe.get_doc(
+						{
+							"doctype": "Ecommerce Item",
+							"erpnext_item_code": erpnext_item.name,
+							"integration": MODULE_NAME,
+							"integration_item_code": str(shopify_product.id),
+							"variant_id": variant_product_id,
+							"sku": str(variant.sku),
+							"variant_of": erpnext_item.variant_of,
+						}
+					).insert()
+				break
+		if not variant_product_id:
+			msgprint(_("Shopify: Couldn't sync item variant."))
+	return variant_product_id
 
 
 def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
