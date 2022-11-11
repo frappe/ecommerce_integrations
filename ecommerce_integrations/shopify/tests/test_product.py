@@ -63,3 +63,120 @@ class TestProduct(TestCase):
 
 		self.assertEqual(len(created_ecom_variants), 9)
 		self.assertEqual(sorted(required_variants), sorted(created_ecom_variants))
+
+	def test_variant_id_mapping(self):
+		template_item = make_item()
+		from erpnext.controllers.item_variant import create_variant
+
+		variant_LR = create_variant(
+			template_item.item_code, {"Test Sync Size": "L", "Test Sync Colour": "Red"}
+		)
+		variant_MR = create_variant(
+			template_item.item_code, {"Test Sync Size": "M", "Test Sync Colour": "Red"}
+		)
+		variant_LG = create_variant(
+			template_item.item_code, {"Test Sync Size": "L", "Test Sync Colour": "Green"}
+		)
+		variant_MG = create_variant(
+			template_item.item_code, {"Test Sync Size": "M", "Test Sync Colour": "Green"}
+		)
+
+		self.fake("products/6704435495065", body=self.load_fixture("variant_product"))
+		product = ShopifyProduct(product_id="6704435495065", has_variants=1)
+		product.sync_product()
+
+		self.assertTrue(product.is_synced())
+		from shopify.resources import Product
+
+		shopify_product = Product.find(product.product_id)
+
+		from ecommerce_integrations.shopify.product import map_erpnext_variant_to_shopify_variant
+
+		self.assertEqual(
+			map_erpnext_variant_to_shopify_variant(
+				shopify_product, variant_LG, {"option1": "L", "option2": "Green"}
+			),
+			"39845261705369",
+		)
+		self.assertEqual(
+			map_erpnext_variant_to_shopify_variant(
+				shopify_product, variant_LR, {"option1": "L", "option2": "Red"}
+			),
+			"39845261639833",
+		)
+		self.assertEqual(
+			map_erpnext_variant_to_shopify_variant(
+				shopify_product, variant_MG, {"option1": "M", "option2": "Green"}
+			),
+			"39845261607065",
+		)
+		self.assertEqual(
+			map_erpnext_variant_to_shopify_variant(
+				shopify_product, variant_MR, {"option1": "M", "option2": "Red"}
+			),
+			"39845261541529",
+		)
+
+
+def create_item_attributes():
+	if not frappe.db.exists("Item Attribute", "Test Sync Size"):
+		frappe.get_doc(
+			{
+				"doctype": "Item Attribute",
+				"attribute_name": "Test Sync Size",
+				"priority": 1,
+				"item_attribute_values": [
+					{"attribute_value": "XSL", "abbr": "XSL"},
+					{"attribute_value": "S", "abbr": "S"},
+					{"attribute_value": "M", "abbr": "M"},
+					{"attribute_value": "L", "abbr": "L"},
+					{"attribute_value": "XL", "abbr": "XL"},
+					{"attribute_value": "2XL", "abbr": "2XL"},
+				],
+			}
+		).insert()
+	if not frappe.db.exists("Item Attribute", "Test Sync Colour"):
+		frappe.get_doc(
+			{
+				"doctype": "Item Attribute",
+				"attribute_name": "Test Sync Colour",
+				"priority": 2,
+				"item_attribute_values": [
+					{"attribute_value": "Red", "abbr": "R"},
+					{"attribute_value": "Green", "abbr": "G"},
+					{"attribute_value": "Blue", "abbr": "B"},
+				],
+			}
+		).insert()
+
+
+def make_item(item_code=None, properties=None):
+	create_item_attributes()
+	if not item_code:
+		item_code = frappe.generate_hash(length=16)
+
+	if frappe.db.exists("Item", item_code):
+		return frappe.get_doc("Item", item_code)
+
+	item = frappe.get_doc(
+		{
+			"doctype": "Item",
+			"item_code": item_code,
+			"item_name": item_code,
+			"description": item_code,
+			"item_group": "Products",
+			"attributes": [{"attribute": "Test Sync Size"}, {"attribute": "Test Sync Colour"},],
+			"has_variants": 1,
+		}
+	)
+
+	if properties:
+		item.update(properties)
+
+	if item.is_stock_item:
+		for item_default in [doc for doc in item.get("item_defaults") if not doc.default_warehouse]:
+			item_default.default_warehouse = "_Test Warehouse - _TC"
+			item_default.company = "_Test Company"
+	item.insert()
+
+	return item
