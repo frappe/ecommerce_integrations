@@ -342,7 +342,10 @@ def upload_erpnext_item(doc, method=None):
 	if frappe.flags.in_import:
 		return
 
-	if item.has_variants or len(item.attributes) > 3:
+	if item.has_variants:
+		return
+
+	if len(item.attributes) > 3:
 		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
 		return
 
