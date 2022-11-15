@@ -93,10 +93,9 @@
    "read_only": 1
   }
  ],
- "in_create": 1,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2021-06-17 15:04:03.927948",
+ "modified": "2022-11-15 11:36:04.733227",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
@@ -117,5 +116,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }
