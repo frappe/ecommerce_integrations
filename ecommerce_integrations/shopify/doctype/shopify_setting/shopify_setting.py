@@ -20,6 +20,7 @@ from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
+	ITEM_SELLING_RATE_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
@@ -113,6 +114,14 @@ class ShopifySetting(SettingController):
 
 def setup_custom_fields():
 	custom_fields = {
+		"Item": [
+			dict(
+				fieldname=ITEM_SELLING_RATE_FIELD,
+				label="Shopify Selling Rate",
+				fieldtype="Currency",
+				insert_after="standard_rate",
+			)
+		],
 		"Customer": [
 			dict(
 				fieldname=CUSTOMER_ID_FIELD,
