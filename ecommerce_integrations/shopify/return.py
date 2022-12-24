@@ -47,6 +47,8 @@ def prepare_sales_return(payload, request_id=None):
 			make_payment_against_sales_return(
 				setting, return_inv, flt(return_data["transactions"][0]["amount"])
 			)
+		else:
+			make_payment_against_sales_return(setting, return_inv, 0)
 		if cint(setting.sync_delivery_note):
 			restock_items_against_sales_return(restocked_items, return_data["order_id"])
 		create_shopify_log(status="Success")
@@ -170,6 +172,41 @@ def get_return_items_and_taxes(shopify_order, cost_center):
 
 
 def make_payment_against_sales_return(setting, doc, paid_amount):
+	write_off_account = frappe.get_cached_value("Company", doc.company, "write_off_account")
+	if not paid_amount:
+		"""
+		Pass JV to write off outstanding if refunded amount is zero.
+		ERPNext doesn't allow PE with zero paid amount
+		"""
+		journal_entry = frappe.new_doc("Journal Entry")
+		journal_entry.company = doc.company
+		journal_entry.posting_date = doc.posting_date or nowdate()
+		journal_entry.reference_no = doc.name
+		journal_entry.reference_date = doc.posting_date or nowdate()
+		journal_entry.append(
+			"accounts",
+			{
+				"account": doc.debit_to,
+				"party_type": "Customer",
+				"party": doc.customer,
+				"debit_in_account_currency": abs(doc.rounded_total or doc.grand_total),
+				"cost_center": setting.cost_center,
+				"reference_type": doc.doctype,
+				"reference_name": doc.return_against,
+			},
+		)
+		journal_entry.append(
+			"accounts",
+			{
+				"account": write_off_account,
+				"credit_in_account_currency": abs(doc.rounded_total or doc.grand_total),
+				"cost_center": setting.cost_center,
+			},
+		)
+		journal_entry.flags.ignore_mandatory = True
+		journal_entry.insert().submit()
+		return
+
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
 	payment_entry = get_payment_entry(
@@ -178,7 +215,7 @@ def make_payment_against_sales_return(setting, doc, paid_amount):
 	payment_entry.paid_amount = paid_amount
 	payment_entry.set_gain_or_loss(
 		account_details={
-			"account": frappe.get_cached_value("Company", payment_entry.company, "write_off_account"),
+			"account": write_off_account,
 			"cost_center": setting.cost_center,
 			"amount": flt((doc.rounded_total or doc.grand_total) + paid_amount),
 		}
