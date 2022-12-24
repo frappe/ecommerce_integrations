@@ -4,9 +4,9 @@
 import json
 
 import frappe
-from erpnext.controllers.sales_and_purchase_return import make_return_doc
 from frappe import _
-from frappe.utils import cint, cstr, flt, getdate, nowdate
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, cstr, flt, nowdate
 
 from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
@@ -40,48 +40,86 @@ def prepare_sales_return(payload, request_id=None):
 		return_items, restocked_items, taxes = get_return_items_and_taxes(
 			return_data, setting.cost_center
 		)
-		return_inv = make_return_inv(return_items, taxes, sales_invoice)
+		return_inv = make_return_document("Sales Invoice", return_items, taxes, sales_invoice)
+		return_inv.flags.ignore_mandatory = True
 		return_inv.insert().submit()
 		if return_data.get("transactions"):
 			make_payment_against_sales_return(
 				setting, return_inv, flt(return_data["transactions"][0]["amount"])
 			)
+		if cint(setting.sync_delivery_note):
+			restock_items_against_sales_return(restocked_items, return_data["order_id"])
 		create_shopify_log(status="Success")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
-def make_return_inv(return_items, taxes, source_name: str, target_doc=None):
-	from frappe.model.mapper import get_mapped_doc
+def restock_items_against_sales_return(restocked_items, order_id):
+	# shopify doesn't pass the fulfillment ID against which return occured :/
+	delivery_notes = frappe.db.get_all(
+		"Delivery Note",
+		filters={ORDER_ID_FIELD: cstr(order_id), "is_return": 0, "docstatus": 1},
+		pluck="name",
+	)
+	for dn in delivery_notes:
+		to_return = {}
+		dn_items = frappe.db.get_all(
+			"Delivery Note Item", filters={"parent": dn}, fields=["item_code", "qty"]
+		)
+		for item in dn_items:
+			if not restocked_items.get(item.item_code):
+				continue
+			if restocked_items.get(item.item_code) <= item.qty:
+				to_return[item.item_code] = restocked_items.pop(item.item_code)
+			else:
+				to_return[item.item_code] = item.qty
+				restocked_items[item.item_code] -= item.qty
+		if to_return:
+			doc = make_return_document("Delivery Note", to_return, [], dn)
+			doc.flags.ignore_mandatory = True
+			doc.insert().submit()
+	if restocked_items:
+		frappe.throw(_("Could not restock all items. Make sure delivery note has been created for all."))
 
+
+def make_return_document(doctype, return_items, taxes, source_name: str, target_doc=None):
 	def set_missing_values(source, target):
-		doc = frappe.get_doc(target)
-		doc.is_return = 1
-		doc.return_against = source.name
-		doc.taxes = []
-		for tax in taxes:
-			doc.append("taxes", tax)
+		target.is_return = 1
+		target.return_against = source.name
+		if taxes:
+			target.taxes = []
+			for tax in taxes:
+				target.append("taxes", tax)
+		else:
+			for tax in target.get("taxes", []):
+				if tax.charge_type == "Actual":
+					tax.tax_amount = -1 * tax.tax_amount
 
 	def update_item(source_doc, target_doc, source_parent):
 		target_doc.qty = -1 * flt(return_items.get(target_doc.item_code, 1))
 		target_doc.stock_qty = flt(target_doc.qty * target_doc.conversion_factor)
-
-		target_doc.so_detail = source_doc.so_detail
-		target_doc.sales_order = source_doc.sales_order
-
-		target_doc.dn_detail = source_doc.dn_detail
-		target_doc.delivery_note = source_doc.delivery_note
-
-		target_doc.expense_account = source_doc.expense_account
-		target_doc.sales_invoice_item = source_doc.name
+		if doctype == "Sales Invoice":
+			target_doc.so_detail = source_doc.so_detail
+			target_doc.sales_order = source_doc.sales_order
+			target_doc.dn_detail = source_doc.dn_detail
+			target_doc.delivery_note = source_doc.delivery_note
+			target_doc.expense_account = source_doc.expense_account
+			target_doc.sales_invoice_item = source_doc.name
+		elif doctype == "Delivery Note":
+			target_doc.against_sales_order = source_doc.against_sales_order
+			target_doc.against_sales_invoice = source_doc.against_sales_invoice
+			target_doc.so_detail = source_doc.so_detail
+			target_doc.si_detail = source_doc.si_detail
+			target_doc.expense_account = source_doc.expense_account
+			target_doc.dn_detail = source_doc.name
 
 	doclist = get_mapped_doc(
-		"Sales Invoice",
+		doctype,
 		source_name,
 		{
-			"Sales Invoice": {"doctype": "Sales Invoice", "validation": {"docstatus": ["=", 1],},},
-			"Sales Invoice Item": {
-				"doctype": "Sales Invoice Item",
+			doctype: {"doctype": doctype, "validation": {"docstatus": ["=", 1],},},
+			f"{doctype} Item": {
+				"doctype": f"{doctype} Item",
 				"condition": lambda doc: doc.item_code in return_items.keys(),
 				"postprocess": update_item,
 			},
@@ -107,7 +145,7 @@ def get_return_items_and_taxes(shopify_order, cost_center):
 		item_code = get_item_code(line_item)
 
 		return_items[item_code] = d.get("quantity", 1)
-		if d.get("restock_type") == "restock":
+		if d.get("restock_type") == "return":
 			restocked_items[item_code] = d.get("quantity", 1)
 
 		for tax in line_item.get("tax_lines"):
