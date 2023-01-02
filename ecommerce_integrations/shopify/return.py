@@ -158,11 +158,11 @@ def get_return_items_and_taxes(shopify_order, cost_center):
 					"description": (
 						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
-					"tax_amount": -(tax.get("rate") * d.get("subtotal")),
+					"tax_amount": -(flt(tax.get("price"))),
 					"included_in_print_rate": 0,
 					"cost_center": cost_center,
 					"item_wise_tax_detail": json.dumps(
-						{item_code: [flt(tax.get("rate")) * 100, -(flt(d.get("subtotal")))]}
+						{item_code: [flt(tax.get("rate")) * 100, -(flt(tax.get("price")))]}
 					),
 					"dont_recompute_tax": 1,
 				}
