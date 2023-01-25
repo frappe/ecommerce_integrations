@@ -34,6 +34,8 @@ def create_delivery_note(shopify_order, setting, so):
 	if not cint(setting.sync_delivery_note):
 		return
 
+	from erpnext.stock.doctype.delivery_note.delivery_note import make_sales_invoice
+
 	for fulfillment in shopify_order.get("fulfillments"):
 		if (
 			not frappe.db.get_value("Delivery Note", {FULLFILLMENT_ID_FIELD: fulfillment.get("id")}, "name")
@@ -56,6 +58,13 @@ def create_delivery_note(shopify_order, setting, so):
 
 			if shopify_order.get("note"):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
+			if setting.sync_cod_invoices:
+				inv = make_sales_invoice(dn.name)
+				if inv.items:
+					setattr(inv, ORDER_ID_FIELD, fulfillment.get("order_id"))
+					setattr(inv, ORDER_NUMBER_FIELD, shopify_order.get("name"))
+					inv.submit()
 
 
 def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
