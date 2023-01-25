@@ -211,7 +211,7 @@ def get_order_taxes(shopify_order, setting):
 
 	taxes = update_taxes_with_shipping_lines(
 		taxes,
-		shopify_order.get("shipping_lines"),
+		shopify_order.get("shipping_lines", []),
 		setting,
 		taxes_inclusive=shopify_order.get("taxes_included"),
 	)
