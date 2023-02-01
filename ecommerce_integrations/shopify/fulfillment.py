@@ -69,7 +69,7 @@ def create_delivery_note(shopify_order, setting, so):
 			if shopify_order.get("note"):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
-			if setting.sync_cod_invoices:
+			if setting.sync_invoice_on_delivery:
 				inv = make_sales_invoice(dn.name)
 				if inv.items:
 					setattr(inv, ORDER_ID_FIELD, fulfillment.get("order_id"))

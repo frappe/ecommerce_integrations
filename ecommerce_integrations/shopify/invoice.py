@@ -24,8 +24,9 @@ def prepare_sales_invoice(payload, request_id=None):
 		if sales_order:
 			payment = order.get("payment_terms", {}).get("payment_schedules", [])
 			posting_date = getdate(payment[0]["completed_at"]) if payment else nowdate()
-			create_sales_invoice(order, setting, sales_order, posting_date)
-			make_payment_entry_against_sales_invoice(cstr(order["id"]), setting, posting_date)
+			if cint(setting.sync_sales_invoice_on_payment):
+				create_sales_invoice(order, setting, sales_order, posting_date)
+				make_payment_entry_against_sales_invoice(cstr(order["id"]), setting, posting_date)
 			create_shopify_log(status="Success")
 		else:
 			create_shopify_log(status="Invalid", message="Sales Order not found for syncing sales invoice.")
@@ -33,8 +34,8 @@ def prepare_sales_invoice(payload, request_id=None):
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
-def create_sales_invoice(shopify_order, setting, so, posting_date):
-	if so.docstatus == 1 and cint(setting.sync_sales_invoice):
+def create_sales_invoice(shopify_order, setting, so, posting_date=nowdate()):
+	if so.docstatus == 1:
 		sales_invoice = make_sales_invoice(so.name, ignore_permissions=True)
 		if not sales_invoice.items:
 			return

@@ -60,7 +60,9 @@ def create_order(order, setting, company=None):
 
 	so = create_sales_order(order, setting, company)
 	if so:
-		if order.get("financial_status") == "paid":
+		if cint(setting.sync_invoice_on_order):
+			create_sales_invoice(order, setting, so)
+		elif order.get("financial_status") == "paid" and cint(setting.sync_sales_invoice_on_payment):
 			create_sales_invoice(order, setting, so)
 
 		if order.get("fulfillments"):
