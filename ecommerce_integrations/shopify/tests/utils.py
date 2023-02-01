@@ -59,7 +59,7 @@ class TestCase(unittest.TestCase):
 					"sales_order_series": "SAL-ORD-.YYYY.-",
 					"sync_delivery_note": 1,
 					"delivery_note_series": "MAT-DN-.YYYY.-",
-					"sync_sales_invoice": 1,
+					"sync_sales_invoice_on_payment": 1,
 					"sales_invoice_series": "SINV-.YY.-",
 					"upload_erpnext_items": 1,
 					"update_shopify_item_on_update": 1,

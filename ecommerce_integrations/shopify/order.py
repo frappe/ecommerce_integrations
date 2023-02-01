@@ -60,7 +60,9 @@ def create_order(order, setting, company=None):
 
 	so = create_sales_order(order, setting, company)
 	if so:
-		if order.get("financial_status") == "paid":
+		if cint(setting.sync_invoice_on_order):
+			create_sales_invoice(order, setting, so)
+		elif order.get("financial_status") == "paid" and cint(setting.sync_sales_invoice_on_payment):
 			create_sales_invoice(order, setting, so)
 
 		if order.get("fulfillments"):
@@ -211,7 +213,7 @@ def get_order_taxes(shopify_order, setting):
 
 	taxes = update_taxes_with_shipping_lines(
 		taxes,
-		shopify_order.get("shipping_lines"),
+		shopify_order.get("shipping_lines", []),
 		setting,
 		taxes_inclusive=shopify_order.get("taxes_included"),
 	)
