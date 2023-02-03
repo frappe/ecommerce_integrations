@@ -19,55 +19,65 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def prepare_sales_return(payload, request_id=None):
-	return_data = payload
 	frappe.set_user("Administrator")
+	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
-
-	sales_invoice = frappe.db.get_value(
-		"Sales Invoice",
-		filters={ORDER_ID_FIELD: cstr(return_data["order_id"]), "is_return": 0, "docstatus": 1},
-	)
-	if not sales_invoice:
-		create_shopify_log(
-			status="Invalid",
-			message="Sales Invoice not found for syncing sales return.",
-			request_data=return_data,
-		)
-		return
+	return_data = payload
 
 	try:
-		setting = frappe.get_doc(SETTING_DOCTYPE)
-		return_items, restocked_items, taxes = get_return_items_and_taxes(
-			return_data, setting.cost_center
+		sales_invoice = frappe.db.get_value(
+			"Sales Invoice",
+			filters={ORDER_ID_FIELD: cstr(return_data["order_id"]), "is_return": 0, "docstatus": 1},
 		)
-		return_inv = make_return_document("Sales Invoice", return_items, taxes, sales_invoice)
-		return_inv.flags.ignore_mandatory = True
-		return_inv.insert().submit()
-		if return_data.get("transactions"):
-			make_payment_against_sales_return(
-				setting, return_inv, flt(return_data["transactions"][0]["amount"])
-			)
+		if sales_invoice:
+			create_sales_return(return_data, setting, sales_invoice)
+			create_shopify_log(status="Success")
 		else:
-			make_payment_against_sales_return(setting, return_inv, 0)
-		if cint(setting.sync_delivery_note):
-			restock_items_against_sales_return(restocked_items, return_data["order_id"])
-		create_shopify_log(status="Success")
+			create_shopify_log(status="Invalid", message="Sales Invoice not found for syncing sales return.")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
-def restock_items_against_sales_return(restocked_items, order_id):
+def create_sales_return(return_data, setting, sales_invoice):
+	return_items, restocked_items, taxes = get_return_items_and_taxes(
+		return_data, setting.cost_center
+	)
+
+	if cint(setting.sync_sales_return):
+		return_inv = make_return_document("Sales Invoice", return_items, taxes, sales_invoice)
+		return_inv.flags.ignore_mandatory = True
+		return_inv.naming_series = (
+			setting.return_invoice_series
+			or setting.sales_invoice_series
+			or "SI-RET-Shopify-"
+		)
+		return_inv.insert().submit()
+
+		if return_data.get("transactions"):
+			make_payment_against_sales_return(
+				setting, return_inv, flt(sum([d["amount"] for d in return_data["transactions"]]))
+			)
+		else:
+			make_payment_against_sales_return(setting, return_inv, 0)
+
+	if cint(setting.sync_delivery_return):
+		restock_items_against_sales_return(setting, restocked_items, cstr(return_data["order_id"]))
+
+
+def restock_items_against_sales_return(setting, restocked_items, order_id):
 	# shopify doesn't pass the fulfillment ID against which return occured :/
 	delivery_notes = frappe.db.get_all(
 		"Delivery Note",
-		filters={ORDER_ID_FIELD: cstr(order_id), "is_return": 0, "docstatus": 1},
+		filters={ORDER_ID_FIELD: order_id, "is_return": 0, "docstatus": 1},
 		pluck="name",
 	)
+
 	for dn in delivery_notes:
 		to_return = {}
 		dn_items = frappe.db.get_all(
 			"Delivery Note Item", filters={"parent": dn}, fields=["item_code", "qty"]
 		)
+
 		for item in dn_items:
 			if not restocked_items.get(item.item_code):
 				continue
@@ -76,10 +86,17 @@ def restock_items_against_sales_return(restocked_items, order_id):
 			else:
 				to_return[item.item_code] = item.qty
 				restocked_items[item.item_code] -= item.qty
+
 		if to_return:
-			doc = make_return_document("Delivery Note", to_return, [], dn)
-			doc.flags.ignore_mandatory = True
-			doc.insert().submit()
+			return_dn = make_return_document("Delivery Note", to_return, [], dn)
+			return_dn.flags.ignore_mandatory = True
+			return_dn.naming_series = (
+				setting.return_delivery_series
+				or setting.delivery_note_series
+				or "DN-RET-Shopify-"
+			)
+			return_dn.insert().submit()
+	
 	if restocked_items:
 		frappe.throw(_("Could not restock all items. Make sure delivery note has been created for all."))
 
@@ -135,9 +152,8 @@ def make_return_document(doctype, return_items, taxes, source_name: str, target_
 
 def get_return_items_and_taxes(shopify_order, cost_center):
 	taxes = []
+	return_items, restocked_items = {}, {}
 	refund_line_items = shopify_order.get("refund_line_items")
-	return_items = {}
-	restocked_items = {}
 
 	for d in refund_line_items:
 		line_item = d.get("line_item")

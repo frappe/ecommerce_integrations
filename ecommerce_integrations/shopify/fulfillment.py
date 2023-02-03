@@ -76,32 +76,26 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 
 def update_fulfillment_status(payload, request_id=None):
 	frappe.set_user("Administrator")
+	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 	fulfillment = payload
 
-	delivery_note = frappe.db.get_value(
-		"Delivery Note", {FULLFILLMENT_ID_FIELD: cstr(fulfillment["id"]), "docstatus": 1}, "name"
-	)
-	if not delivery_note:
-		return
-
 	try:
-		if cstr(fulfillment["status"]) == "cancelled":
-			frappe.get_doc("Delivery Note", delivery_note).cancel()
-		create_shopify_log(status="Success")
+		delivery_note = frappe.db.get_value(
+			"Delivery Note", {FULLFILLMENT_ID_FIELD: cstr(fulfillment["id"]), "docstatus": 1}, "name"
+		)
+		if delivery_note:
+			cancel_order_fulfillment(fulfillment, setting, delivery_note)
+			create_shopify_log(status="Success")
+		else:
+			create_shopify_log(status="Invalid", message="Delivery Note not found for updating status.")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
-		frappe.get_doc(
-			{
-				"doctype": "Comment",
-				"comment_type": "Comment",
-				"reference_doctype": "Delivery Note",
-				"reference_name": delivery_note,
-				"content": frappe._(
-					"""
-					This delivery note has been cancelled on Shopify.
-					Could not cancel on ERPNext, check integration logs for more info.
-					"""
-				),
-			}
-		).insert(ignore_permissions=True)
+
+
+def cancel_order_fulfillment(fulfillment, setting, delivery_note):
+	if not cint(setting.sync_delivery_cancellation):
+		return
+
+	if cstr(fulfillment["status"]) == "cancelled":
+		frappe.get_doc("Delivery Note", delivery_note).cancel()

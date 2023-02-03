@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2021-04-13 13:30:54.909583",
+ "creation": "2023-02-03 17:59:51.454957",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -33,6 +33,13 @@
   "sync_sales_invoice",
   "sales_invoice_series",
   "section_break_22",
+  "return_invoice_series",
+  "return_delivery_series",
+  "column_break_31",
+  "sync_sales_return",
+  "sync_delivery_return",
+  "sync_delivery_cancellation",
+  "section_break_32",
   "html_16",
   "taxes",
   "erpnext_to_shopify_sync_section",
@@ -178,7 +185,7 @@
   {
    "fieldname": "section_break_25",
    "fieldtype": "Section Break",
-   "label": "Order sync Settings"
+   "label": "Order Sync Settings"
   },
   {
    "fieldname": "sales_order_series",
@@ -218,7 +225,8 @@
   },
   {
    "fieldname": "section_break_22",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Returns Sync Settings"
   },
   {
    "fieldname": "html_16",
@@ -347,12 +355,50 @@
    "fieldname": "sync_new_item_as_active",
    "fieldtype": "Check",
    "label": "Sync New Items as Active"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_sales_return",
+   "fieldtype": "Check",
+   "label": "Import Sales Return on Shopify Refund"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_return",
+   "fieldtype": "Check",
+   "label": "Import Delivery Return on Shopify Refund"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_cancellation",
+   "fieldtype": "Check",
+   "label": "Cancel Delivery Note on Shopify Unfulfillment"
+  },
+  {
+   "fieldname": "section_break_32",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "return_invoice_series",
+   "fieldtype": "Select",
+   "label": "Return Invoice Series",
+   "mandatory_depends_on": "sync_sales_return"
+  },
+  {
+   "fieldname": "return_delivery_series",
+   "fieldtype": "Select",
+   "label": "Return Delivery Series",
+   "mandatory_depends_on": "sync_delivery_return"
+  },
+  {
+   "fieldname": "column_break_31",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-11-01 16:09:42.685577",
+ "modified": "2023-02-03 18:45:14.044920",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
