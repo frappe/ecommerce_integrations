@@ -55,7 +55,7 @@ def create_sales_return(return_data, setting, sales_invoice):
 
 		if return_data.get("transactions"):
 			make_payment_against_sales_return(
-				setting, return_inv, flt(sum([d["amount"] for d in return_data["transactions"]]))
+				setting, return_inv, flt(sum([flt(d["amount"]) for d in return_data["transactions"]]))
 			)
 		else:
 			make_payment_against_sales_return(setting, return_inv, 0)
