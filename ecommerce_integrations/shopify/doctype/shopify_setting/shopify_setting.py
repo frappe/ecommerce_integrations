@@ -45,6 +45,16 @@ class ShopifySetting(SettingController):
 
 		if self.is_enabled():
 			setup_custom_fields()
+		
+		if self.sync_delivery_cancellation:
+			frappe.msgprint(
+				_(
+					"""
+					Make sure to add read_fulfillments scope in the Shopify app
+					and also verify fulfillments/update is present in the webhooks table.
+					"""
+				)
+			)
 
 	def on_update(self):
 		if self.is_enabled() and not self.is_old_data_migrated:
