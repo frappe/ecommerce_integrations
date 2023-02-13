@@ -63,10 +63,10 @@ def set_cost_center(items, cost_center):
 		item.cost_center = cost_center
 
 
-def make_payament_entry_against_sales_invoice(doc, settings, shopify_order, posting_date=None):
+def make_payament_entry_against_sales_invoice(doc, setting, shopify_order, posting_date=None):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 	_bank_account = setting.get('cash_bank_account')
-	
+
 	if len(shopify_order.get('payment_gateway_names')):
 		doc_gatewaty = shopify_order.get('payment_gateway_names')[0]
 
