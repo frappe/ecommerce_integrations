@@ -1,0 +1,38 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-02-13 11:37:44.390686",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "gateway_name",
+  "gateway_account"
+ ],
+ "fields": [
+  {
+   "fieldname": "gateway_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Gateway Name"
+  },
+  {
+   "fieldname": "gateway_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Gateway Account",
+   "options": "Account"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-02-13 11:37:44.390686",
+ "modified_by": "Administrator",
+ "module": "Ecommerce Integrations",
+ "name": "Payment Gateways",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}
