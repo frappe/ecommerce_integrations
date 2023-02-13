@@ -203,9 +203,7 @@ def get_order_taxes(shopify_order, setting, items):
 					"tax_amount": tax.get("price"),
 					"included_in_print_rate": 0,
 					"cost_center": setting.cost_center,
-					"item_wise_tax_detail": {
-						item_code: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]
-					},
+					"item_wise_tax_detail": {item_code: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]},
 					"dont_recompute_tax": 1,
 				}
 			)
@@ -231,20 +229,23 @@ def consolidate_order_taxes(taxes):
 	tax_account_wise_data = {}
 	for tax in taxes:
 		account_head = tax["account_head"]
-		tax_account_wise_data.setdefault(account_head, {
-			"charge_type": "Actual",
-			"account_head": account_head,
-			"description": tax.get("description"),
-			"cost_center": tax.get("cost_center"),
-			"included_in_print_rate": 0,
-			"dont_recompute_tax": 1,
-			"tax_amount": 0,
-			"item_wise_tax_detail": {}
-		})
+		tax_account_wise_data.setdefault(
+			account_head,
+			{
+				"charge_type": "Actual",
+				"account_head": account_head,
+				"description": tax.get("description"),
+				"cost_center": tax.get("cost_center"),
+				"included_in_print_rate": 0,
+				"dont_recompute_tax": 1,
+				"tax_amount": 0,
+				"item_wise_tax_detail": {},
+			},
+		)
 		tax_account_wise_data[account_head]["tax_amount"] += flt(tax.get("tax_amount"))
 		if tax.get("item_wise_tax_detail"):
 			tax_account_wise_data[account_head]["item_wise_tax_detail"].update(tax["item_wise_tax_detail"])
-	
+
 	return tax_account_wise_data.values()
 
 
@@ -274,7 +275,7 @@ def get_tax_account_description(tax):
 def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxes_inclusive=False):
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
-	shipping_as_item = (cint(setting.add_shipping_as_item) and setting.shipping_item)
+	shipping_as_item = cint(setting.add_shipping_as_item) and setting.shipping_item
 	for shipping_charge in shipping_lines:
 		if shipping_charge.get("price"):
 			shipping_discounts = shipping_charge.get("discount_allocations") or []
@@ -321,7 +322,9 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					"cost_center": setting.cost_center,
 					"item_wise_tax_detail": {
 						setting.shipping_item: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]
-					} if shipping_as_item else {},
+					}
+					if shipping_as_item
+					else {},
 					"dont_recompute_tax": 1,
 				}
 			)
