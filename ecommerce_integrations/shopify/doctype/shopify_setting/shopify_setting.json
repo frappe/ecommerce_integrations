@@ -27,11 +27,14 @@
   "column_break_22",
   "section_break_25",
   "sales_order_series",
+  "delivery_note_series",
+  "sales_invoice_series",
+  "shipping_item",
   "column_break_27",
   "sync_delivery_note",
-  "delivery_note_series",
   "sync_sales_invoice",
-  "sales_invoice_series",
+  "add_shipping_as_item",
+  "consolidate_taxes",
   "section_break_22",
   "html_16",
   "taxes",
@@ -178,7 +181,7 @@
   {
    "fieldname": "section_break_25",
    "fieldtype": "Section Break",
-   "label": "Order sync Settings"
+   "label": "Order Sync Settings"
   },
   {
    "fieldname": "sales_order_series",
@@ -347,12 +350,33 @@
    "fieldname": "sync_new_item_as_active",
    "fieldtype": "Check",
    "label": "Sync New Items as Active"
+  },
+  {
+   "default": "0",
+   "fieldname": "add_shipping_as_item",
+   "fieldtype": "Check",
+   "label": "Add Shipping Charge as an Item in Order"
+  },
+  {
+   "depends_on": "add_shipping_as_item",
+   "fieldname": "shipping_item",
+   "fieldtype": "Link",
+   "label": "Shipping Item",
+   "mandatory_depends_on": "add_shipping_as_item",
+   "options": "Item"
+  },
+  {
+   "default": "0",
+   "description": "By default, tax rows are added per item, checking this will consolidate them.",
+   "fieldname": "consolidate_taxes",
+   "fieldtype": "Check",
+   "label": "Consolidate Taxes in Order"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-11-01 16:09:42.685577",
+ "modified": "2023-02-10 10:36:12.940019",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
