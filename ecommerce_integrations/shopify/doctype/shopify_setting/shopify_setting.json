@@ -35,6 +35,8 @@
   "section_break_22",
   "html_16",
   "taxes",
+  "payment_gateways_section",
+  "payment_gateways",
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
@@ -347,12 +349,23 @@
    "fieldname": "sync_new_item_as_active",
    "fieldtype": "Check",
    "label": "Sync New Items as Active"
+  },
+  {
+   "fieldname": "payment_gateways_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Gateways"
+  },
+  {
+   "fieldname": "payment_gateways",
+   "fieldtype": "Table",
+   "label": "Payment Gateways",
+   "options": "Payment Gateways"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-11-01 16:09:42.685577",
+ "modified": "2023-02-13 12:24:10.208168",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
@@ -371,6 +384,5 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "states": [],
  "track_changes": 1
 }
