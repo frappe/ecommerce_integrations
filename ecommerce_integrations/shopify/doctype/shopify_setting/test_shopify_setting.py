@@ -32,8 +32,12 @@ class TestShopifySetting(unittest.TestCase):
 
 		setup_custom_fields()
 
-		created_fields = frappe.db.get_list(
-			"Custom Field", filters={"fieldname": ["LIKE", "%shopify%"]}, fields="fieldName", as_list=True
+		created_fields = frappe.get_all(
+			"Custom Field",
+			filters={"fieldname": ["LIKE", "%shopify%"]},
+			fields="fieldName",
+			as_list=True,
+			order_by=None,
 		)
 
 		required_fields = set(
