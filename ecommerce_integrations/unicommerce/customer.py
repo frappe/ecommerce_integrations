@@ -98,7 +98,7 @@ def _create_customer_address(uni_address, address_type, customer, also_shipping=
 	country = UNICOMMERCE_COUNTRY_MAPPING.get(country_code)
 
 	state = uni_address.get("state")
-	if country_code == "IN" and state in UNICOMMERCE_COUNTRY_MAPPING:
+	if country_code == "IN" and state in UNICOMMERCE_INDIAN_STATES_MAPPING:
 		state = UNICOMMERCE_INDIAN_STATES_MAPPING.get(state)
 
 	frappe.get_doc(
