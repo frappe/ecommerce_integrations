@@ -220,7 +220,9 @@ def get_order_taxes(shopify_order, setting, items):
 		taxes = consolidate_order_taxes(taxes)
 
 	for row in taxes:
-		row["item_wise_tax_detail"] = json.dumps(row["item_wise_tax_detail"])
+		tax_detail = row.get("item_wise_tax_detail")
+		if isinstance(tax_detail, dict):
+			row["item_wise_tax_detail"] = json.dumps(tax_detail)
 
 	return taxes
 
