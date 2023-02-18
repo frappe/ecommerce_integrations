@@ -13,7 +13,11 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_NUMBER_FIELD,
 	SETTING_DOCTYPE,
 )
-from ecommerce_integrations.shopify.order import get_tax_account_description, get_tax_account_head
+from ecommerce_integrations.shopify.order import (
+	consolidate_order_taxes,
+	get_tax_account_description,
+	get_tax_account_head,
+)
 from ecommerce_integrations.shopify.product import get_item_code
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
@@ -41,9 +45,7 @@ def prepare_sales_return(payload, request_id=None):
 
 
 def create_sales_return(return_data, setting, sales_invoice):
-	return_items, restocked_items, taxes = get_return_items_and_taxes(
-		return_data, setting.cost_center
-	)
+	return_items, restocked_items, taxes = get_return_items_and_taxes(return_data, setting)
 
 	if cint(setting.sync_sales_return):
 		return_inv = make_return_document("Sales Invoice", return_items, taxes, sales_invoice)
@@ -148,7 +150,7 @@ def make_return_document(doctype, return_items, taxes, source_name: str, target_
 	return doclist
 
 
-def get_return_items_and_taxes(shopify_order, cost_center):
+def get_return_items_and_taxes(shopify_order, setting):
 	taxes = []
 	return_items, restocked_items = {}, {}
 	refund_line_items = shopify_order.get("refund_line_items")
@@ -174,13 +176,19 @@ def get_return_items_and_taxes(shopify_order, cost_center):
 					),
 					"tax_amount": -(flt(tax.get("price"))),
 					"included_in_print_rate": 0,
-					"cost_center": cost_center,
-					"item_wise_tax_detail": json.dumps(
-						{item_code: [flt(tax.get("rate")) * 100, -(flt(tax.get("price")))]}
-					),
+					"cost_center": setting.cost_center,
+					"item_wise_tax_detail": {item_code: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]},
 					"dont_recompute_tax": 1,
 				}
 			)
+
+	if cint(setting.consolidate_taxes):
+		taxes = consolidate_order_taxes(taxes)
+
+	for row in taxes:
+		tax_detail = row.get("item_wise_tax_detail")
+		if isinstance(tax_detail, dict):
+			row["item_wise_tax_detail"] = json.dumps(tax_detail)
 
 	return return_items, restocked_items, taxes
 
