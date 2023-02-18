@@ -50,10 +50,8 @@ class ShopifySetting(SettingController):
 		if self.sync_delivery_cancellation:
 			frappe.msgprint(
 				_(
-					"""
-					Make sure to add read_fulfillments scope in the Shopify app
-					and also verify fulfillments/update is present in the webhooks table.
-					"""
+					"Make sure to add read_fulfillments scope in the Shopify app and also verify"
+					" fulfillments/update is present in the webhooks table."
 				)
 			)
 
