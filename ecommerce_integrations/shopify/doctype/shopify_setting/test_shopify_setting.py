@@ -9,6 +9,7 @@ from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
+	ITEM_SELLING_RATE_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
@@ -31,8 +32,12 @@ class TestShopifySetting(unittest.TestCase):
 
 		setup_custom_fields()
 
-		created_fields = frappe.db.get_list(
-			"Custom Field", filters={"fieldname": ["LIKE", "%shopify%"]}, fields="fieldName", as_list=True
+		created_fields = frappe.get_all(
+			"Custom Field",
+			filters={"fieldname": ["LIKE", "%shopify%"]},
+			fields="fieldName",
+			as_list=True,
+			order_by=None,
 		)
 
 		required_fields = set(
@@ -40,6 +45,7 @@ class TestShopifySetting(unittest.TestCase):
 				ADDRESS_ID_FIELD,
 				CUSTOMER_ID_FIELD,
 				FULLFILLMENT_ID_FIELD,
+				ITEM_SELLING_RATE_FIELD,
 				ORDER_ID_FIELD,
 				ORDER_NUMBER_FIELD,
 				ORDER_STATUS_FIELD,

@@ -9,6 +9,7 @@ from shopify.resources import Product, Variant
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
+	ITEM_SELLING_RATE_FIELD,
 	MODULE_NAME,
 	SETTING_DOCTYPE,
 	SHOPIFY_VARIANTS_ATTR_LIST,
@@ -375,13 +376,17 @@ def upload_erpnext_item(doc, method=None):
 			update_default_variant_properties(
 				product,
 				sku=template_item.item_code,
-				price=template_item.standard_rate,
+				price=template_item.get(ITEM_SELLING_RATE_FIELD),
 				is_stock_item=template_item.is_stock_item,
 			)
 			if item.variant_of:
 				product.options = []
 				product.variants = []
-				variant_attributes = {"title": template_item.item_name}
+				variant_attributes = {
+					"title": template_item.item_name,
+					"sku": item.item_code,
+					"price": item.get(ITEM_SELLING_RATE_FIELD),
+				}
 				max_index_range = min(3, len(template_item.attributes))
 				for i in range(0, max_index_range):
 					attr = template_item.attributes[i]
@@ -422,10 +427,12 @@ def upload_erpnext_item(doc, method=None):
 		product = Product.find(product_id)
 		if product:
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
-			update_default_variant_properties(product, is_stock_item=template_item.is_stock_item)
-
-			variant_attributes = {}
-			if item.variant_of:
+			if not item.variant_of:
+				update_default_variant_properties(
+					product, is_stock_item=template_item.is_stock_item, price=item.get(ITEM_SELLING_RATE_FIELD)
+				)
+			else:
+				variant_attributes = {"sku": item.item_code, "price": item.get(ITEM_SELLING_RATE_FIELD)}
 				product.options = []
 				max_index_range = min(3, len(template_item.attributes))
 				for i in range(0, max_index_range):
