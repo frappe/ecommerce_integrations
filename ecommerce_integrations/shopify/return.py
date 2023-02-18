@@ -33,7 +33,9 @@ def prepare_sales_return(payload, request_id=None):
 			create_sales_return(return_data, setting, sales_invoice)
 			create_shopify_log(status="Success")
 		else:
-			create_shopify_log(status="Invalid", message="Sales Invoice not found for syncing sales return.")
+			create_shopify_log(
+				status="Invalid", message="Sales Invoice not found for syncing sales return."
+			)
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
@@ -47,9 +49,7 @@ def create_sales_return(return_data, setting, sales_invoice):
 		return_inv = make_return_document("Sales Invoice", return_items, taxes, sales_invoice)
 		return_inv.flags.ignore_mandatory = True
 		return_inv.naming_series = (
-			setting.return_invoice_series
-			or setting.sales_invoice_series
-			or "SI-RET-Shopify-"
+			setting.return_invoice_series or setting.sales_invoice_series or "SI-RET-Shopify-"
 		)
 		return_inv.insert().submit()
 
@@ -91,12 +91,10 @@ def restock_items_against_sales_return(setting, restocked_items, order_id):
 			return_dn = make_return_document("Delivery Note", to_return, [], dn)
 			return_dn.flags.ignore_mandatory = True
 			return_dn.naming_series = (
-				setting.return_delivery_series
-				or setting.delivery_note_series
-				or "DN-RET-Shopify-"
+				setting.return_delivery_series or setting.delivery_note_series or "DN-RET-Shopify-"
 			)
 			return_dn.insert().submit()
-	
+
 	if restocked_items:
 		frappe.throw(_("Could not restock all items. Make sure delivery note has been created for all."))
 

@@ -46,7 +46,7 @@ class ShopifySetting(SettingController):
 
 		if self.is_enabled():
 			setup_custom_fields()
-		
+
 		if self.sync_delivery_cancellation:
 			frappe.msgprint(
 				_(
