@@ -1,8 +1,7 @@
 from collections import Counter
-from typing import Dict
 
 import frappe
-from frappe.utils import cint, now
+from frappe.utils import cint, create_batch, now
 from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import InventoryLevel, Variant
 
@@ -40,30 +39,33 @@ def update_inventory_on_shopify() -> None:
 def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 	synced_on = now()
 
-	for d in inventory_levels:
-		d.shopify_location_id = warehous_map[d.warehouse]
+	for inventory_sync_batch in create_batch(inventory_levels, 50):
+		for d in inventory_sync_batch:
+			d.shopify_location_id = warehous_map[d.warehouse]
 
-		try:
-			variant = Variant.find(d.variant_id)
-			inventory_id = variant.inventory_item_id
+			try:
+				variant = Variant.find(d.variant_id)
+				inventory_id = variant.inventory_item_id
 
-			InventoryLevel.set(
-				location_id=d.shopify_location_id,
-				inventory_item_id=inventory_id,
-				# shopify doesn't support fractional quantity
-				available=cint(d.actual_qty) - cint(d.reserved_qty),
-			)
-			update_inventory_sync_status(d.ecom_item, time=synced_on)
-			d.status = "Success"
-		except ResourceNotFound:
-			# Variant or location is deleted, mark as last synced and ignore.
-			update_inventory_sync_status(d.ecom_item, time=synced_on)
-			d.status = "Not Found"
-		except Exception as e:
-			d.status = "Failed"
-			d.failure_reason = str(e)
+				InventoryLevel.set(
+					location_id=d.shopify_location_id,
+					inventory_item_id=inventory_id,
+					# shopify doesn't support fractional quantity
+					available=cint(d.actual_qty) - cint(d.reserved_qty),
+				)
+				update_inventory_sync_status(d.ecom_item, time=synced_on)
+				d.status = "Success"
+			except ResourceNotFound:
+				# Variant or location is deleted, mark as last synced and ignore.
+				update_inventory_sync_status(d.ecom_item, time=synced_on)
+				d.status = "Not Found"
+			except Exception as e:
+				d.status = "Failed"
+				d.failure_reason = str(e)
 
-	_log_inventory_update_status(inventory_levels)
+			frappe.db.commit()
+
+		_log_inventory_update_status(inventory_sync_batch)
 
 
 def _log_inventory_update_status(inventory_levels) -> None:
