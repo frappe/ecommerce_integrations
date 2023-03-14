@@ -2,7 +2,7 @@ from typing import List, NewType
 
 import frappe
 from frappe import _
-from frappe.utils import get_url, now
+from frappe.utils import get_url, now, to_markdown
 from frappe.utils.nestedset import get_root_of
 from stdnum.ean import is_valid as validate_barcode
 
@@ -82,7 +82,7 @@ def import_product_from_unicommerce(sku: str, client: UnicommerceAPIClient = Non
 
 
 def _create_item_dict(uni_item):
-	""" Helper function to build item document fields"""
+	"""Helper function to build item document fields"""
 
 	item_dict = {"weight_uom": DEFAULT_WEIGHT_UOM}
 
@@ -269,6 +269,9 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 			item_json[uni_field] = value
 
 	item_json["enabled"] = not bool(item.get("disabled"))
+
+	if item_json.get("description"):
+		item_json["description"] = to_markdown(item_json["description"]) or item_json["description"]
 
 	for barcode in item.barcodes:
 		if not item_json.get("scanIdentifier"):
