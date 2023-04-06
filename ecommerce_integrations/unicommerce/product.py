@@ -246,7 +246,6 @@ def upload_items_to_unicommerce(
 	for item_code in item_codes:
 		item_data = _build_unicommerce_item(item_code)
 		sku = item_data.get("skuCode")
-
 		item_exists = bool(client.get_unicommerce_item(sku, log_error=False))
 		_, status = client.create_update_item(item_data, update=item_exists)
 
@@ -287,7 +286,8 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 	)
 	# append site prefix to image url
 	item_json["imageUrl"] = get_url(item.image)
-
+	item_json["maxRetailPrice"] = frappe.get_value("Item Price",{"item_code":item_code},"price_list_rate")
+	item_json["hsnCode"] = frappe.get_value("Item",item.name,"gst_hsn_code")
 	return item_json
 
 
