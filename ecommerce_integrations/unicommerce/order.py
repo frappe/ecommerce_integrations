@@ -54,9 +54,18 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
         return
     for order in new_orders:
         sales_order = create_order(order, client=client)
-        if settings.only_sync_completed_orders:
-            _create_sales_invoices(order, sales_order, client)
+        # if settings.only_sync_completed_orders:
+        #     _create_sales_invoices(order, sales_order, client)
 
+    #for sales order
+    new_sales_orders = _get_new_orders(client, status="COMPLETE")
+
+    if new_sales_orders is None:
+        return
+    for order in new_sales_orders:
+        if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
+            sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["code"]})
+            _create_sales_invoices(order, sales_order, client)
 
 def _get_new_orders(
     client: UnicommerceAPIClient, status: Optional[str]
@@ -118,8 +127,6 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
 
     order = payload
-    if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-        return frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["code"]})
     if request_id is None:
         log = create_unicommerce_log(
             method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
