@@ -48,7 +48,7 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 
     status = "COMPLETE" if settings.only_sync_completed_orders else None
 
-    new_orders = _get_new_orders(client, status=status)
+    new_orders = _get_new_orders(client, status=status,check=True)
 
     if new_orders is None:
         return
@@ -68,7 +68,7 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
             _create_sales_invoices(order, sales_order, client)
 
 def _get_new_orders(
-    client: UnicommerceAPIClient, status: Optional[str]
+    client: UnicommerceAPIClient, status: Optional[str],check=None
 ) -> Optional[Iterator[UnicommerceOrder]]:
 
     """Search new sales order from unicommerce."""
@@ -85,8 +85,9 @@ def _get_new_orders(
     for order in uni_orders:
         if order["channel"] not in configured_channels:
             continue
-        # if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-        # 	continue
+        if check:
+            if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
+                continue
 
         order = client.get_sales_order(order_code=order["code"])
         if order:
