@@ -3,7 +3,7 @@ from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set, Tuple
 
 import frappe
-from frappe.utils import add_to_date, flt
+from frappe.utils import add_to_date, flt,cint,getdate
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -27,7 +27,6 @@ from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
-
 UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
 
 
@@ -49,7 +48,6 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
     status = "COMPLETE" if settings.only_sync_completed_orders else None
 
     new_orders = _get_new_orders(client, status=status,check=True)
-
     if new_orders is None:
         return
     for order in new_orders:
@@ -57,15 +55,16 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
         # if settings.only_sync_completed_orders:
         #     _create_sales_invoices(order, sales_order, client)
 
-    #for sales order
+    #for sales Invoice
     new_sales_orders = _get_new_orders(client, status="COMPLETE")
-
+    
     if new_sales_orders is None:
         return
     for order in new_sales_orders:
         if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
             sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["code"]})
-            _create_sales_invoices(order, sales_order, client)
+            if not frappe.db.exists("Sales Invoice", {ORDER_CODE_FIELD: order["code"]}):
+                _create_sales_invoices(order, sales_order, client)
 
 def _get_new_orders(
     client: UnicommerceAPIClient, status: Optional[str],check=None
@@ -73,7 +72,8 @@ def _get_new_orders(
 
     """Search new sales order from unicommerce."""
 
-    updated_since = 24 * 60  # minutes
+    # updated_since = 24 * 60  # minutes
+    updated_since = None
     uni_orders = client.search_sales_order(updated_since=updated_since, status=status)
     configured_channels = {
         c.channel_id
@@ -393,3 +393,4 @@ def _get_warehouse_allocations(sales_order):
             }
         )
     return item_details
+
