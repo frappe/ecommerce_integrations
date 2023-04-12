@@ -37,9 +37,10 @@ SHIPMENT_STATES = [
 	"RETURN_ACKNOWLEDGED",
 	"MERGED",
 ]
-
+import time
 def prepare_delivery_note():
     try:
+        time.sleep(15)
         settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
         client = UnicommerceAPIClient()
 
