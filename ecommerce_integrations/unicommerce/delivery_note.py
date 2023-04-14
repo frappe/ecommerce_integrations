@@ -87,7 +87,8 @@ def create_delivery_note(order, settings, so):
                 "item_code": item.item_code,
                 "qty": item.qty,
                 "rate": item.rate,
-                "warehouse":item.warehouse
+                "warehouse":item.warehouse,
+                "against_sales_order":so.name
                 })
             # add texes to the delivery note   
             for item in so.taxes:
