@@ -72,8 +72,8 @@ def _get_new_orders(
 
     """Search new sales order from unicommerce."""
 
-    updated_since = 24 * 60  # minutes
-    # updated_since = 72*60
+    # updated_since = 24 * 60  # minutes
+    updated_since = 72*60
     uni_orders = client.search_sales_order(updated_since=updated_since, status=status)
     configured_channels = {
         c.channel_id
