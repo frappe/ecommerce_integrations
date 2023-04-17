@@ -112,7 +112,6 @@ def create_delivery_note(order, settings, so):
             res.shipment_id = order["code"]
             res.save()
             res.submit()
-            frappe.logger("log2").exception(res)
             # delivery_note = DeliveryNote(res)
             # frappe.logger("log3").exception(delivery_note)
             # delivery_note.update({

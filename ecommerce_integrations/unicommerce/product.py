@@ -290,6 +290,7 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 	item_json["hsnCode"] = frappe.get_value("Item",item.name,"gst_hsn_code")
 	item_json["description"] = frappe.get_value("Item",item.name,"description")
 	item_json["gstTaxTypeCode"] = frappe.get_value("Item Tax",{"parent":item.name},"item_tax_template")
+	item_json["costPrice"] = item.valuation_rate
 	return item_json
 
 
