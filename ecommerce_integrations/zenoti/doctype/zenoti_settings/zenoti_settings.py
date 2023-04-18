@@ -16,6 +16,9 @@ from ecommerce_integrations.zenoti.utils import api_url, get_all_centers, get_li
 
 class ZenotiSettings(Document):
 	def validate(self):
+		if not self.enable_zenoti:
+			return
+
 		url = api_url + "centers"
 		headers = {}
 		headers["Authorization"] = "apikey " + self.api_key
