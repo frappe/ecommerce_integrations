@@ -394,3 +394,12 @@ def _get_warehouse_allocations(sales_order):
         )
     return item_details
 
+
+@frappe.whitelist()
+def resync_item(code):
+    from ecommerce_integrations.unicommerce.utils import force_sync
+    id_ecommerce = frappe.get_value("Ecommerce Item",{"erpnext_item_code":code})
+    if id_ecommerce:
+        frappe.delete_doc("Ecommerce Item",id_ecommerce)
+        force_sync(document = "Items")
+    return
