@@ -62,95 +62,90 @@ def prepare_delivery_note():
                 if frappe.get_value("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]}):
                     sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]})
                     if sales_order:
-                        create_delivery_note(order, settings, sales_order)
+                        if (not frappe.db.get_value("Delivery Note", {"shipment_id":order["code"]}, "name")): 
+                            create_delivery_note(order, settings, sales_order)
     except Exception as e:
         create_unicommerce_log(status="Error", exception=e, rollback=True)
 
 
 def create_delivery_note(order, settings, so):
-    try:
-        if (
-            not frappe.db.get_value("Delivery Note", {"shipment_id":order["code"]}, "name")
-        ):  
-            
-            # Get the sales invoice
-            sales_invoice = frappe.get_doc("Sales Invoice", {"unicommerce_order_code":so.unicommerce_order_code})
+    try:            
+        # Get the sales invoice
+        sales_invoice = frappe.get_doc("Sales Invoice", {"unicommerce_order_code":so.unicommerce_order_code})
 
-            # Create the delivery note
-            from frappe.model.mapper import make_mapped_doc
-            res = make_mapped_doc(method="erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",source_name = so.name)
-            res.update({"items":[]})
-            for item in sales_invoice.items:
-                res.append("items", {
-                    "item_code": item.item_code,
-                    "item_name": item.item_name,
-                    "description": item.description,
-                    "qty": item.qty,
-                    "uom": item.uom,
-                    "rate": item.rate,
-                    "amount": item.amount,
-                    "warehouse":item.warehouse,
-                    # "stock_qty": item.qty,
-                    "against_sales_order":item.sales_order,
-                    "batch_no":item.batch_no,
-                    "so_detail": item.so_detail,
-                    # "actual_qty":item.actual_qty,
-                    # "delivered_qty":item.delivered_qty
-                    # "so_detail_item": item.idx
-                })
-            for item in sales_invoice.taxes:
-                res.append("taxes",{
-                "charge_type": item.charge_type,
-                "account_head": item.account_head,
-                "tax_amount": item.tax_amount,
+        # Create the delivery note
+        from frappe.model.mapper import make_mapped_doc
+        res = make_mapped_doc(method="erpnext.selling.doctype.sales_order.sales_order.make_delivery_note",source_name = so.name)
+        res.update({"items":[]})
+        for item in sales_invoice.items:
+            res.append("items", {
+                "item_code": item.item_code,
+                "item_name": item.item_name,
                 "description": item.description,
-                "item_wise_tax_detail": item.item_wise_tax_detail,
-                "dont_recompute_tax": item.dont_recompute_tax,
-                })
-            res.unicommerce_order_no = order["saleOrderCode"]
-            res.shipment_id = order["code"]
-            res.save()
-            res.submit()
-            # delivery_note = DeliveryNote(res)
-            # frappe.logger("log3").exception(delivery_note)
-            # delivery_note.update({
-            #     "customer": sales_invoice.customer,
-            #     # "customer_address": sales_invoice.customer_address,
-            #     "shipping_address_name": sales_invoice.shipping_address_name,
-            #     # "posting_date": sales_invoice.posting_date,
-            #     # "items": []
-            # })
+                "qty": item.qty,
+                "uom": item.uom,
+                "rate": item.rate,
+                "amount": item.amount,
+                "warehouse":item.warehouse,
+                # "stock_qty": item.qty,
+                "against_sales_order":item.sales_order,
+                "batch_no":item.batch_no,
+                "so_detail": item.so_detail,
+                # "actual_qty":item.actual_qty,
+                # "delivered_qty":item.delivered_qty
+                # "so_detail_item": item.idx
+            })
+        for item in sales_invoice.taxes:
+            res.append("taxes",{
+            "charge_type": item.charge_type,
+            "account_head": item.account_head,
+            "tax_amount": item.tax_amount,
+            "description": item.description,
+            "item_wise_tax_detail": item.item_wise_tax_detail,
+            "dont_recompute_tax": item.dont_recompute_tax,
+            })
+        res.unicommerce_order_no = order["saleOrderCode"]
+        res.shipment_id = order["code"]
+        res.save()
+        res.submit()
+        # delivery_note = DeliveryNote(res)
+        # frappe.logger("log3").exception(delivery_note)
+        # delivery_note.update({
+        #     "customer": sales_invoice.customer,
+        #     # "customer_address": sales_invoice.customer_address,
+        #     "shipping_address_name": sales_invoice.shipping_address_name,
+        #     # "posting_date": sales_invoice.posting_date,
+        #     # "items": []
+        # })
 
-            # # Add items to the delivery note
-            # for item in sales_invoice.items:
-            #     delivery_note.append("items", {
-            #         "item_code": item.item_code,
-            #         "item_name": item.item_name,
-            #         "description": item.description,
-            #         "qty": item.qty,
-            #         "uom": item.uom,
-            #         "rate": item.rate,
-            #         "amount": item.amount,
-            #         "stock_qty": item.qty,
-            #         "so_detail": item.name,
-            #         # "so_detail_item": item.idx
-            #     })
+        # # Add items to the delivery note
+        # for item in sales_invoice.items:
+        #     delivery_note.append("items", {
+        #         "item_code": item.item_code,
+        #         "item_name": item.item_name,
+        #         "description": item.description,
+        #         "qty": item.qty,
+        #         "uom": item.uom,
+        #         "rate": item.rate,
+        #         "amount": item.amount,
+        #         "stock_qty": item.qty,
+        #         "so_detail": item.name,
+        #         # "so_detail_item": item.idx
+        #     })
 
-            # # Save the delivery note
-            # delivery_note.flags.ignore_permissions = True
-            # delivery_note.flags.ignore_mandatory = True
-            # delivery_note.insert()
+        # # Save the delivery note
+        # delivery_note.flags.ignore_permissions = True
+        # delivery_note.flags.ignore_mandatory = True
+        # delivery_note.insert()
 
-            # # Submit the delivery note
-            # delivery_note.submit()
+        # # Submit the delivery note
+        # delivery_note.submit()
 
-            # # Update the sales invoice with the delivery note information
-            # # sales_invoice.delivery_note = delivery_note.name
-            # sales_invoice.flags.ignore_permissions = True
-            # sales_invoice.flags.ignore_mandatory = True
-            # sales_invoice.save()
-
-
+        # # Update the sales invoice with the delivery note information
+        # # sales_invoice.delivery_note = delivery_note.name
+        # sales_invoice.flags.ignore_permissions = True
+        # sales_invoice.flags.ignore_mandatory = True
+        # sales_invoice.save()
 
 
 
@@ -164,55 +159,60 @@ def create_delivery_note(order, settings, so):
 
 
 
-            # create a new delivery note
-            # from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
-            # delivery_note = make_delivery_note(so.name)
-            # delivery_note.unicommerce_order_no = order["saleOrderCode"],
-            # delivery_note.shipment_id = order["code"],
-            # delivery_note.status =  "Completed"
 
-            # delivery_note = frappe.get_doc({
-            # "doctype": "Delivery Note",
-            # "customer": so.customer,
-            # "unicommerce_order_no":order["saleOrderCode"],
-            # "shipment_id":order["code"],
-            # "status": "Completed"
-            # })
 
-            # # add items to the delivery note
-            # si = frappe.get_value("Sales Invoice",{"unicommerce_order_code":so.unicommerce_order_code},"name"),
-            # for item in so.items:
-            #     delivery_note.append("items", {
-            #     "item_code": item.item_code,
-            #     "qty": item.qty,
-            #     "rate": item.rate,
-            #     "warehouse":item.warehouse,
-            #     # "against_sales_order":so.name,
-            #     # "so_detail":frappe.get_value("Sales Invoice Item",{"parent":"ACC-SINV-2023-00018","item_code":item.item_code},"so_detail"),
-            #     })
-            # # add texes to the delivery note   
-            # for item in so.taxes:
-            #     delivery_note.append("taxes",{
-            #     "charge_type": item.charge_type,
-            #     "account_head": item.account_head,
-            #     "tax_amount": item.tax_amount,
-            #     "description": item.description,
-            #     "item_wise_tax_detail": item.item_wise_tax_detail,
-            #     "dont_recompute_tax": item.dont_recompute_tax,
-            #     })
-            # for item in so.packed_items:
-            #     delivery_note.append("packed_items",{
-            #         "parent_item":item.parent_item,
-            #         "item_code":item.item_code,
-            #         "actual_qty":0,
-            #         "parent_detail_docname":item.parent_detail_docname,
-            #         "parent_item":item.parent_item
-            #     })
-            # # save the delivery note
-            # delivery_note.save()
-            # delivery_note.submit()
-            log = create_unicommerce_log(method="create_delevery_note", make_new=True)
-            frappe.flags.request_id = log.name
+        # create a new delivery note
+        # from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+        # delivery_note = make_delivery_note(so.name)
+        # delivery_note.unicommerce_order_no = order["saleOrderCode"],
+        # delivery_note.shipment_id = order["code"],
+        # delivery_note.status =  "Completed"
+
+        # delivery_note = frappe.get_doc({
+        # "doctype": "Delivery Note",
+        # "customer": so.customer,
+        # "unicommerce_order_no":order["saleOrderCode"],
+        # "shipment_id":order["code"],
+        # "status": "Completed"
+        # })
+
+        # # add items to the delivery note
+        # si = frappe.get_value("Sales Invoice",{"unicommerce_order_code":so.unicommerce_order_code},"name"),
+        # for item in so.items:
+        #     delivery_note.append("items", {
+        #     "item_code": item.item_code,
+        #     "qty": item.qty,
+        #     "rate": item.rate,
+        #     "warehouse":item.warehouse,
+        #     # "against_sales_order":so.name,
+        #     # "so_detail":frappe.get_value("Sales Invoice Item",{"parent":"ACC-SINV-2023-00018","item_code":item.item_code},"so_detail"),
+        #     })
+        # # add texes to the delivery note   
+        # for item in so.taxes:
+        #     delivery_note.append("taxes",{
+        #     "charge_type": item.charge_type,
+        #     "account_head": item.account_head,
+        #     "tax_amount": item.tax_amount,
+        #     "description": item.description,
+        #     "item_wise_tax_detail": item.item_wise_tax_detail,
+        #     "dont_recompute_tax": item.dont_recompute_tax,
+        #     })
+        # for item in so.packed_items:
+        #     delivery_note.append("packed_items",{
+        #         "parent_item":item.parent_item,
+        #         "item_code":item.item_code,
+        #         "actual_qty":0,
+        #         "parent_detail_docname":item.parent_detail_docname,
+        #         "parent_item":item.parent_item
+        #     })
+        # # save the delivery note
+        # delivery_note.save()
+        # delivery_note.submit()
+        log = create_unicommerce_log(method="create_delevery_note", make_new=True)
+        frappe.flags.request_id = log.name
     except Exception as e:
         frappe.logger("log1").exception(e)
         create_unicommerce_log(status="Error", exception=e, rollback=True)
+    else:
+        create_unicommerce_log(status="Success")
+        frappe.flags.request_id = None
