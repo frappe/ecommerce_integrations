@@ -37,7 +37,10 @@ SHIPMENT_STATES = [
     "RETURN_ACKNOWLEDGED",
     "MERGED",
 ]
+
 import time
+
+@frappe.whitelist()
 def prepare_delivery_note():
     try:
         time.sleep(15)
