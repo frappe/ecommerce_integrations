@@ -63,7 +63,6 @@ def prepare_delivery_note():
                     sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]})
                     if sales_order:
                         create_delivery_note(order, settings, sales_order)
-                        create_unicommerce_log(status="Success")
     except Exception as e:
         create_unicommerce_log(status="Error", exception=e, rollback=True)
 
@@ -212,7 +211,8 @@ def create_delivery_note(order, settings, so):
             # # save the delivery note
             # delivery_note.save()
             # delivery_note.submit()
-
+            log = create_unicommerce_log(method="create_delevery_note", make_new=True)
+            frappe.flags.request_id = log.name
     except Exception as e:
         frappe.logger("log1").exception(e)
         create_unicommerce_log(status="Error", exception=e, rollback=True)
