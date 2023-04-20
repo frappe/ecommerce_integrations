@@ -56,7 +56,7 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
         #     _create_sales_invoices(order, sales_order, client)
 
     #for sales Invoice
-    new_sales_orders = _get_new_orders(client, status="COMPLETE")
+    new_sales_orders = _get_new_orders(client, status)
     
     if new_sales_orders is None:
         return
