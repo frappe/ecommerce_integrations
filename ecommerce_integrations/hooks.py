@@ -203,13 +203,3 @@ before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 # 		"doctype": "{doctype_4}"
 # 	}
 # ]
-fixtures = [
-		{"dt": "Custom Field", "filters": [
-				[
-					"name", "in", [
-						"Unicommerce Warehouses-shelf_wise",
-						"Pick List-order_details"
-					]
-			   ]
-	]}
-]
