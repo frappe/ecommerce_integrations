@@ -115,8 +115,8 @@ doc_events = {
 		"on_cancel": "ecommerce_integrations.unicommerce.grn.prevent_grn_cancel",
 	},
 	"Item Price": {"on_change": "ecommerce_integrations.utils.price_list.discard_item_prices"},
-	"Pick List":{"validate":"ecommerce_integrations.unicommerce.pick_list.validate"},
-	"Sales Invoice":{
+	"Pick List": {"validate": "ecommerce_integrations.unicommerce.pick_list.validate"},
+	"Sales Invoice": {
 		"on_submit": "ecommerce_integrations.unicommerce.invoice.on_submit",
 		"on_cancel": "ecommerce_integrations.unicommerce.invoice.on_cancel",
 	},

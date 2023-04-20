@@ -1,9 +1,10 @@
 from collections import defaultdict
+from datetime import datetime
 from typing import Dict
 
 import frappe
 from frappe.utils import cint, now
-from datetime import datetime
+
 from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,
 	get_inventory_levels_of_group_warehouse,
@@ -49,9 +50,9 @@ def update_inventory_on_unicommerce(client=None, force=False):
 	inventory_synced_on = now()
 
 	for warehouse in warehouses:
-		if warehouse['shelf']:
-			return shelf_bulk_update(warehouse,settings)
-		warehouse = warehouse['erpnext_warehouse']
+		if warehouse["shelf"]:
+			return shelf_bulk_update(warehouse, settings)
+		warehouse = warehouse["erpnext_warehouse"]
 		is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
 
 		if is_group_warehouse:
@@ -90,9 +91,10 @@ def _update_inventory_sync_status(ecom_item_success_map: Dict[str, bool], timest
 		if status:
 			update_inventory_sync_status(ecom_item, timestamp)
 
-def shelf_bulk_update(warehouse,settings):
-	warehouse = warehouse['erpnext_warehouse']
-	shelves = frappe.get_list('Shelf',{'warehouse':warehouse,'disable':0},['shelf_name','type'])
+
+def shelf_bulk_update(warehouse, settings):
+	warehouse = warehouse["erpnext_warehouse"]
+	shelves = frappe.get_list("Shelf", {"warehouse": warehouse, "disable": 0}, ["shelf_name", "type"])
 	is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
 	if is_group_warehouse:
 		erpnext_inventory = get_inventory_levels_of_group_warehouse(
@@ -111,42 +113,42 @@ def shelf_bulk_update(warehouse,settings):
 	inventory_list = []
 	for shelf in shelves:
 		inventoryType = "GOOD_INVENTORY"
-		if shelf.type == 'Unsellable':
+		if shelf.type == "Unsellable":
 			inventoryType = "BAD_INVENTORY"
 		for item in erpnext_inventory:
-			custom_filter ={
-				"company":"Lifelong Online Retail Private Limited",
-				"from_date":datetime.today().strftime("%Y-%m-%d"),
-				"to_date":datetime.today().strftime("%Y-%m-%d"),
-				"warehouse":warehouse,
+			custom_filter = {
+				"company": "Lifelong Online Retail Private Limited",
+				"from_date": datetime.today().strftime("%Y-%m-%d"),
+				"to_date": datetime.today().strftime("%Y-%m-%d"),
+				"warehouse": warehouse,
 				"shelf": shelf.shelf_name,
-				"item_code": item.item_code
-				}
-			columns, data = report.get_data(
-				limit=1, filters=custom_filter, as_dict=True
-			)
-			if len(data)>0:
-				data = data[0] 
-				inventory_list.append({
-					"itemSKU": item.item_code,
-					"quantity": data['qty_after_transaction'],
-					"shelfCode": shelf,  
-					"inventoryType": inventoryType,
-					"adjustmentType": "REPLACE",
-					"facilityCode": facility_code,
-				})
+				"item_code": item.item_code,
+			}
+			columns, data = report.get_data(limit=1, filters=custom_filter, as_dict=True)
+			if len(data) > 0:
+				data = data[0]
+				inventory_list.append(
+					{
+						"itemSKU": item.item_code,
+						"quantity": data["qty_after_transaction"],
+						"shelfCode": shelf,
+						"inventoryType": inventoryType,
+						"adjustmentType": "REPLACE",
+						"facilityCode": facility_code,
+					}
+				)
 	inventory_list = inventory_list[:MAX_INVENTORY_UPDATE_IN_REQUEST]
 	client = UnicommerceAPIClient()
 	response, status = client.bulk_inventory_update(
-			facility_code=facility_code, inventory_map={'sku':1},inventory_adjustments=inventory_list
-		)
+		facility_code=facility_code, inventory_map={"sku": 1}, inventory_adjustments=inventory_list
+	)
 	if status:
-			success_map: Dict[str, bool] = defaultdict(lambda: True)
-			# update success_map
-			sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
-			for sku, status in response.items():
-				ecom_item = sku_to_ecom_item_map[sku]
-				# Any one warehouse sync failure should be considered failure
-				success_map[ecom_item] = success_map[ecom_item] and status
+		success_map: Dict[str, bool] = defaultdict(lambda: True)
+		# update success_map
+		sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
+		for sku, status in response.items():
+			ecom_item = sku_to_ecom_item_map[sku]
+			# Any one warehouse sync failure should be considered failure
+			success_map[ecom_item] = success_map[ecom_item] and status
 
 	_update_inventory_sync_status(success_map, now())
