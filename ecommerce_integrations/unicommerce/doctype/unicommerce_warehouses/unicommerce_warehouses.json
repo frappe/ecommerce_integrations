@@ -10,7 +10,8 @@
   "column_break_2",
   "return_warehouse",
   "company_address",
-  "dispatch_address"
+  "dispatch_address",
+  "shelf_wise"
  ],
  "fields": [
   {
@@ -57,12 +58,18 @@
    "fieldtype": "Link",
    "label": "Dispatch Address",
    "options": "Address"
+  },
+  {
+   "default": "0",
+   "fieldname": "shelf_wise",
+   "fieldtype": "Check",
+   "label": "Shelf Wise"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2021-11-19 16:39:01.415522",
+ "modified": "2023-04-20 15:43:11.040252",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Warehouses",
@@ -70,5 +77,6 @@
  "permissions": [],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1
 }

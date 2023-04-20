@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "creation": "2023-04-19 11:57:15.149202",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sales_order",
+  "sales_invoice",
+  "posting_date",
+  "pick_status",
+  "invoice_url",
+  "invoice_pdf"
+ ],
+ "fields": [
+  {
+   "fieldname": "sales_order",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Order",
+   "options": "Sales Order"
+  },
+  {
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sales Invoice",
+   "options": "Sales Invoice"
+  },
+  {
+   "fetch_from": "sales_invoice.posting_date",
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Posting Date"
+  },
+  {
+   "fieldname": "pick_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Pick Status",
+   "options": "\nPartially Picked\nFully Picked"
+  },
+  {
+   "fieldname": "invoice_url",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Invoice URL"
+  },
+  {
+   "fieldname": "invoice_pdf",
+   "fieldtype": "Attach",
+   "in_list_view": 1,
+   "label": "Invoice Pdf"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2023-04-20 10:58:07.144994",
+ "modified_by": "Administrator",
+ "module": "Ecommerce Integrations",
+ "name": "Pick List Sales Order Details",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

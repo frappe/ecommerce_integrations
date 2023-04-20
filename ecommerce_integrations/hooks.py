@@ -37,6 +37,7 @@ doctype_js = {
 	"Sales Invoice": "public/js/unicommerce/sales_invoice.js",
 	"Item": "public/js/unicommerce/item.js",
 	"Stock Entry": "public/js/unicommerce/stock_entry.js",
+	"Pick List": "public/js/unicommerce/pick_list.js",
 }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -114,6 +115,11 @@ doc_events = {
 		"on_cancel": "ecommerce_integrations.unicommerce.grn.prevent_grn_cancel",
 	},
 	"Item Price": {"on_change": "ecommerce_integrations.utils.price_list.discard_item_prices"},
+	"Pick List":{"validate":"ecommerce_integrations.unicommerce.pick_list.validate"},
+	"Sales Invoice":{
+		"on_submit": "ecommerce_integrations.unicommerce.invoice.on_submit",
+		"on_cancel": "ecommerce_integrations.unicommerce.invoice.on_cancel",
+	},
 }
 
 # Scheduled Tasks
@@ -197,3 +203,13 @@ before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 # 		"doctype": "{doctype_4}"
 # 	}
 # ]
+fixtures = [
+		{"dt": "Custom Field", "filters": [
+				[
+					"name", "in", [
+						"Unicommerce Warehouses-shelf_wise",
+						"Pick List-order_details"
+					]
+			   ]
+	]}
+]

@@ -149,6 +149,8 @@ class UnicommerceSettings(SettingController):
 			wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled or all_wh
 		]
 
+	def get_warehouses(self):
+		return [{'erpnext_warehouse':wh_map.erpnext_warehouse,'shelf':wh_map.shelf_wise} for wh_map in self.warehouse_mapping if wh_map.enabled]
 	def get_erpnext_to_integration_wh_mapping(
 		self, all_wh=False
 	) -> Dict[ERPNextWarehouse, IntegrationWarehouse]:
