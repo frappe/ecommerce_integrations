@@ -383,6 +383,7 @@ def create_sales_invoice(
 	si.ignore_pricing_rule = 1
 	# si.update_stock = update_stock
 	si.flags.raw_data = si_data
+	si.debit_to = frappe.get_value("Account",{"account_currency":so.currency},"name")
 	si.insert()
 
 	_verify_total(si, si_data)
