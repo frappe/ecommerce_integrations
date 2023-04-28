@@ -120,6 +120,7 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
 
 	order = payload
+
 	if request_id is None:
 		log = create_unicommerce_log(
 			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
