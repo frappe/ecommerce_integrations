@@ -41,6 +41,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
+	SHIPPIND_ID,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -200,6 +201,15 @@ def setup_custom_fields(update=True):
 				collapsible=1,
 			),
 		],
+		"Delivery Note": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="instructions",
+				collapsible=1,
+			),
+		]
 	}
 
 	custom_fields = {
@@ -427,6 +437,22 @@ def setup_custom_fields(update=True):
 				read_only=1,
 			),
 		],
+		"Delivery Note": [
+			dict(
+				fieldname=ORDER_CODE_FIELD,
+				label="Unicommerce Order No",
+				fieldtype="Data",
+				insert_after="unicommerce_section",
+				read_only=1
+			),
+			dict(
+				fieldname=SHIPPIND_ID,
+				label="Unicommerce Shipment Id",
+				fieldtype="Data",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1
+			),
+		]
 	}
 
 	# create sections first for proper ordering

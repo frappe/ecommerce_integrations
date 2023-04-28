@@ -381,9 +381,8 @@ def create_sales_invoice(
 	si.naming_series = channel_config.sales_invoice_series or settings.sales_invoice_series
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
-	# si.update_stock = update_stock
+	si.update_stock = update_stock
 	si.flags.raw_data = si_data
-	si.debit_to = frappe.get_value("Account", {"account_currency": so.currency}, "name")
 	si.insert()
 
 	_verify_total(si, si_data)

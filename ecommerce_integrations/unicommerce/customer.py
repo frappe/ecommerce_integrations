@@ -117,6 +117,5 @@ def _create_customer_address(uni_address, address_type, customer, also_shipping=
 			"links": [{"link_doctype": "Customer", "link_name": customer.name}],
 			"is_primary_address": int(address_type == "Billing"),
 			"is_shipping_address": int(also_shipping or address_type == "Shipping"),
-			"gst_category": "Overseas" if country != "India" else "Unregistered",
 		}
 	).insert(ignore_mandatory=True)

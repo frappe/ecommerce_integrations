@@ -3,7 +3,7 @@ from collections import defaultdict, namedtuple
 from typing import Any, Dict, Iterator, List, NewType, Optional, Set, Tuple
 
 import frappe
-from frappe.utils import add_to_date, cint, flt, getdate
+from frappe.utils import add_to_date, flt
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -48,34 +48,25 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 
 	status = "COMPLETE" if settings.only_sync_completed_orders else None
 
-	new_orders = _get_new_orders(client, status=status, check=True)
+	new_orders = _get_new_orders(client, status=status)
+
 	if new_orders is None:
 		return
+
 	for order in new_orders:
 		sales_order = create_order(order, client=client)
-		# if settings.only_sync_completed_orders:
-		#     _create_sales_invoices(order, sales_order, client)
 
-	# for sales Invoice
-	new_sales_orders = _get_new_orders(client, status)
-
-	if new_sales_orders is None:
-		return
-	for order in new_sales_orders:
-		if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-			sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["code"]})
-			if not frappe.db.exists("Sales Invoice", {ORDER_CODE_FIELD: order["code"]}):
-				_create_sales_invoices(order, sales_order, client)
+		if settings.only_sync_completed_orders:
+			_create_sales_invoices(order, sales_order, client)
 
 
 def _get_new_orders(
-	client: UnicommerceAPIClient, status: Optional[str], check=None
+	client: UnicommerceAPIClient, status: Optional[str]
 ) -> Optional[Iterator[UnicommerceOrder]]:
 
 	"""Search new sales order from unicommerce."""
 
-	# updated_since = 24 * 60  # minutes
-	updated_since = 72 * 60
+	updated_since = 24 * 60  # minutes
 	uni_orders = client.search_sales_order(updated_since=updated_since, status=status)
 	configured_channels = {
 		c.channel_id
@@ -87,9 +78,8 @@ def _get_new_orders(
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
-		if check:
-			if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-				continue
+		if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
+			continue
 
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
@@ -395,14 +385,3 @@ def _get_warehouse_allocations(sales_order):
 			}
 		)
 	return item_details
-
-
-@frappe.whitelist()
-def resync_item(code):
-	from ecommerce_integrations.unicommerce.utils import force_sync
-
-	id_ecommerce = frappe.get_value("Ecommerce Item", {"erpnext_item_code": code})
-	if id_ecommerce:
-		frappe.delete_doc("Ecommerce Item", id_ecommerce)
-		force_sync(document="Items")
-	return

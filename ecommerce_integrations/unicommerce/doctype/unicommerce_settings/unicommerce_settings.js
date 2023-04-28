@@ -33,19 +33,6 @@ frappe.ui.form.on("Unicommerce Settings", {
 				__("Sync Now")
 			);
 		});
-
-		frm.add_custom_button(__("Delivery Note"), () => {
-				frappe.call({
-					method:
-						"ecommerce_integrations.unicommerce.delivery_note.prepare_delivery_note",
-					callback: (r) => {
-							frappe.msgprint("Intiated Delivery Note.")
-					},
-				});
-			},
-			__("Sync Now")
-		);
-
 	},
 
 	onload: function (frm) {
