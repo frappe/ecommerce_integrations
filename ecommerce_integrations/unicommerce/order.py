@@ -78,8 +78,9 @@ def _get_new_orders(
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
-		if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-			continue
+		#In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
+		# if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
+		# 	continue
 
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
@@ -121,17 +122,23 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 
 	order = payload
 
+	# if request_id is None:
+	# 	log = create_unicommerce_log(
+	# 		method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
+	# 	)
+	# 	request_id = log.name
+
+	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
+	if existing_so:
+		so = frappe.get_doc("Sales Order", existing_so)
+		# create_unicommerce_log(status="Invalid", message="Sales Order already exists, skipped")
+		return so
+	
 	if request_id is None:
 		log = create_unicommerce_log(
 			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
 		)
 		request_id = log.name
-
-	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
-	if existing_so:
-		so = frappe.get_doc("Sales Order", existing_so)
-		create_unicommerce_log(status="Invalid", message="Sales Order already exists, skipped")
-		return so
 
 	if client is None:
 		client = UnicommerceAPIClient()
