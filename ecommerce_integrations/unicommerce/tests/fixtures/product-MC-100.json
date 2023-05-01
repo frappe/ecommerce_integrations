@@ -21,7 +21,7 @@
 		"ean": "",
 		"upc": "",
 		"isbn": "",
-		"maxRetailPrice": 659.0,
+		"maxRetailPrice": null,
 		"basePrice": 500.0,
 		"batchGroupCode": null,
 		"costPrice": 500.0,
