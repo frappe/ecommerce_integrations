@@ -24,7 +24,7 @@
 		"maxRetailPrice": null,
 		"basePrice": 500.0,
 		"batchGroupCode": null,
-		"costPrice": 500.0,
+		"costPrice": null,
 		"taxTypeCode": "DEFAULT",
 		"gstTaxTypeCode": "none",
 		"hsnCode": "",
