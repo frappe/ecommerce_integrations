@@ -29,6 +29,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ITEM_WIDTH_FIELD,
 	MANIFEST_GENERATED_CHECK,
 	ORDER_CODE_FIELD,
+	ORDER_DETAILS,
 	ORDER_INVOICE_STATUS_FIELD,
 	ORDER_ITEM_BATCH_NO,
 	ORDER_ITEM_CODE_FIELD,
@@ -432,6 +433,15 @@ def setup_custom_fields(update=True):
 				fieldtype="Small Text",
 				insert_after=IS_COD_CHECKBOX,
 				read_only=1,
+			),
+		],
+		"Pick List": [
+			dict(
+				fieldname=ORDER_DETAILS,
+				label="Order Details",
+				fieldtype="table",
+				insert_after="section_break_15",
+				options="Pick List Sales Order Details",
 			),
 		],
 	}
