@@ -261,13 +261,13 @@
    "default": "0",
    "fieldname": "delivery_note",
    "fieldtype": "Check",
-   "label": "Generate Delivery Note"
+   "label": "Import Delivery Notes from Unicommerce on Shipment"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-05-02 10:36:07.140401",
+ "modified": "2023-05-02 14:04:26.684256",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
