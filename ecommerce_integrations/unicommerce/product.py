@@ -39,6 +39,8 @@ UNI_TO_ERPNEXT_ITEM_MAPPING = {
 	"width": ITEM_WIDTH_FIELD,
 	"height": ITEM_HEIGHT_FIELD,
 	"batchGroupCode": ITEM_BATCH_GROUP_FIELD,
+	"maxRetailPrice":"standard_rate",
+	"costPrice":"valuation_rate"
 }
 
 ERPNEXT_TO_UNI_ITEM_MAPPING = {v: k for k, v in UNI_TO_ERPNEXT_ITEM_MAPPING.items()}

@@ -10,6 +10,9 @@ from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 def prepare_delivery_note():
     try:
         settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+        if not settings.delivery_note:
+            return
+
         client = UnicommerceAPIClient()
 
         days_to_sync = min(settings.get("order_status_days") or 2, 14)
