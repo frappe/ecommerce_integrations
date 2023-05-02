@@ -1,10 +1,8 @@
 import frappe
-
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
-from ecommerce_integrations.unicommerce.constants import (
-    ORDER_CODE_FIELD,SETTINGS_DOCTYPE
-)
+from ecommerce_integrations.unicommerce.constants import ORDER_CODE_FIELD,SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
+
 
 @frappe.whitelist()
 def prepare_delivery_note():
@@ -17,16 +15,15 @@ def prepare_delivery_note():
 
         days_to_sync = min(settings.get("order_status_days") or 2, 14)
         minutes = days_to_sync * 24 * 60
-
+        
         # find all Facilities
         enabled_facilities = list(settings.get_integration_to_erpnext_wh_mapping().keys())
         enabled_channels = frappe.db.get_list(
             "Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id"
         )
-        for facility in enabled_facilities:
-            updated_packages = client.search_shipping_packages(
-                updated_since=minutes, facility_code=facility
-            )
+        
+        for facility in enabled_facilities: 
+            updated_packages = client.search_shipping_packages(updated_since=minutes, facility_code=facility)
             valid_packages = [p for p in updated_packages if p.get("channel") in enabled_channels]
             if not valid_packages:
                 continue
