@@ -572,7 +572,6 @@ def update_cancellation_status(so_data, so) -> bool:
 	update_erpnext_order_items(so_data, so)
 
 
-@frappe.whitelist()
 def on_submit(self, method=None):
 	sales_order = self.get("items")[0].sales_order
 	attached_docs = frappe.get_all(
@@ -617,7 +616,6 @@ def on_submit(self, method=None):
 			frappe.db.set_value("Pick List", pl.parent, "workflow_state", "Invoice Generated")
 
 
-@frappe.whitelist()
 def on_cancel(self, method=None):
 	results = frappe.db.get_all(
 		"Pick List Sales Order Details", filters={"sales_invoice": self.name, "docstatus": 1}

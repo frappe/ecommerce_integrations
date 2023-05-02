@@ -61,12 +61,10 @@ def update_inventory_on_unicommerce(client=None, force=False):
 			)
 		else:
 			erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
-			frappe.log_error("erpnext_inventory", str(erpnext_inventory))
 		if not erpnext_inventory:
 			continue
 
 		erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
-		frappe.log_error("erpnext_inven", str(erpnext_inventory))
 		# TODO: consider reserved qty on both platforms.
 		inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
 		facility_code = wh_to_facility_map[warehouse]
@@ -74,7 +72,6 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		response, status = client.bulk_inventory_update(
 			facility_code=facility_code, inventory_map=inventory_map
 		)
-		frappe.log_error("inven_response", str(response))
 		if status:
 			# update success_map
 			sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
@@ -142,7 +139,6 @@ def shelf_bulk_update(warehouse, settings):
 	response, status = client.bulk_inventory_update(
 		facility_code=facility_code, inventory_map={"sku": 1}, inventory_adjustments=inventory_list
 	)
-	frappe.log_error("inventory",str(response))
 	if status:
 		success_map: Dict[str, bool] = defaultdict(lambda: True)
 		# update success_map

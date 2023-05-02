@@ -33,12 +33,6 @@ frappe.ui.form.on('Pick List', {
                         sales_orders.push(so);
                             warehouse_allocation[so] = item_details.filter(value => Object.keys(value).length !== 0);
                     });
-                    frappe.call({
-			method: 'ecommerce_integrations.unicommerce.pick_list.validate_partial_picking',
-                                args: {
-                                        'so_item_list': so_item_list
-                                        }
-                                })
                      frappe.call({
                                 method: 'ecommerce_integrations.unicommerce.invoice.generate_unicommerce_invoices',
                                 args: {
