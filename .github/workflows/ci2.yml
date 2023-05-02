@@ -1,4 +1,4 @@
-name: Frappe App CI
+name: CI2
 
 on:
   push:
