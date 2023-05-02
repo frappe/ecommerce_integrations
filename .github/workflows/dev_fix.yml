@@ -19,4 +19,4 @@ jobs:
         pip3 install -r requirements.txt
 
     - name: Run Tests
-      run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations --coverage
+      run: bench run-tests
