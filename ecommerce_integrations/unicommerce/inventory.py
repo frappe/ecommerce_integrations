@@ -76,6 +76,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		)
 
 		if status:
+			frappe.log_error("inventory_status", str(status))
 			# update success_map
 			sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
 			for sku, status in response.items():
@@ -142,6 +143,7 @@ def shelf_bulk_update(warehouse, settings):
 	response, status = client.bulk_inventory_update(
 		facility_code=facility_code, inventory_map={"sku": 1}, inventory_adjustments=inventory_list
 	)
+	frappe.log_error("inventory",str(response))
 	if status:
 		success_map: Dict[str, bool] = defaultdict(lambda: True)
 		# update success_map
