@@ -432,7 +432,7 @@ def setup_custom_fields(update=True):
 			dict(
 				fieldname=ORDER_DETAILS,
 				label="Order Details",
-				fieldtype="table",
+				fieldtype="Table",
 				insert_after="section_break_15",
 				options="Pick List Sales Order Details",
 			),
