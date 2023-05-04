@@ -58,41 +58,41 @@ def generate_unicommerce_invoices(
 
 	1. Get shipping package details using get_sale_order
 	2. Ask for invoice generation
-			- marketplace - create_invoice_and_label_by_shipping_code
-			- self-shipped - create_invoice_and_assign_shipper
+	                - marketplace - create_invoice_and_label_by_shipping_code
+	                - self-shipped - create_invoice_and_assign_shipper
 
 	3. Sync invoice.
 
 	args:
-			sales_orders: list of sales order codes to invoice.
-			warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
+	                sales_orders: list of sales order codes to invoice.
+	                warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
 
-		Example of warehouse_allocation:
+	        Example of warehouse_allocation:
 
-		{
-		  "SO0042": [
-			  {
-				"item_code": "SKU",
-				# "qty": 1, always assumed to be 1 for Unicommerce orders.
-				"warehouse": "Stores - WP",
-				"sales_order_row": "5hh123k1", `name` of SO child table row
-			  },
-			  {
-				 "item_code": "SKU2",
-				 # "qty": 1,
-				 "warehouse": "Stores - WP",
-				 "sales_order_row": "5hh123k1", `name` of SO child table row
-			  },
-		   ],
-		   "SO0101": [
-			  {
-				 "item_code": "SKU3",
-				 # "qty": 1
-				 "warehouse": "Stores - WP",
-				 "sales_order_row": "5hh123k1", `name` of SO child table row
-			  },
-		   ]
-		}
+	        {
+	          "SO0042": [
+	                  {
+	                        "item_code": "SKU",
+	                        # "qty": 1, always assumed to be 1 for Unicommerce orders.
+	                        "warehouse": "Stores - WP",
+	                        "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	                  {
+	                         "item_code": "SKU2",
+	                         # "qty": 1,
+	                         "warehouse": "Stores - WP",
+	                         "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	           ],
+	           "SO0101": [
+	                  {
+	                         "item_code": "SKU3",
+	                         # "qty": 1
+	                         "warehouse": "Stores - WP",
+	                         "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	           ]
+	        }
 	"""
 
 	if isinstance(sales_orders, str):
@@ -282,7 +282,7 @@ def _fetch_and_sync_invoice(
 	"""Use the invoice generation response to fetch actual invoice and sync them to ERPNext.
 
 	args:
-			invoice_response: response returned by either of two invoice generation methods
+	                invoice_response: response returned by either of two invoice generation methods
 	"""
 
 	so_data = client.get_sales_order(unicommerce_so_code)
@@ -606,13 +606,10 @@ def on_submit(self, method=None):
 			)
 		else:
 			frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
-		# is_invoice_generated = 1
-		# pl_doc = frappe.get_doc("Pick List", pl.parent)
-		# for i in pl_doc.get("order_details"):
-		# 	if not i.sales_invoice:
-		# 		is_invoice_generated = 0
-		# 		break
-		is_invoice_generated = frappe.db.sql(f"select name from `tabPick List Sales Order Details` where parent = '{pl.parent}' and sales_invoice is null")		
+		is_invoice_generated = frappe.db.sql(
+			f"select name from `tabPick List Sales Order Details` where parent = '{pl.parent}' and"
+			" sales_invoice is null"
+		)
 		if not is_invoice_generated:
 			frappe.db.set_value("Pick List", pl.parent, "workflow_state", "Invoice Generated")
 
