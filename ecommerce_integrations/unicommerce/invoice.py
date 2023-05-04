@@ -612,7 +612,7 @@ def on_submit(self, method=None):
 		# 	if not i.sales_invoice:
 		# 		is_invoice_generated = 0
 		# 		break
-		is_invoice_generated = frappe.db.sql(f"select name from `tabPick List Sales Order Details` where parent = '{pl.parent}' and (sales_invoice is null or sales invoice = '')")		
+		is_invoice_generated = frappe.db.sql(f"select name from `tabPick List Sales Order Details` where parent = '{pl.parent}' and sales_invoice is null")		
 		if not is_invoice_generated:
 			frappe.db.set_value("Pick List", pl.parent, "workflow_state", "Invoice Generated")
 
