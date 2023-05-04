@@ -11,6 +11,7 @@ from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
+	INVOICE_CODE_FIELD,
 	FACILITY_CODE_FIELD,
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
@@ -93,6 +94,13 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 	facility_code = sales_order.get(FACILITY_CODE_FIELD)
 	shipping_packages = unicommerce_order["shippingPackages"]
 	for package in shipping_packages:
+		# This code was added because the log statement below was being executed every time.
+		invoice_data = client.get_sales_invoice(
+				shipping_package_code=package["code"], facility_code=facility_code
+			)
+		existing_si = frappe.db.get_value("Sales Invoice", {INVOICE_CODE_FIELD: invoice_data["invoice"]["code"]})
+		if existing_si:
+			continue
 		try:
 			log = create_unicommerce_log(method="create_sales_invoice", make_new=True)
 			frappe.flags.request_id = log.name
