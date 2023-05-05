@@ -27,13 +27,14 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 		_create_customer_addresses(order.get("addresses", []), customer)
 
-		new_addresses = frappe.get_all(
-			"Address", filters={"link_name": customer.name}, fields=["address_type"]
-		)
+		new_addresses = frappe.get_all("Address", filters={"link_name": customer.name}, fields=["*"])
 
 		self.assertEqual(len(new_addresses), 2)
 		addr_types = {d.address_type for d in new_addresses}
 		self.assertEqual(addr_types, {"Shipping", "Billing"})
+
+		states = {d.state for d in new_addresses}
+		self.assertEqual(states, {"Maharashtra"})
 
 	def test_deduplication(self):
 		"""requirement: Literally same order should not create duplicates."""

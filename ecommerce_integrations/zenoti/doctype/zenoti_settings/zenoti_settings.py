@@ -6,7 +6,7 @@ import requests
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
-from frappe.utils import add_to_date, cint, date_diff, get_datetime
+from frappe.utils import add_to_date, cint, cstr, date_diff, get_datetime
 
 from ecommerce_integrations.zenoti.purchase_transactions import process_purchase_orders
 from ecommerce_integrations.zenoti.sales_transactions import process_sales_invoices
@@ -16,9 +16,12 @@ from ecommerce_integrations.zenoti.utils import api_url, get_all_centers, get_li
 
 class ZenotiSettings(Document):
 	def validate(self):
+		if not self.enable_zenoti:
+			return
+
 		url = api_url + "centers"
 		headers = {}
-		headers["Authorization"] = "apikey " + self.api_key
+		headers["Authorization"] = "apikey " + cstr(self.api_key)
 		response = requests.request("GET", url=url, headers=headers)
 		if response.status_code != 200:
 			frappe.throw("Please verify the API Key")

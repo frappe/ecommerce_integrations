@@ -10,6 +10,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	CUSTOMER_CODE_FIELD,
 	SETTINGS_DOCTYPE,
 	UNICOMMERCE_COUNTRY_MAPPING,
+	UNICOMMERCE_INDIAN_STATES_MAPPING,
 )
 
 
@@ -92,19 +93,27 @@ def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> Non
 
 
 def _create_customer_address(uni_address, address_type, customer, also_shipping=False):
+
+	country_code = uni_address.get("country")
+	country = UNICOMMERCE_COUNTRY_MAPPING.get(country_code)
+
+	state = uni_address.get("state")
+	if country_code == "IN" and state in UNICOMMERCE_INDIAN_STATES_MAPPING:
+		state = UNICOMMERCE_INDIAN_STATES_MAPPING.get(state)
+
 	frappe.get_doc(
 		{
 			"address_line1": uni_address.get("addressLine1") or "Not provided",
 			"address_line2": uni_address.get("addressLine2"),
 			"address_type": address_type,
 			"city": uni_address.get("city"),
-			"country": UNICOMMERCE_COUNTRY_MAPPING.get(uni_address.get("country")),
+			"country": country,
 			"county": uni_address.get("district"),
 			"doctype": "Address",
 			"email_id": uni_address.get("email"),
 			"phone": uni_address.get("phone"),
 			"pincode": uni_address.get("pincode"),
-			"state": uni_address.get("state"),
+			"state": state,
 			"links": [{"link_doctype": "Customer", "link_name": customer.name}],
 			"is_primary_address": int(address_type == "Billing"),
 			"is_shipping_address": int(also_shipping or address_type == "Shipping"),
