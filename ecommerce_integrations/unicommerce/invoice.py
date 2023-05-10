@@ -606,12 +606,8 @@ def on_submit(self, method=None):
 			)
 		else:
 			frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
-		is_invoice_generated = frappe.db.sql(
-			f"select name from `tabPick List Sales Order Details` where parent = '{pl.parent}' and"
-			" sales_invoice is null"
-		)
-		if not is_invoice_generated:
-			frappe.db.set_value("Pick List", pl.parent, "workflow_state", "Invoice Generated")
+		
+		
 
 
 def on_cancel(self, method=None):
@@ -620,3 +616,4 @@ def on_cancel(self, method=None):
 	)
 	if results:
 		self.flags.ignore_links = True
+

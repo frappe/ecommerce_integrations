@@ -1,12 +1,12 @@
 frappe.ui.form.on('Pick List', {
     refresh(frm){
         if (frm.doc.order_details){
-            cur_frm.add_custom_button(__('Generate Invoice'), () => frm.trigger('generate_invoice'))
+            frm.add_custom_button(__('Generate Invoice'), () => frm.trigger('generate_invoice'))
         }
     },
     generate_invoice(frm){
         let selected_so = []
-        var tbl = cur_frm.doc.order_details || [];
+        var tbl = frm.doc.order_details || [];
             for(var i = 0; i < tbl.length; i++) {
                 selected_so.push(tbl[i].sales_order)
             }

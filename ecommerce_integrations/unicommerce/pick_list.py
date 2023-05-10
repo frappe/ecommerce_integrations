@@ -1,7 +1,7 @@
 import json
 
 import frappe
-
+from frappe import _
 
 def validate(self, method=None):
 	if self.get("locations"):
@@ -9,22 +9,15 @@ def validate(self, method=None):
 			if pl.picked_qty and float(pl.picked_qty) > 0:
 				if pl.picked_qty > pl.qty:
 					pl.picked_qty = pl.qty
-					frappe.throw("Row " + str(pl.idx) + ": Picked Qty cannot be more than Sales Order Qty")
-				if pl.picked_qty == 0 and self.docstatus == 1:
-					frappe.throw(
-						"You have not picked "
-						+ pl.item_code
-						+ " in row "
-						+ str(pl.idx)
-						+ ". Pick the item to proceed!"
-					)
+
+					frappe.throw(_("Row {0} Picked Qty cannot be more than Sales Order Qty").format(pl.idx))
+			if pl.picked_qty == 0 and pl.docstatus == 1:
+				frappe.throw(_("You have not picked {0} in row {1} . Pick the item to proceed!").format(pl.item_code,pl.idx))
 		item_so_list = [d.sales_order for d in self.get("locations")]
 		unique_so_list = []
 		for i in item_so_list:
 			if i not in unique_so_list:
 				unique_so_list.append(i)
-		if len(unique_so_list) > 30:
-			frappe.throw("Cannot add more than 30 Sales Orders!")
 		so_list = [d.sales_order for d in self.get("order_details")]
 		for so in unique_so_list:
 			if so not in so_list:
@@ -52,3 +45,6 @@ def validate(self, method=None):
 				for x in self.get("order_details"):
 					if x.sales_order == so:
 						x.pick_status = "Partially Picked"
+
+
+
