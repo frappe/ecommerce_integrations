@@ -29,21 +29,18 @@ def prepare_delivery_note():
                 continue
             shipped_packages = [p for p in valid_packages if p["status"] in ["DISPATCHED"]]
             for order in shipped_packages:
-                if not frappe.db.exists("Delivery Note", {"unicommerce_shipment_id": order["code"]}, "name"):
-                    if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]}):
-                        sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]})
-                        create_delivery_note(order, settings, sales_order)
+                if not frappe.db.exists("Delivery Note", {"unicommerce_shipment_id": order["code"]}, "name") and frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]}) and frappe.db.exists("Sales Invoice", {"unicommerce_order_code": sales_order.unicommerce_order_code}):
+                    sales_order = frappe.get_doc("Sales Order", {ORDER_CODE_FIELD: order["saleOrderCode"]})
+                    sales_invoice = frappe.get_doc(
+                        "Sales Invoice", {"unicommerce_order_code": sales_order.unicommerce_order_code}
+                    )
+                    create_delivery_note(sales_order,sales_invoice)
     except Exception as e:
         create_unicommerce_log(status="Error", exception=e, rollback=True)
 
 
-def create_delivery_note(order, settings, so):
+def create_delivery_note(so,sales_invoice): 
     try:
-        # Get the sales invoice
-        sales_invoice = frappe.get_doc(
-            "Sales Invoice", {"unicommerce_order_code": so.unicommerce_order_code}
-        )
-
         # Create the delivery note
         from frappe.model.mapper import make_mapped_doc
 
@@ -80,8 +77,8 @@ def create_delivery_note(order, settings, so):
                     "dont_recompute_tax": item.dont_recompute_tax,
                 },
             )
-        res.unicommerce_order_code = order["saleOrderCode"]
-        res.unicommerce_shipment_id = order["code"]
+        res.unicommerce_order_code = sales_invoice.unicommerce_order_code
+        res.unicommerce_shipment_id = sales_invoice.unicommerce_shipping_package_code
         res.save()
         res.submit()
         log = create_unicommerce_log(method="create_delevery_note", make_new=True)
@@ -91,4 +88,5 @@ def create_delivery_note(order, settings, so):
     else:
         create_unicommerce_log(status="Success")
         frappe.flags.request_id = None
-		
+        return res
+        
