@@ -90,4 +90,3 @@ def create_delivery_note(so,sales_invoice):
         create_unicommerce_log(status="Success")
         frappe.flags.request_id = None
         return res
-
