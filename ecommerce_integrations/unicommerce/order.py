@@ -80,7 +80,7 @@ def _get_new_orders(
 		if order["channel"] not in configured_channels:
 			continue
 
-		#In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
+		# In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
 			yield order
@@ -96,9 +96,11 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 	for package in shipping_packages:
 		# This code was added because the log statement below was being executed every time.
 		invoice_data = client.get_sales_invoice(
-				shipping_package_code=package["code"], facility_code=facility_code
-			)
-		existing_si = frappe.db.get_value("Sales Invoice", {INVOICE_CODE_FIELD: invoice_data["invoice"]["code"]})
+			shipping_package_code=package["code"], facility_code=facility_code
+		)
+		existing_si = frappe.db.get_value(
+			"Sales Invoice", {INVOICE_CODE_FIELD: invoice_data["invoice"]["code"]}
+		)
 		if existing_si:
 			continue
 		try:
@@ -133,7 +135,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 		so = frappe.get_doc("Sales Order", existing_so)
 		return so
 
-	#If a sales order already exists, then every time it's executed
+	# If a sales order already exists, then every time it's executed
 	if request_id is None:
 		log = create_unicommerce_log(
 			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload

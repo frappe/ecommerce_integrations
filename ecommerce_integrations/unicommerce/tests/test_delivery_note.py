@@ -10,16 +10,16 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
-from ecommerce_integrations.unicommerce.invoice import create_sales_invoice,bulk_generate_invoices
+from ecommerce_integrations.unicommerce.invoice import create_sales_invoice, bulk_generate_invoices
 from ecommerce_integrations.unicommerce.order import create_order
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
 from ecommerce_integrations.unicommerce.delivery_note import create_delivery_note
+
 
 class TestDeliveryNote(TestCaseApiClient):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-
 
 	def test_create_invoice_and_delivery_note(self):
 		"""Use mocked invoice json to create and assert synced fields"""
@@ -62,5 +62,5 @@ class TestDeliveryNote(TestCaseApiClient):
 			self.fail("Sales invoice not generated")
 
 		si = frappe.get_doc("Sales Invoice", sales_invoice_code)
-		dn = create_delivery_note(so,si)
+		dn = create_delivery_note(so, si)
 		self.assertEqual(dn.unicommerce_order_code, so.unicommerce_order_code)

@@ -209,7 +209,7 @@ def setup_custom_fields(update=True):
 				insert_after="instructions",
 				collapsible=1,
 			),
-		]
+		],
 	}
 
 	custom_fields = {
@@ -443,16 +443,16 @@ def setup_custom_fields(update=True):
 				label="Unicommerce Order No",
 				fieldtype="Data",
 				insert_after="unicommerce_section",
-				read_only=1
+				read_only=1,
 			),
 			dict(
 				fieldname=SHIPPIND_ID,
 				label="Unicommerce Shipment Id",
 				fieldtype="Data",
 				insert_after=ORDER_CODE_FIELD,
-				read_only=1
+				read_only=1,
 			),
-		]
+		],
 	}
 
 	# create sections first for proper ordering
