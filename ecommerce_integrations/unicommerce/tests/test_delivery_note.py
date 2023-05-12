@@ -1,7 +1,9 @@
-import unittest
 import base64
-import responses
+import unittest
+
 import frappe
+import responses
+from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 
 from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
@@ -9,11 +11,10 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
-from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
-from ecommerce_integrations.unicommerce.invoice import create_sales_invoice, bulk_generate_invoices
+from ecommerce_integrations.unicommerce.delivery_note import create_delivery_note
+from ecommerce_integrations.unicommerce.invoice import bulk_generate_invoices, create_sales_invoice
 from ecommerce_integrations.unicommerce.order import create_order
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
-from ecommerce_integrations.unicommerce.delivery_note import create_delivery_note
 
 
 class TestDeliveryNote(TestCaseApiClient):
@@ -24,8 +25,6 @@ class TestDeliveryNote(TestCaseApiClient):
 	def test_create_invoice_and_delivery_note(self):
 		"""Use mocked invoice json to create and assert synced fields"""
 		from ecommerce_integrations.unicommerce import invoice
-
-		si_data = self.load_fixture("invoice-SDU0026")["invoice"]
 
 		# HACK to allow invoicing test
 		invoice.INVOICED_STATE.append("CREATED")

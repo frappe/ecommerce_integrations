@@ -36,12 +36,12 @@ from ecommerce_integrations.unicommerce.constants import (
 	PACKAGE_TYPE_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	RETURN_CODE_FIELD,
+	SHIPPIND_ID,
 	SHIPPING_METHOD_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
-	SHIPPIND_ID,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 

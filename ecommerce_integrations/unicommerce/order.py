@@ -11,8 +11,8 @@ from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
-	INVOICE_CODE_FIELD,
 	FACILITY_CODE_FIELD,
+	INVOICE_CODE_FIELD,
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
