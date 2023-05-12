@@ -606,8 +606,6 @@ def on_submit(self, method=None):
 			)
 		else:
 			frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
-		
-		
 
 
 def on_cancel(self, method=None):
@@ -616,4 +614,3 @@ def on_cancel(self, method=None):
 	)
 	if results:
 		self.flags.ignore_links = True
-
