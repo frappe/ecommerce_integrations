@@ -79,7 +79,7 @@ def _get_new_orders(
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
-		
+
 		#In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
@@ -132,7 +132,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 	if existing_so:
 		so = frappe.get_doc("Sales Order", existing_so)
 		return so
-	
+
 	#If a sales order already exists, then every time it's executed
 	if request_id is None:
 		log = create_unicommerce_log(

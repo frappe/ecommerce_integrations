@@ -248,7 +248,7 @@ def upload_items_to_unicommerce(
 	for item_code in item_codes:
 		item_data = _build_unicommerce_item(item_code)
 		sku = item_data.get("skuCode")
-		
+
 		item_exists = bool(client.get_unicommerce_item(sku, log_error=False))
 		_, status = client.create_update_item(item_data, update=item_exists)
 

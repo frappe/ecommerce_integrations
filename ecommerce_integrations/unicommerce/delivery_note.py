@@ -15,14 +15,14 @@ def prepare_delivery_note():
 
         days_to_sync = min(settings.get("order_status_days") or 2, 14)
         minutes = days_to_sync * 24 * 60
-        
+
         # find all Facilities
         enabled_facilities = list(settings.get_integration_to_erpnext_wh_mapping().keys())
         enabled_channels = frappe.db.get_list(
             "Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id"
         )
-        
-        for facility in enabled_facilities: 
+
+        for facility in enabled_facilities:
             updated_packages = client.search_shipping_packages(updated_since=minutes, facility_code=facility)
             valid_packages = [p for p in updated_packages if p.get("channel") in enabled_channels]
             if not valid_packages:
@@ -40,7 +40,7 @@ def prepare_delivery_note():
         create_unicommerce_log(status="Error", exception=e, rollback=True)
 
 
-def create_delivery_note(so,sales_invoice): 
+def create_delivery_note(so,sales_invoice):
     try:
         # Create the delivery note
         from frappe.model.mapper import make_mapped_doc
@@ -90,4 +90,4 @@ def create_delivery_note(so,sales_invoice):
         create_unicommerce_log(status="Success")
         frappe.flags.request_id = None
         return res
-        
+
