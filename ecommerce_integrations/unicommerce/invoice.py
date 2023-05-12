@@ -574,38 +574,40 @@ def update_cancellation_status(so_data, so) -> bool:
 
 def on_submit(self, method=None):
 	sales_order = self.get("items")[0].sales_order
-	attached_docs = frappe.get_all(
-		"File",
-		fields=["file_name"],
-		filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
-		order_by="file_name",
-	)
-	url = frappe.get_all(
-		"File",
-		fields=["file_url"],
-		filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
-		order_by="file_name",
-	)
-	pi_so = frappe.get_all(
-		"Pick List Sales Order Details",
-		fields=["name", "parent"],
-		filters=[{"sales_order": sales_order, "docstatus": 0}],
-	)
-	for pl in pi_so:
-		if not pl.parent or not frappe.db.exists("Pick List", pl.parent):
-			continue
-		if attached_docs:
-			frappe.db.set_value(
-				"Pick List Sales Order Details",
-				pl.name,
-				{
-					"sales_invoice": self.name,
-					"invoice_url": attached_docs[0].file_name,
-					"invoice_pdf": url[0].file_url,
-				},
-			)
-		else:
-			frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
+	unicommerce_order_code = frappe.db.get_value("Sales Order", sales_order, "unicommerce_order_code")
+	if unicommerce_order_code:
+		attached_docs = frappe.get_all(
+			"File",
+			fields=["file_name"],
+			filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
+			order_by="file_name",
+		)
+		url = frappe.get_all(
+			"File",
+			fields=["file_url"],
+			filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
+			order_by="file_name",
+		)
+		pi_so = frappe.get_all(
+			"Pick List Sales Order Details",
+			fields=["name", "parent"],
+			filters=[{"sales_order": sales_order, "docstatus": 0}],
+		)
+		for pl in pi_so:
+			if not pl.parent or not frappe.db.exists("Pick List", pl.parent):
+				continue
+			if attached_docs:
+				frappe.db.set_value(
+					"Pick List Sales Order Details",
+					pl.name,
+					{
+						"sales_invoice": self.name,
+						"invoice_url": attached_docs[0].file_name,
+						"invoice_pdf": url[0].file_url,
+					},
+				)
+			else:
+				frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
 
 
 def on_cancel(self, method=None):
@@ -613,4 +615,7 @@ def on_cancel(self, method=None):
 		"Pick List Sales Order Details", filters={"sales_invoice": self.name, "docstatus": 1}
 	)
 	if results:
-		self.flags.ignore_links = True
+		# self.flags.ignore_links = True
+		ignored_doctypes = list(self.get("ignore_linked_doctypes", []))
+		ignored_doctypes.append("Pick List")
+		self.ignore_linked_doctypes = ignored_doctypes
