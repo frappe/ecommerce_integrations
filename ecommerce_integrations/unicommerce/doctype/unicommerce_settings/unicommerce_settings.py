@@ -34,6 +34,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
+	PICKLIST_ORDER_DETAILS_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	RETURN_CODE_FIELD,
 	SHIPPING_METHOD_FIELD,
@@ -79,6 +80,7 @@ class UnicommerceSettings(SettingController):
 				raise e
 		if save:
 			self.flags.ignore_custom_fields = True
+			self.flags.ignore_permissions = True
 			self.save()
 			frappe.db.commit()
 			self.load_from_db()
@@ -425,6 +427,14 @@ def setup_custom_fields(update=True):
 				fieldtype="Small Text",
 				insert_after=IS_COD_CHECKBOX,
 				read_only=1,
+			),
+		],
+		"Pick List": [
+			dict(
+				fieldname=PICKLIST_ORDER_DETAILS_FIELD,
+				label="Order Details",
+				fieldtype="Table",
+				options="Pick List Sales Order Details",
 			),
 		],
 	}
