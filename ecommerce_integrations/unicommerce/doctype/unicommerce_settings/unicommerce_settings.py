@@ -80,6 +80,7 @@ class UnicommerceSettings(SettingController):
 				raise e
 		if save:
 			self.flags.ignore_custom_fields = True
+			self.flags.ignore_permissions = True
 			self.save()
 			frappe.db.commit()
 			self.load_from_db()
