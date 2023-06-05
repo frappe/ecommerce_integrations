@@ -12,6 +12,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
 	FACILITY_CODE_FIELD,
+	INVOICE_CODE_FIELD,
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
@@ -78,9 +79,8 @@ def _get_new_orders(
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
-		if frappe.db.exists("Sales Order", {ORDER_CODE_FIELD: order["code"]}):
-			continue
 
+		# In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
 			yield order
@@ -95,12 +95,19 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 	shipping_packages = unicommerce_order["shippingPackages"]
 	for package in shipping_packages:
 		try:
-			log = create_unicommerce_log(method="create_sales_invoice", make_new=True)
-			frappe.flags.request_id = log.name
-
+			# This code was added because the log statement below was being executed every time.
 			invoice_data = client.get_sales_invoice(
 				shipping_package_code=package["code"], facility_code=facility_code
 			)
+			existing_si = frappe.db.get_value(
+				"Sales Invoice", {INVOICE_CODE_FIELD: invoice_data["invoice"]["code"]}
+			)
+			if existing_si:
+				continue
+
+			log = create_unicommerce_log(method="create_sales_invoice", make_new=True)
+			frappe.flags.request_id = log.name
+
 			warehouse_allocations = _get_warehouse_allocations(sales_order)
 			create_sales_invoice(
 				invoice_data["invoice"],
@@ -121,17 +128,17 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 
 	order = payload
 
+	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
+	if existing_so:
+		so = frappe.get_doc("Sales Order", existing_so)
+		return so
+
+	# If a sales order already exists, then every time it's executed
 	if request_id is None:
 		log = create_unicommerce_log(
 			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
 		)
 		request_id = log.name
-
-	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
-	if existing_so:
-		so = frappe.get_doc("Sales Order", existing_so)
-		create_unicommerce_log(status="Invalid", message="Sales Order already exists, skipped")
-		return so
 
 	if client is None:
 		client = UnicommerceAPIClient()
