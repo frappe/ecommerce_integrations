@@ -29,6 +29,8 @@
   "sales_order_series",
   "sales_invoice_series",
   "order_status_days",
+  "delivery_note_settings_section",
+  "delivery_note",
   "inventory_sync_settings_section",
   "enable_inventory_sync",
   "inventory_sync_frequency",
@@ -249,12 +251,23 @@
    "fieldname": "vendor_code",
    "fieldtype": "Data",
    "label": "Vendor Code"
+  },
+  {
+   "fieldname": "delivery_note_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery Note Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "delivery_note",
+   "fieldtype": "Check",
+   "label": "Import Delivery Notes from Unicommerce on Shipment"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2022-02-07 14:11:34.599710",
+ "modified": "2023-05-02 14:04:26.684256",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",

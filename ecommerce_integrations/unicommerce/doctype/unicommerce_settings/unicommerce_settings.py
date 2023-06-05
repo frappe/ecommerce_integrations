@@ -42,6 +42,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
+	UNICOMMERCE_SHIPPING_ID,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -199,6 +200,15 @@ def setup_custom_fields(update=True):
 				label="Unicommerce Details",
 				fieldtype="Section Break",
 				insert_after="against_income_account",
+				collapsible=1,
+			),
+		],
+		"Delivery Note": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="instructions",
 				collapsible=1,
 			),
 		],
@@ -426,6 +436,22 @@ def setup_custom_fields(update=True):
 				label="Unicommerce Return Code",
 				fieldtype="Small Text",
 				insert_after=IS_COD_CHECKBOX,
+				read_only=1,
+			),
+		],
+		"Delivery Note": [
+			dict(
+				fieldname=ORDER_CODE_FIELD,
+				label="Unicommerce Order No",
+				fieldtype="Data",
+				insert_after="unicommerce_section",
+				read_only=1,
+			),
+			dict(
+				fieldname=UNICOMMERCE_SHIPPING_ID,
+				label="Unicommerce Shipment Id",
+				fieldtype="Data",
+				insert_after=ORDER_CODE_FIELD,
 				read_only=1,
 			),
 		],
