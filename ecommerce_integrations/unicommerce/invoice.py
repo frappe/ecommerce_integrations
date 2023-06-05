@@ -573,6 +573,10 @@ def update_cancellation_status(so_data, so) -> bool:
 
 
 def on_submit(self, method=None):
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
 	sales_order = self.get("items")[0].sales_order
 	unicommerce_order_code = frappe.db.get_value("Sales Order", sales_order, "unicommerce_order_code")
 	if unicommerce_order_code:
