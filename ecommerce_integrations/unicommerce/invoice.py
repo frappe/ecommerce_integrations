@@ -615,6 +615,10 @@ def on_submit(self, method=None):
 
 
 def on_cancel(self, method=None):
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
 	results = frappe.db.get_all(
 		"Pick List Sales Order Details", filters={"sales_invoice": self.name, "docstatus": 1}
 	)
