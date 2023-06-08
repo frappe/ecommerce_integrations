@@ -33,7 +33,8 @@ ITEM_BATCH_GROUP_FIELD = "unicommerce_batch_group_code"
 SHIPPING_PACKAGE_STATUS_FIELD = "unicommerce_shipping_package_status"
 IS_COD_CHECKBOX = "unicommerce_is_cod"
 SHIPPING_METHOD_FIELD = "unicommerce_shipping_method"
-
+UNICOMMERCE_SHIPPING_ID = "unicommerce_shipment_id"
+PICKLIST_ORDER_DETAILS_FIELD = "order_details"
 
 GRN_STOCK_ENTRY_TYPE = "GRN on Unicommerce"
 

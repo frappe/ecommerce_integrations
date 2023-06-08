@@ -58,41 +58,41 @@ def generate_unicommerce_invoices(
 
 	1. Get shipping package details using get_sale_order
 	2. Ask for invoice generation
-	        - marketplace - create_invoice_and_label_by_shipping_code
-	        - self-shipped - create_invoice_and_assign_shipper
+	                - marketplace - create_invoice_and_label_by_shipping_code
+	                - self-shipped - create_invoice_and_assign_shipper
 
 	3. Sync invoice.
 
 	args:
-	        sales_orders: list of sales order codes to invoice.
-	        warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
+	                sales_orders: list of sales order codes to invoice.
+	                warehouse_allocation: If warehouse is changed while shipping / non-group warehouse is to be assigned then this parameter is required.
 
-	    Example of warehouse_allocation:
+	        Example of warehouse_allocation:
 
-	    {
-	      "SO0042": [
-	          {
-	            "item_code": "SKU",
-	            # "qty": 1, always assumed to be 1 for Unicommerce orders.
-	            "warehouse": "Stores - WP",
-	            "sales_order_row": "5hh123k1", `name` of SO child table row
-	          },
-	          {
-	             "item_code": "SKU2",
-	             # "qty": 1,
-	             "warehouse": "Stores - WP",
-	             "sales_order_row": "5hh123k1", `name` of SO child table row
-	          },
-	       ],
-	       "SO0101": [
-	          {
-	             "item_code": "SKU3",
-	             # "qty": 1
-	             "warehouse": "Stores - WP",
-	             "sales_order_row": "5hh123k1", `name` of SO child table row
-	          },
-	       ]
-	    }
+	        {
+	          "SO0042": [
+	                  {
+	                        "item_code": "SKU",
+	                        # "qty": 1, always assumed to be 1 for Unicommerce orders.
+	                        "warehouse": "Stores - WP",
+	                        "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	                  {
+	                         "item_code": "SKU2",
+	                         # "qty": 1,
+	                         "warehouse": "Stores - WP",
+	                         "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	           ],
+	           "SO0101": [
+	                  {
+	                         "item_code": "SKU3",
+	                         # "qty": 1
+	                         "warehouse": "Stores - WP",
+	                         "sales_order_row": "5hh123k1", `name` of SO child table row
+	                  },
+	           ]
+	        }
 	"""
 
 	if isinstance(sales_orders, str):
@@ -282,7 +282,7 @@ def _fetch_and_sync_invoice(
 	"""Use the invoice generation response to fetch actual invoice and sync them to ERPNext.
 
 	args:
-	        invoice_response: response returned by either of two invoice generation methods
+	                invoice_response: response returned by either of two invoice generation methods
 	"""
 
 	so_data = client.get_sales_order(unicommerce_so_code)
@@ -381,7 +381,7 @@ def create_sales_invoice(
 	si.naming_series = channel_config.sales_invoice_series or settings.sales_invoice_series
 	si.delivery_date = so.delivery_date
 	si.ignore_pricing_rule = 1
-	si.update_stock = update_stock
+	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
 	si.insert()
 
@@ -570,3 +570,60 @@ def update_cancellation_status(so_data, so) -> bool:
 	from ecommerce_integrations.unicommerce.cancellation_and_returns import update_erpnext_order_items
 
 	update_erpnext_order_items(so_data, so)
+
+
+def on_submit(self, method=None):
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
+	sales_order = self.get("items")[0].sales_order
+	unicommerce_order_code = frappe.db.get_value("Sales Order", sales_order, "unicommerce_order_code")
+	if unicommerce_order_code:
+		attached_docs = frappe.get_all(
+			"File",
+			fields=["file_name"],
+			filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
+			order_by="file_name",
+		)
+		url = frappe.get_all(
+			"File",
+			fields=["file_url"],
+			filters={"attached_to_name": self.name, "file_name": ("like", "unicommerce%")},
+			order_by="file_name",
+		)
+		pi_so = frappe.get_all(
+			"Pick List Sales Order Details",
+			fields=["name", "parent"],
+			filters=[{"sales_order": sales_order, "docstatus": 0}],
+		)
+		for pl in pi_so:
+			if not pl.parent or not frappe.db.exists("Pick List", pl.parent):
+				continue
+			if attached_docs:
+				frappe.db.set_value(
+					"Pick List Sales Order Details",
+					pl.name,
+					{
+						"sales_invoice": self.name,
+						"invoice_url": attached_docs[0].file_name,
+						"invoice_pdf": url[0].file_url,
+					},
+				)
+			else:
+				frappe.db.set_value("Pick List Sales Order Details", pl.name, {"sales_invoice": self.name})
+
+
+def on_cancel(self, method=None):
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
+	results = frappe.db.get_all(
+		"Pick List Sales Order Details", filters={"sales_invoice": self.name, "docstatus": 1}
+	)
+	if results:
+		# self.flags.ignore_links = True
+		ignored_doctypes = list(self.get("ignore_linked_doctypes", []))
+		ignored_doctypes.append("Pick List")
+		self.ignore_linked_doctypes = ignored_doctypes

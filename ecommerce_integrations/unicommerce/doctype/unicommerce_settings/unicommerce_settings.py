@@ -34,6 +34,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	PACKAGE_TYPE_FIELD,
+	PICKLIST_ORDER_DETAILS_FIELD,
 	PRODUCT_CATEGORY_FIELD,
 	RETURN_CODE_FIELD,
 	SHIPPING_METHOD_FIELD,
@@ -41,6 +42,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
+	UNICOMMERCE_SHIPPING_ID,
 )
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
@@ -79,6 +81,7 @@ class UnicommerceSettings(SettingController):
 				raise e
 		if save:
 			self.flags.ignore_custom_fields = True
+			self.flags.ignore_permissions = True
 			self.save()
 			frappe.db.commit()
 			self.load_from_db()
@@ -197,6 +200,15 @@ def setup_custom_fields(update=True):
 				label="Unicommerce Details",
 				fieldtype="Section Break",
 				insert_after="against_income_account",
+				collapsible=1,
+			),
+		],
+		"Delivery Note": [
+			dict(
+				fieldname="unicommerce_section",
+				label="Unicommerce Details",
+				fieldtype="Section Break",
+				insert_after="instructions",
 				collapsible=1,
 			),
 		],
@@ -425,6 +437,30 @@ def setup_custom_fields(update=True):
 				fieldtype="Small Text",
 				insert_after=IS_COD_CHECKBOX,
 				read_only=1,
+			),
+		],
+		"Delivery Note": [
+			dict(
+				fieldname=ORDER_CODE_FIELD,
+				label="Unicommerce Order No",
+				fieldtype="Data",
+				insert_after="unicommerce_section",
+				read_only=1,
+			),
+			dict(
+				fieldname=UNICOMMERCE_SHIPPING_ID,
+				label="Unicommerce Shipment Id",
+				fieldtype="Data",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+			),
+		],
+		"Pick List": [
+			dict(
+				fieldname=PICKLIST_ORDER_DETAILS_FIELD,
+				label="Order Details",
+				fieldtype="Table",
+				options="Pick List Sales Order Details",
 			),
 		],
 	}
