@@ -56,9 +56,9 @@ def update_partially_cancelled_orders(orders, client: UnicommerceAPIClient) -> N
 		update_erpnext_order_items(so_data)
 
 
-def _filter_recent_orders(orders, time_limit=60 * 6):
+def _filter_recent_orders(orders, time_limit=60 * 12):
 	"""Only consider recently updated orders"""
-	check_timestamp = (now_datetime().timestamp() - time_limit * 60) * 1000
+	check_timestamp = (datetime.utcnow().timestamp() - time_limit * 60) * 1000
 	return [order for order in orders if int(order["updated"]) >= check_timestamp]
 
 
