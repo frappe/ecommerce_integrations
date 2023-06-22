@@ -23,7 +23,7 @@ from ecommerce_integrations.unicommerce.constants import (
 
 
 def fully_cancel_orders(unicommerce_order_codes: List[str]) -> None:
-	""" Perform "cancel" action on ERPNext sales orders which are fully cancelled in Unicommerce."""
+	"""Perform "cancel" action on ERPNext sales orders which are fully cancelled in Unicommerce."""
 
 	current_orders_status = frappe.db.get_values(
 		"Sales Order",
@@ -45,7 +45,7 @@ def fully_cancel_orders(unicommerce_order_codes: List[str]) -> None:
 
 
 def update_partially_cancelled_orders(orders, client: UnicommerceAPIClient) -> None:
-	""" Check all recently updated orders for partial cancellations."""
+	"""Check all recently updated orders for partial cancellations."""
 
 	recently_changed_orders = _filter_recent_orders(orders)
 
@@ -56,9 +56,9 @@ def update_partially_cancelled_orders(orders, client: UnicommerceAPIClient) -> N
 		update_erpnext_order_items(so_data)
 
 
-def _filter_recent_orders(orders, time_limit=60 * 6):
-	""" Only consider recently updated orders """
-	check_timestamp = (now_datetime().timestamp() - time_limit * 60) * 1000
+def _filter_recent_orders(orders, time_limit=60 * 12):
+	"""Only consider recently updated orders"""
+	check_timestamp = (datetime.utcnow().timestamp() - time_limit * 60) * 1000
 	return [order for order in orders if int(order["updated"]) >= check_timestamp]
 
 
@@ -183,7 +183,7 @@ def sync_customer_initiated_returns(so_data):
 		return
 
 	for customer_return in customer_returns:
-		if not frappe.db.exists("Sales Invoice", {RETURN_CODE_FIELD, customer_return["code"]}):
+		if not frappe.db.exists("Sales Invoice", {RETURN_CODE_FIELD: customer_return["code"]}):
 			create_cir_credit_note(so_data, customer_return)
 
 
@@ -216,7 +216,7 @@ def create_cir_credit_note(so_data, return_data):
 
 
 def _handle_partial_returns(credit_note, returned_items: List[str]) -> None:
-	""" Remove non-returned item from credit note and update taxes """
+	"""Remove non-returned item from credit note and update taxes"""
 
 	item_code_to_qty_map = defaultdict(float)
 	for item in credit_note.items:
