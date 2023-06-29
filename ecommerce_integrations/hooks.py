@@ -72,6 +72,9 @@ doctype_js = {
 # before_install = "ecommerce_integrations.install.before_install"
 # after_install = "ecommerce_integrations.install.after_install"
 
+
+before_uninstall = "ecommerce_integrations.uninstall.before_uninstall"
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config
