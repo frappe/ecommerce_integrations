@@ -385,9 +385,7 @@ def cancel_order(payload, request_id=None):
 
 @temp_shopify_session
 def sync_old_orders():
-	frappe.set_user("Administrator")
-
-	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	shopify_setting = frappe.get_cached_doc(SETTING_DOCTYPE)
 	if not cint(shopify_setting.sync_old_orders):
 		return
 
