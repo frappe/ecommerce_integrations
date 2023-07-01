@@ -33,8 +33,14 @@ app_license = "GNU GPL v3.0"
 # include js in doctype views
 doctype_js = {
 	"Shopify Settings": "public/js/shopify/old_settings.js",
-	"Sales Order": "public/js/unicommerce/sales_order.js",
-	"Sales Invoice": "public/js/unicommerce/sales_invoice.js",
+	"Sales Order": [
+		"public/js/unicommerce/sales_order.js",
+		"public/js/common/ecommerce_transactions.js",
+	],
+	"Sales Invoice": [
+		"public/js/unicommerce/sales_invoice.js",
+		"public/js/common/ecommerce_transactions.js",
+	],
 	"Item": "public/js/unicommerce/item.js",
 	"Stock Entry": "public/js/unicommerce/stock_entry.js",
 	"Pick List": "public/js/unicommerce/pick_list.js",
@@ -65,6 +71,9 @@ doctype_js = {
 
 # before_install = "ecommerce_integrations.install.before_install"
 # after_install = "ecommerce_integrations.install.after_install"
+
+
+before_uninstall = "ecommerce_integrations.uninstall.before_uninstall"
 
 # Desk Notifications
 # ------------------

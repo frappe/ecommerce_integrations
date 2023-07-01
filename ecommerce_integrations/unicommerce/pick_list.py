@@ -3,9 +3,16 @@ import json
 import frappe
 from frappe import _
 
+from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
+
 
 def validate(self, method=None):
+	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	if not settings.is_enabled():
+		return
+
 	sales_order = self.get("locations")[0].sales_order
+
 	unicommerce_order_code = frappe.db.get_value("Sales Order", sales_order, "unicommerce_order_code")
 	if unicommerce_order_code:
 		if self.get("locations"):
