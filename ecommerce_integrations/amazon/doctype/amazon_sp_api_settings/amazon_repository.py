@@ -202,7 +202,7 @@ class AmazonRepository:
 			make_address = frappe.new_doc("Address")
 			make_address.address_line1 = shipping_address.get("AddressLine1", "Not Provided")
 			make_address.city = shipping_address.get("City", "Not Provided")
-			make_address.state = shipping_address.get("StateOrRegion")
+			make_address.state = shipping_address.get("StateOrRegion").title()
 			make_address.pincode = shipping_address.get("PostalCode")
 
 			filters = [
