@@ -30,6 +30,8 @@
   "delivery_note_series",
   "sales_invoice_series",
   "shipping_item",
+  "ecommerce_item_group",
+  "enquiry_template_name",
   "column_break_27",
   "sync_delivery_note",
   "sync_sales_invoice",
@@ -371,12 +373,23 @@
    "fieldname": "consolidate_taxes",
    "fieldtype": "Check",
    "label": "Consolidate Taxes in Order"
+  },
+  {
+   "fieldname": "enquiry_template_name",
+   "fieldtype": "Data",
+   "label": "Enquiry Template Name"
+  },
+  {
+   "fieldname": "ecommerce_item_group",
+   "fieldtype": "Table",
+   "label": "Ecommerce Item Brand",
+   "options": "Ecommerce Item Brand"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-02-10 10:36:12.940019",
+ "modified": "2023-07-24 14:05:03.549160",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
