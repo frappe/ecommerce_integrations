@@ -5,24 +5,25 @@ import frappe
 
 
 def update_item_theme_template(product_id,enquiry=0):
-    shopify_settings = frappe.get_single("Shopify Setting")
-    url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=product_id)
-    secret = shopify_settings.get_password("password")
-    if enquiry:
-        template_name = shopify_settings.enquiry_template_name
-    else:
-        template_name = "Default product"
-    data = {
-        "product":{
-            "id":product_id,
-            "template_suffix":template_name
+    if is_ecommerce_item(product_id):
+        shopify_settings = frappe.get_single("Shopify Setting")
+        url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=product_id)
+        secret = shopify_settings.get_password("password")
+        if enquiry:
+            template_name = shopify_settings.enquiry_template_name
+        else:
+            template_name = "Default product"
+        data = {
+            "product":{
+                "id":product_id,
+                "template_suffix":template_name
+            }
         }
-    }
-    headers = {
-        "X-Shopify-Access-Token":secret
-    }
-    res = post_request(url,data,headers)
-    print(res)
+        headers = {
+            "X-Shopify-Access-Token":secret
+        }
+        res = post_request(url,data,headers)
+ 
 
 def post_request(url, data, headers):
     try:
@@ -80,21 +81,17 @@ def update_product_tag(product_id,available=0):
     
     tags = get_product_tag(product_id)
     available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
-    not_avaialble_tag = "Not Available"
+    not_available_tag = " Not Available"
     if available:
-        if not_avaialble_tag in tags:
-            tags.remove(not_avaialble_tag)
-            # remove_tag(not_avaialble_tag,tags)
+        if not_available_tag in tags:
+            remove_element(tags, not_available_tag)           
         if available_tag not in tags:
-            tags.append(available_tag)
-            # add_tag(available_tag,tags)
+            tags.append(available_tag)            
     else:
         if available_tag in tags:
-            tags.remove(available_tag)
-            # remove_tag(available_tag,tags)
-        if not_avaialble_tag not in tags:
-            tags.append(not_avaialble_tag)
-            # add_tag(not_avaialble_tag,tags)
+            remove_element(tags, available_tag)
+        if not_available_tag not in tags:
+            tags.append(not_available_tag)
     data = {
         "product":{
             "id":product_id,
@@ -107,13 +104,19 @@ def update_product_tag(product_id,available=0):
 def is_ecommerce_item(product_id):
     shopify_settings = frappe.get_single("Shopify Setting")
     ecommerce_brand_list  = [item.brand for item in shopify_settings.ecommerce_item_group]
-    print(ecommerce_brand_list)
+ 
     product_brand = frappe.db.get_value("Item",product_id,"brand")
-    print(product_brand)
+
     if product_brand in ecommerce_brand_list:
         return True
     else:
         return False
+    
+def remove_element(lst, element):
+    """Remove all occurrences of an element from the list."""
+    while element in lst:
+        lst.remove(element)
+    return lst
 
 
 

@@ -10,7 +10,7 @@ from ecommerce_integrations.controllers.inventory import (
 from pyactiveresource.connection import ResourceNotFound
 
 from ecommerce_integrations.shopify.inventory import _log_inventory_update_status
-from ecommerce_integrations.shopify.theme_template import update_item_theme_template,is_ecommerce_item
+from ecommerce_integrations.shopify.theme_template import update_item_theme_template,is_ecommerce_item,update_product_tag
 
 
 def update_inventory_on_shopify_real_time(doc):
@@ -37,28 +37,33 @@ def update_inventory_on_shopify_real_time(doc):
 def update_theme_template(invetory_levels):
 	
 	for item in invetory_levels:
-		if is_ecommerce_item(item['item_code']):		
-			if item["actual_qty"] == 0:
-			
-				stock_from_other_warehouses = frappe.db.sql(
-						"""
-						SELECT sum(actual_qty) as total_qty
-						FROM `tabBin`
-						WHERE
-							item_code = %(item)s
-						GROUP BY item_code
-						""",
-						{
-							"item": item['item_code'],
-						},
-						as_dict=1,
-					)
 				
-				if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
-					
+		if item["actual_qty"] == 0:
+		
+			stock_from_other_warehouses = frappe.db.sql(
+					"""
+					SELECT sum(actual_qty) as total_qty
+					FROM `tabBin`
+					WHERE
+						item_code = %(item)s
+					GROUP BY item_code
+					""",
+					{
+						"item": item['item_code'],
+					},
+					as_dict=1,
+				)
+			
+			if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
+			
+				if is_ecommerce_item(item['item_code']):
 					update_item_theme_template(item['item_code'],1)
-			else:
+				update_product_tag(item['item_code'],0)
+		else:
+		
+			if is_ecommerce_item(item['item_code']):
 				update_item_theme_template(item['item_code'])
+			update_product_tag(item['item_code'],1)
 
 	
 
@@ -72,11 +77,11 @@ def get_doc_items_level(doc):
 			if item.s_warehouse:
 				curr_state_s = get_current_qty(item.item_code,item.s_warehouse)		
 				inventory_levels.append(curr_state_s[0])
-				# frappe.msgprint(str(curr_state_s))
+			
 			if item.t_warehouse:
 				curr_state_t = get_current_qty(item.item_code,item.t_warehouse)		
 				inventory_levels.append(curr_state_t[0])
-				# frappe.msgprint(str(curr_state_t))
+			
 	else:
 		for item in doc.items:
 			curr_state = get_current_qty(item.item_code,item.warehouse)		
