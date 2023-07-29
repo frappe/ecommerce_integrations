@@ -16,13 +16,49 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_reposit
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
+		self.validate_amazon_fields_map()
+
 		if self.is_active == 1:
 			self.validate_credentials()
 			setup_custom_fields()
 		else:
 			self.enable_sync = 0
+
 		if self.max_retry_limit and self.max_retry_limit > 5:
 			frappe.throw(frappe._("Value for <b>Max Retry Limit</b> must be less than or equal to 5."))
+
+	def validate_amazon_fields_map(self):
+		count = 0
+		for field_map in self.amazon_fields_map:
+			item_meta = frappe.get_meta("Item")
+			field_meta = item_meta.get_field(field_map.item_field)
+
+			if field_map.item_field and not field_meta:
+				frappe.throw(
+					_("Row #{0}: Item Field {1} does not exist.").format(
+						field_map.idx, frappe.bold(field_map.item_field)
+					)
+				)
+
+			if field_map.use_to_find_item_code:
+				# `Item Field` is required if `Use To Find Item Code` is checked.
+				if not field_map.item_field:
+					frappe.throw(_("Row #{0}: Item Field is required.").format(field_map.idx))
+
+				# `Item Field` should be unique if `Use To Find Item Code` is checked.
+				elif not field_meta.unique:
+					frappe.throw(
+						_("Row #{0}: Item Field {1} must be unique.").format(
+							field_map.idx, frappe.bold(field_map.item_field)
+						)
+					)
+
+				count += 1
+
+		if count == 0:
+			frappe.throw(_("At least one field must be selected to find the item code."))
+		elif count > 1:
+			frappe.throw(_("Only one field can be selected to find the item code."))
 
 	def validate_credentials(self):
 		validate_amazon_sp_api_credentials(
