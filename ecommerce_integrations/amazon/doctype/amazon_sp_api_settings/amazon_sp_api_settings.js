@@ -4,6 +4,8 @@
 frappe.ui.form.on('Amazon SP API Settings', {
 	refresh(frm) {
 		frm.trigger("set_queries");
+		frm.set_df_property("amazon_fields_map", "cannot_add_rows", true);
+		frm.set_df_property("amazon_fields_map", "cannot_delete_rows", true);
 	},
 
 	set_queries(frm) {

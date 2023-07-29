@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2022-02-07 16:03:29.514729",
+ "creation": "2023-07-29 10:01:38.251734",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -27,6 +27,9 @@
   "territory",
   "customer_type",
   "market_place_account_group",
+  "amazon_fields_map_section",
+  "amazon_fields_map",
+  "create_item_if_not_exists",
   "section_break_3",
   "after_date",
   "taxes_charges",
@@ -48,8 +51,10 @@
    "label": "Is Active"
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_4",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Seller Central Credentials"
   },
   {
    "fieldname": "iam_arn",
@@ -84,8 +89,10 @@
    "reqd": 1
   },
   {
+   "collapsible": 1,
    "fieldname": "section_break_1",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "AWS Credentials"
   },
   {
    "fieldname": "aws_access_key",
@@ -113,7 +120,8 @@
   },
   {
    "fieldname": "section_break_2",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Setup"
   },
   {
    "fieldname": "company",
@@ -177,7 +185,8 @@
   },
   {
    "fieldname": "section_break_3",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Syncing"
   },
   {
    "description": "Amazon will synch data updated after this date",
@@ -234,10 +243,27 @@
    "print_hide": 1,
    "read_only": 1,
    "report_hide": 1
+  },
+  {
+   "fieldname": "amazon_fields_map",
+   "fieldtype": "Table",
+   "label": "Amazon - ERPNext Item Field Map",
+   "options": "Amazon Fields Map"
+  },
+  {
+   "fieldname": "amazon_fields_map_section",
+   "fieldtype": "Section Break",
+   "label": "Amazon Fields Map"
+  },
+  {
+   "default": "0",
+   "fieldname": "create_item_if_not_exists",
+   "fieldtype": "Check",
+   "label": "Create Item If Not Exists"
   }
  ],
  "links": [],
- "modified": "2022-04-19 17:08:28.354861",
+ "modified": "2023-07-29 11:05:45.322565",
  "modified_by": "Administrator",
  "module": "Amazon",
  "name": "Amazon SP API Settings",
