@@ -203,6 +203,7 @@
    "label": "Sync Taxes and Charges"
   },
   {
+   "depends_on": "eval: !doc.__islocal && doc.is_active",
    "description": "Always sync your products from Amazon SP-API before synching the Orders details",
    "fieldname": "sync_products",
    "fieldtype": "Button",
@@ -210,6 +211,7 @@
    "options": "get_products_details"
   },
   {
+   "depends_on": "eval: !doc.__islocal && doc.is_active",
    "description": "Click this button to pull your Sales Order data from Amazon SP-API.",
    "fieldname": "sync_orders",
    "fieldtype": "Button",
@@ -263,7 +265,7 @@
   }
  ],
  "links": [],
- "modified": "2023-07-29 11:05:45.322565",
+ "modified": "2023-07-29 11:49:56.489018",
  "modified_by": "Administrator",
  "module": "Amazon",
  "name": "Amazon SP API Settings",
