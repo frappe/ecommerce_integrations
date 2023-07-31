@@ -21,7 +21,7 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_
 )
 
 
-class AmazonBaseRepository:
+class AmazonRepository:
 	def __init__(self, amz_setting: str | AmazonSPAPISettings) -> None:
 		if isinstance(amz_setting, str):
 			amz_setting = frappe.get_doc("Amazon SP API Settings", amz_setting)
@@ -71,11 +71,6 @@ class AmazonBaseRepository:
 		frappe.throw(
 			_("Scheduled sync has been temporarily disabled because maximum retries have been exceeded!")
 		)
-
-
-class AmazonFinancesRepository(AmazonBaseRepository):
-	def __init__(self, amz_setting: str | AmazonSPAPISettings) -> None:
-		super().__init__(amz_setting)
 
 	def get_finances_instance(self) -> Finances:
 		return Finances(**self.instance_params)
@@ -155,11 +150,6 @@ class AmazonFinancesRepository(AmazonBaseRepository):
 
 		return charges_and_fees
 
-
-class AmazonOrdersRepository(AmazonBaseRepository):
-	def __init__(self, amz_setting: str | AmazonSPAPISettings) -> None:
-		super().__init__(amz_setting)
-
 	def get_orders_instance(self) -> Orders:
 		return Orders(**self.instance_params)
 
@@ -229,8 +219,7 @@ class AmazonOrdersRepository(AmazonBaseRepository):
 			ecommerce_item.sku = order_item["SellerSKU"]
 			ecommerce_item.insert(ignore_permissions=True)
 
-		acir = AmazonCatalogItemsRepository(self.amz_setting)
-		catalog_items = acir.get_catalog_items_instance()
+		catalog_items = self.get_catalog_items_instance()
 		amazon_item = catalog_items.get_catalog_item(order_item["ASIN"])["payload"]
 
 		item = frappe.new_doc("Item")
@@ -427,8 +416,7 @@ class AmazonOrdersRepository(AmazonBaseRepository):
 			taxes_and_charges = self.amz_setting.taxes_charges
 
 			if taxes_and_charges:
-				afr = AmazonFinancesRepository(self.amz_setting)
-				charges_and_fees = afr.get_charges_and_fees(order_id)
+				charges_and_fees = self.get_charges_and_fees(order_id)
 
 				for charge in charges_and_fees.get("charges"):
 					so.append("taxes", charge)
@@ -486,11 +474,6 @@ class AmazonOrdersRepository(AmazonBaseRepository):
 
 		return sales_orders
 
-
-class AmazonCatalogItemsRepository(AmazonBaseRepository):
-	def __init__(self, amz_setting: str | AmazonSPAPISettings) -> None:
-		super().__init__(amz_setting)
-
 	def get_catalog_items_instance(self) -> CatalogItems:
 		return CatalogItems(**self.instance_params)
 
@@ -519,5 +502,5 @@ def validate_amazon_sp_api_credentials(**args) -> None:
 
 
 def get_orders(amz_setting_name, created_after) -> list:
-	aor = AmazonOrdersRepository(amz_setting_name)
-	return aor.get_orders(created_after)
+	ar = AmazonRepository(amz_setting_name)
+	return ar.get_orders(created_after)
