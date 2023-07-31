@@ -2,21 +2,19 @@
 # For license information, please see license.txt
 
 
+from datetime import datetime
+
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document
-
-from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
-	get_orders,
-	get_products_details,
-	validate_amazon_sp_api_credentials,
-)
+from frappe.utils import add_days, today
 
 
 class AmazonSPAPISettings(Document):
 	def validate(self):
 		self.validate_amazon_fields_map()
+		self.validate_after_date()
 
 		if self.is_active == 1:
 			self.validate_credentials()
@@ -24,8 +22,17 @@ class AmazonSPAPISettings(Document):
 		else:
 			self.enable_sync = 0
 
-		if self.max_retry_limit and self.max_retry_limit > 5:
+		if not self.max_retry_limit:
+			self.max_retry_limit = 1
+		elif self.max_retry_limit and self.max_retry_limit > 5:
 			frappe.throw(frappe._("Value for <b>Max Retry Limit</b> must be less than or equal to 5."))
+
+	def save(self):
+		super(Document, self).save()
+
+		if not self.is_old_data_migrated:
+			migrate_old_data()
+			self.db_set("is_old_data_migrated", 1)
 
 	def validate_amazon_fields_map(self):
 		count = 0
@@ -60,7 +67,17 @@ class AmazonSPAPISettings(Document):
 		elif count > 1:
 			frappe.throw(_("Only one field can be selected to find the item code."))
 
+	def validate_after_date(self):
+		if datetime.strptime(add_days(today(), -30), "%Y-%m-%d") > datetime.strptime(
+			self.after_date, "%Y-%m-%d"
+		):
+			frappe.throw(_("The date must be within the last 30 days."))
+
 	def validate_credentials(self):
+		from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
+			validate_amazon_sp_api_credentials,
+		)
+
 		validate_amazon_sp_api_credentials(
 			iam_arn=self.get("iam_arn"),
 			client_id=self.get("client_id"),
@@ -71,31 +88,48 @@ class AmazonSPAPISettings(Document):
 			country=self.get("country"),
 		)
 
-	def after_save(self):
-		if not self.is_old_data_migrated:
-			migrate_old_data()
-			self.db_set("is_old_data_migrated", 1)
-
-	@frappe.whitelist()
-	def get_products_details(self):
-		if self.is_active == 1:
-			get_products_details(amz_setting_name=self.name)
-
 	@frappe.whitelist()
 	def get_order_details(self):
+		from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
+			get_orders,
+		)
+
 		if self.is_active == 1:
-			get_orders(amz_setting_name=self.name, created_after=self.after_date)
+			job_name = f"Get Amazon Orders - {self.name}"
+
+			if frappe.db.get_all("RQ Job", {"job_name": job_name, "status": ["in", ["queued", "started"]]}):
+				return frappe.msgprint(_("The order details are currently being fetched in the background."))
+
+			frappe.enqueue(
+				job_name=job_name,
+				method=get_orders,
+				amz_setting_name=self.name,
+				created_after=self.after_date,
+				timeout=4000,
+				now=frappe.flags.in_test,
+			)
+
+			frappe.msgprint(_("Order details will be fetched in the background."))
+		else:
+			frappe.msgprint(
+				_("Please enable the Amazon SP API Settings {0}.").format(frappe.bold(self.name))
+			)
 
 
 # Called via a hook in every hour.
 def schedule_get_order_details():
+	from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_repository import (
+		get_orders,
+	)
+
 	amz_settings = frappe.get_all(
-		"Amazon SP API Settings", filters={"is_active": 1, "enable_sync": 1}, pluck="name"
+		"Amazon SP API Settings",
+		filters={"is_active": 1, "enable_sync": 1},
+		fields=["name", "after_date"],
 	)
 
 	for amz_setting in amz_settings:
-		after_date = frappe.get_value("Amazon SP API Settings", amz_setting, "after_date")
-		get_orders(amz_setting_name=amz_setting, created_after=after_date)
+		get_orders(amz_setting_name=amz_setting.name, created_after=amz_setting.after_date)
 
 
 def setup_custom_fields():
