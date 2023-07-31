@@ -12,6 +12,10 @@ from frappe.utils import add_days, today
 
 
 class AmazonSPAPISettings(Document):
+	def before_validate(self):
+		if not self.amazon_fields_map:
+			self.set_default_fields_map()
+
 	def validate(self):
 		self.validate_amazon_fields_map()
 		self.validate_after_date()
@@ -87,6 +91,15 @@ class AmazonSPAPISettings(Document):
 			aws_secret_key=self.get_password("aws_secret_key"),
 			country=self.get("country"),
 		)
+
+	@frappe.whitelist()
+	def set_default_fields_map(self):
+		for field_map in [
+			{"amazon_field": "ASIN", "item_field": "item_code", "use_to_find_item_code": 1},
+			{"amazon_field": "SellerSKU", "item_field": None, "use_to_find_item_code": 0,},
+			{"amazon_field": "Title", "item_field": None, "use_to_find_item_code": 0,},
+		]:
+			self.append("amazon_fields_map", field_map)
 
 	@frappe.whitelist()
 	def get_order_details(self):
