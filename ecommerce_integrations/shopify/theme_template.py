@@ -80,18 +80,30 @@ def update_product_tag(product_id,available=0):
     }
     
     tags = get_product_tag(product_id)
+    tags = clean_list(tags)
     available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
-    not_available_tag = " Not Available"
+    not_available_tag = "Not Available"
+  
     if available:
+        
         if not_available_tag in tags:
+           
             remove_element(tags, not_available_tag)           
         if available_tag not in tags:
+            
             tags.append(available_tag)            
     else:
-        if available_tag in tags:
-            remove_element(tags, available_tag)
+        if "Available" in tags:
+            
+            remove_element(tags, "Available")
+        if "Available Online" in tags:
+            
+            remove_element(tags, "Available Online")        
+            
         if not_available_tag not in tags:
+            
             tags.append(not_available_tag)
+   
     data = {
         "product":{
             "id":product_id,
@@ -100,6 +112,9 @@ def update_product_tag(product_id,available=0):
     }
     res = post_request(url,data,headers)
     return res
+
+def clean_list(lst):
+    return [item.strip() for item in lst]
 
 def is_ecommerce_item(product_id):
     shopify_settings = frappe.get_single("Shopify Setting")
