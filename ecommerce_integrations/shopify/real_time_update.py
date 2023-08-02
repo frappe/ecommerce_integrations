@@ -3,6 +3,7 @@ from frappe.utils import now
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from frappe.utils import cint, create_batch, now
 from shopify.resources import InventoryLevel, Variant
+import shopify
 from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,
 	update_inventory_sync_status,
@@ -37,33 +38,31 @@ def update_inventory_on_shopify_real_time(doc):
 def update_theme_template(invetory_levels):
 	
 	for item in invetory_levels:
+		if is_enabled_brand_item(item['item_code']):		
+			if item["actual_qty"] == 0:		
+				stock_from_other_warehouses = frappe.db.sql(
+						"""
+						SELECT sum(actual_qty) as total_qty
+						FROM `tabBin`
+						WHERE
+							item_code = %(item)s
+						GROUP BY item_code
+						""",
+						{
+							"item": item['item_code'],
+						},
+						as_dict=1,
+					)			
+				if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
 				
-		if item["actual_qty"] == 0:
-		
-			stock_from_other_warehouses = frappe.db.sql(
-					"""
-					SELECT sum(actual_qty) as total_qty
-					FROM `tabBin`
-					WHERE
-						item_code = %(item)s
-					GROUP BY item_code
-					""",
-					{
-						"item": item['item_code'],
-					},
-					as_dict=1,
-				)
-			
-			if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
+					if is_ecommerce_item(item['item_code']):
+						update_item_theme_template(item['item_code'],1)
+					update_product_tag(item['item_code'],0)
+			else:
 			
 				if is_ecommerce_item(item['item_code']):
-					update_item_theme_template(item['item_code'],1)
-				update_product_tag(item['item_code'],0)
-		else:
-		
-			if is_ecommerce_item(item['item_code']):
-				update_item_theme_template(item['item_code'])
-			update_product_tag(item['item_code'],1)
+					update_item_theme_template(item['item_code'])
+				update_product_tag(item['item_code'],1)
 
 	
 
@@ -141,3 +140,19 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			d.failure_reason = str(e)
 
 		frappe.db.commit()
+
+@temp_shopify_session
+def get_article_details(item):
+    return shopify.Article.find(item)
+
+
+def is_enabled_brand_item(product_id):
+    shopify_settings = frappe.get_single("Shopify Setting")
+    enabled_brand_list  = [item.brand for item in shopify_settings.enabled_brand]
+ 
+    product_brand = frappe.db.get_value("Item",product_id,"brand")
+
+    if product_brand in enabled_brand_list:
+        return True
+    else:
+        return False

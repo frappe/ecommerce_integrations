@@ -5,24 +5,28 @@ import frappe
 
 
 def update_item_theme_template(product_id,enquiry=0):
-    if is_ecommerce_item(product_id):
-        shopify_settings = frappe.get_single("Shopify Setting")
-        url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=product_id)
-        secret = shopify_settings.get_password("password")
-        if enquiry:
-            template_name = shopify_settings.enquiry_template_name
-        else:
-            template_name = "Default product"
-        data = {
-            "product":{
-                "id":product_id,
-                "template_suffix":template_name
+    frappe.msgprint(str(product_id))
+    shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
+    if shoppify_id:
+        if is_ecommerce_item(product_id):
+            shopify_settings = frappe.get_single("Shopify Setting")
+            url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=shoppify_id)
+            secret = shopify_settings.get_password("password")
+            if enquiry:
+                template_name = shopify_settings.enquiry_template_name
+            else:
+                template_name = "Default product"
+            data = {
+                "product":{
+                    "id":shoppify_id,
+                    "template_suffix":template_name
+                }
             }
-        }
-        headers = {
-            "X-Shopify-Access-Token":secret
-        }
-        res = post_request(url,data,headers)
+            frappe.msgprint(str(data))
+            headers = {
+                "X-Shopify-Access-Token":secret
+            }
+            res = post_request(url,data,headers)
  
 
 def post_request(url, data, headers):
@@ -67,51 +71,56 @@ def get_product_tag(product_id):
         "X-Shopify-Access-Token":secret
     }
     res=get_request(url, headers)
-    tags = res["product"]['tags']
-    tags_list = tags.split(",")
+    if res:
+        tags = res["product"]['tags']
+        tags_list = tags.split(",")
+    else:
+        tags_list = []
     return tags_list
 
 def update_product_tag(product_id,available=0):
-    shopify_settings = frappe.get_single("Shopify Setting")
-    secret = shopify_settings.get_password("password")
-    url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=product_id)
-    headers = {
-        "X-Shopify-Access-Token":secret
-    }
-    
-    tags = get_product_tag(product_id)
-    tags = clean_list(tags)
-    available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
-    not_available_tag = "Not Available"
-  
-    if available:
-        
-        if not_available_tag in tags:
-           
-            remove_element(tags, not_available_tag)           
-        if available_tag not in tags:
-            
-            tags.append(available_tag)            
-    else:
-        if "Available" in tags:
-            
-            remove_element(tags, "Available")
-        if "Available Online" in tags:
-            
-            remove_element(tags, "Available Online")        
-            
-        if not_available_tag not in tags:
-            
-            tags.append(not_available_tag)
-   
-    data = {
-        "product":{
-            "id":product_id,
-            "tags":tags
+    shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
+    if shoppify_id:
+        shopify_settings = frappe.get_single("Shopify Setting")
+        secret = shopify_settings.get_password("password")
+        url = "https://"+shopify_settings.shopify_url+"/admin/api/2023-07/products/{product_id}.json".format(product_id=shoppify_id)
+        headers = {
+            "X-Shopify-Access-Token":secret
         }
-    }
-    res = post_request(url,data,headers)
-    return res
+        
+        tags = get_product_tag(shoppify_id)
+        tags = clean_list(tags)
+        available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
+        not_available_tag = "Not Available"
+    
+        if available:
+            
+            if not_available_tag in tags:
+                frappe.msgprint("remove_element(tags, not_available_tag)")
+                remove_element(tags, not_available_tag)           
+            if available_tag not in tags:
+                frappe.msgprint("tags.append(available_tag)")
+                tags.append(available_tag)            
+        else:
+            if "Available" in tags:
+                frappe.msgprint("remove_element(tags, 'Available')")
+                remove_element(tags, "Available")
+            if "Available Online" in tags:
+                frappe.msgprint("remove_element(tags, 'Available Online')")
+                remove_element(tags, "Available Online")        
+                
+            if not_available_tag not in tags:
+                frappe.msgprint("tags.append(not_available_tag)")
+                tags.append(not_available_tag)
+    
+        data = {
+            "product":{
+                "id":shoppify_id,
+                "tags":tags
+            }
+        }
+        res = post_request(url,data,headers)
+        return res
 
 def clean_list(lst):
     return [item.strip() for item in lst]
