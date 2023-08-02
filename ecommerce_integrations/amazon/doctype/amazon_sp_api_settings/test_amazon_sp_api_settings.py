@@ -22,7 +22,6 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api 
 	CatalogItems,
 	Finances,
 	Orders,
-	Reports,
 	SPAPIError,
 	Util,
 )
@@ -138,29 +137,6 @@ class TestCatalogItems(CatalogItems, TestSPAPI):
 		return super().get_catalog_item(asin, marketplace_id)
 
 
-class TestReports(Reports, TestSPAPI):
-	def create_report(
-		self,
-		report_type: str,
-		report_options: dict = None,
-		data_start_time: str = None,
-		data_end_time: str = None,
-		marketplace_ids: list = None,
-	) -> object:
-		self.expected_response = DATA.get("create_report_200")
-		return super().create_report(
-			report_type, report_options, data_start_time, data_end_time, marketplace_ids
-		)
-
-	def get_report(self, report_id: str) -> dict:
-		self.expected_response = DATA.get("get_report_200")
-		return super().get_report(report_id)
-
-	def get_report_document(self, report_document_id: str) -> dict:
-		self.expected_response = DATA.get("get_report_document_200")
-		return super().get_report_document(report_document_id)
-
-
 class TestAmazonSettings:
 	def __init__(self) -> None:
 		def get_company():
@@ -237,6 +213,10 @@ class TestAmazonSettings:
 		self.taxes_charges = 1
 		self.enable_sync = 1
 		self.max_retry_limit = 3
+		self.create_item_if_not_exists = 1
+		self.amazon_fields_map = [
+			frappe._dict({"amazon_field": "ASIN", "item_field": "item_code", "use_to_find_item_code": 1})
+		]
 
 
 class TestAmazonRepository(AmazonRepository):
@@ -272,31 +252,11 @@ class TestAmazonRepository(AmazonRepository):
 	def get_catalog_items_instance(self):
 		return TestCatalogItems(**self.instance_params)
 
-	def get_reports_instance(self):
-		return TestReports(**self.instance_params)
-
 
 class TestAmazon(unittest.TestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		setup_custom_fields()
-		amazon_repository = TestAmazonRepository()
-		amazon_repository.get_products_details()
-
-	def test_get_products_details(self):
-		expected_result = {
-			"B008X9Z37A",
-			"B00H3LHY6C",
-			"B00AJHDZSI",
-			"B00DR0PDNE",
-			"B006QB1RPY",
-			"B001FWYGJS",
-			"B0041LYY6K",
-			"B001AZP8EW",
-		}
-		amazon_repository = TestAmazonRepository()
-		products = amazon_repository.get_products_details()
-		self.assertSetEqual(set(products), expected_result)
 
 	def test_get_orders(self):
 		amazon_repository = TestAmazonRepository()
