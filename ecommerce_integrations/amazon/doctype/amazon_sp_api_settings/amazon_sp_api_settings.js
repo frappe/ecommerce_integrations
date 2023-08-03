@@ -3,7 +3,7 @@
 
 frappe.ui.form.on('Amazon SP API Settings', {
 	refresh(frm) {
-		if (frm.doc.__islocal) {
+		if (frm.doc.__islocal && !frm.doc.amazon_fields_map) {
 			frm.trigger("set_default_fields_map");
 		}
 		frm.trigger("set_queries");
