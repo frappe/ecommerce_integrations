@@ -50,6 +50,7 @@
   "inventory_sync_section",
   "warehouse",
   "update_erpnext_stock_levels_to_shopify",
+  "sync_realtime_inventory",
   "inventory_sync_frequency",
   "fetch_shopify_locations",
   "shopify_warehouse_mapping",
@@ -326,6 +327,7 @@
    "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "fieldname": "inventory_sync_frequency",
    "fieldtype": "Select",
+   "hidden": 1,
    "label": "Inventory Sync Frequency (In Minutes)",
    "mandatory_depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "options": "5\n10\n15\n30\n60"
@@ -391,12 +393,18 @@
    "fieldtype": "Table",
    "label": "Enabled Brand",
    "options": "Ecommerce Item Brand"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_realtime_inventory",
+   "fieldtype": "Check",
+   "label": "Sync Realtime Inventory"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-08-02 13:46:25.240712",
+ "modified": "2023-08-03 13:15:29.379888",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

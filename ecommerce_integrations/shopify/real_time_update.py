@@ -38,7 +38,7 @@ def update_inventory_on_shopify_real_time(doc):
 def update_theme_template(invetory_levels):
 	
 	for item in invetory_levels:
-		if is_enabled_brand_item(item['item_code']):		
+		if is_enabled_brand_item(item['item_code']):	
 			if item["actual_qty"] == 0:		
 				stock_from_other_warehouses = frappe.db.sql(
 						"""
@@ -115,31 +115,31 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 	synced_on = now()
 	# frappe.throw(str(inventory_levels))
 	for d in inventory_levels:
-		# frappe.throw(str(d))
+		if is_enabled_brand_item(d.item_code):
 		# frappe.throw(str(warehous_map))
-		d.shopify_location_id = warehous_map.get(d.warehouse)
-		try:
-			
-			variant = Variant.find(d.variant_id)
-			inventory_id = variant.inventory_item_id
+			d.shopify_location_id = warehous_map.get(d.warehouse)
+			try:
+				
+				variant = Variant.find(d.variant_id)
+				inventory_id = variant.inventory_item_id
 
-			InventoryLevel.set(
-				location_id=d.shopify_location_id,
-				inventory_item_id=inventory_id,
-				# shopify doesn't support fractional quantity
-				available=cint(d.actual_qty) - cint(d.reserved_qty),
-			)
-			update_inventory_sync_status(d.ecom_item, time=synced_on)
-			d.status = "Success"
-		except ResourceNotFound:
-			# Variant or location is deleted, mark as last synced and ignore.
-			update_inventory_sync_status(d.ecom_item, time=synced_on)
-			d.status = "Not Found"
-		except Exception as e:
-			d.status = "Failed"
-			d.failure_reason = str(e)
+				InventoryLevel.set(
+					location_id=d.shopify_location_id,
+					inventory_item_id=inventory_id,
+					# shopify doesn't support fractional quantity
+					available=cint(d.actual_qty) - cint(d.reserved_qty),
+				)
+				update_inventory_sync_status(d.ecom_item, time=synced_on)
+				d.status = "Success"
+			except ResourceNotFound:
+				# Variant or location is deleted, mark as last synced and ignore.
+				update_inventory_sync_status(d.ecom_item, time=synced_on)
+				d.status = "Not Found"
+			except Exception as e:
+				d.status = "Failed"
+				d.failure_reason = str(e)
 
-		frappe.db.commit()
+			frappe.db.commit()
 
 @temp_shopify_session
 def get_article_details(item):

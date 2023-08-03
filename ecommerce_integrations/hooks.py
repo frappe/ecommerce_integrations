@@ -127,24 +127,24 @@ doc_events = {
 		"on_cancel": "ecommerce_integrations.unicommerce.invoice.on_cancel",
 	},
 	"Delivery Note":{
-		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf",
-        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf"		
+		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf",
+        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf"		
 	},
     "Sales Invoice":{
-		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf",
-        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf"		
+		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf",
+        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf"		
 	},
     "Purchase Receipt":{
-		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf",
-        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf"		
+		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf",
+        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf"		
 	},
     "Purchase Invoice":{
-		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf",
-        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf"		
+		"on_submit":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf",
+        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf"		
 	},
     "Stock Entry":{
-        "on_submit":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf",
-        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.delivery_note.update_stock_on_spf"
+        "on_submit":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf",
+        "on_cancel":"ecommerce_integrations.shopify.doctype_triggers.realtime_inventory_sync.update_stock_on_spf"
 	}
 }
 

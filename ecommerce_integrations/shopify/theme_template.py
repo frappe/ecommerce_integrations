@@ -5,7 +5,7 @@ import frappe
 
 
 def update_item_theme_template(product_id,enquiry=0):
-    frappe.msgprint(str(product_id))
+    
     shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
     if shoppify_id:
         if is_ecommerce_item(product_id):
@@ -22,7 +22,7 @@ def update_item_theme_template(product_id,enquiry=0):
                     "template_suffix":template_name
                 }
             }
-            frappe.msgprint(str(data))
+            
             headers = {
                 "X-Shopify-Access-Token":secret
             }
@@ -96,21 +96,21 @@ def update_product_tag(product_id,available=0):
         if available:
             
             if not_available_tag in tags:
-                frappe.msgprint("remove_element(tags, not_available_tag)")
+                
                 remove_element(tags, not_available_tag)           
             if available_tag not in tags:
-                frappe.msgprint("tags.append(available_tag)")
+                
                 tags.append(available_tag)            
         else:
             if "Available" in tags:
-                frappe.msgprint("remove_element(tags, 'Available')")
+                
                 remove_element(tags, "Available")
             if "Available Online" in tags:
-                frappe.msgprint("remove_element(tags, 'Available Online')")
+                
                 remove_element(tags, "Available Online")        
                 
             if not_available_tag not in tags:
-                frappe.msgprint("tags.append(not_available_tag)")
+         
                 tags.append(not_available_tag)
     
         data = {
