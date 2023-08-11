@@ -59,8 +59,7 @@ def get_request(url, headers):
 
     return response.json()
 
-def update_tag(product,stock_availibility=0):
-    shopify_settings = frappe.get_single("Shopify Setting")
+
 
 
 def get_product_tag(product_id):
@@ -79,6 +78,7 @@ def get_product_tag(product_id):
     return tags_list
 
 def update_product_tag(product_id,available=0):
+    
     shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
     if shoppify_id:
         shopify_settings = frappe.get_single("Shopify Setting")
@@ -92,26 +92,34 @@ def update_product_tag(product_id,available=0):
         tags = clean_list(tags)
         available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
         not_available_tag = "Not Available"
+        enuiry_tag = "enquire-product"
     
         if available:
-            
+         
             if not_available_tag in tags:
-                
-                remove_element(tags, not_available_tag)           
+                remove_element(tags, not_available_tag)
+                       
             if available_tag not in tags:
                 
-                tags.append(available_tag)            
-        else:
-            if "Available" in tags:
+                tags.append(available_tag)
+            if is_ecommerce_item(product_id) and enuiry_tag in tags:
                 
+                remove_element(tags,enuiry_tag)
+        else:
+           
+            if "Available" in tags:
+               
                 remove_element(tags, "Available")
             if "Available Online" in tags:
-                
+               
                 remove_element(tags, "Available Online")        
                 
             if not_available_tag not in tags:
-         
+                
                 tags.append(not_available_tag)
+            if is_ecommerce_item(product_id) and enuiry_tag not in tags:
+                
+                tags.append(enuiry_tag)
     
         data = {
             "product":{

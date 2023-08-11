@@ -52,16 +52,17 @@ def update_theme_template(invetory_levels):
 							"item": item['item_code'],
 						},
 						as_dict=1,
-					)			
+					)
+						
 				if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
 				
-					if is_ecommerce_item(item['item_code']):
-						update_item_theme_template(item['item_code'],1)
+					# if is_ecommerce_item(item['item_code']):
+						# update_item_theme_template(item['item_code'],1)
 					update_product_tag(item['item_code'],0)
 			else:
 			
-				if is_ecommerce_item(item['item_code']):
-					update_item_theme_template(item['item_code'])
+				# if is_ecommerce_item(item['item_code']):
+					# update_item_theme_template(item['item_code'])
 				update_product_tag(item['item_code'],1)
 
 	
