@@ -75,17 +75,23 @@ def get_doc_items_level(doc):
 	if doc.doctype == "Stock Entry":
 		for item in doc.items:
 			if item.s_warehouse:
-				curr_state_s = get_current_qty(item.item_code,item.s_warehouse)		
-				inventory_levels.append(curr_state_s[0])
+				current_stock_s = get_current_qty(item.item_code,item.s_warehouse)
+				if current_stock_s:
+					curr_state_s = current_stock_s	
+					inventory_levels.append(curr_state_s[0])
 			
 			if item.t_warehouse:
-				curr_state_t = get_current_qty(item.item_code,item.t_warehouse)		
-				inventory_levels.append(curr_state_t[0])
+				current_stock_t = get_current_qty(item.item_code,item.s_warehouse)
+				if current_stock_t:
+					curr_state_t = current_stock_t	
+					inventory_levels.append(curr_state_t[0])
 			
 	else:
 		for item in doc.items:
-			curr_state = get_current_qty(item.item_code,item.warehouse)		
-			inventory_levels.append(curr_state[0])
+			current_stock_f = get_current_qty(item.item_code,item.s_warehouse)
+			if current_stock_f:
+				curr_state = current_stock_f	
+				inventory_levels.append(curr_state[0])
 
 	
 	return inventory_levels
@@ -110,7 +116,10 @@ def get_current_qty(item,warehouse):
 		}),
 		as_dict=1,
 	)
-	return data
+	if len(data) > 0:
+		return data
+	
+	return 0
 @temp_shopify_session
 def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 	synced_on = now()
