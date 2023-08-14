@@ -88,7 +88,7 @@ def get_doc_items_level(doc):
 			
 	else:
 		for item in doc.items:
-			current_stock_f = get_current_qty(item.item_code,item.s_warehouse)
+			current_stock_f = get_current_qty(item.item_code,item.warehouse)
 			if current_stock_f:
 				curr_state = current_stock_f	
 				inventory_levels.append(curr_state[0])
