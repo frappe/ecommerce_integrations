@@ -337,6 +337,10 @@ def upload_erpnext_item(doc, method=None):
 
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
+	# Not Found Enabled Item Group Data
+	if not setting.upload_erpnext_items:
+		return
+
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 

@@ -44,6 +44,7 @@
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
+  "enabled_item_group",
   "column_break_34",
   "sync_new_item_as_active",
   "upload_variants_as_items",
@@ -399,12 +400,19 @@
    "fieldname": "sync_realtime_inventory",
    "fieldtype": "Check",
    "label": "Sync Realtime Inventory"
+  },
+  {
+   "depends_on": "eval:doc.upload_erpnext_items == 1",
+   "fieldname": "enabled_item_group",
+   "fieldtype": "Table",
+   "label": "Enabled Item Group",
+   "options": "Enable Item Group"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-08-03 13:15:29.379888",
+ "modified": "2023-08-17 16:08:11.083304",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
