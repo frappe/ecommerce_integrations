@@ -34,6 +34,11 @@ frappe.ui.form.on("Shopify Setting", {
 		frm.add_custom_button(__("View Logs"), () => {
 			frappe.set_route("List", "Ecommerce Integration Log", {"integration": "Shopify"});
 		});
+		frm.add_custom_button(__("Sync Stock"), () => {
+			frappe.call({
+				"method":"ecommerce_integrations.shopify.real_time_update.update_stock_on_click"
+			})
+		});
 	}
 });
 

@@ -1,5 +1,7 @@
 import frappe
 from frappe.utils import now
+from frappe import _dict
+from typing import List, Tuple
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from frappe.utils import cint, create_batch, now
 from shopify.resources import InventoryLevel, Variant
@@ -10,7 +12,7 @@ from ecommerce_integrations.controllers.inventory import (
 )
 from pyactiveresource.connection import ResourceNotFound
 
-from ecommerce_integrations.shopify.inventory import _log_inventory_update_status
+from ecommerce_integrations.shopify.inventory import _log_inventory_update_status,upload_inventory_data_to_shopify as upload_all_inventory
 from ecommerce_integrations.shopify.theme_template import update_item_theme_template,is_ecommerce_item,update_product_tag
 
 
@@ -88,7 +90,9 @@ def get_doc_items_level(doc):
 			
 	else:
 		for item in doc.items:
+			
 			current_stock_f = get_current_qty(item.item_code,item.warehouse)
+			
 			if current_stock_f:
 				curr_state = current_stock_f	
 				inventory_levels.append(curr_state[0])
@@ -153,16 +157,93 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 
 @temp_shopify_session
 def get_article_details(item):
-    return shopify.Article.find(item)
+	return shopify.Article.find(item)
 
 
 def is_enabled_brand_item(product_id):
-    shopify_settings = frappe.get_single("Shopify Setting")
-    enabled_brand_list  = [item.brand for item in shopify_settings.enabled_brand]
+	shopify_settings = frappe.get_single("Shopify Setting")
+	enabled_brand_list  = [item.brand for item in shopify_settings.enabled_brand]
  
-    product_brand = frappe.db.get_value("Item",product_id,"brand")
+	product_brand = frappe.db.get_value("Item",product_id,"brand")
 
-    if product_brand in enabled_brand_list:
-        return True
-    else:
-        return False
+	if product_brand in enabled_brand_list:
+		return True
+	else:
+		return False
+
+@frappe.whitelist()
+def update_stock_on_click():
+	"""
+	Get list of dict containing items for which the inventory needs to be updated on Integeration.
+
+	New inventory levels are identified by checking Bin modification timestamp,
+	so ensure that if you sync the inventory with integration, you have also
+	updated `inventory_synced_on` field in related Ecommerce Item.
+
+	returns: list of _dict containing ecom_item, item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
+	"""
+	setting = frappe.get_doc("Shopify Setting")
+
+	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
+		print("not enabled")
+		return
+	
+	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
+
+	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
+
+	upload_all_inventory(inventory_levels,warehous_map)
+
+	print(inventory_levels)
+	
+def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: str) -> List[_dict]:
+	"""
+	Get list of dict containing items for which the inventory needs to be updated on Integeration.
+
+	Fetch only those item which is enabled from the module
+
+	returns: list of _dict containing ecom_item, item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
+	"""
+
+	shopify_settings = frappe.get_single("Shopify Setting")
+
+	enabled_brand_list  = [item.brand for item in shopify_settings.enabled_brand]
+
+	data = get_data(warehouses, enabled_brand_list)
+
+	return data
+
+
+def get_data(warehouses, brands):
+	warehouse_placeholders = ', '.join('%s' for _ in warehouses)
+	brand_placeholders = ', '.join('%s' for _ in brands)
+
+
+
+	# Create a tuple that contains all the values to be substituted into the query
+	values_tuple = tuple(warehouses) + tuple(brands)
+
+	sql_query = f"""
+		SELECT ei.name as ecom_item, 
+		bin.item_code as item_code, 
+		integration_item_code, 
+		variant_id, 
+		actual_qty, 
+		warehouse, 
+		reserved_qty
+		FROM `tabEcommerce Item` ei
+		JOIN tabBin bin ON ei.erpnext_item_code = bin.item_code
+		JOIN tabItem it ON ei.erpnext_item_code = it.name
+		WHERE bin.warehouse IN ({warehouse_placeholders})
+		  AND ei.integration = 'shopify'
+		  AND it.brand IN ({brand_placeholders})
+	"""
+
+	# Execute the query with the frappe.db.sql function
+	data = frappe.db.sql(
+		sql_query,
+		values=values_tuple,
+		as_dict=1
+	)
+
+	return data
