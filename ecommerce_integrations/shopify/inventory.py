@@ -14,7 +14,6 @@ from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
-@frappe.whitelist()
 def update_inventory_on_shopify() -> None:
 	"""Upload stock levels from ERPNext to Shopify.
 
