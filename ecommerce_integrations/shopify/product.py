@@ -323,6 +323,12 @@ def get_item_code(shopify_item):
 		return item.item_code
 
 
+
+@frappe.whitelist()
+def upload_item_to_shopify(name):
+	item_doc = frappe.get_doc("Item",name)
+	upload_erpnext_item(item_doc)
+
 @temp_shopify_session
 def upload_erpnext_item(doc, method=None):
 	"""This hook is called when inserting new or updating existing `Item`.

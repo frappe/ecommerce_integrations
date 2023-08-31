@@ -21,5 +21,14 @@ frappe.ui.form.on("Item", {
 				__("Unicommerce")
 			);
 		}
+
+		frm.add_custom_button(__("Sync Item to Shopify"), () => {
+			frappe.call({
+				"method":"ecommerce_integrations.shopify.product.upload_item_to_shopify",
+                "args":{
+                    "name":frm.doc.name
+                }
+			})
+		});
 	},
 });
