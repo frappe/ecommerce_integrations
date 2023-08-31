@@ -511,6 +511,7 @@ def map_erpnext_item_to_shopify(shopify_product: Product, erpnext_item):
 	shopify_product.title = erpnext_item.item_name
 	shopify_product.body_html = erpnext_item.description
 	shopify_product.product_type = erpnext_item.item_group
+	shopify_product.tags = ["erp_created"]
 
 	if erpnext_item.weight_uom in WEIGHT_TO_ERPNEXT_UOM_MAP.values():
 		# reverse lookup for key
