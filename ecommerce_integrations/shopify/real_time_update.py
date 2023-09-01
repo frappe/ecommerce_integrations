@@ -194,6 +194,9 @@ def update_stock_on_click():
 
 	upload_all_inventory(inventory_levels,warehous_map)
 
+	update_theme_template(inventory_levels)
+	
+
 	print(inventory_levels)
 	
 def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: str) -> List[_dict]:
