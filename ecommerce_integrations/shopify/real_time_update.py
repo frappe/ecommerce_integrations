@@ -60,12 +60,14 @@ def update_theme_template(invetory_levels):
 				
 					# if is_ecommerce_item(item['item_code']):
 						# update_item_theme_template(item['item_code'],1)
-					update_product_tag(item['item_code'],0)
+					frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
+					# update_product_tag(item['item_code'],0)
 			else:
 			
 				# if is_ecommerce_item(item['item_code']):
 					# update_item_theme_template(item['item_code'])
-				update_product_tag(item['item_code'],1)
+				frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
+				# update_product_tag(item['item_code'],1)
 
 	
 
@@ -196,9 +198,9 @@ def update_stock_on_click():
 
 	upload_all_inventory(inventory_levels,warehous_map)
 
-	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+	# frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
 
-	# update_theme_template(inventory_levels)
+	update_theme_template(inventory_levels)
 	
 
 	print(inventory_levels)

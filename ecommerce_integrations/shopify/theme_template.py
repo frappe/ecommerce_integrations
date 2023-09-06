@@ -78,7 +78,7 @@ def get_product_tag(product_id):
     return tags_list
     
 def update_product_tag(product_id,available=0):
-    frappe.msgprint("in update tag")
+    # frappe.msgprint("in update tag")
     
     shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
     if shoppify_id:
@@ -130,7 +130,7 @@ def update_product_tag(product_id,available=0):
             if is_ecommerce_item(product_id) and enuiry_tag not in tags:                
                 tags.append(enuiry_tag)
 
-        frappe.msgprint(str(tags))
+        # frappe.msgprint(str(tags))
         data = {
             "product":{
                 "id":shoppify_id,
