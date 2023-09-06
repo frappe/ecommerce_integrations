@@ -194,16 +194,24 @@ def update_stock_on_click():
 
 	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
 
+	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+
+
+@frappe.whitelist()
+def update_tags_on_click():
+
+	setting = frappe.get_doc("Shopify Setting")
+
+	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
+		print("not enabled")
+		return
 	
+	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 
-	upload_all_inventory(inventory_levels,warehous_map)
-
-	# frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
 
 	update_theme_template(inventory_levels)
 	
-
-	print(inventory_levels)
 	
 def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: str) -> List[_dict]:
 	"""
