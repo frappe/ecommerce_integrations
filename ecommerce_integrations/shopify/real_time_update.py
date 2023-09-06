@@ -66,7 +66,7 @@ def update_theme_template(invetory_levels):
 			
 				# if is_ecommerce_item(item['item_code']):
 					# update_item_theme_template(item['item_code'])
-				frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
+				frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=1)
 				# update_product_tag(item['item_code'],1)
 
 	
