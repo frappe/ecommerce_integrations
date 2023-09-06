@@ -192,9 +192,13 @@ def update_stock_on_click():
 
 	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
 
+	
+
 	upload_all_inventory(inventory_levels,warehous_map)
 
-	update_theme_template(inventory_levels)
+	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+
+	# update_theme_template(inventory_levels)
 	
 
 	print(inventory_levels)

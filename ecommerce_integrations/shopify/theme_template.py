@@ -76,8 +76,9 @@ def get_product_tag(product_id):
     else:
         tags_list = []
     return tags_list
-
+    
 def update_product_tag(product_id,available=0):
+    frappe.msgprint("in update tag")
     
     shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
     if shoppify_id:
@@ -90,37 +91,46 @@ def update_product_tag(product_id,available=0):
         
         tags = get_product_tag(shoppify_id)
         tags = clean_list(tags)
-        available_tag = "Available Online" if is_ecommerce_item(product_id) else "Available"
         not_available_tag = "Not Available"
         enuiry_tag = "enquire-product"
     
-        if available:
-         
+        if available and is_ecommerce_item(product_id):         
             if not_available_tag in tags:
                 remove_element(tags, not_available_tag)
                        
-            if available_tag not in tags:
+            if "Available" not in tags:                
+                tags.append("Available")
+            
+            if "Available Online" not in tags:                
+                tags.append("Available Online")
                 
-                tags.append(available_tag)
-            if is_ecommerce_item(product_id) and enuiry_tag in tags:
-                
+            if enuiry_tag in tags:                
                 remove_element(tags,enuiry_tag)
-        else:
-           
-            if "Available" in tags:
-               
-                remove_element(tags, "Available")
+
+        elif available:         
+            if not_available_tag in tags:
+                remove_element(tags, not_available_tag)
+
             if "Available Online" in tags:
-               
-                remove_element(tags, "Available Online")        
+                remove_element(tags, "Available Online")
+                       
+            if "Available" not in tags:                
+                tags.append("Available")
+
+        else:
+            if "Available" in tags:
+                remove_element(tags, "Available")
+
+            if "Available Online" in tags:               
+                remove_element(tags, "Available Online")      
                 
-            if not_available_tag not in tags:
-                
+            if not_available_tag not in tags:                
                 tags.append(not_available_tag)
-            if is_ecommerce_item(product_id) and enuiry_tag not in tags:
-                
+
+            if is_ecommerce_item(product_id) and enuiry_tag not in tags:                
                 tags.append(enuiry_tag)
-    
+
+        frappe.msgprint(str(tags))
         data = {
             "product":{
                 "id":shoppify_id,
