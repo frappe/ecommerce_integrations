@@ -194,7 +194,10 @@ def update_stock_on_click():
 
 	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
 
-	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+	
+	
+	frappe.enqueue('ecommerce_integrations.shopify.inventory.upload_all_inventory',invetory_levels=inventory_levels)
+	# frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
 
 
 @frappe.whitelist()
@@ -210,7 +213,9 @@ def update_tags_on_click():
 
 	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
 
-	update_theme_template(inventory_levels)
+	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+
+	# update_theme_template(inventory_levels)
 	
 	
 def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: str) -> List[_dict]:
