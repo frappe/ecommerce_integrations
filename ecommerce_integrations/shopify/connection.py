@@ -45,6 +45,7 @@ def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
 	unregister_webhooks(shopify_url, password)
 
 	with Session.temp(shopify_url, API_VERSION, password):
+		
 		for topic in WEBHOOK_EVENTS:
 			webhook = Webhook.create({"topic": topic, "address": get_callback_url(), "format": "json"})
 

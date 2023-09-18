@@ -33,8 +33,6 @@ def update_inventory_on_shopify() -> None:
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
 
-	print(inventory_levels)
-
 	if inventory_levels:
 		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
 

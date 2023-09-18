@@ -78,9 +78,9 @@ def get_product_tag(product_id):
     return tags_list
     
 def update_product_tag(product_id,available=0):
-    # frappe.msgprint("in update tag")
     
     shoppify_id = frappe.db.get_value("Ecommerce Item",{"erpnext_item_code":product_id},"integration_item_code")
+    
     if shoppify_id:
         shopify_settings = frappe.get_single("Shopify Setting")
         secret = shopify_settings.get_password("password")

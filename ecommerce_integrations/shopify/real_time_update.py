@@ -8,12 +8,11 @@ from shopify.resources import InventoryLevel, Variant
 import shopify
 from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,
-	update_inventory_sync_status,
+	update_inventory_sync_status,update_tags_sync_status
 )
 from pyactiveresource.connection import ResourceNotFound
 
-from ecommerce_integrations.shopify.inventory import _log_inventory_update_status,upload_inventory_data_to_shopify as upload_all_inventory
-from ecommerce_integrations.shopify.theme_template import update_item_theme_template,is_ecommerce_item,update_product_tag
+from ecommerce_integrations.shopify.theme_template import update_product_tag
 
 
 def update_inventory_on_shopify_real_time(doc):
@@ -32,16 +31,18 @@ def update_inventory_on_shopify_real_time(doc):
 	# frappe.throw(str(warehous_map))
 	inventory_levels = get_doc_items_level(doc)
 
+
+
 	upload_inventory_data_to_shopify(inventory_levels, warehous_map)
 	
-	update_theme_template(inventory_levels)
+	update_tags(inventory_levels)
 
 
-def update_theme_template(invetory_levels):
-	
-	for item in invetory_levels:
-		if is_enabled_brand_item(item['item_code']):	
-			if item["actual_qty"] == 0:		
+def update_tags(inventory_levels):
+	synced_on = now()
+	for inventory_sync_batch in create_batch(inventory_levels, 50):
+		for item in inventory_sync_batch:
+			if item["actual_qty"] == 0:						
 				stock_from_other_warehouses = frappe.db.sql(
 						"""
 						SELECT sum(actual_qty) as total_qty
@@ -57,54 +58,55 @@ def update_theme_template(invetory_levels):
 					)
 						
 				if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
+					update_product_tag(item['item_code'],0)
+					update_tags_sync_status(item['item_code'], time=synced_on)
 				
-					# if is_ecommerce_item(item['item_code']):
-						# update_item_theme_template(item['item_code'],1)
-					frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
-					# update_product_tag(item['item_code'],0)
+					# frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
 			else:
+				update_product_tag(item['item_code'],1)
+				update_tags_sync_status(item['item_code'], time=synced_on)
 			
-				# if is_ecommerce_item(item['item_code']):
-					# update_item_theme_template(item['item_code'])
-				frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=1)
-				# update_product_tag(item['item_code'],1)
+				# frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=1)
 
 	
 
 def get_doc_items_level(doc):
-	# frappe.throw(str(doc.name))
 	inventory_levels = []
-	
-	
-	if doc.doctype == "Stock Entry":
-		for item in doc.items:
-			if item.s_warehouse:
-				current_stock_s = get_current_qty(item.item_code,item.s_warehouse)
-				if current_stock_s:
-					curr_state_s = current_stock_s	
-					inventory_levels.append(curr_state_s[0])
+	for item in doc.items:
+		if is_enabled_brand_item(item.item_code):
 			
-			if item.t_warehouse:
-				current_stock_t = get_current_qty(item.item_code,item.s_warehouse)
-				if current_stock_t:
-					curr_state_t = current_stock_t	
-					inventory_levels.append(curr_state_t[0])
+			if doc.doctype == "Stock Entry":
 			
-	else:
-		for item in doc.items:
-			
-			current_stock_f = get_current_qty(item.item_code,item.warehouse)
-			
-			if current_stock_f:
-				curr_state = current_stock_f	
-				inventory_levels.append(curr_state[0])
-
+				if item.s_warehouse:
+				
+					current_stock_s = get_current_qty(item.item_code,item.s_warehouse)
+					if current_stock_s:
+					
+						curr_state_s = current_stock_s	
+						inventory_levels.append(curr_state_s[0])
+				
+				if item.t_warehouse:
+					
+					current_stock_t = get_current_qty(item.item_code,item.t_warehouse)
+					
+					if current_stock_t:
+						curr_state_t = current_stock_t	
+						inventory_levels.append(curr_state_t[0])
+			else:
+				
+				current_stock_f = get_current_qty(item.item_code,item.warehouse)
+				
+				if current_stock_f:
+					curr_state = current_stock_f	
+					inventory_levels.append(curr_state[0])
 	
 	return inventory_levels
 
 
 def get_current_qty(item,warehouse):
 	# frappe.throw(str(warehouse))
+
+
 	
 	data = frappe.db.sql(
 		f"""
@@ -113,7 +115,7 @@ def get_current_qty(item,warehouse):
 				JOIN tabBin bin
 				ON ei.erpnext_item_code = bin.item_code
 			WHERE 
-				bin.item_code = %(item)s
+				ei.erpnext_item_code = %(item)s
 				and bin.warehouse = %(warehouse)s
 		""",
 		({
@@ -122,20 +124,20 @@ def get_current_qty(item,warehouse):
 		}),
 		as_dict=1,
 	)
+
 	if len(data) > 0:
 		return data
 	
 	return 0
+
 @temp_shopify_session
 def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 	synced_on = now()
-	# frappe.throw(str(inventory_levels))
 	for d in inventory_levels:
+
 		if is_enabled_brand_item(d.item_code):
-		# frappe.throw(str(warehous_map))
 			d.shopify_location_id = warehous_map.get(d.warehouse)
 			try:
-				
 				variant = Variant.find(d.variant_id)
 				inventory_id = variant.inventory_item_id
 
@@ -148,7 +150,6 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 				update_inventory_sync_status(d.ecom_item, time=synced_on)
 				d.status = "Success"
 			except ResourceNotFound:
-				# Variant or location is deleted, mark as last synced and ignore.
 				update_inventory_sync_status(d.ecom_item, time=synced_on)
 				d.status = "Not Found"
 			except Exception as e:
@@ -184,6 +185,7 @@ def update_stock_on_click():
 
 	returns: list of _dict containing ecom_item, item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
 	"""
+
 	setting = frappe.get_doc("Shopify Setting")
 
 	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
@@ -192,12 +194,13 @@ def update_stock_on_click():
 	
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 
-	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
+	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")	
+	
+	frappe.msgprint("Found {} items for which invetory needs to sync on shopify! ".format(str(len(inventory_levels))))
 
-	
-	
-	frappe.enqueue('ecommerce_integrations.shopify.inventory.upload_all_inventory',invetory_levels=inventory_levels)
-	# frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+	frappe.enqueue('ecommerce_integrations.shopify.inventory.upload_inventory_data_to_shopify',inventory_levels=inventory_levels,warehous_map=warehous_map)
+
+	frappe.msgprint("Bulk stock sync is initialized and added in Queue!")
 
 
 @frappe.whitelist()
@@ -211,14 +214,16 @@ def update_tags_on_click():
 	
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 
-	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")
+	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), for_tags=1)
 
-	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_theme_template',invetory_levels=inventory_levels)
+	frappe.msgprint("Found {} items for which tags needs to sync on shopify! ".format(str(len(inventory_levels))))
 
-	# update_theme_template(inventory_levels)
+	frappe.enqueue('ecommerce_integrations.shopify.real_time_update.update_tags',inventory_levels=inventory_levels)
+
+	frappe.msgprint("Bulk tags sync is initialized and added in Queue!")
 	
 	
-def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: str) -> List[_dict]:
+def get_inventory_levels_for_enabled_items(warehouses: Tuple[str],for_tags=False) -> List[_dict]:
 	"""
 	Get list of dict containing items for which the inventory needs to be updated on Integeration.
 
@@ -231,12 +236,12 @@ def get_inventory_levels_for_enabled_items(warehouses: Tuple[str], integration: 
 
 	enabled_brand_list  = [item.brand for item in shopify_settings.enabled_brand]
 
-	data = get_data(warehouses, enabled_brand_list)
+	data = get_data(warehouses, enabled_brand_list,for_tags)
 
 	return data
 
 
-def get_data(warehouses, brands):
+def get_data(warehouses, brands,for_tags):
 	warehouse_placeholders = ', '.join('%s' for _ in warehouses)
 	brand_placeholders = ', '.join('%s' for _ in brands)
 
@@ -244,6 +249,13 @@ def get_data(warehouses, brands):
 
 	# Create a tuple that contains all the values to be substituted into the query
 	values_tuple = tuple(warehouses) + tuple(brands)
+
+	if for_tags:
+		sync_field = "ei.tags_sync_on"
+	else:
+		sync_field = "ei.inventory_synced_on"
+
+	frappe.msgprint(str(sync_field))
 
 	sql_query = f"""
 		SELECT ei.name as ecom_item, 
@@ -259,6 +271,7 @@ def get_data(warehouses, brands):
 		WHERE bin.warehouse IN ({warehouse_placeholders})
 		  AND ei.integration = 'shopify'
 		  AND it.brand IN ({brand_placeholders})
+		  AND ((bin.modified > {sync_field}) or ({sync_field} IS NULL))
 	"""
 
 	# Execute the query with the frappe.db.sql function
@@ -267,5 +280,7 @@ def get_data(warehouses, brands):
 		values=values_tuple,
 		as_dict=1
 	)
+
+	frappe.msgprint(str(data))
 
 	return data

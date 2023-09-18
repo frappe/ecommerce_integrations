@@ -14,7 +14,8 @@
   "variant_id",
   "variant_of",
   "inventory_synced_on",
-  "item_synced_on"
+  "item_synced_on",
+  "tags_sync_on"
  ],
  "fields": [
   {
@@ -91,11 +92,16 @@
    "fieldtype": "Datetime",
    "label": "Item Data Synced On",
    "read_only": 1
+  },
+  {
+   "fieldname": "tags_sync_on",
+   "fieldtype": "Datetime",
+   "label": "Tags Sync On"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-15 11:36:04.733227",
+ "modified": "2023-09-18 16:29:56.077202",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
