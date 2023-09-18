@@ -1,1 +1,2 @@
 ecommerce_integrations.patches.update_shopify_custom_fields
+ecommerce_integrations.patches.set_default_amazon_item_fields_map

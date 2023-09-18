@@ -16,7 +16,6 @@ __all__ = [
 	"Finances",
 	"Orders",
 	"CatalogItems",
-	"Reports",
 ]
 
 
@@ -395,47 +394,6 @@ class CatalogItems(SPAPI):
 		data = dict(MarketplaceId=marketplace_id)
 
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
-
-
-class Reports(SPAPI):
-	""" Amazon Reports API """
-
-	BASE_URI = "/reports/2021-06-30"
-
-	def create_report(
-		self,
-		report_type: str,
-		report_options: dict = None,
-		data_start_time: str = None,
-		data_end_time: str = None,
-		marketplace_ids: list = None,
-	) -> dict:
-		""" Creates a report. """
-		append_to_base_uri = "/reports"
-		data = dict(
-			reportType=report_type,
-			reportOptions=report_options,
-			dataStartTime=data_start_time,
-			dataEndTime=data_end_time,
-		)
-
-		self.list_to_dict("marketplaceIds", marketplace_ids, data)
-
-		if not marketplace_ids:
-			marketplace_ids = [self.marketplace_id]
-			data["marketplaceIds"] = marketplace_ids
-
-		return self.make_request(method="POST", append_to_base_uri=append_to_base_uri, data=data)
-
-	def get_report(self, report_id: str) -> dict:
-		""" Returns report details (including the reportDocumentId, if available) for the report that you specify. """
-		append_to_base_uri = f"/reports/{report_id}"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
-
-	def get_report_document(self, report_document_id: str) -> dict:
-		""" Returns the information required for retrieving a report document's contents. """
-		append_to_base_uri = f"/documents/{report_document_id}"
-		return self.make_request(append_to_base_uri=append_to_base_uri)
 
 
 class Util:
