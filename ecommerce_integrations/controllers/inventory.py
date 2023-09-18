@@ -90,7 +90,7 @@ def update_tags_sync_status(ecommerce_item, time=None):
 	if time is None:
 		time = now()
 
-	frappe.db.set_value("Ecommerce Item", ecommerce_item, "tags_sync_on", time)
+	frappe.db.set_value("Ecommerce Item", {"erpnext_item_code":ecommerce_item}, "tags_sync_on", time)
 
 
 

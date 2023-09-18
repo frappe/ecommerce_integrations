@@ -14,6 +14,8 @@ from pyactiveresource.connection import ResourceNotFound
 
 from ecommerce_integrations.shopify.theme_template import update_product_tag
 
+from ecommerce_integrations.shopify.inventory import _log_inventory_update_status
+
 
 def update_inventory_on_shopify_real_time(doc):
 	"""Upload stock levels from ERPNext to Shopify.
@@ -42,32 +44,42 @@ def update_tags(inventory_levels):
 	synced_on = now()
 	for inventory_sync_batch in create_batch(inventory_levels, 50):
 		for item in inventory_sync_batch:
-			if item["actual_qty"] == 0:						
-				stock_from_other_warehouses = frappe.db.sql(
-						"""
-						SELECT sum(actual_qty) as total_qty
-						FROM `tabBin`
-						WHERE
-							item_code = %(item)s
-						GROUP BY item_code
-						""",
-						{
-							"item": item['item_code'],
-						},
-						as_dict=1,
-					)
-						
-				if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
-					update_product_tag(item['item_code'],0)
+			try:
+				if item["actual_qty"] == 0:						
+					stock_from_other_warehouses = frappe.db.sql(
+							"""
+							SELECT sum(actual_qty) as total_qty
+							FROM `tabBin`
+							WHERE
+								item_code = %(item)s
+							GROUP BY item_code
+							""",
+							{
+								"item": item['item_code'],
+							},
+							as_dict=1,
+						)
+							
+					if len(stock_from_other_warehouses) > 0 and stock_from_other_warehouses[0]['total_qty'] == 0.0:
+						update_product_tag(item['item_code'],0)
+						update_tags_sync_status(item['item_code'], time=synced_on)
+						item.status = "Success"
+					
+						# frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
+				else:
+					update_product_tag(item['item_code'],1)
 					update_tags_sync_status(item['item_code'], time=synced_on)
-				
-					# frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=0)
-			else:
-				update_product_tag(item['item_code'],1)
+					item.status = "Success"
+			except ResourceNotFound:
+				# Variant or location is deleted, mark as last synced and ignore.
 				update_tags_sync_status(item['item_code'], time=synced_on)
+				item.status = "Not Found"
+			except Exception as e:
+				item.status = "Failed"
+				item.failure_reason = str(e)
 			
 				# frappe.enqueue('ecommerce_integrations.shopify.theme_template.update_product_tag',product_id=item['item_code'],available=1)
-
+		_log_inventory_update_status(inventory_sync_batch)
 	
 
 def get_doc_items_level(doc):
@@ -194,7 +206,7 @@ def update_stock_on_click():
 	
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
 
-	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()), "shopify")	
+	inventory_levels = get_inventory_levels_for_enabled_items(tuple(warehous_map.keys()))	
 	
 	frappe.msgprint("Found {} items for which invetory needs to sync on shopify! ".format(str(len(inventory_levels))))
 
@@ -223,7 +235,7 @@ def update_tags_on_click():
 	frappe.msgprint("Bulk tags sync is initialized and added in Queue!")
 	
 	
-def get_inventory_levels_for_enabled_items(warehouses: Tuple[str],for_tags=False) -> List[_dict]:
+def get_inventory_levels_for_enabled_items(warehouses,for_tags=False):
 	"""
 	Get list of dict containing items for which the inventory needs to be updated on Integeration.
 
@@ -251,12 +263,14 @@ def get_data(warehouses, brands,for_tags):
 	values_tuple = tuple(warehouses) + tuple(brands)
 
 	if for_tags:
-		sync_field = "ei.tags_sync_on"
+	
+		
+		sync_condition =  "(bin.modified > ei.tags_sync_on or ei.tags_sync_on is null)"
 	else:
-		sync_field = "ei.inventory_synced_on"
-
-	frappe.msgprint(str(sync_field))
-
+		
+		sync_condition =  "(bin.modified > ei.inventory_synced_on or ei.inventory_synced_on is null)"
+		
+	
 	sql_query = f"""
 		SELECT ei.name as ecom_item, 
 		bin.item_code as item_code, 
@@ -271,9 +285,8 @@ def get_data(warehouses, brands,for_tags):
 		WHERE bin.warehouse IN ({warehouse_placeholders})
 		  AND ei.integration = 'shopify'
 		  AND it.brand IN ({brand_placeholders})
-		  AND ((bin.modified > {sync_field}) or ({sync_field} IS NULL))
-	"""
-
+		  AND {sync_condition}
+		"""
 	# Execute the query with the frappe.db.sql function
 	data = frappe.db.sql(
 		sql_query,
@@ -281,6 +294,6 @@ def get_data(warehouses, brands,for_tags):
 		as_dict=1
 	)
 
-	frappe.msgprint(str(data))
+	
 
 	return data
