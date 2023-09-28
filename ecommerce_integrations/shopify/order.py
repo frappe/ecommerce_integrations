@@ -298,7 +298,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 			item_tax_template = set_item_tax_template(setting.shipping_item, shipping_charge.get("tax_lines"), setting)
 
 			if shipping_as_item:
-				if shipping_charge_amount > 0:
+				if shipping_charge_amount != 0:
 					items.append(
 						{
 							"item_code": setting.shipping_item,
@@ -322,7 +322,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 				)
 
 		for tax in shipping_charge.get("tax_lines"):
-			if shipping_charge_amount > 0:
+			if shipping_charge_amount != 0:
 				taxes.append(
 					{
 						"charge_type": "Actual",
