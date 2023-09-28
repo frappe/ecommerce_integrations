@@ -109,6 +109,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"items": items,
 				"taxes": taxes,
 				"tax_category": get_dummy_tax_category(),
+				"cost_center": setting.cost_center,
 			}
 		)
 
@@ -143,6 +144,8 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
+			item_tax_template = set_item_tax_template(item_code, shopify_item.get("tax_lines"), setting)
+					
 			items.append(
 				{
 					"item_code": item_code,
@@ -152,6 +155,7 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
 					"warehouse": setting.warehouse,
+					"item_tax_template" : item_tax_template,
 					ORDER_ITEM_DISCOUNT_FIELD: (
 						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 					),
@@ -278,6 +282,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
 	shipping_as_item = cint(setting.add_shipping_as_item) and setting.shipping_item
+	shipping_charge_amount = 0
 	for shipping_charge in shipping_lines:
 		if shipping_charge.get("price"):
 			shipping_discounts = shipping_charge.get("discount_allocations") or []
@@ -290,17 +295,21 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 			if bool(taxes_inclusive):
 				shipping_charge_amount -= total_tax
 
+			item_tax_template = set_item_tax_template(setting.shipping_item, shipping_charge.get("tax_lines"), setting)
+
 			if shipping_as_item:
-				items.append(
-					{
-						"item_code": setting.shipping_item,
-						"rate": shipping_charge_amount,
-						"delivery_date": items[-1]["delivery_date"] if items else nowdate(),
-						"qty": 1,
-						"stock_uom": "Nos",
-						"warehouse": setting.warehouse,
-					}
-				)
+				if shipping_charge_amount > 0:
+					items.append(
+						{
+							"item_code": setting.shipping_item,
+							"rate": shipping_charge_amount,
+							"delivery_date": items[-1]["delivery_date"] if items else nowdate(),
+							"qty": 1,
+							"stock_uom": "Nos",
+							"item_tax_template": item_tax_template,
+							"warehouse": setting.warehouse,
+						}
+					)
 			else:
 				taxes.append(
 					{
@@ -313,23 +322,24 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 				)
 
 		for tax in shipping_charge.get("tax_lines"):
-			taxes.append(
-				{
-					"charge_type": "Actual",
-					"account_head": get_tax_account_head(tax),
-					"description": (
-						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
-					),
-					"tax_amount": tax["price"],
-					"cost_center": setting.cost_center,
-					"item_wise_tax_detail": {
-						setting.shipping_item: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]
+			if shipping_charge_amount > 0:
+				taxes.append(
+					{
+						"charge_type": "Actual",
+						"account_head": get_tax_account_head(tax),
+						"description": (
+							f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+						),
+						"tax_amount": tax["price"],
+						"cost_center": setting.cost_center,
+						"item_wise_tax_detail": {
+							setting.shipping_item: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]
+						}
+						if shipping_as_item
+						else {},
+						"dont_recompute_tax": 1,
 					}
-					if shipping_as_item
-					else {},
-					"dont_recompute_tax": 1,
-				}
-			)
+				)
 
 
 def get_sales_order(order_id):
@@ -425,3 +435,44 @@ def _fetch_old_orders(from_time, to_time):
 			# Using generator instead of fetching all at once is better for
 			# avoiding rate limits and reducing resource usage.
 			yield order.to_dict()
+
+def contains_word(s, l): return any(map(lambda x: x in s, l))
+
+def set_item_tax_template(item_code, tax_lines, setting):
+    # fetching tax templates added for item
+	item_tax_template_list = [d.get("item_tax_template") for d in frappe.db.get_all("Item Tax", filters={"parent":item_code}, fields="item_tax_template")]
+	# erpnext tax accounts from shopify settings
+	gst_setting_accounts = [value for item in frappe.db.get_all("GST Account", fields=['cgst_account', 'igst_account', 'sgst_account']) for value in item.values()]
+	erpnext_tax_accounts = list({j.tax_account if contains_word(j.tax_account, gst_setting_accounts) else "" for j in setting.taxes})
+	item_tax_template_detail_list = frappe.db.get_all("Item Tax Template Detail", fields=["tax_type", "tax_rate", "parent"])
+ 
+	tax_rate = 0
+	title = ""
+	for tax in tax_lines:
+		if contains_word(tax.get("title"), ["SGST", "CGST"]):
+			tax_rate = tax.get("rate") * 100
+			title = tax.get("title")
+			break
+		if contains_word(tax.get("title"), ["IGST"]):
+			tax_rate = tax.get("rate") * 100
+			title = tax.get("title")
+			break
+
+	item_tax_template = None
+	tax_type_added_in_shopify_setting = False
+	tax_template_present = False
+	for template_detail in item_tax_template_detail_list:
+		if (contains_word(template_detail.get("tax_type"),[title]) and template_detail.get("tax_rate") == tax_rate and template_detail.get("parent") in item_tax_template_list):
+			tax_template_present = True
+			if template_detail.get("tax_type") in erpnext_tax_accounts:
+				tax_type_added_in_shopify_setting = True
+				item_tax_template = template_detail.get("parent")
+				break
+	
+	if tax_template_present == True and tax_type_added_in_shopify_setting == False:
+		frappe.throw(_("Tax Account is not specified in Shopify Setting"))
+				
+	if tax_template_present == False and tax_type_added_in_shopify_setting == False:
+		frappe.throw(_("Tax Template not specified for this Item {0} for Tax Rate of {1}%").format(item_code, tax_rate))
+    
+	return item_tax_template
