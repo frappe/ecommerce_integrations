@@ -417,7 +417,7 @@ def _fetch_old_orders(from_time, to_time):
 	from_time = get_datetime(from_time).astimezone().isoformat()
 	to_time = get_datetime(to_time).astimezone().isoformat()
 	orders_iterator = PaginatedIterator(
-		Order.find(created_at_min=from_time, created_at_max=to_time, limit=250)
+		Order.find(created_at_min=from_time, created_at_max=to_time, status="any", limit=250)
 	)
 
 	for orders in orders_iterator:
