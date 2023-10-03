@@ -282,7 +282,6 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 	"""Shipping lines represents the shipping details,
 	each such shipping detail consists of a list of tax_lines"""
 	shipping_as_item = cint(setting.add_shipping_as_item) and setting.shipping_item
-	shipping_charge_amount = 0
 	for shipping_charge in shipping_lines:
 		if shipping_charge.get("price"):
 			shipping_discounts = shipping_charge.get("discount_allocations") or []
@@ -298,7 +297,6 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 			item_tax_template = set_item_tax_template(setting.shipping_item, shipping_charge.get("tax_lines"), setting)
 
 			if shipping_as_item:
-				if shipping_charge_amount != 0:
 					items.append(
 						{
 							"item_code": setting.shipping_item,
@@ -322,7 +320,6 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 				)
 
 		for tax in shipping_charge.get("tax_lines"):
-			if shipping_charge_amount != 0:
 				taxes.append(
 					{
 						"charge_type": "Actual",
