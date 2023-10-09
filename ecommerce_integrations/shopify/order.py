@@ -68,9 +68,10 @@ def create_order(order, setting, company=None):
 
 
 def create_sales_order(shopify_order, setting, company=None):
-	customer = frappe.db.get_value(
-		"Customer", {CUSTOMER_ID_FIELD: shopify_order.get("customer", {}).get("id")}, "name",
-	)
+	customer = setting.default_customer
+	if customer_id := shopify_order.get("customer", {}).get("id"):
+		customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
+
 	so = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name")
 
 	if not so:
@@ -100,7 +101,7 @@ def create_sales_order(shopify_order, setting, company=None):
 				"naming_series": setting.sales_order_series or "SO-Shopify-",
 				ORDER_ID_FIELD: str(shopify_order.get("id")),
 				ORDER_NUMBER_FIELD: shopify_order.get("name"),
-				"customer": customer or setting.default_customer,
+				"customer": customer,
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"company": setting.company,
