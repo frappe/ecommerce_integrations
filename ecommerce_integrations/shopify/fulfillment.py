@@ -72,3 +72,30 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 		for dn_item in dn_items
 		if get_item_code(item) == dn_item.item_code
 	]
+
+
+def update_fulfillment_status(payload, request_id=None):
+	frappe.set_user("Administrator")
+	setting = frappe.get_doc(SETTING_DOCTYPE)
+	frappe.flags.request_id = request_id
+	fulfillment = payload
+
+	try:
+		delivery_note = frappe.db.get_value(
+			"Delivery Note", {FULLFILLMENT_ID_FIELD: cstr(fulfillment["id"]), "docstatus": 1}, "name"
+		)
+		if delivery_note:
+			cancel_order_fulfillment(fulfillment, setting, delivery_note)
+			create_shopify_log(status="Success")
+		else:
+			create_shopify_log(status="Invalid", message="Delivery Note not found for updating status.")
+	except Exception as e:
+		create_shopify_log(status="Error", exception=e, rollback=True)
+
+
+def cancel_order_fulfillment(fulfillment, setting, delivery_note):
+	if not cint(setting.sync_delivery_cancellation):
+		return
+
+	if cstr(fulfillment["status"]) == "cancelled":
+		frappe.get_doc("Delivery Note", delivery_note).cancel()

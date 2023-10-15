@@ -1,6 +1,6 @@
 {
  "actions": [],
- "creation": "2021-04-13 13:30:54.909583",
+ "creation": "2023-02-03 17:59:51.454957",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -36,6 +36,13 @@
   "add_shipping_as_item",
   "consolidate_taxes",
   "section_break_22",
+  "return_invoice_series",
+  "return_delivery_series",
+  "column_break_31",
+  "sync_sales_return",
+  "sync_delivery_return",
+  "sync_delivery_cancellation",
+  "section_break_32",
   "html_16",
   "taxes",
   "erpnext_to_shopify_sync_section",
@@ -221,7 +228,8 @@
   },
   {
    "fieldname": "section_break_22",
-   "fieldtype": "Section Break"
+   "fieldtype": "Section Break",
+   "label": "Returns Sync Settings"
   },
   {
    "fieldname": "html_16",
@@ -353,6 +361,43 @@
   },
   {
    "default": "0",
+   "fieldname": "sync_sales_return",
+   "fieldtype": "Check",
+   "label": "Import Sales Return on Shopify Refund"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_return",
+   "fieldtype": "Check",
+   "label": "Import Delivery Return on Shopify Refund"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_cancellation",
+   "fieldtype": "Check",
+   "label": "Cancel Delivery Note on Shopify Unfulfillment"
+  },
+  {
+   "fieldname": "section_break_32",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "return_invoice_series",
+   "fieldtype": "Select",
+   "label": "Return Invoice Series",
+   "mandatory_depends_on": "sync_sales_return"
+  },
+  {
+   "fieldname": "return_delivery_series",
+   "fieldtype": "Select",
+   "label": "Return Delivery Series",
+   "mandatory_depends_on": "sync_delivery_return"
+  },
+  {
+   "fieldname": "column_break_31",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "add_shipping_as_item",
    "fieldtype": "Check",
    "label": "Add Shipping Charge as an Item in Order"
