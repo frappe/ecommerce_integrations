@@ -199,7 +199,7 @@ def get_order_taxes(shopify_order, setting, items):
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(tax),
 					"description": (
-						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax.get("price"),
 					"included_in_print_rate": 0,
@@ -319,7 +319,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(tax),
 					"description": (
-						f"{get_tax_account_description(tax) or tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,
