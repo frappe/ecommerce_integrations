@@ -399,26 +399,17 @@ def sync_old_orders():
 	if not cint(shopify_setting.sync_old_orders):
 		return
 
-	try:
-		orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
+	orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
 
-		for order in orders:
-			log = create_shopify_log(
-				method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
-			)
-			sync_sales_order(order, request_id=log.name)
-
-		shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
-		shopify_setting.sync_old_orders = 0
-		shopify_setting.save()
-
-		create_shopify_log(
-			status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders"
+	for order in orders:
+		log = create_shopify_log(
+			method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
 		)
-	except Exception as e:
-		create_shopify_log(
-			status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders", exception=e
-		)
+		sync_sales_order(order, request_id=log.name)
+
+	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	shopify_setting.sync_old_orders = 0
+	shopify_setting.save()
 
 
 def _fetch_old_orders(from_time, to_time):
