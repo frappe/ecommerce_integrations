@@ -13,8 +13,6 @@ frappe.ui.form.on("Shopify Setting", {
 				});
 			},
 		});
-
-		ecommerce_integrations.shopify.shopify_setting.setup_queries(frm);
 	},
 
 	fetch_shopify_locations: function (frm) {
@@ -28,76 +26,74 @@ frappe.ui.form.on("Shopify Setting", {
 	},
 
 	refresh: function (frm) {
-		frm.add_custom_button(__('Import Products'), function () {
-			frappe.set_route('shopify-import-products');
+		frm.add_custom_button(__("Import Products"), function () {
+			frappe.set_route("shopify-import-products");
 		});
 		frm.add_custom_button(__("View Logs"), () => {
-			frappe.set_route("List", "Ecommerce Integration Log", {"integration": "Shopify"});
+			frappe.set_route("List", "Ecommerce Integration Log", {
+				integration: "Shopify",
+			});
 		});
-	}
-});
+		frm.trigger("setup_queries");
+	},
 
-$.extend(ecommerce_integrations.shopify.shopify_setting, {
 	setup_queries: function (frm) {
-		frm.fields_dict["warehouse"].get_query = function (doc) {
+		const warehouse_query = () => {
 			return {
 				filters: {
-					company: doc.company,
-					is_group: "No",
+					company: frm.doc.company,
+					is_group: 0,
+					disabled: 0,
 				},
 			};
 		};
+		frm.set_query("warehouse", warehouse_query);
+		frm.set_query(
+			"erpnext_warehouse",
+			"shopify_warehouse_mapping",
+			warehouse_query
+		);
 
-		frm.fields_dict["taxes"].grid.get_field(
-			"tax_account"
-		).get_query = function (doc) {
-			return {
-				query: "erpnext.controllers.queries.tax_account_query",
-				filters: {
-					account_type: ["Tax", "Chargeable", "Expense Account"],
-					company: doc.company,
-				},
-			};
-		};
-
-		frm.fields_dict["cash_bank_account"].get_query = function (doc) {
-			return {
-				filters: [
-					["Account", "account_type", "in", ["Cash", "Bank"]],
-					["Account", "root_type", "=", "Asset"],
-					["Account", "is_group", "=", 0],
-					["Account", "company", "=", doc.company],
-				],
-			};
-		};
-
-		frm.fields_dict["cost_center"].get_query = function (doc) {
-			return {
-				filters: {
-					company: doc.company,
-					is_group: "No",
-				},
-			};
-		};
-
-		frm.fields_dict["price_list"].get_query = function () {
+		frm.set_query("price_list", () => {
 			return {
 				filters: {
 					selling: 1,
 				},
 			};
-		};
+		});
 
-		frm.fields_dict["shopify_warehouse_mapping"].grid.get_field(
-			"erpnext_warehouse"
-		).get_query = function (doc) {
+		frm.set_query("cost_center", () => {
 			return {
 				filters: {
-					is_group: 0,
-					company: doc.company,
-					disabled: 0,
+					company: frm.doc.company,
+					is_group: "No",
+				},
+			};
+		});
+
+		frm.set_query("cash_bank_account", () => {
+			return {
+				filters: [
+					["Account", "account_type", "in", ["Cash", "Bank"]],
+					["Account", "root_type", "=", "Asset"],
+					["Account", "is_group", "=", 0],
+					["Account", "company", "=", frm.doc.company],
+				],
+			};
+		});
+
+		const tax_query = () => {
+			return {
+				query: "erpnext.controllers.queries.tax_account_query",
+				filters: {
+					account_type: ["Tax", "Chargeable", "Expense Account"],
+					company: frm.doc.company,
 				},
 			};
 		};
+
+		frm.set_query("tax_account", "taxes", tax_query);
+		frm.set_query("default_sales_tax_account", tax_query);
+		frm.set_query("default_shipping_charges_account", tax_query);
 	},
 });

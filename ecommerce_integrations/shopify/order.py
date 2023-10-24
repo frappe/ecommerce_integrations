@@ -1,4 +1,5 @@
 import json
+from typing import Literal, Optional
 
 import frappe
 from frappe import _
@@ -21,6 +22,11 @@ from ecommerce_integrations.shopify.product import create_items_if_not_exist, ge
 from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.utils.price_list import get_dummy_price_list
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
+
+DEFAULT_TAX_FIELDS = {
+	"sales_tax": "default_sales_tax_account",
+	"shipping": "default_shipping_charges_account",
+}
 
 
 def sync_sales_order(payload, request_id=None):
@@ -197,7 +203,7 @@ def get_order_taxes(shopify_order, setting, items):
 			taxes.append(
 				{
 					"charge_type": "Actual",
-					"account_head": get_tax_account_head(tax),
+					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
 					"description": (
 						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
@@ -252,12 +258,15 @@ def consolidate_order_taxes(taxes):
 	return tax_account_wise_data.values()
 
 
-def get_tax_account_head(tax):
+def get_tax_account_head(tax, charge_type: Optional[Literal["shipping", "sales_tax"]] = None):
 	tax_title = str(tax.get("title"))
 
 	tax_account = frappe.db.get_value(
 		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_account",
 	)
+
+	if not tax_account and charge_type:
+		tax_account = frappe.db.get_single_value(SETTING_DOCTYPE, DEFAULT_TAX_FIELDS[charge_type])
 
 	if not tax_account:
 		frappe.throw(_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title")))
@@ -306,7 +315,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 				taxes.append(
 					{
 						"charge_type": "Actual",
-						"account_head": get_tax_account_head(shipping_charge),
+						"account_head": get_tax_account_head(shipping_charge, charge_type="shipping"),
 						"description": get_tax_account_description(shipping_charge) or shipping_charge["title"],
 						"tax_amount": shipping_charge_amount,
 						"cost_center": setting.cost_center,
@@ -317,7 +326,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 			taxes.append(
 				{
 					"charge_type": "Actual",
-					"account_head": get_tax_account_head(tax),
+					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
 					"description": (
 						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
@@ -390,26 +399,17 @@ def sync_old_orders():
 	if not cint(shopify_setting.sync_old_orders):
 		return
 
-	try:
-		orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
+	orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
 
-		for order in orders:
-			log = create_shopify_log(
-				method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
-			)
-			sync_sales_order(order, request_id=log.name)
-
-		shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
-		shopify_setting.sync_old_orders = 0
-		shopify_setting.save()
-
-		create_shopify_log(
-			status="Success", method="ecommerce_integrations.shopify.order.sync_old_orders"
+	for order in orders:
+		log = create_shopify_log(
+			method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
 		)
-	except Exception as e:
-		create_shopify_log(
-			status="Error", method="ecommerce_integrations.shopify.order.sync_old_orders", exception=e
-		)
+		sync_sales_order(order, request_id=log.name)
+
+	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
+	shopify_setting.sync_old_orders = 0
+	shopify_setting.save()
 
 
 def _fetch_old_orders(from_time, to_time):
