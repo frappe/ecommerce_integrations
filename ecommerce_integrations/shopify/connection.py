@@ -1,4 +1,5 @@
 import base64
+import functools
 import hashlib
 import hmac
 import json
@@ -21,6 +22,7 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 def temp_shopify_session(func):
 	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
 
+	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
 
 		# no auth in testing
