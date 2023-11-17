@@ -39,8 +39,8 @@ def sync_sales_order(payload, request_id=None):
 		return
 	try:
 		shopify_customer = order.get("customer", {})
-		shopify_customer["billing_address"] = order.get("billing_address")
-		shopify_customer["shipping_address"] = order.get("shipping_address")
+		shopify_customer["billing_address"] = order.get("billing_address", "")
+		shopify_customer["shipping_address"] = order.get("shipping_address", "")
 		customer_id = shopify_customer.get("id")
 		if customer_id:
 			customer = ShopifyCustomer(customer_id=customer_id)
