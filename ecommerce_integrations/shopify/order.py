@@ -75,7 +75,7 @@ def create_order(order, setting, company=None):
 
 def create_sales_order(shopify_order, setting, company=None):
 	customer = setting.default_customer
-	if customer_id := shopify_order.get("customer", {}).get("id"):
+	if customer_id := shopify_order.get("customer").get("id") if shopify_order.get("customer") is not None else "":
 		customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
 
 	so = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name")
