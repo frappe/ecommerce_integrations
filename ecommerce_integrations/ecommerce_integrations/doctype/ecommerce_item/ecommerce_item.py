@@ -66,16 +66,16 @@ def is_synced(
 	        integration: shopify,
 	        integration_item_code: TSHIRT
 	"""
-
-	if sku:
-		return _is_sku_synced(integration, sku)
-
 	filter = {"integration": integration, "integration_item_code": integration_item_code}
 
 	if variant_id:
 		filter.update({"variant_id": variant_id})
 
-	return bool(frappe.db.exists("Ecommerce Item", filter))
+	item_exists = bool(frappe.db.exists("Ecommerce Item", filter))
+
+	if not item_exists and sku:
+		return _is_sku_synced(integration, sku)
+	return item_exists
 
 
 def _is_sku_synced(integration: str, sku: str) -> bool:
