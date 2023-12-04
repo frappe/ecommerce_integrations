@@ -38,7 +38,7 @@ class TestEcommerceItem(unittest.TestCase):
 	def test_is_synced_sku(self):
 		self._create_doc_with_sku()
 		self.assertTrue(ecommerce_item.is_synced("shopify", "T-SHIRT", sku="TEST_ITEM_1"))
-		self.assertFalse(ecommerce_item.is_synced("shopify", "T-SHIRT", sku="UNKNOWNSKU"))
+		self.assertFalse(ecommerce_item.is_synced("shopify", "T-SHIRTX", sku="UNKNOWNSKU"))
 
 	def test_get_erpnext_item(self):
 		self._create_doc()
