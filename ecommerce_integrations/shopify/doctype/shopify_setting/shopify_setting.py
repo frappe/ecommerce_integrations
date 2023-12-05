@@ -7,7 +7,6 @@ import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import get_datetime
-from pyactiveresource.connection import UnauthorizedAccess
 from shopify.collection import PaginatedIterator
 from shopify.resources import Location
 
@@ -41,6 +40,8 @@ class ShopifySetting(SettingController):
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
+		if self.shopify_url:
+			self.shopify_url = self.shopify_url.replace("https://", "")
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -54,10 +55,7 @@ class ShopifySetting(SettingController):
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			try:
-				new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
-			except UnauthorizedAccess:
-				new_webhooks = []
+			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
