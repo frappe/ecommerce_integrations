@@ -41,6 +41,8 @@ def update_inventory_on_shopify_real_time(doc):
 
 
 def update_tags(inventory_levels):
+	settings = frappe.get_doc("Shopify Setting")
+	erpnext_warehouse_list = settings.get_erpnext_warehouses()
 	synced_on = now()
 	for inventory_sync_batch in create_batch(inventory_levels, 50):
 		for item in inventory_sync_batch:
@@ -51,11 +53,12 @@ def update_tags(inventory_levels):
 							SELECT sum(actual_qty) as total_qty
 							FROM `tabBin`
 							WHERE
-								item_code = %(item)s
+								item_code = %(item)s and warehouse in %(warehouses)s
 							GROUP BY item_code
 							""",
 							{
 								"item": item['item_code'],
+								"warehouses": erpnext_warehouse_list,
 							},
 							as_dict=1,
 						)
