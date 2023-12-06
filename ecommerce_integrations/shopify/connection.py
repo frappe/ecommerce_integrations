@@ -35,6 +35,12 @@ def temp_shopify_session(func):
 
 			with Session.temp(*auth_details):
 				return func(*args, **kwargs)
+		frappe.throw(
+			_(
+				"This action requires to establish a shopify settion. Please configure your"
+				" credentials in the Shopify Setting."
+			)
+		)
 
 	return wrapper
 
