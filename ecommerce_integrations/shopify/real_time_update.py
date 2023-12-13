@@ -50,7 +50,7 @@ def update_image_and_handel_erpnext_item():
 		item_ids = [item.integration_item_code for item in ecommerce_items]
 		shopify_settings = frappe.get_single("Shopify Setting")
 		secret = shopify_settings.get_password("password")
-		shopify_url = shopify_settings.url
+		shopify_url = shopify_settings.shopify_url
 		ids = ",".join(str(item) for item in item_ids)
 		url = "{url}/admin/api/2023-07/products.json".format(url=shopify_url)
 		ids = ",".join(str(item) for item in item_ids)
