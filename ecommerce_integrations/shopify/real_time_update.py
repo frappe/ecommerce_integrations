@@ -15,6 +15,7 @@ from pyactiveresource.connection import ResourceNotFound
 from ecommerce_integrations.shopify.theme_template import update_product_tag
 
 from ecommerce_integrations.shopify.inventory import _log_inventory_update_status
+import requests
 
 
 def update_inventory_on_shopify_real_time(doc):
@@ -39,6 +40,47 @@ def update_inventory_on_shopify_real_time(doc):
 	
 	update_tags(inventory_levels)
 
+@frappe.whitelist()
+def update_image_and_handel_erpnext_item():
+	try:
+		ecommerce_items = frappe.db.sql("""
+		select erpnext_item_code,integration_item_code from `tabEcommerce Item` where integration = 'shopify' and image_handel_sync = 0 limit 50
+		""",as_dict=1)
+		frappe.msgprint(str(ecommerce_items))
+		item_ids = [item.integration_item_code for item in ecommerce_items]
+		shopify_settings = frappe.get_single("Shopify Setting")
+		secret = shopify_settings.get_password("password")
+		shopify_url = shopify_settings.url
+		ids = ",".join(str(item) for item in item_ids)
+		url = "{url}/admin/api/2023-07/products.json".format(url=shopify_url)
+		ids = ",".join(str(item) for item in item_ids)
+		params = {
+			"fields": "image,handle,id",
+			"ids": ids
+		}
+		headers = {
+			"X-Shopify-Access-Token":secret
+        }
+		res= requests.get(url=url,params=params,headers=headers)
+		if res.status_code == 200:
+			res = res.json()
+			for item in res['products']:
+				frappe.db.set_value("Ecommerce Item", {"integration_item_code": item['id']},
+				{"shopify_image_url": item['image']['src'], "product_handle": item['handle']})
+				frappe.msgprint("Image and Handel updated for item {}".format(item['id']))				
+	except Exception as e:
+		frappe.log_error(title="Shopify Error", message=e)
+		return None
+
+	
+	
+
+
+	# Process the response data
+	# ...
+	
+
+		
 
 def update_tags(inventory_levels):
 	settings = frappe.get_doc("Shopify Setting")
