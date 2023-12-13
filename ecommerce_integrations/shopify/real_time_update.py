@@ -52,16 +52,13 @@ def update_image_and_handel_erpnext_item():
 		secret = shopify_settings.get_password("password")
 		shopify_url = shopify_settings.shopify_url
 		ids = ",".join(str(item) for item in item_ids)
-		url = "{url}/admin/api/2023-07/products.json".format(url=shopify_url)
+		url = "{url}/admin/api/2023-07/products.json?fields=image,handle,id&&ids={ids}".format(url=shopify_url,ids=ids)
 		ids = ",".join(str(item) for item in item_ids)
-		params = {
-			"fields": "image,handle,id",
-			"ids": ids
-		}
+		
 		headers = {
 			"X-Shopify-Access-Token":secret
         }
-		res= requests.get(url=url,params=params,headers=headers)
+		res= requests.get(url=url,headers=headers)
 		if res.status_code == 200:
 			res = res.json()
 			for item in res['products']:
