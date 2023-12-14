@@ -52,7 +52,7 @@ def update_image_and_handel_erpnext_item():
 		secret = shopify_settings.get_password("password")
 		shopify_url = shopify_settings.shopify_url
 		ids = ",".join(str(item) for item in item_ids)
-		url = "{url}/admin/api/2023-07/products.json?fields=image,handle,id&&ids={ids}".format(url=shopify_url,ids=ids)
+		url = "{url}/admin/api/2023-07/products.json?fields=image,handle,id&ids={ids}".format(url=shopify_url,ids=ids)
 		ids = ",".join(str(item) for item in item_ids)
 		
 		headers = {
@@ -64,6 +64,9 @@ def update_image_and_handel_erpnext_item():
 			for item in res['products']:
 				frappe.db.set_value("Ecommerce Item", {"integration_item_code": item['id']},
 				{"shopify_image_url": item['image']['src'], "product_handle": item['handle']})
+				item_code = frappe.db.get_value("Ecommerce Item", {"integration_item_code": item['id']}, "erpnext_item_code")
+				if item_code:
+					frappe.db.set_value("Item")
 				frappe.msgprint("Image and Handel updated for item {}".format(item['id']))				
 	except Exception as e:
 		frappe.log_error(title="Shopify Error", message=e)
