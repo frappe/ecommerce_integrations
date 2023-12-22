@@ -42,35 +42,37 @@ def update_inventory_on_shopify_real_time(doc):
 
 @frappe.whitelist()
 def update_image_and_handel_erpnext_item():
-	try:
-		ecommerce_items = frappe.db.sql("""
-		select erpnext_item_code,integration_item_code from `tabEcommerce Item` where integration = 'shopify' and image_handel_sync = 0 limit 50
-		""",as_dict=1)
-		frappe.msgprint(str(ecommerce_items))
-		item_ids = [item.integration_item_code for item in ecommerce_items]
-		shopify_settings = frappe.get_single("Shopify Setting")
-		secret = shopify_settings.get_password("password")
-		shopify_url = shopify_settings.shopify_url
-		ids = ",".join(str(item) for item in item_ids)
-		url = "{url}/admin/api/2023-07/products.json?fields=image,handle,id&ids={ids}".format(url=shopify_url,ids=ids)
-		ids = ",".join(str(item) for item in item_ids)
+	ecommerce_items = frappe.db.sql("""
+	select erpnext_item_code,integration_item_code from `tabEcommerce Item` where integration = 'shopify' and image_handel_sync = 0 limit 100
+	""",as_dict=1)
+	for item in ecommerce_items:
+		frappe.enqueue('ecommerce_integrations.shopify.real_time_update.set_main_image_and_handle_in_erpnext',shopify_id=item.integration_item_code)
 		
-		headers = {
-			"X-Shopify-Access-Token":secret
-        }
+	
+@frappe.whitelist()	
+def set_main_image_and_handle_in_erpnext(shopify_id):
+	shopify_settings = frappe.get_single("Shopify Setting")
+	secret = shopify_settings.get_password("password")
+	shopify_url = shopify_settings.shopify_url
+	url = "{url}/admin/api/2023-07/products/{id}.json?fields=image,handle".format(url=shopify_url,id=shopify_id)
+	headers = {
+		"X-Shopify-Access-Token":secret
+    }
+	try:
 		res= requests.get(url=url,headers=headers)
 		if res.status_code == 200:
 			res = res.json()
-			for item in res['products']:
-				frappe.db.set_value("Ecommerce Item", {"integration_item_code": item['id']},
-				{"shopify_image_url": item['image']['src'], "product_handle": item['handle']})
-				item_code = frappe.db.get_value("Ecommerce Item", {"integration_item_code": item['id']}, "erpnext_item_code")
-				if item_code:
-					frappe.db.set_value("Item")
-				frappe.msgprint("Image and Handel updated for item {}".format(item['id']))				
+			if res['product']['image']:
+				erpnext_item_code = frappe.db.get_value("Ecommerce Item", {"integration_item_code": shopify_id},"erpnext_item_code")
+				frappe.db.set_value("Item",erpnext_item_code,{"image":res['product']['image']['src'],"product_handle":res['product']['handle']})
+				frappe.db.set_value("Ecommerce Item",shopify_id,"image_handel_sync",1)
+				frappe.db.commit()
+				frappe.msgprint("Image updated for item {}".format(shopify_id))
+			else:
+				frappe.msgprint("Image not found for item {}".format(shopify_id))
 	except Exception as e:
-		frappe.log_error(title="Shopify Error", message=e)
-		return None
+		frappe.log_error(title="Shopify Image Sync Error", message=e)
+
 
 	
 	
