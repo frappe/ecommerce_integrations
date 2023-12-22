@@ -54,7 +54,7 @@ def set_main_image_and_handle_in_erpnext(shopify_id):
 	shopify_settings = frappe.get_single("Shopify Setting")
 	secret = shopify_settings.get_password("password")
 	shopify_url = shopify_settings.shopify_url
-	url = "{url}/admin/api/2023-07/products/{id}.json?fields=image,handle".format(url=shopify_url,id=shopify_id)
+	url = "https://{url}/admin/api/2023-07/products/{id}.json?fields=image,handle".format(url=shopify_url,id=shopify_id)
 	headers = {
 		"X-Shopify-Access-Token":secret
     }
