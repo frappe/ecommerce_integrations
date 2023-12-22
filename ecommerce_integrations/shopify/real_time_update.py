@@ -65,7 +65,7 @@ def set_main_image_and_handle_in_erpnext(shopify_id):
 			if res['product']['image']:
 				erpnext_item_code = frappe.db.get_value("Ecommerce Item", {"integration_item_code": shopify_id},"erpnext_item_code")
 				frappe.db.set_value("Item",erpnext_item_code,{"image":res['product']['image']['src'],"product_handle":res['product']['handle']})
-				frappe.db.set_value("Ecommerce Item",shopify_id,"image_handel_sync",1)
+				frappe.db.set_value("Ecommerce Item",{"integration_item_code": shopify_id},"image_handel_sync",1)
 				frappe.db.commit()
 				frappe.msgprint("Image updated for item {}".format(shopify_id))
 			else:
