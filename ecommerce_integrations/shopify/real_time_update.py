@@ -339,6 +339,29 @@ def get_data(warehouses, brands,for_tags):
 		as_dict=1
 	)
 
-	
-
 	return data
+
+@frappe.whitelist()	
+def set_main_image_and_handle_in_erpnext(shopify_id):
+	import requests
+	shopify_settings = frappe.get_single("Shopify Setting")
+	secret = shopify_settings.get_password("password")
+	shopify_url = shopify_settings.shopify_url
+	url = "https://{url}/admin/api/2023-07/products/{id}.json?fields=image,handle".format(url=shopify_url,id=shopify_id)
+	headers = {
+		"X-Shopify-Access-Token":secret
+    }
+	try:
+		res= requests.get(url=url,headers=headers)
+		if res.status_code == 200:
+			res = res.json()
+			if res['product']['image']:
+				erpnext_item_code = frappe.db.get_value("Ecommerce Item", {"integration_item_code": shopify_id},"erpnext_item_code")
+				frappe.db.set_value("Item",erpnext_item_code,{"image":res['product']['image']['src'],"product_handle":res['product']['handle']})
+				frappe.db.set_value("Ecommerce Item",{"integration_item_code": shopify_id},"image_handel_sync",1)
+				frappe.db.commit()
+				frappe.msgprint("Image updated for item {}".format(shopify_id))
+			else:
+				frappe.msgprint("Image not found for item {}".format(shopify_id))
+	except Exception as e:
+		frappe.log_error(title="Shopify Image Sync Error", message=e)
