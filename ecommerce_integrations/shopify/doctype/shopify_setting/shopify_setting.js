@@ -39,11 +39,7 @@ frappe.ui.form.on("Shopify Setting", {
 				"method":"ecommerce_integrations.shopify.real_time_update.update_stock_on_click"
 			})
 		});
-		frm.add_custom_button(__("Update Tags"), () => {
-			frappe.call({
-				"method":"ecommerce_integrations.shopify.real_time_update.update_tags_on_click"
-			})
-		});
+
 	}
 });
 
