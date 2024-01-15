@@ -571,3 +571,9 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 			message=f"{action} Item: {item.name}, shopify product: {product.id}",
 			method="upload_erpnext_item",
 		)
+
+@frappe.whitelist()
+def get_product_data(doc):
+	pass
+
+	

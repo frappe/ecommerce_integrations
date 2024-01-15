@@ -75,6 +75,8 @@ doctype_js = {
 
 before_uninstall = "ecommerce_integrations.uninstall.before_uninstall"
 
+fixtures = [{"dt": "Custom Field", "filters": [["name", "in", ["Item-product_handle"]]]}]
+
 # Desk Notifications
 # ------------------
 # See frappe.core.notifications.get_notification_config

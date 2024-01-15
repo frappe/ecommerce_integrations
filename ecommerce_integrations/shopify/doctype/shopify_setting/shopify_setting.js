@@ -38,7 +38,7 @@ frappe.ui.form.on("Shopify Setting", {
 			frappe.call({
 				"method":"ecommerce_integrations.shopify.real_time_update.update_stock_on_click"
 			})
-		});
+
 
 	}
 });

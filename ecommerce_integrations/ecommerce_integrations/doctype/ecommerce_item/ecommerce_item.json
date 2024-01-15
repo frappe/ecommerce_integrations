@@ -15,7 +15,10 @@
   "variant_of",
   "inventory_synced_on",
   "item_synced_on",
-  "tags_sync_on"
+  "tags_sync_on",
+  "image_handel_sync",
+  "product_handle",
+  "shopify_image_url"
  ],
  "fields": [
   {
@@ -97,11 +100,29 @@
    "fieldname": "tags_sync_on",
    "fieldtype": "Datetime",
    "label": "Tags Sync On"
+  },
+  {
+   "default": "0",
+   "fieldname": "image_handel_sync",
+   "fieldtype": "Check",
+   "label": "Image Handel Sync"
+  },
+  {
+   "fieldname": "product_handle",
+   "fieldtype": "Data",
+   "label": "Product Hadle",
+   "read_only": 1
+  },
+  {
+   "fieldname": "shopify_image_url",
+   "fieldtype": "Data",
+   "label": "Shopify Image URL",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2023-09-18 16:29:56.077202",
+ "modified": "2023-12-13 18:35:41.458741",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",

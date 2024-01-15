@@ -12,6 +12,8 @@ from ecommerce_integrations.controllers.inventory import (
 from pyactiveresource.connection import ResourceNotFound
 
 
+
+
 def update_inventory_on_shopify_real_time(doc):
 	"""Upload stock levels from ERPNext to Shopify.
 
@@ -25,7 +27,7 @@ def update_inventory_on_shopify_real_time(doc):
 		return
 	
 	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
-	
+
 	inventory_levels = get_doc_items_level(doc)
  
 	upload_inventory_data_to_shopify(inventory_levels, warehous_map)	
