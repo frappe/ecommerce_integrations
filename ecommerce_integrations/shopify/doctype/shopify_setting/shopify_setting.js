@@ -38,18 +38,8 @@ frappe.ui.form.on("Shopify Setting", {
 			frappe.call({
 				"method":"ecommerce_integrations.shopify.real_time_update.update_stock_on_click"
 			})
-		});
-		frm.add_custom_button(__("Update Tags"), () => {
-			frappe.call({
-				"method":"ecommerce_integrations.shopify.real_time_update.update_tags_on_click"
-			})
-		});
-		frm.add_custom_button(__("Update Product Images and handel"), () => {
-			frappe.call({
-				"method":"ecommerce_integrations.shopify.real_time_update.update_image_and_handel_erpnext_item"
-			})
-		});
-		
+
+
 	}
 });
 
