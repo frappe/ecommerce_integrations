@@ -3,13 +3,15 @@ from frappe.utils import now
 from frappe import _dict
 from typing import List, Tuple
 from ecommerce_integrations.shopify.connection import temp_shopify_session
-from frappe.utils import cint, now
+from frappe.utils import cint, now, create_batch
 from shopify.resources import InventoryLevel, Variant, Product
 import shopify
 from ecommerce_integrations.controllers.inventory import (
 	update_inventory_sync_status,
 )
 from pyactiveresource.connection import ResourceNotFound
+from ecommerce_integrations.shopify.inventory import _log_inventory_update_status
+
 
 
 
@@ -92,44 +94,49 @@ def get_current_qty(item,warehouse):
 @temp_shopify_session
 def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 	synced_on = now()
-	for d in inventory_levels:
+	for inventory_sync_batch in create_batch(inventory_levels, 50):
+		for d in inventory_sync_batch:
 
-		if is_enabled_brand_item(d.item_code):
-			d.shopify_location_id = warehous_map.get(d.warehouse)
-			try:
-				variant = Variant.find(d.variant_id)
-    
-				product = Product.find(d.integration_item_code)
-    
-				inventory_id = variant.inventory_item_id
+			if is_enabled_brand_item(d.item_code):
+				d.shopify_location_id = warehous_map.get(d.warehouse)
+				try:
+					
+					variant = Variant.find(d.variant_id)
 
-				InventoryLevel.set(
-					location_id=d.shopify_location_id,
-					inventory_item_id=inventory_id,
-					# shopify doesn't support fractional quantity
-					available=cint(d.actual_qty) - cint(d.reserved_qty),
-				)
-    
-				
-				tags = product.tags.split(', ')
-    
-				if check_overall_availability(d.item_code):
-					modified_tags = modify_tag(tags,d.item_code,available=1)
-				else:
-					modified_tags = modify_tag(tags,d.item_code,available=0)
-				
-				product.tags = ', '.join(modified_tags)
-				product.save()
-				update_inventory_sync_status(d.ecom_item, time=synced_on)
-				d.status = "Success"
-			except ResourceNotFound:
-				update_inventory_sync_status(d.ecom_item, time=synced_on)
-				d.status = "Not Found"
-			except Exception as e:
-				d.status = "Failed"
-				d.failure_reason = str(e)
+					product = Product.find(d.integration_item_code)
+		
+					inventory_id = variant.inventory_item_id
 
-			frappe.db.commit()
+					InventoryLevel.set(
+						location_id=d.shopify_location_id,
+						inventory_item_id=inventory_id,
+						# shopify doesn't support fractional quantity
+						available=cint(d.actual_qty) - cint(d.reserved_qty),
+					)
+		
+					
+					tags = product.tags.split(', ')
+		
+					if check_overall_availability(d.item_code):
+						modified_tags = modify_tag(tags,d.item_code,available=1)
+					else:
+						modified_tags = modify_tag(tags,d.item_code,available=0)
+					
+					product.tags = ', '.join(modified_tags)
+					product.save()
+					frappe.log_error(title="shopify sync debug",message="syncing for {} and updating tags as {}".format(d,str(modified_tags)))
+					update_inventory_sync_status(d.ecom_item, time=synced_on)
+					d.status = "Success"
+				except ResourceNotFound:
+					update_inventory_sync_status(d.ecom_item, time=synced_on)
+					d.status = "Not Found"
+				except Exception as e:
+					d.status = "Failed"
+					d.failure_reason = str(e)
+
+				frappe.db.commit()
+    
+		_log_inventory_update_status(inventory_sync_batch)
 
 def modify_tag(tags,product_id,available=0):
 	
