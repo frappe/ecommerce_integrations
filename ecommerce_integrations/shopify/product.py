@@ -573,7 +573,7 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 		)
 
 @frappe.whitelist()
-def update_product_erpnext(payload):
+def update_product_erpnext(payload, request_id=None):
 	frappe.log_error(title="Shopify Product Update",message=payload)
 
 	
