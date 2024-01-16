@@ -578,7 +578,7 @@ def update_product_erpnext(payload, request_id=None):
     if erpnext_item:
         erpnext_price = frappe.db.get_value("Item",erpnext_item,"shopify_selling_rate")
         if erpnext_price != payload['variants'][0]['price']:
-            frappe.db.set_value("Item",erpnext_item,"shopify_selling_rate",payload['variants']['price'])
+            frappe.db.set_value("Item",erpnext_item,"shopify_selling_rate",payload['variants'][0]['price'])
     else:
         frappe.log_error(title="Product Price Update Error",message="Product {} not found while updating price".format(payload['id']))
 
