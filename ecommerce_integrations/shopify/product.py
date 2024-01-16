@@ -576,7 +576,7 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 def update_product_erpnext(payload, request_id=None):
     erpnext_item = frappe.db.get_value("Ecommerce Item",{"integration_item_code":payload['id']},"erpnext_item_code")
     if erpnext_item:
-        erpnext_price = frappe.db.get_vaue("Item",erpnext_item,"shopify_selling_rate")
+        erpnext_price = frappe.db.get_value("Item",erpnext_item,"shopify_selling_rate")
         if erpnext_price != payload['variants']['price']:
             frappe.db.set_value("Item",erpnext_item,"shopify_selling_rate",payload['variants']['price'])
     else:
