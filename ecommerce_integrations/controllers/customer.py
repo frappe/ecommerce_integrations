@@ -16,6 +16,10 @@ class EcommerceCustomer:
 
 		return bool(frappe.db.exists("Customer", {self.customer_id_field: self.customer_id}))
 
+	def link(self, customer) -> None:
+		customer.set_value(self.customer_id_field, self.customer_id)
+		customer.db_set(self.customer_id_field, self.customer_id, commit=True)
+
 	def get_customer_doc(self):
 		"""Get ERPNext customer document."""
 		if self.is_synced():
