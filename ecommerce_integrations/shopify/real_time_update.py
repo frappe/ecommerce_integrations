@@ -365,3 +365,9 @@ def set_main_image_and_handle_in_erpnext(shopify_id):
 				frappe.msgprint("Image not found for item {}".format(shopify_id))
 	except Exception as e:
 		frappe.log_error(title="Shopify Image Sync Error", message=e)
+  
+@frappe.whitelist()
+def bulk_update_item_handle_and_image():
+	shopify_items = frappe.get_all("Ecommerce Item",filters={"integration":"shopify","image_handel_sync":0},fields=["integration_item_code"])
+	for item in shopify_items:
+		frappe.enqueue('ecommerce_integrations.shopify.real_time_update.set_main_image_and_handle_in_erpnext',shopify_id=item.integration_item_code)
