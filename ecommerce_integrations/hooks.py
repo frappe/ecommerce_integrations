@@ -41,7 +41,7 @@ doctype_js = {
 		"public/js/unicommerce/sales_invoice.js",
 		"public/js/common/ecommerce_transactions.js",
 	],
-	"Item": "public/js/unicommerce/item.js",
+	"Item": ["public/js/unicommerce/item.js", "public/js/whataform/item.js",],
 	"Stock Entry": "public/js/unicommerce/stock_entry.js",
 	"Pick List": "public/js/unicommerce/pick_list.js",
 }

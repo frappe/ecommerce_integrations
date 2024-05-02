@@ -11,6 +11,7 @@ dynamic = ["version"]
 dependencies = [
     "ShopifyAPI==12.4.0",  # update after resolving pyjwt conflict in frappe
     "boto3~=1.28.10",
+    "querystring_parser~=1.2.4",
 ]
 
 [project.license]
