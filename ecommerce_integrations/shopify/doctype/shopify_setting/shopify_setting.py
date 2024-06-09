@@ -7,7 +7,7 @@ import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import get_datetime
-from pyactiveresource.connection import UnauthorizedAccess
+from shopify.collection import PaginatedIterator
 from shopify.resources import Location
 
 from ecommerce_integrations.controllers.setting import (
@@ -40,6 +40,8 @@ class ShopifySetting(SettingController):
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
+		if self.shopify_url:
+			self.shopify_url = self.shopify_url.replace("https://", "")
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -53,10 +55,7 @@ class ShopifySetting(SettingController):
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			try:
-				new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
-			except UnauthorizedAccess:
-				new_webhooks = []
+			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
@@ -87,14 +86,13 @@ class ShopifySetting(SettingController):
 		"""Fetch locations from shopify and add it to child table so user can
 		map it with correct ERPNext warehouse."""
 
-		locations = Location.find()
-
 		self.shopify_warehouse_mapping = []
-		for location in locations:
-			self.append(
-				"shopify_warehouse_mapping",
-				{"shopify_location_id": location.id, "shopify_location_name": location.name},
-			)
+		for locations in PaginatedIterator(Location.find()):
+			for location in locations:
+				self.append(
+					"shopify_warehouse_mapping",
+					{"shopify_location_id": location.id, "shopify_location_name": location.name},
+				)
 
 	def get_erpnext_warehouses(self) -> List[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]

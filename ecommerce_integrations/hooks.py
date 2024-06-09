@@ -213,3 +213,8 @@ before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 # 		"doctype": "{doctype_4}"
 # 	}
 # ]
+
+
+default_log_clearing_doctypes = {
+	"Ecommerce Integration Log": 120,
+}

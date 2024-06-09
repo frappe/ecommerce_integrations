@@ -1,2 +1,0 @@
-ShopifyAPI==8.2.0  # update after resolving pyjwt conflict in frappe
-boto3~=1.18.65

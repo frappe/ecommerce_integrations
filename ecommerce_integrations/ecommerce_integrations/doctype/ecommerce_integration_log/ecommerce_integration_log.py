@@ -89,18 +89,33 @@ def _get_message(exception):
 
 @frappe.whitelist()
 def resync(method, name, request_data):
+	_retry_job(name)
+
+
+def _retry_job(job: str):
 	frappe.only_for("System Manager")
 
-	frappe.db.set_value("Ecommerce Integration Log", name, "status", "Queued", update_modified=False)
-	frappe.db.set_value("Ecommerce Integration Log", name, "traceback", "", update_modified=False)
-
-	if not method.startswith("ecommerce_integrations."):
+	doc = frappe.get_doc("Ecommerce Integration Log", job)
+	if not doc.method.startswith("ecommerce_integrations.") or doc.status != "Error":
 		return
 
+	doc.db_set("status", "Queued", update_modified=False)
+	doc.db_set("traceback", "", update_modified=False)
+
 	frappe.enqueue(
-		method=method,
+		method=doc.method,
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": json.loads(request_data), "request_id": name}
+		payload=json.loads(doc.request_data),
+		request_id=doc.name,
+		enqueue_after_commit=True,
 	)
+
+
+@frappe.whitelist()
+def bulk_retry(names):
+	if isinstance(names, str):
+		names = json.loads(names)
+	for name in names:
+		_retry_job(name)

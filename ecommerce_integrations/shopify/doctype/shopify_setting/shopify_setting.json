@@ -23,8 +23,6 @@
   "cash_bank_account",
   "column_break_19",
   "cost_center",
-  "inventory_settings_section",
-  "column_break_22",
   "section_break_25",
   "sales_order_series",
   "delivery_note_series",
@@ -38,6 +36,10 @@
   "section_break_22",
   "html_16",
   "taxes",
+  "section_break_zeoy",
+  "default_sales_tax_account",
+  "column_break_qibo",
+  "default_shipping_charges_account",
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
@@ -123,11 +125,6 @@
    "label": "Customer Group",
    "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Customer Group"
-  },
-  {
-   "fieldname": "inventory_settings_section",
-   "fieldtype": "Section Break",
-   "label": "Inventory Settings"
   },
   {
    "description": "If individual warehouse are not mapped, the default warehouse is considered for transactions.",
@@ -234,10 +231,6 @@
    "label": "Shopify Tax Account",
    "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Shopify Tax Account"
-  },
-  {
-   "fieldname": "column_break_22",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "erpnext_to_shopify_sync_section",
@@ -371,12 +364,35 @@
    "fieldname": "consolidate_taxes",
    "fieldtype": "Check",
    "label": "Consolidate Taxes in Order"
+  },
+  {
+   "description": "When no sales tax mapping is found this tax account will be used as the default account. This is only applied for Sales Tax. Any shipping related charges still need to be mapped separately.",
+   "fieldname": "default_sales_tax_account",
+   "fieldtype": "Link",
+   "label": "Default Sales Tax Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "section_break_zeoy",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "fieldname": "column_break_qibo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "When no shipping charge account mapping is found this account will be used as the default account.",
+   "fieldname": "default_shipping_charges_account",
+   "fieldtype": "Link",
+   "label": "Default Shipping Charges Account",
+   "options": "Account"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-02-10 10:36:12.940019",
+ "modified": "2023-10-24 10:38:49.247431",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
