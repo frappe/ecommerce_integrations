@@ -83,6 +83,26 @@ def _is_sku_synced(integration: str, sku: str) -> bool:
 	return bool(frappe.db.exists("Ecommerce Item", filter))
 
 
+def switch_to_product_id(
+	integration: str,
+	integration_item_code: str,
+	sku: str,
+	variant_id: Optional[str] = None,
+	has_variants: Optional[int] = 0,
+):
+	filters = {"integration": integration, "sku": sku}
+	ecommerce_item = frappe.get_last_doc("Ecommerce Item", filters)
+	ecommerce_item.update(
+		{
+			"sku": None,
+			"integration_item_code": integration_item_code,
+			"variant_id": variant_id,
+			"has_variants": has_variants,
+		}
+	)
+	ecommerce_item.db_update()
+
+
 def get_erpnext_item_code(
 	integration: str,
 	integration_item_code: str,
