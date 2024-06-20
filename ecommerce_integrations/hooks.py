@@ -9,6 +9,8 @@ app_color = "grey"
 app_email = "developers@frappe.io"
 app_license = "GNU GPL v3.0"
 
+required_apps = ["payments", "erpnext"]
+
 # Includes in <head>
 # ------------------
 
