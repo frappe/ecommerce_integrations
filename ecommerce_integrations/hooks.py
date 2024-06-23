@@ -168,6 +168,10 @@ scheduler_events = {
 # bootinfo - hide old doctypes
 extend_bootinfo = "ecommerce_integrations.boot.boot_session"
 
+ignore_links_on_delete = [
+	"Ecommerce Integration Log",
+]
+
 # Testing
 # -------
 
