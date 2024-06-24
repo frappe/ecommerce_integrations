@@ -9,6 +9,8 @@ app_color = "grey"
 app_email = "developers@frappe.io"
 app_license = "GNU GPL v3.0"
 
+required_apps = ["payments", "erpnext"]
+
 # Includes in <head>
 # ------------------
 
@@ -165,6 +167,10 @@ scheduler_events = {
 
 # bootinfo - hide old doctypes
 extend_bootinfo = "ecommerce_integrations.boot.boot_session"
+
+ignore_links_on_delete = [
+	"Ecommerce Integration Log",
+]
 
 # Testing
 # -------
