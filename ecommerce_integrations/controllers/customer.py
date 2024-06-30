@@ -37,6 +37,7 @@ class EcommerceCustomer:
 			}
 		)
 
+		customer.flags.from_integration = True
 		customer.flags.ignore_mandatory = True
 		customer.insert(ignore_permissions=True)
 
@@ -55,23 +56,27 @@ class EcommerceCustomer:
 
 		customer_doc = self.get_customer_doc()
 
-		frappe.get_doc(
+		address_doc = frappe.get_doc(
 			{
 				"doctype": "Address",
 				**address,
 				"links": [{"link_doctype": "Customer", "link_name": customer_doc.name}],
 			}
-		).insert(ignore_mandatory=True)
+		)
+		address_doc.flags.from_integration = True
+		address_doc.insert(ignore_mandatory=True)
 
 	def create_customer_contact(self, contact: Dict[str, str]) -> None:
 		"""Create contact from dictionary containing fields used in Address doctype of ERPNext."""
 
 		customer_doc = self.get_customer_doc()
 
-		frappe.get_doc(
+		contact_doc = frappe.get_doc(
 			{
 				"doctype": "Contact",
 				**contact,
 				"links": [{"link_doctype": "Customer", "link_name": customer_doc.name}],
 			}
-		).insert(ignore_mandatory=True)
+		)
+		contact_doc.flags.from_integration = True
+		contact_doc.insert(ignore_mandatory=True)
