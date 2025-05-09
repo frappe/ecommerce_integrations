@@ -1,4 +1,5 @@
 from collections import Counter
+from time import sleep
 
 import frappe
 from frappe.utils import cint, create_batch, now
@@ -50,16 +51,19 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 				InventoryLevel.set(
 					location_id=d.shopify_location_id,
 					inventory_item_id=inventory_id,
-					# shopify doesn't support fractional quantity
 					available=cint(d.actual_qty) - cint(d.reserved_qty),
 				)
 				update_inventory_sync_status(d.ecom_item, time=synced_on)
 				d.status = "Success"
+
+				sleep(0.5)
+
 			except ResourceNotFound:
-				# Variant or location is deleted, mark as last synced and ignore.
 				update_inventory_sync_status(d.ecom_item, time=synced_on)
 				d.status = "Not Found"
 			except Exception as e:
+				if "Exceeded 2 calls per second" in str(e):
+					sleep(2.0)
 				d.status = "Failed"
 				d.failure_reason = str(e)
 
