@@ -365,7 +365,11 @@ class AmazonRepository:
 				make_address = frappe.new_doc("Address")
 				make_address.address_line1 = shipping_address.get("AddressLine1", "Not Provided")
 				make_address.city = shipping_address.get("City", "Not Provided")
-				make_address.state = shipping_address.get("StateOrRegion").title()
+				make_address.state = get_state_name_from_pincode(
+					shipping_address.get("CountryCode", ""),
+					shipping_address.get("PostalCode", ""),
+					shipping_address.get("StateOrRegion", "").title(),
+				)
 				make_address.pincode = shipping_address.get("PostalCode")
 
 				filters = [
@@ -508,3 +512,42 @@ def validate_amazon_sp_api_credentials(**args) -> None:
 def get_orders(amz_setting_name, created_after) -> list:
 	ar = AmazonRepository(amz_setting_name)
 	return ar.get_orders(created_after)
+
+
+def get_state_name_from_pincode(country_code=None, postal_code=None, state=None):
+	if not all((country_code, postal_code)):
+		return state
+
+	def get_first_three_digits(value):
+		if isinstance(value, str):
+			if len(value.strip()) == 6 and value.strip().isdigit():
+				return int(value[:3])
+		elif isinstance(value, int):
+			if len(str(value)) == 6:
+				return int(str(value)[:3])
+
+	if "india_compliance" in frappe.get_installed_apps() and country_code.lower() == "in":
+		from india_compliance.gst_india.constants import STATE_PINCODE_MAPPING
+
+		first_three_digits = get_first_three_digits(postal_code)
+
+		if first_three_digits:
+			state_name = ""
+			for _state, _range in STATE_PINCODE_MAPPING.items():
+				if isinstance(_range[0], tuple):
+					for c_range in _range:
+						lower_range, upper_range = c_range
+						if lower_range <= first_three_digits <= upper_range:
+							state_name = _state
+							if state and state[0].lower() == _state[0].lower():
+								return _state
+				else:
+					lower_range, upper_range = _range
+					if lower_range <= first_three_digits <= upper_range:
+						state_name = _state
+						if state and state[0].lower() == _state[0].lower():
+							return _state
+			if state_name:
+				return state_name
+
+	return state
