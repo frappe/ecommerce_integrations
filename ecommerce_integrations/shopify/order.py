@@ -163,7 +163,7 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"stock_uom": shopify_item.get("uom") or "Nos",
 					"warehouse": setting.warehouse,
 					"delivered_by_supplier": 1 if drop_shipped else 0,
-					"supplier": suppliers[0] if drop_shipped else "",
+					"supplier": suppliers[0].supplier if drop_shipped else "",
 					ORDER_ITEM_DISCOUNT_FIELD: (
 						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 					),
