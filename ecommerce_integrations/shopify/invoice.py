@@ -10,32 +10,51 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_sales_invoice(payload, request_id=None):
+def prepare_sales_invoice(payload, request_id=None, account=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	order = payload
 
 	frappe.set_user("Administrator")
-	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
+
+	# Get account context
+	if isinstance(account, str):
+		account = frappe.get_doc("Shopify Account", account)
+	elif not account:
+		# Fallback to legacy mode
+		account = frappe.get_doc(SETTING_DOCTYPE)
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
 		if sales_order:
-			create_sales_invoice(order, setting, sales_order)
-			create_shopify_log(status="Success")
+			create_sales_invoice(order, account, sales_order)
+			create_shopify_log(
+				status="Success",
+				reference_document=account.name if hasattr(account, 'name') else None
+			)
 		else:
-			create_shopify_log(status="Invalid", message="Sales Order not found for syncing sales invoice.")
+			create_shopify_log(
+				status="Invalid", 
+				message="Sales Order not found for syncing sales invoice.",
+				reference_document=account.name if hasattr(account, 'name') else None
+			)
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e, rollback=True)
+		create_shopify_log(
+			status="Error", 
+			exception=e, 
+			rollback=True,
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 
 
-def create_sales_invoice(shopify_order, setting, so):
+def create_sales_invoice(shopify_order, account, so):
+	# Check if should sync and if sales invoice already exists
 	if (
 		not frappe.db.get_value("Sales Invoice", {ORDER_ID_FIELD: shopify_order.get("id")}, "name")
 		and so.docstatus == 1
 		and not so.per_billed
-		and cint(setting.sync_sales_invoice)
+		and _should_sync_sales_invoice(account)
 	):
 		posting_date = getdate(shopify_order.get("created_at")) or nowdate()
 
@@ -45,13 +64,13 @@ def create_sales_invoice(shopify_order, setting, so):
 		sales_invoice.set_posting_time = 1
 		sales_invoice.posting_date = posting_date
 		sales_invoice.due_date = posting_date
-		sales_invoice.naming_series = setting.sales_invoice_series or "SI-Shopify-"
+		sales_invoice.naming_series = _get_sales_invoice_series(account)
 		sales_invoice.flags.ignore_mandatory = True
-		set_cost_center(sales_invoice.items, setting.cost_center)
+		set_cost_center(sales_invoice.items, _get_cost_center(account))
 		sales_invoice.insert(ignore_mandatory=True)
 		sales_invoice.submit()
 		if sales_invoice.grand_total > 0:
-			make_payament_entry_against_sales_invoice(sales_invoice, setting, posting_date)
+			make_payament_entry_against_sales_invoice(sales_invoice, account, posting_date)
 
 		if shopify_order.get("note"):
 			sales_invoice.add_comment(text=f"Order Note: {shopify_order.get('note')}")
@@ -62,13 +81,46 @@ def set_cost_center(items, cost_center):
 		item.cost_center = cost_center
 
 
-def make_payament_entry_against_sales_invoice(doc, setting, posting_date=None):
+def make_payament_entry_against_sales_invoice(doc, account, posting_date=None):
 	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
 
-	payment_entry = get_payment_entry(doc.doctype, doc.name, bank_account=setting.cash_bank_account)
-	payment_entry.flags.ignore_mandatory = True
-	payment_entry.reference_no = doc.name
-	payment_entry.posting_date = posting_date or nowdate()
-	payment_entry.reference_date = posting_date or nowdate()
-	payment_entry.insert(ignore_permissions=True)
-	payment_entry.submit()
+	bank_account = _get_cash_bank_account(account)
+	if bank_account:
+		payment_entry = get_payment_entry(doc.doctype, doc.name, bank_account=bank_account)
+		payment_entry.flags.ignore_mandatory = True
+		payment_entry.reference_no = doc.name
+		payment_entry.posting_date = posting_date or nowdate()
+		payment_entry.reference_date = posting_date or nowdate()
+		payment_entry.insert(ignore_permissions=True)
+		payment_entry.submit()
+
+
+# Helper functions for account-aware invoice creation
+
+def _should_sync_sales_invoice(account):
+	"""Check if sales invoice sync is enabled for this account."""
+	if hasattr(account, 'sync_sales_invoice'):
+		return cint(account.sync_sales_invoice)
+	else:  # Legacy setting
+		return cint(account.sync_sales_invoice)
+
+def _get_sales_invoice_series(account):
+	"""Get sales invoice series from account or legacy setting."""
+	if hasattr(account, 'sales_invoice_series'):
+		return account.sales_invoice_series or "SI-Shopify-"
+	else:  # Legacy setting
+		return account.sales_invoice_series or "SI-Shopify-"
+
+def _get_cost_center(account):
+	"""Get cost center from account or legacy setting."""
+	if hasattr(account, 'cost_center'):
+		return account.cost_center
+	else:  # Legacy setting
+		return account.cost_center
+
+def _get_cash_bank_account(account):
+	"""Get cash/bank account from account or legacy setting."""
+	if hasattr(account, 'cash_bank_account'):
+		return getattr(account, 'cash_bank_account', None)
+	else:  # Legacy setting
+		return account.cash_bank_account

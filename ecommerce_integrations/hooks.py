@@ -136,10 +136,14 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
+	"all": [
+		# Updated to use multi-tenant inventory sync
+		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"
+	],
 	"daily": [],
 	"daily_long": ["ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks"],
 	"hourly": [
+		# Updated to use multi-tenant old orders sync
 		"ecommerce_integrations.shopify.order.sync_old_orders",
 		"ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_settings.schedule_get_order_details",
 	],
@@ -198,21 +202,26 @@ before_tests = "ecommerce_integrations.utils.before_test.before_tests"
 # 		"filter_by": "{filter_by}",
 # 		"redact_fields": ["{field_1}", "{field_2}"],
 # 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_2}",
-# 		"filter_by": "{filter_by}",
-# 		"partial": 1,
-# 	},
-# 	{
-# 		"doctype": "{doctype_3}",
-# 		"strict": False,
-# 	},
-# 	{
-# 		"doctype": "{doctype_4}"
 # 	}
 # ]
 
+# Authentication and authorization
+# --------------------------------
+
+# auth_hooks = [
+# 	"ecommerce_integrations.auth.validate"
+# ]
+
+# Translation
+# --------------------------------
+
+# Make property setters available in the translation file
+# translate_linked_doctypes = ["DocType", "Role"]
+
+# Automatically update python controller files with type annotations for DocTypes
+# Automatically add __init__.py files to the DocTypes
+# be careful turning this on if you have customizations.
+export_python_type_annotations = True
 
 default_log_clearing_doctypes = {
 	"Ecommerce Integration Log": 120,

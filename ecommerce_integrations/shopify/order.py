@@ -29,13 +29,24 @@ DEFAULT_TAX_FIELDS = {
 }
 
 
-def sync_sales_order(payload, request_id=None):
+def sync_sales_order(payload, request_id=None, account=None):
 	order = payload
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
+	# Get account context
+	if isinstance(account, str):
+		account = frappe.get_doc("Shopify Account", account)
+	elif not account:
+		# Fallback to legacy mode
+		account = frappe.get_doc(SETTING_DOCTYPE)
+
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
-		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
+		create_shopify_log(
+			status="Invalid", 
+			message="Sales order already exists, not synced",
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 		return
 	try:
 		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
@@ -43,38 +54,45 @@ def sync_sales_order(payload, request_id=None):
 		shopify_customer["shipping_address"] = order.get("shipping_address", "")
 		customer_id = shopify_customer.get("id")
 		if customer_id:
-			customer = ShopifyCustomer(customer_id=customer_id)
+			customer = ShopifyCustomer(customer_id=customer_id, account=account)
 			if not customer.is_synced():
 				customer.sync_customer(customer=shopify_customer)
 			else:
 				customer.update_existing_addresses(shopify_customer)
 
-		create_items_if_not_exist(order)
+		create_items_if_not_exist(order, account)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
-		create_order(order, setting)
+		create_order(order, account)
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e, rollback=True)
+		create_shopify_log(
+			status="Error", 
+			exception=e, 
+			rollback=True,
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 	else:
-		create_shopify_log(status="Success")
+		create_shopify_log(
+			status="Success",
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 
 
-def create_order(order, setting, company=None):
+def create_order(order, account, company=None):
 	# local import to avoid circular dependencies
 	from ecommerce_integrations.shopify.fulfillment import create_delivery_note
 	from ecommerce_integrations.shopify.invoice import create_sales_invoice
 
-	so = create_sales_order(order, setting, company)
+	so = create_sales_order(order, account, company)
 	if so:
-		if order.get("financial_status") == "paid":
-			create_sales_invoice(order, setting, so)
+		if order.get("financial_status") == "paid" and _should_sync_invoice(account):
+			create_sales_invoice(order, account, so)
 
-		if order.get("fulfillments"):
-			create_delivery_note(order, setting, so)
+		if order.get("fulfillments") and _should_sync_delivery_note(account):
+			create_delivery_note(order, account, so)
 
 
-def create_sales_order(shopify_order, setting, company=None):
-	customer = setting.default_customer
+def create_sales_order(shopify_order, account, company=None):
+	customer = _get_default_customer(account)
 	if shopify_order.get("customer", {}):
 		if customer_id := shopify_order.get("customer", {}).get("id"):
 			customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
@@ -84,7 +102,7 @@ def create_sales_order(shopify_order, setting, company=None):
 	if not so:
 		items = get_order_items(
 			shopify_order.get("line_items"),
-			setting,
+			account,
 			getdate(shopify_order.get("created_at")),
 			taxes_inclusive=shopify_order.get("taxes_included"),
 		)
@@ -101,18 +119,18 @@ def create_sales_order(shopify_order, setting, company=None):
 
 			return ""
 
-		taxes = get_order_taxes(shopify_order, setting, items)
+		taxes = get_order_taxes(shopify_order, account, items)
 		so = frappe.get_doc(
 			{
 				"doctype": "Sales Order",
-				"naming_series": setting.sales_order_series or "SO-Shopify-",
+				"naming_series": _get_sales_order_series(account),
 				ORDER_ID_FIELD: str(shopify_order.get("id")),
 				ORDER_NUMBER_FIELD: shopify_order.get("name"),
 				"customer": customer,
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
-				"company": setting.company,
-				"selling_price_list": get_dummy_price_list(),
+				"company": _get_company(account),
+				"selling_price_list": _get_selling_price_list(account),
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": taxes,
@@ -136,7 +154,7 @@ def create_sales_order(shopify_order, setting, company=None):
 	return so
 
 
-def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
+def get_order_items(order_items, account, delivery_date, taxes_inclusive):
 	items = []
 	all_product_exists = True
 	product_not_exists = []
@@ -159,7 +177,7 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"delivery_date": delivery_date,
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
-					"warehouse": setting.warehouse,
+					"warehouse": _get_default_warehouse_for_order(account),
 					ORDER_ITEM_DISCOUNT_FIELD: (
 						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 					),
@@ -356,7 +374,7 @@ def get_sales_order(order_id):
 		return frappe.get_doc("Sales Order", sales_order)
 
 
-def cancel_order(payload, request_id=None):
+def cancel_order(payload, request_id=None, account=None):
 	"""Called by order/cancelled event.
 
 	When shopify order is cancelled there could be many different someone handles it.
@@ -368,6 +386,13 @@ def cancel_order(payload, request_id=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
+	# Get account context
+	if isinstance(account, str):
+		account = frappe.get_doc("Shopify Account", account)
+	elif not account:
+		# Fallback to legacy mode
+		account = frappe.get_doc(SETTING_DOCTYPE)
+
 	order = payload
 
 	try:
@@ -377,7 +402,11 @@ def cancel_order(payload, request_id=None):
 		sales_order = get_sales_order(order_id)
 
 		if not sales_order:
-			create_shopify_log(status="Invalid", message="Sales Order does not exist")
+			create_shopify_log(
+				status="Invalid", 
+				message="Sales Order does not exist",
+				reference_document=account.name if hasattr(account, 'name') else None
+			)
 			return
 
 		sales_invoice = frappe.db.get_value("Sales Invoice", filters={ORDER_ID_FIELD: order_id})
@@ -395,13 +424,41 @@ def cancel_order(payload, request_id=None):
 			frappe.db.set_value("Sales Order", sales_order.name, ORDER_STATUS_FIELD, order_status)
 
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e)
+		create_shopify_log(
+			status="Error", 
+			exception=e,
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 	else:
-		create_shopify_log(status="Success")
+		create_shopify_log(
+			status="Success",
+			reference_document=account.name if hasattr(account, 'name') else None
+		)
 
 
 @temp_shopify_session
-def sync_old_orders():
+def sync_old_orders(account=None):
+	"""Sync old orders for specific account or all enabled accounts."""
+	if account:
+		# Sync for specific account
+		_sync_old_orders_for_account(account)
+	else:
+		# Sync for all enabled accounts
+		enabled_accounts = frappe.get_all(ACCOUNT_DOCTYPE, 
+			filters={"enabled": 1}, 
+			fields=["name"])
+		
+		if not enabled_accounts:
+			# Fallback to legacy singleton
+			_sync_old_orders_legacy()
+			return
+		
+		for account_data in enabled_accounts:
+			account_doc = frappe.get_doc(ACCOUNT_DOCTYPE, account_data.name)
+			_sync_old_orders_for_account(account_doc)
+
+def _sync_old_orders_legacy():
+	"""Legacy old order sync using singleton."""
 	shopify_setting = frappe.get_cached_doc(SETTING_DOCTYPE)
 	if not cint(shopify_setting.sync_old_orders):
 		return
@@ -418,6 +475,45 @@ def sync_old_orders():
 	shopify_setting.sync_old_orders = 0
 	shopify_setting.save()
 
+def _sync_old_orders_for_account(account):
+	"""Sync old orders for a specific Shopify account."""
+	if not account.is_enabled():
+		return
+	
+	# Check if account has old order sync enabled
+	# TODO: Add old_orders_sync fields to Shopify Account doctype
+	# For now, we'll assume accounts don't need old order sync by default
+	# This should be controlled by account-specific settings
+	
+	# Placeholder for account-specific old order sync logic
+	# This would need additional fields in Shopify Account doctype:
+	# - sync_old_orders (Check)
+	# - old_orders_from (Datetime) 
+	# - old_orders_to (Datetime)
+	
+	if not hasattr(account, 'sync_old_orders') or not cint(account.sync_old_orders):
+		return
+	
+	# Use account-specific session
+	with temp_shopify_session(account=account):
+		orders = _fetch_old_orders(
+			getattr(account, 'old_orders_from', None), 
+			getattr(account, 'old_orders_to', None)
+		)
+
+		for order in orders:
+			log = create_shopify_log(
+				method=EVENT_MAPPER["orders/create"], 
+				request_data=json.dumps(order), 
+				make_new=True,
+				reference_document=account.name
+			)
+			sync_sales_order(order, request_id=log.name, account=account)
+
+		# Update account sync status
+		account.sync_old_orders = 0
+		account.save()
+
 
 def _fetch_old_orders(from_time, to_time):
 	"""Fetch all shopify orders in specified range and return an iterator on fetched orders."""
@@ -433,3 +529,56 @@ def _fetch_old_orders(from_time, to_time):
 			# Using generator instead of fetching all at once is better for
 			# avoiding rate limits and reducing resource usage.
 			yield order.to_dict()
+
+
+# Helper functions for account-aware integration
+
+def _get_default_customer(account):
+	"""Get default customer from account or legacy setting."""
+	if hasattr(account, 'default_customer') and account.default_customer:
+		return account.default_customer
+	elif hasattr(account, 'default_customer'):  # Shopify Account
+		return account.default_customer
+	else:  # Legacy Shopify Setting
+		return account.default_customer
+
+def _get_company(account):
+	"""Get company from account or legacy setting."""
+	return account.company
+
+def _get_sales_order_series(account):
+	"""Get sales order series from account or legacy setting."""
+	if hasattr(account, 'sales_order_series'):
+		return account.sales_order_series or "SO-Shopify-"
+	else:  # Legacy setting
+		return account.sales_order_series or "SO-Shopify-"
+
+def _get_selling_price_list(account):
+	"""Get selling price list from account or fallback to dummy."""
+	if hasattr(account, 'selling_price_list') and account.selling_price_list:
+		return account.selling_price_list
+	return get_dummy_price_list()
+
+def _should_sync_invoice(account):
+	"""Check if sales invoice sync is enabled for this account."""
+	if hasattr(account, 'sync_sales_invoice'):
+		return bool(account.sync_sales_invoice)
+	else:  # Legacy setting
+		return bool(account.sync_sales_invoice)
+
+def _should_sync_delivery_note(account):
+	"""Check if delivery note sync is enabled for this account."""
+	if hasattr(account, 'sync_delivery_note'):
+		return bool(account.sync_delivery_note)
+	else:  # Legacy setting
+		return bool(account.sync_delivery_note)
+
+def _get_default_warehouse_for_order(account):
+	"""Get default warehouse for order items from account or legacy setting."""
+	if hasattr(account, 'warehouse'):
+		return account.warehouse
+	elif hasattr(account, 'warehouse_mappings') and account.warehouse_mappings:
+		# Use first warehouse as default for new account
+		return account.warehouse_mappings[0].erpnext_warehouse
+	else:  # Legacy setting
+		return account.warehouse

@@ -1,0 +1,413 @@
+{
+ "actions": [],
+ "autoname": "field:shop_domain",
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "account_title",
+  "column_break_basic",
+  "shop_domain",
+  "api_version",
+  "section_break_credentials",
+  "access_token",
+  "shared_secret",
+  "column_break_credentials",
+  "public_app_key",
+  "section_break_company",
+  "company",
+  "selling_price_list",
+  "column_break_company",
+  "cost_center",
+  "default_customer",
+  "section_break_series",
+  "sales_order_series",
+  "sales_invoice_series",
+  "column_break_series",
+  "delivery_note_series",
+  "section_break_features",
+  "create_customers",
+  "create_missing_items",
+  "column_break_features1",
+  "sync_sales_invoice",
+  "sync_delivery_note",
+  "column_break_features2",
+  "allow_backdated_sync",
+  "close_orders_on_fulfillment",
+  "section_break_product_upload",
+  "upload_erpnext_items",
+  "update_shopify_item_on_update",
+  "column_break_product_upload",
+  "sync_new_item_as_active",
+  "upload_variants_as_items",
+  "section_break_inventory",
+  "update_erpnext_stock_levels_to_shopify",
+  "inventory_sync_frequency",
+  "column_break_inventory",
+  "last_inventory_sync",
+  "section_break_old_orders",
+  "sync_old_orders",
+  "old_orders_from",
+  "column_break_old_orders",
+  "old_orders_to",
+  "section_break_mappings",
+  "warehouse_mappings",
+  "tax_mappings",
+  "section_break_operational",
+  "last_sync_status",
+  "last_sync_at",
+  "column_break_operational",
+  "notes"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "fieldname": "account_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Account Title",
+   "description": "Friendly name for this Shopify store (e.g., 'Main KSA Store')"
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "shop_domain",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shop Domain",
+   "reqd": 1,
+   "unique": 1,
+   "description": "Exact domain from Shopify (e.g., mystore.myshopify.com). Used to route webhooks."
+  },
+  {
+   "default": "2023-10",
+   "fieldname": "api_version",
+   "fieldtype": "Data",
+   "label": "API Version",
+   "read_only": 1,
+   "description": "Shopify API version (auto-managed)"
+  },
+  {
+   "collapsible": 0,
+   "fieldname": "section_break_credentials",
+   "fieldtype": "Section Break",
+   "label": "Credentials"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "Access Token",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "shared_secret",
+   "fieldtype": "Password",
+   "label": "Shared Secret",
+   "mandatory_depends_on": "eval:doc.enabled",
+   "description": "Used for webhook HMAC verification"
+  },
+  {
+   "fieldname": "column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "public_app_key",
+   "fieldtype": "Data",
+   "label": "Public App Key",
+   "description": "Optional: Only needed for specific app flows"
+  },
+  {
+   "fieldname": "section_break_company",
+   "fieldtype": "Section Break",
+   "label": "Company & Defaults"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "description": "ERPNext legal entity receiving the documents"
+  },
+  {
+   "fieldname": "selling_price_list",
+   "fieldtype": "Link",
+   "label": "Selling Price List",
+   "options": "Price List",
+   "description": "Used when pricing/valuation is needed"
+  },
+  {
+   "fieldname": "column_break_company",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cost_center",
+   "fieldtype": "Link",
+   "label": "Cost Center",
+   "options": "Cost Center",
+   "description": "Default for SI/DN if created"
+  },
+  {
+   "fieldname": "default_customer",
+   "fieldtype": "Link",
+   "label": "Default Customer",
+   "options": "Customer",
+   "description": "Optional fallback if customer creation is off or mapping fails"
+  },
+  {
+   "fieldname": "section_break_series",
+   "fieldtype": "Section Break",
+   "label": "Document Series"
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Sales Order Series",
+   "description": "e.g., SO-SHOP-. If empty, safe defaults will be used."
+  },
+  {
+   "fieldname": "sales_invoice_series",
+   "fieldtype": "Select",
+   "label": "Sales Invoice Series",
+   "description": "e.g., SINV-SHOP-. If empty, safe defaults will be used."
+  },
+  {
+   "fieldname": "column_break_series",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "delivery_note_series",
+   "fieldtype": "Select",
+   "label": "Delivery Note Series",
+   "description": "e.g., DN-SHOP-. If empty, safe defaults will be used."
+  },
+  {
+   "fieldname": "section_break_features",
+   "fieldtype": "Section Break",
+   "label": "Feature Toggles"
+  },
+  {
+   "default": "1",
+   "fieldname": "create_customers",
+   "fieldtype": "Check",
+   "label": "Create Customers"
+  },
+  {
+   "default": "0",
+   "fieldname": "create_missing_items",
+   "fieldtype": "Check",
+   "label": "Create Missing Items"
+  },
+  {
+   "fieldname": "column_break_features1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_sales_invoice",
+   "fieldtype": "Check",
+   "label": "Sync Sales Invoice"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_delivery_note",
+   "fieldtype": "Check",
+   "label": "Sync Delivery Note"
+  },
+  {
+   "fieldname": "column_break_features2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_backdated_sync",
+   "fieldtype": "Check",
+   "label": "Allow Backdated Sync",
+   "description": "If true, backfill jobs allowed; otherwise block with a warning"
+  },
+  {
+   "default": "0",
+   "fieldname": "close_orders_on_fulfillment",
+   "fieldtype": "Check",
+   "label": "Close Orders on Fulfillment",
+   "description": "Auto-close orders when delivery note/fulfillment is created"
+  },
+  {
+   "fieldname": "section_break_product_upload",
+   "fieldtype": "Section Break",
+   "label": "Product Upload Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "upload_erpnext_items",
+   "fieldtype": "Check",
+   "label": "Upload new ERPNext Items to Shopify",
+   "description": "Automatically upload new ERPNext items to this Shopify store"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.upload_erpnext_items",
+   "fieldname": "update_shopify_item_on_update",
+   "fieldtype": "Check",
+   "label": "Update Shopify Item after updating ERPNext item",
+   "description": "Sync changes from ERPNext items to Shopify products"
+  },
+  {
+   "fieldname": "column_break_product_upload",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_new_item_as_active",
+   "fieldtype": "Check",
+   "label": "Sync New Items as Active",
+   "description": "New products will be published as active on Shopify"
+  },
+  {
+   "default": "0",
+   "description": "Caution: Only 3 attributes will be accepted by Shopify",
+   "fieldname": "upload_variants_as_items",
+   "fieldtype": "Check",
+   "label": "Upload ERPNext Variants as Shopify Items"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_erpnext_stock_levels_to_shopify",
+   "fieldtype": "Check",
+   "label": "Update ERPNext Stock Levels to Shopify",
+   "description": "Enable automatic inventory sync from ERPNext to Shopify"
+  },
+  {
+   "default": "Hourly",
+   "fieldname": "inventory_sync_frequency",
+   "fieldtype": "Select",
+   "label": "Inventory Sync Frequency",
+   "options": "Every 15 minutes\nEvery 30 minutes\nHourly\nEvery 6 hours\nDaily",
+   "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
+   "description": "How often to sync inventory levels"
+  },
+  {
+   "fieldname": "column_break_inventory",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_inventory_sync",
+   "fieldtype": "Datetime",
+   "label": "Last Inventory Sync",
+   "read_only": 1,
+   "description": "Timestamp of last inventory sync"
+  },
+  {
+   "fieldname": "section_break_old_orders",
+   "fieldtype": "Section Break",
+   "label": "Old Orders Sync"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_old_orders",
+   "fieldtype": "Check",
+   "label": "Sync Old Orders",
+   "description": "Enable one-time sync of historical orders from Shopify"
+  },
+  {
+   "fieldname": "old_orders_from",
+   "fieldtype": "Datetime",
+   "label": "Old Orders From",
+   "depends_on": "eval:doc.sync_old_orders",
+   "description": "Start date/time for historical order sync"
+  },
+  {
+   "fieldname": "column_break_old_orders",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "old_orders_to",
+   "fieldtype": "Datetime",
+   "label": "Old Orders To",
+   "depends_on": "eval:doc.sync_old_orders",
+   "description": "End date/time for historical order sync"
+  },
+  {
+   "fieldname": "section_break_mappings",
+   "fieldtype": "Section Break",
+   "label": "Account-Specific Mappings"
+  },
+  {
+   "fieldname": "warehouse_mappings",
+   "fieldtype": "Table",
+   "label": "Warehouse Mappings",
+   "options": "Shopify Warehouse Mapping"
+  },
+  {
+   "fieldname": "tax_mappings",
+   "fieldtype": "Table",
+   "label": "Tax Mappings",
+   "options": "Shopify Tax Account"
+  },
+  {
+   "fieldname": "section_break_operational",
+   "fieldtype": "Section Break",
+   "label": "Operational Status"
+  },
+  {
+   "default": "Idle",
+   "fieldname": "last_sync_status",
+   "fieldtype": "Select",
+   "label": "Last Sync Status",
+   "options": "Idle\nSuccess\nWarning\nError",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_sync_at",
+   "fieldtype": "Datetime",
+   "label": "Last Sync At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_operational",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes",
+   "description": "Admin notes/audit comments"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 0,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Shopify",
+ "name": "Shopify Account",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "account_title",
+ "track_changes": 1
+}

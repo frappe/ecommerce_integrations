@@ -15,6 +15,7 @@ shopify.ProductImporter = class {
 	constructor(wrapper) {
 		this.wrapper = $(wrapper).find(".layout-main-section");
 		this.page = wrapper.page;
+		this.selectedAccount = null; // Track selected account
 		this.init();
 		this.syncRunning = false;
 	}
@@ -22,7 +23,7 @@ shopify.ProductImporter = class {
 	init() {
 		frappe.run_serially([
 			() => this.addMarkup(),
-			() => this.fetchProductCount(),
+			() => this.loadShopifyAccounts(),
 			() => this.addTable(),
 			() => this.checkSyncStatus(),
 			() => this.listen(),
@@ -64,10 +65,21 @@ shopify.ProductImporter = class {
                 <div class="col-lg-4 d-flex align-items-stretch">
                     <div class="w-100">
                         <div class="card border-0 shadow-sm p-3 mb-3 rounded-sm" style="background-color: var(--card-bg)">
+                            <h5 class="border-bottom pb-2">Account Selection</h5>
+                            <div class="py-2">
+                                <div class="form-group">
+                                    <label for="shopify-account-select">Select Shopify Account:</label>
+                                    <select id="shopify-account-select" class="form-control">
+                                        <option value="">Loading accounts...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card border-0 shadow-sm p-3 mb-3 rounded-sm" style="background-color: var(--card-bg)">
                             <h5 class="border-bottom pb-2">Synchronization Details</h5>
                             <div id="shopify-sync-info">
                                 <div class="py-3 border-bottom">
-                                    <button type="button" id="btn-sync-all" class="btn btn-xl btn-primary w-100 font-weight-bold py-3">Sync all Products</button>
+                                    <button type="button" id="btn-sync-all" class="btn btn-xl btn-primary w-100 font-weight-bold py-3" disabled>Select Account First</button>
                                 </div>
                                 <div class="product-count py-3 d-flex justify-content-stretch">
                                     <div class="text-center p-3 mx-2 rounded w-100" style="background-color: var(--bg-color)">
@@ -99,19 +111,71 @@ shopify.ProductImporter = class {
 		this.wrapper.append(_markup);
 	}
 
-	async fetchProductCount() {
+	// NEW: Load Shopify accounts for multi-tenancy
+	async loadShopifyAccounts() {
 		try {
-			const {
-				message: { erpnextCount, shopifyCount, syncedCount },
-			} = await frappe.call({
-				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_product_count",
+			const { message: accounts } = await frappe.call({
+				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_shopify_accounts",
 			});
 
-			this.wrapper.find("#count-products-shopify").text(shopifyCount);
-			this.wrapper.find("#count-products-erpnext").text(erpnextCount);
-			this.wrapper.find("#count-products-synced").text(syncedCount);
+			const accountSelect = this.wrapper.find("#shopify-account-select");
+			accountSelect.empty();
+
+			if (accounts && accounts.length > 0) {
+				accountSelect.append('<option value="">Select an account...</option>');
+				accounts.forEach(account => {
+					accountSelect.append(`<option value="${account.name}">${account.shop_url} (${account.company})</option>`);
+				});
+				
+				// Auto-select if only one account
+				if (accounts.length === 1) {
+					accountSelect.val(accounts[0].name);
+					this.onAccountChange(accounts[0].name);
+				}
+			} else {
+				accountSelect.append('<option value="">No Shopify accounts found</option>');
+				this.wrapper.find("#btn-sync-all").text("No Accounts Available").prop("disabled", true);
+			}
+
+			// Add change event listener
+			accountSelect.on('change', (e) => {
+				this.onAccountChange(e.target.value);
+			});
+
 		} catch (error) {
-			frappe.throw(__("Error fetching product count."));
+			console.error("Error loading Shopify accounts:", error);
+			this.wrapper.find("#shopify-account-select").html('<option value="">Error loading accounts</option>');
+		}
+	}
+
+	// NEW: Handle account selection change
+	async onAccountChange(accountName) {
+		this.selectedAccount = accountName;
+		
+		if (accountName) {
+			// Enable sync button and update text
+			this.wrapper.find("#btn-sync-all")
+				.text("Sync All Products")
+				.prop("disabled", false)
+				.removeClass("btn-success")
+				.addClass("btn-primary");
+			
+			// Refresh product count and table
+			await this.fetchProductCount();
+			if (this.shopifyProductTable) {
+				const newProducts = await this.fetchShopifyProducts();
+				this.shopifyProductTable.refresh(newProducts);
+			}
+		} else {
+			// Disable sync button
+			this.wrapper.find("#btn-sync-all")
+				.text("Select Account First")
+				.prop("disabled", true);
+			
+			// Clear counts
+			this.wrapper.find("#count-products-shopify").text("-");
+			this.wrapper.find("#count-products-erpnext").text("-");
+			this.wrapper.find("#count-products-synced").text("-");
 		}
 	}
 
@@ -159,13 +223,42 @@ shopify.ProductImporter = class {
 		this.wrapper.find(".shopify-datatable-footer").show();
 	}
 
+	// UPDATED: Add account validation and parameter
+	async fetchProductCount() {
+		if (!this.selectedAccount) {
+			return;
+		}
+
+		try {
+			const {
+				message: { erpnextCount, shopifyCount, syncedCount },
+			} = await frappe.call({
+				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_product_count",
+				args: { account: this.selectedAccount }, // Add account parameter
+			});
+
+			this.wrapper.find("#count-products-shopify").text(shopifyCount);
+			this.wrapper.find("#count-products-erpnext").text(erpnextCount);
+			this.wrapper.find("#count-products-synced").text(syncedCount);
+		} catch (error) {
+			frappe.throw(__("Error fetching product count."));
+		}
+	}
+
 	async fetchShopifyProducts(from_ = null) {
+		if (!this.selectedAccount) {
+			return [];
+		}
+
 		try {
 			const {
 				message: { products, nextUrl, prevUrl },
 			} = await frappe.call({
 				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_shopify_products",
-				args: { from_ },
+				args: { 
+					from_,
+					account: this.selectedAccount // Add account parameter
+				},
 			});
 			this.nextUrl = nextUrl;
 			this.prevUrl = prevUrl;
@@ -256,10 +349,19 @@ shopify.ProductImporter = class {
 		this.wrapper.on("click", "#btn-sync-all", (e) => this.syncAll(e));
 	}
 
+	// UPDATED: Add account validation and parameter
 	async syncProduct(product) {
+		if (!this.selectedAccount) {
+			frappe.throw(__("Please select a Shopify account first."));
+			return false;
+		}
+
 		const { message: status } = await frappe.call({
 			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.sync_product",
-			args: { product },
+			args: { 
+				product,
+				account: this.selectedAccount // Add account parameter
+			},
 		});
 
 		if (status) this.fetchProductCount();
@@ -267,10 +369,19 @@ shopify.ProductImporter = class {
 		return status;
 	}
 
+	// UPDATED: Add account validation and parameter
 	async resyncProduct(product) {
+		if (!this.selectedAccount) {
+			frappe.throw(__("Please select a Shopify account first."));
+			return false;
+		}
+
 		const { message: status } = await frappe.call({
 			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.resync_product",
-			args: { product },
+			args: { 
+				product,
+				account: this.selectedAccount // Add account parameter
+			},
 		});
 
 		if (status) this.fetchProductCount();
@@ -294,7 +405,13 @@ shopify.ProductImporter = class {
 		this.shopifyProductTable.clearToastMessage();
 	}
 
+	// UPDATED: Add account validation and parameter
 	syncAll() {
+		if (!this.selectedAccount) {
+			frappe.throw(__("Please select a Shopify account first."));
+			return;
+		}
+
 		this.checkSyncStatus();
 		this.toggleSyncAllButton();
 
@@ -303,6 +420,7 @@ shopify.ProductImporter = class {
 		} else {
 			frappe.call({
 				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_products",
+				args: { account: this.selectedAccount }, // Add account parameter
 			});
 		}
 

@@ -10,12 +10,22 @@ from ecommerce_integrations.shopify.constants import (
 	CUSTOMER_ID_FIELD,
 	MODULE_NAME,
 	SETTING_DOCTYPE,
+	ACCOUNT_DOCTYPE,
 )
 
 
 class ShopifyCustomer(EcommerceCustomer):
-	def __init__(self, customer_id: str):
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+	def __init__(self, customer_id: str, account=None):
+		# Multi-tenant: Use account-specific settings or fallback to legacy singleton
+		if account:
+			if isinstance(account, str):
+				self.setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+			else:
+				self.setting = account
+		else:
+			# Legacy fallback for backward compatibility
+			self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: dict[str, Any]) -> None:

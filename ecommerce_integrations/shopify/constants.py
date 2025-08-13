@@ -3,7 +3,8 @@
 
 
 MODULE_NAME = "shopify"
-SETTING_DOCTYPE = "Shopify Setting"
+SETTING_DOCTYPE = "Shopify Setting"  # Legacy singleton
+ACCOUNT_DOCTYPE = "Shopify Account"  # New multi-tenant account
 OLD_SETTINGS_DOCTYPE = "Shopify Settings"
 
 API_VERSION = "2024-01"
