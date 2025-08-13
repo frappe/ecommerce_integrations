@@ -181,21 +181,33 @@ class ShopifyAccount(Document):
 		# Clear existing mappings
 		self.warehouse_mappings = []
 		
-		# Import Session from shopify
-		from shopify.session import Session
-		from ecommerce_integrations.shopify.constants import API_VERSION
+		# Pass account parameter explicitly
+		self._fetch_locations_with_session(account=self)
 		
-		# Use Session.temp directly with account credentials
-		with Session.temp(self.get_shop_url(), API_VERSION, self.get_access_token()):
-			# Fetch locations from Shopify
-			try:
-				for locations in PaginatedIterator(Location.find()):
-					for location in locations:
-						self.append("warehouse_mappings", {
-							"shopify_location_id": location.id,
-							"shopify_location_name": location.name
-						})
-			except Exception as e:
-				frappe.throw(_("Failed to fetch Shopify locations: {0}").format(str(e)))
-
 		frappe.msgprint(_("Successfully fetched {0} locations from Shopify").format(len(self.warehouse_mappings)))
+
+	@connection.temp_shopify_session
+	def _fetch_locations_with_session(self, account=None):
+		"""Internal method to fetch locations with session context."""
+		try:
+			for locations in PaginatedIterator(Location.find()):
+				for location in locations:
+					self.append("warehouse_mappings", {
+						"shopify_location_id": location.id,
+						"shopify_location_name": location.name
+					})
+		except Exception as e:
+			# Import the logging function
+			from ecommerce_integrations.shopify.utils import create_shopify_log
+			
+			# Create error log entry
+			create_shopify_log(
+				status="Error",
+				method="fetch_shopify_locations",
+				message=f"Failed to fetch Shopify locations: {str(e)}",
+				exception=e,
+				account=account
+			)
+			
+			# Then throw the exception for user feedback
+			frappe.throw(_("Failed to fetch Shopify locations: {0}").format(str(e)))
