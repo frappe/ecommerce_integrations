@@ -58,6 +58,8 @@
         "section_break_mappings",
         "warehouse_mappings",
         "tax_mappings",
+        "default_sales_tax_account",
+        "default_shipping_charges_account",
         "section_break_operational",
         "last_sync_status",
         "last_sync_at",
@@ -377,6 +379,20 @@
             "fieldtype": "Table",
             "label": "Tax Mappings",
             "options": "Shopify Tax Account"
+        },
+        {
+            "fieldname": "default_sales_tax_account",
+            "fieldtype": "Link",
+            "label": "Default Sales Tax Account",
+            "options": "Account",
+            "description": "When no sales tax mapping is found this tax account will be used as the default account. This is only applied for Sales Tax. Any shipping related charges still need to be mapped separately."
+        },
+        {
+            "fieldname": "default_shipping_charges_account",
+            "fieldtype": "Link",
+            "label": "Default Shipping Charges Account",
+            "options": "Account",
+            "description": "When no shipping charge account mapping is found this account will be used as the default account."
         },
         {
             "fieldname": "section_break_operational",

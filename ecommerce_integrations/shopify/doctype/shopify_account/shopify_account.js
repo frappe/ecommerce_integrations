@@ -13,6 +13,9 @@ frappe.ui.form.on("Shopify Account", {
 				});
 			},
 		});
+
+		// Set up form description
+		frm.set_intro(__("This record serves as the Shopify Settings for a single Shopify store. Create one record per store."));
 	},
 
 	fetch_shopify_locations: function (frm) {
@@ -26,6 +29,11 @@ frappe.ui.form.on("Shopify Account", {
 	},
 
 	refresh: function (frm) {
+		// Make shop_domain read-only after save
+		if (!frm.doc.__islocal) {
+			frm.set_df_property("shop_domain", "read_only", 1);
+		}
+
 		frm.add_custom_button(__("Import Products"), function () {
 			if (frm.doc.enabled && frm.doc.shop_domain) {
 				frappe.set_route("shopify-import-products", {"account": frm.doc.name});
