@@ -30,20 +30,20 @@ def prepare_delivery_note(payload, request_id=None, account=None):
 			create_delivery_note(order, account, sales_order)
 			create_shopify_log(
 				status="Success",
-				reference_document=account.name if hasattr(account, 'name') else None
+				account=account
 			)
 		else:
 			create_shopify_log(
 				status="Invalid", 
 				message="Sales Order not found for syncing delivery note.",
-				reference_document=account.name if hasattr(account, 'name') else None
+				account=account
 			)
 	except Exception as e:
 		create_shopify_log(
 			status="Error", 
 			exception=e, 
 			rollback=True,
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 
 

@@ -65,12 +65,12 @@ def sync_sales_order(payload, request_id=None, account=None):
 			status="Error", 
 			exception=e, 
 			rollback=True,
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 	else:
 		create_shopify_log(
 			status="Success",
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 
 
@@ -402,7 +402,7 @@ def cancel_order(payload, request_id=None, account=None):
 			create_shopify_log(
 				status="Invalid", 
 				message="Sales Order does not exist",
-				reference_document=account.name if hasattr(account, 'name') else None
+				account=account
 			)
 			return
 
@@ -424,12 +424,12 @@ def cancel_order(payload, request_id=None, account=None):
 		create_shopify_log(
 			status="Error", 
 			exception=e,
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 	else:
 		create_shopify_log(
 			status="Success",
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 
 
@@ -493,7 +493,7 @@ def _sync_old_orders_for_account(account):
 				method=EVENT_MAPPER["orders/create"],
 				request_data=json.dumps(order),
 				make_new=True,
-				reference_document=account.name
+				account=account
 			)
 			sync_sales_order(order, request_id=log.name, account=account)
 

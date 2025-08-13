@@ -140,11 +140,10 @@ def _log_inventory_update_status(inventory_levels, account=None) -> None:
 
 	log_message = f"Updated {percent_successful * 100}% items\n\n" + log_message
 
-	# Include account reference in log if available
-	reference_document = account.name if account else None
+
 	create_shopify_log(
 		method="update_inventory_on_shopify", 
 		status=status, 
 		message=log_message,
-		reference_document=reference_document
+		account=account
 	)

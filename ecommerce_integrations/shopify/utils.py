@@ -70,16 +70,19 @@ def resolve_account_context(account=None):
 
 def create_shopify_log(account=None, **kwargs):
 	"""Enhanced logging with account context support."""
-	reference_document = None
+	# Include account context in the message instead of using unsupported reference_document parameter
 	
 	if account:
 		account_doc = resolve_account_context(account)
 		if hasattr(account_doc, 'name') and account_doc.doctype == "Shopify Account":
-			reference_document = account_doc.name
+			# Include account info in message if not already present
+			if 'message' in kwargs and kwargs['message']:
+				kwargs['message'] = f"[Account: {account_doc.name}] {kwargs['message']}"
+			elif 'message' not in kwargs:
+				kwargs['message'] = f"Account: {account_doc.name}"
 	
 	return create_log(
 		module_def=MODULE_NAME, 
-		reference_document=reference_document,
 		**kwargs
 	)
 

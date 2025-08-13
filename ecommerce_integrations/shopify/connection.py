@@ -132,7 +132,7 @@ def process_request(data, event, account):
 	log = create_shopify_log(
 		method=EVENT_MAPPER[event], 
 		request_data=data,
-		reference_document=account.name
+		account=account
 	)
 
 	# enqueue background job with account context
@@ -155,7 +155,7 @@ def _validate_request(req, hmac_header, account):
 		create_shopify_log(
 			status="Error", 
 			request_data=req.data,
-			reference_document=account.name,
+			account=account,
 			exception="Invalid HMAC signature"
 		)
 		frappe.throw(_("Unverified Webhook Data"))
