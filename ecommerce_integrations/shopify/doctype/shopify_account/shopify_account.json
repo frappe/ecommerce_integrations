@@ -119,19 +119,6 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "eg: frappe.myshopify.com",
-   "fieldname": "shop_domain",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Shop URL",
-   "reqd": 1,
-   "unique": 1
-  },
-  {
-   "fieldname": "column_break_credentials",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "public_app_key",
    "fieldtype": "Data",
    "label": "Public App Key",
@@ -291,6 +278,11 @@
    "fieldname": "upload_variants_as_items",
    "fieldtype": "Check",
    "label": "Upload ERPNext Variants as Shopify Items"
+  },
+  {
+   "fieldname": "section_break_inventory",
+   "fieldtype": "Section Break",
+   "label": "Inventory Settings"
   },
   {
    "default": "0",
