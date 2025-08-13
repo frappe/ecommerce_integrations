@@ -34,18 +34,15 @@ def sync_sales_order(payload, request_id=None, account=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
-	# Get account context
-	if isinstance(account, str):
-		account = frappe.get_doc("Shopify Account", account)
-	elif not account:
-		# Fallback to legacy mode
-		account = frappe.get_doc(SETTING_DOCTYPE)
+	# FIXED: Use standardized account resolution
+	from ecommerce_integrations.shopify.utils import resolve_account_context
+	account = resolve_account_context(account)
 
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		create_shopify_log(
 			status="Invalid", 
 			message="Sales order already exists, not synced",
-			reference_document=account.name if hasattr(account, 'name') else None
+			account=account
 		)
 		return
 	try:

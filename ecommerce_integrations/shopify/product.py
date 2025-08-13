@@ -26,12 +26,16 @@ class ShopifyProduct:
 		variant_id: str | None = None,
 		sku: str | None = None,
 		has_variants: int | None = 0,
+		account=None,  # NEW: Add account parameter
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
 		self.has_variants = has_variants
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		
+		# Use standardized account resolution
+		from ecommerce_integrations.shopify.utils import resolve_account_context
+		self.setting = resolve_account_context(account)
 
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
@@ -362,17 +366,19 @@ def upload_erpnext_item(doc, method=None):
 		pluck="name"
 	)
 
-	# Legacy fallback if no accounts found
+	# FIXED: Use standardized account resolution for legacy fallback
 	if not enabled_accounts:
-		setting = frappe.get_doc(SETTING_DOCTYPE)
+		from ecommerce_integrations.shopify.utils import resolve_account_context
+		setting = resolve_account_context()  # This will get legacy setting
 		if setting.is_enabled() and setting.upload_erpnext_items:
 			_upload_item_to_account(item, template_item, None)  # Use legacy singleton
 		return
 
-	# Upload to all enabled accounts
+	# FIXED: Use standardized resolution for account loading
 	for account_name in enabled_accounts:
 		try:
-			account = frappe.get_doc(ACCOUNT_DOCTYPE, account_name)
+			from ecommerce_integrations.shopify.utils import resolve_account_context
+			account = resolve_account_context(account_name)
 			_upload_item_to_account(item, template_item, account)
 		except Exception as e:
 			frappe.log_error(
@@ -383,13 +389,10 @@ def upload_erpnext_item(doc, method=None):
 
 def _upload_item_to_account(item, template_item, account):
 	"""Upload item to a specific Shopify account or legacy singleton."""
-	# Use account settings or fallback to legacy singleton
-	if account:
-		setting = account
-		account_context = f" (Account: {account.name})"
-	else:
-		setting = frappe.get_doc(SETTING_DOCTYPE)
-		account_context = " (Legacy)"
+	# Use standardized account resolution
+	from ecommerce_integrations.shopify.utils import resolve_account_context
+	setting = resolve_account_context(account)
+	account_context = f" (Account: {setting.name})" if hasattr(setting, 'name') else " (Legacy)"
 
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
@@ -409,12 +412,12 @@ def _upload_item_to_account(item, template_item, account):
 	is_new_product = not bool(product_id)
 
 	# Set up Shopify session context for this account
-	if account:
-		with temp_shopify_session(account):
+	if hasattr(setting, 'name'):  # Multi-tenant account
+		with temp_shopify_session(account=setting):
 			_process_item_upload(item, template_item, setting, is_new_product, product_id, account_context)
-	else:
-		# Legacy singleton session
-		_process_item_upload(item, template_item, setting, is_new_product, product_id, account_context)
+	else:  # Legacy singleton
+		with temp_shopify_session():
+			_process_item_upload(item, template_item, setting, is_new_product, product_id, account_context)
 
 
 def _process_item_upload(item, template_item, setting, is_new_product, product_id, account_context):

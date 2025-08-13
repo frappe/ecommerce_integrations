@@ -16,15 +16,9 @@ from ecommerce_integrations.shopify.constants import (
 
 class ShopifyCustomer(EcommerceCustomer):
 	def __init__(self, customer_id: str, account=None):
-		# Multi-tenant: Use account-specific settings or fallback to legacy singleton
-		if account:
-			if isinstance(account, str):
-				self.setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
-			else:
-				self.setting = account
-		else:
-			# Legacy fallback for backward compatibility
-			self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		# Standardized account resolution
+		from ecommerce_integrations.shopify.utils import resolve_account_context
+		self.setting = resolve_account_context(account)
 		
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 

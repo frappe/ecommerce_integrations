@@ -19,56 +19,30 @@ from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def temp_shopify_session(func=None, *, account=None):
-	"""Account-aware decorator for Shopify API access.
-	
-	Usage:
-	1. As decorator with account parameter: @temp_shopify_session(account=account_doc)
-	2. As decorator for methods that have account context: @temp_shopify_session
-	3. Legacy mode (fallback to singleton): @temp_shopify_session
-	"""
-	
-	def decorator(func):
-		@functools.wraps(func)
+	"""Enhanced decorator with account context support."""
+	def decorator(f):
+		@functools.wraps(f)
 		def wrapper(*args, **kwargs):
-			# no auth in testing
-			if frappe.flags.in_test:
-				return func(*args, **kwargs)
+			# Extract account from kwargs if not provided
+			account_param = account or kwargs.get('account')
 			
-			# Determine account to use
-			shopify_account = None
-			
-			# Option 1: Account explicitly passed to decorator
-			if account:
-				shopify_account = account
-			# Option 2: Account in function arguments
-			elif args and hasattr(args[0], 'doctype') and args[0].doctype == "Shopify Account":
-				shopify_account = args[0]
-			# Option 3: Account passed as keyword argument
-			elif 'account' in kwargs:
-				shopify_account = kwargs.get('account')
-			# Option 4: Legacy fallback to singleton (for backward compatibility)
+			if account_param:
+				from ecommerce_integrations.shopify.utils import resolve_account_context
+				account_doc = resolve_account_context(account_param)
+				shopify_url = account_doc.get_shop_url()
+				password = account_doc.get_access_token()
 			else:
-				setting = frappe.get_doc(SETTING_DOCTYPE)
-				if setting.is_enabled():
-					auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
-					with Session.temp(*auth_details):
-						return func(*args, **kwargs)
-				return
+				# Use standardized legacy fallback
+				from ecommerce_integrations.shopify.utils import resolve_account_context
+				setting = resolve_account_context(None)  # Gets legacy setting
+				shopify_url = setting.shopify_url
+				password = setting.get_password("password")
 			
-			# Use account-specific credentials
-			if shopify_account and shopify_account.is_enabled():
-				auth_details = (
-					shopify_account.shop_domain,
-					shopify_account.api_version or API_VERSION,
-					shopify_account.get_access_token()
-				)
+			with Session.temp(shopify_url, API_VERSION, password):
+				return f(*args, **kwargs)
 				
-				with Session.temp(*auth_details):
-					return func(*args, **kwargs)
-			
 		return wrapper
 	
-	# Handle both @temp_shopify_session and @temp_shopify_session(account=...)
 	if func is None:
 		return decorator
 	else:

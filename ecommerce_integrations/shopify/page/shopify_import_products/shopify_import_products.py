@@ -80,91 +80,22 @@ def get_shopify_product_count(account=None):
 
 @frappe.whitelist()
 def sync_product(product, account=None):
-	try:
-		shopify_product = ShopifyProduct(product, account=account)
-		shopify_product.sync_product()
-
-		return True
-	except Exception:
-		frappe.db.rollback()
-		return False
-
+	"""Sync a single product with account context."""
+	shopify_product = ShopifyProduct(product, account=account)  # Pass account parameter
+	shopify_product.sync_product()
+	return True
 
 @frappe.whitelist()
 def resync_product(product, account=None):
+	"""Resync a single product with account context."""
 	return _resync_product(product, account=account)
-
 
 @temp_shopify_session
 def _resync_product(product, account=None):
-	savepoint = "shopify_resync_product"
-	try:
-		item = Product.find(product)
-
-		frappe.db.savepoint(savepoint)
-		for variant in item.variants:
-			shopify_product = ShopifyProduct(product, variant_id=variant.id, account=account)
-			shopify_product.sync_product()
-
-		return True
-	except Exception:
-		frappe.db.rollback(save_point=savepoint)
-		return False
-
-
-def is_synced(product):
-	return ecommerce_item.is_synced(MODULE_NAME, integration_item_code=product)
-
-
-@frappe.whitelist()
-def import_all_products(account=None):
-	frappe.enqueue(
-		queue_sync_all_products,
-		queue="long",
-		job_name=SYNC_JOB_NAME,
-		key=REALTIME_KEY,
-		account=account,
-	)
-
-
-@frappe.whitelist()
-def get_shopify_accounts():
-	"""Get list of enabled Shopify accounts for account selection"""
-	try:
-		accounts = frappe.get_all(
-			ACCOUNT_DOCTYPE,
-			filters={"enabled": 1},  # Changed from "enable_shopify" to "enabled"
-			fields=["name", "shop_domain"],  # Changed from "shopify_url" to "shop_domain"
-			order_by="creation desc"
-		)
-		
-		# Format the shop_domain to include https:// for display purposes
-		for account in accounts:
-			if account.get("shop_domain"):
-				account["shopify_url"] = f"https://{account['shop_domain']}"
-			else:
-				account["shopify_url"] = "Not configured"
-		
-		# Add legacy option for backward compatibility
-		legacy_setting = frappe.db.exists(SETTING_DOCTYPE)
-		if legacy_setting:
-			try:
-				legacy_doc = frappe.get_doc(SETTING_DOCTYPE)
-				if legacy_doc.enable_shopify:
-					accounts.insert(0, {
-						"name": "Legacy Setting",
-						"shopify_url": legacy_doc.shopify_url or "Legacy"
-					})
-			except Exception as e:
-				frappe.log_error(f"Error accessing legacy Shopify settings: {str(e)}", "Shopify Import Products")
-		
-		return accounts
-		
-	except Exception as e:
-		frappe.log_error(f"Error fetching Shopify accounts: {str(e)}", "Shopify Import Products")
-		# Return empty list instead of throwing error to prevent UI crash
-		return []
-
+	"""Internal resync with account context."""
+	shopify_product = ShopifyProduct(product, account=account)  # Pass account parameter
+	shopify_product.sync_product()
+	return True
 
 def queue_sync_all_products(*args, **kwargs):
 	account = kwargs.get('account')
@@ -188,7 +119,7 @@ def queue_sync_all_products(*args, **kwargs):
 					publish(f"Product {product.id} already synced. Skipping...")
 					continue
 
-				shopify_product = ShopifyProduct(product.id, account=account)
+				shopify_product = ShopifyProduct(product.id, account=account)  # Pass account parameter
 				shopify_product.sync_product()
 
 				publish(f"✅ Synced Product {product.id}", synced=True)
@@ -224,3 +155,54 @@ def publish(message, synced=False, error=False, done=False, br=True):
 			"done": done,
 		},
 	)
+
+
+@frappe.whitelist()
+def get_shopify_accounts():
+	"""Get all enabled Shopify accounts with legacy fallback support."""
+	from ecommerce_integrations.shopify.utils import resolve_account_context
+	
+	try:
+		# Get all enabled Shopify accounts
+		accounts = frappe.get_all(
+			ACCOUNT_DOCTYPE,
+			filters={"enabled": 1},
+			fields=["name", "account_title", "shop_domain", "company"]
+		)
+		
+		# If no multi-tenant accounts found, check legacy setting
+		if not accounts:
+			try:
+				legacy_setting = resolve_account_context()  # Gets legacy setting
+				if legacy_setting.is_enabled():
+					# Return legacy setting as a single account option
+					return [{
+						"name": "legacy",
+						"shop_url": legacy_setting.shopify_url or "",
+						"company": legacy_setting.company or "",
+						"title": "Legacy Shopify Setting"
+					}]
+			except:
+				# No legacy setting available
+				pass
+			
+			return []
+		
+		# Format multi-tenant accounts for frontend display
+		formatted_accounts = []
+		for account in accounts:
+			formatted_accounts.append({
+				"name": account.name,
+				"shop_url": f"https://{account.shop_domain}" if account.shop_domain else "",
+				"company": account.company or "",
+				"title": account.account_title or account.shop_domain
+			})
+		
+		return formatted_accounts
+		
+	except Exception as e:
+		frappe.log_error(
+			message=f"Error fetching Shopify accounts: {str(e)}",
+			title="Shopify Import Products Error"
+		)
+		return []

@@ -31,7 +31,8 @@ def update_inventory_on_shopify() -> None:
 		return
 	
 	for account_data in enabled_accounts:
-		account = frappe.get_doc(ACCOUNT_DOCTYPE, account_data.name)
+		from ecommerce_integrations.shopify.utils import resolve_account_context
+		account = resolve_account_context(account_data.name)
 		_update_inventory_for_account(account)
 
 
