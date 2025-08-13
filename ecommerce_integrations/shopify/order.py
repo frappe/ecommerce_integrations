@@ -476,32 +476,22 @@ def _sync_old_orders_for_account(account):
 	"""Sync old orders for a specific Shopify account."""
 	if not account.is_enabled():
 		return
-	
+
 	# Check if account has old order sync enabled
-	# TODO: Add old_orders_sync fields to Shopify Account doctype
-	# For now, we'll assume accounts don't need old order sync by default
-	# This should be controlled by account-specific settings
-	
-	# Placeholder for account-specific old order sync logic
-	# This would need additional fields in Shopify Account doctype:
-	# - sync_old_orders (Check)
-	# - old_orders_from (Datetime) 
-	# - old_orders_to (Datetime)
-	
-	if not hasattr(account, 'sync_old_orders') or not cint(account.sync_old_orders):
+	if not cint(account.sync_old_orders):
 		return
-	
+
 	# Use account-specific session
 	with temp_shopify_session(account=account):
 		orders = _fetch_old_orders(
-			getattr(account, 'old_orders_from', None), 
-			getattr(account, 'old_orders_to', None)
+			account.old_orders_from,
+			account.old_orders_to
 		)
 
 		for order in orders:
 			log = create_shopify_log(
-				method=EVENT_MAPPER["orders/create"], 
-				request_data=json.dumps(order), 
+				method=EVENT_MAPPER["orders/create"],
+				request_data=json.dumps(order),
 				make_new=True,
 				reference_document=account.name
 			)

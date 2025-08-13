@@ -100,20 +100,32 @@
    "collapsible": 0,
    "fieldname": "section_break_credentials",
    "fieldtype": "Section Break",
-   "label": "Credentials"
+   "label": "Authentication Details"
   },
   {
    "fieldname": "access_token",
    "fieldtype": "Password",
-   "label": "Access Token",
+   "label": "Password / Access Token",
    "mandatory_depends_on": "eval:doc.enabled"
   },
   {
    "fieldname": "shared_secret",
-   "fieldtype": "Password",
-   "label": "Shared Secret",
-   "mandatory_depends_on": "eval:doc.enabled",
-   "description": "Used for webhook HMAC verification"
+   "fieldtype": "Data",
+   "label": "Shared secret / API Secret",
+   "mandatory_depends_on": "eval:doc.enabled"
+  },
+  {
+   "fieldname": "column_break_credentials",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "eg: frappe.myshopify.com",
+   "fieldname": "shop_domain",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Shop URL",
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "column_break_credentials",
