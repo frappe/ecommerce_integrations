@@ -419,8 +419,8 @@ shopify.ProductImporter = class {
 			frappe.msgprint(__("Sync already in progress"));
 		} else {
 			frappe.call({
-				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_products",
-				args: { account: this.selectedAccount }, // Add account parameter
+				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.queue_sync_all_products",
+				args: { account: this.selectedAccount },
 			});
 		}
 

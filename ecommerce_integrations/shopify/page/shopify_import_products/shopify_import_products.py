@@ -28,7 +28,7 @@ def fetch_all_products(from_=None, account=None):
 	products = []
 	for product in collection:
 		d = product.to_dict()
-		d["synced"] = is_synced(product.id)
+		d["synced"] = ecommerce_item.is_synced(MODULE_NAME, str(product.id))
 		products.append(d)
 
 	next_url = None
@@ -97,6 +97,7 @@ def _resync_product(product, account=None):
 	shopify_product.sync_product()
 	return True
 
+@frappe.whitelist()
 def queue_sync_all_products(*args, **kwargs):
 	account = kwargs.get('account')
 	start_time = process_time()
@@ -115,12 +116,12 @@ def queue_sync_all_products(*args, **kwargs):
 			try:
 				publish(f"Syncing product {product.id}", br=False)
 				frappe.db.savepoint(savepoint)
-				if is_synced(product.id):
+				if ecommerce_item.is_synced(MODULE_NAME, str(product.id)):
 					publish(f"Product {product.id} already synced. Skipping...")
 					continue
 
-				shopify_product = ShopifyProduct(product.id, account=account)  # Pass account parameter
-				shopify_product.sync_product()
+				shopify_product = ShopifyProduct(product.id, account=account)
+				shopify_product.sync_product(account=account)
 
 				publish(f"✅ Synced Product {product.id}", synced=True)
 

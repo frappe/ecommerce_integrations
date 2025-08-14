@@ -58,7 +58,7 @@ class ShopifyProduct:
 		)
 
 	@temp_shopify_session
-	def sync_product(self):
+	def sync_product(self, account=None):
 		if not self.is_synced():
 			shopify_product = Product.find(self.product_id)
 			product_dict = shopify_product.to_dict()
