@@ -18,35 +18,31 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def temp_shopify_session(func=None, *, account=None):
+def temp_shopify_session(f=None, *, account=None):
 	"""Enhanced decorator with account context support."""
-	def decorator(f):
-		@functools.wraps(f)
-		def wrapper(*args, **kwargs):
-			# Extract account from kwargs if not provided
-			account_param = account or kwargs.get('account')
-			
+	@functools.wraps(f)
+	def wrapper(*args, **kwargs):
+		# no auth in testing
+		if frappe.flags.in_test:
+			return f(*args, **kwargs)
+		
+		# Extract account from kwargs if not provided
+		account_param = account or kwargs.get('account')
+
+		from ecommerce_integrations.shopify.utils import resolve_account_context
+		setting = resolve_account_context(account_param) if account_param else frappe.get_doc(SETTING_DOCTYPE)
+		
+		if setting.is_enabled():
 			if account_param:
-				from ecommerce_integrations.shopify.utils import resolve_account_context
-				account_doc = resolve_account_context(account_param)
-				shopify_url = account_doc.get_shop_url()
-				password = account_doc.get_access_token()
+				shopify_url = setting.get_shop_url()
+				password = setting.get_access_token()
 			else:
-				# Use standardized legacy fallback
-				from ecommerce_integrations.shopify.utils import resolve_account_context
-				setting = resolve_account_context(None)  # Gets legacy setting
 				shopify_url = setting.shopify_url
 				password = setting.get_password("password")
-			
 			with Session.temp(shopify_url, API_VERSION, password):
 				return f(*args, **kwargs)
-				
-		return wrapper
-	
-	if func is None:
-		return decorator
-	else:
-		return decorator(func)
+			
+	return wrapper
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
