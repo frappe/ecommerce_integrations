@@ -6,7 +6,7 @@ cd ~ || exit
 
 sudo apt-get update
 sudo apt-get -y remove mysql-server mysql-client
-sudo apt-get -y install redis-server libcups2-dev mariadb-client-10.6 -qq
+sudo apt install libcups2-dev redis-server mariadb-client
 
 pip install frappe-bench
 
