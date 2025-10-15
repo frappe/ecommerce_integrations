@@ -9,6 +9,5 @@ from ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting impo
 def execute():
 	frappe.reload_doc("shopify", "doctype", "shopify_setting")
 
-	settings = frappe.get_doc(SETTING_DOCTYPE)
-	if settings.is_enabled():
+	if frappe.db.exists(SETTING_DOCTYPE, {"enable_shopify": 1}):
 		setup_custom_fields()

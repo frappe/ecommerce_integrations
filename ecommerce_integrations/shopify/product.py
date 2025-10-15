@@ -11,12 +11,15 @@ from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
 	ITEM_SELLING_RATE_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
 	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_shopify_setting_doc,
+	iter_enabled_shopify_settings,
+)
 
 
 class ShopifyProduct:
@@ -26,12 +29,14 @@ class ShopifyProduct:
 		variant_id: str | None = None,
 		sku: str | None = None,
 		has_variants: int | None = 0,
+		shopify_setting=None,
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
 		self.has_variants = has_variants
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		setting_ref = shopify_setting or getattr(frappe.flags, "shopify_setting", None)
+		self.setting = get_shopify_setting_doc(setting_ref, require_enabled=True)
 
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
@@ -328,7 +333,6 @@ def get_item_code(shopify_item):
 		return item.item_code
 
 
-@temp_shopify_session
 def upload_erpnext_item(doc, method=None):
 	"""This hook is called when inserting new or updating existing `Item`.
 
@@ -338,11 +342,6 @@ def upload_erpnext_item(doc, method=None):
 	template_item = item = doc  # alias for readability
 	# a new item recieved from ecommerce_integrations is being inserted
 	if item.flags.from_integration:
-		return
-
-	setting = frappe.get_doc(SETTING_DOCTYPE)
-
-	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
 	if frappe.flags.in_import:
@@ -355,16 +354,33 @@ def upload_erpnext_item(doc, method=None):
 		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
 		return
 
-	if doc.variant_of and not setting.upload_variants_as_items:
-		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
-		return
+	for setting_name in iter_enabled_shopify_settings():
+		setting = get_shopify_setting_doc(setting_name, require_enabled=True)
+		if not setting.upload_erpnext_items:
+			continue
+
+		if doc.variant_of and not setting.upload_variants_as_items:
+			msgprint(_("Enable variant sync in setting to upload item to Shopify for {0}.").format(setting.shopify_url))
+			continue
+
+		previous_flag = getattr(frappe.flags, "shopify_setting", None)
+		frappe.flags.shopify_setting = setting.name
+		try:
+			_upload_item_for_setting(setting, item, template_item)
+		finally:
+			frappe.flags.shopify_setting = previous_flag
+
+
+@temp_shopify_session
+def _upload_item_for_setting(setting, item, template_item):
+	local_template_item = template_item
 
 	if item.variant_of:
-		template_item = frappe.get_doc("Item", item.variant_of)
+		local_template_item = frappe.get_doc("Item", item.variant_of)
 
 	product_id = frappe.db.get_value(
 		"Ecommerce Item",
-		{"erpnext_item_code": template_item.name, "integration": MODULE_NAME},
+		{"erpnext_item_code": local_template_item.name, "integration": MODULE_NAME},
 		"integration_item_code",
 	)
 	is_new_product = not bool(product_id)
@@ -374,27 +390,27 @@ def upload_erpnext_item(doc, method=None):
 		product.published = False
 		product.status = "active" if setting.sync_new_item_as_active else "draft"
 
-		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
+		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=local_template_item)
 		is_successful = product.save()
 
 		if is_successful:
 			update_default_variant_properties(
 				product,
-				sku=template_item.item_code,
-				price=template_item.get(ITEM_SELLING_RATE_FIELD),
-				is_stock_item=template_item.is_stock_item,
+				sku=local_template_item.item_code,
+				price=local_template_item.get(ITEM_SELLING_RATE_FIELD),
+				is_stock_item=local_template_item.is_stock_item,
 			)
 			if item.variant_of:
 				product.options = []
 				product.variants = []
 				variant_attributes = {
-					"title": template_item.item_name,
+					"title": local_template_item.item_name,
 					"sku": item.item_code,
 					"price": item.get(ITEM_SELLING_RATE_FIELD),
 				}
-				max_index_range = min(3, len(template_item.attributes))
+				max_index_range = min(3, len(local_template_item.attributes))
 				for i in range(0, max_index_range):
-					attr = template_item.attributes[i]
+					attr = local_template_item.attributes[i]
 					product.options.append(
 						{
 							"name": attr.attribute,
@@ -406,14 +422,12 @@ def upload_erpnext_item(doc, method=None):
 					try:
 						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
 					except IndexError:
-						frappe.throw(
-							_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
-						)
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
 				product.variants.append(Variant(variant_attributes))
 
 			product.save()  # push variant
 
-			ecom_items = list(set([item, template_item]))
+			ecom_items = list(set([item, local_template_item]))
 			for d in ecom_items:
 				ecom_item = frappe.get_doc(
 					{
@@ -433,19 +447,19 @@ def upload_erpnext_item(doc, method=None):
 	elif setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
-			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
+			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=local_template_item)
 			if not item.variant_of:
 				update_default_variant_properties(
 					product,
-					is_stock_item=template_item.is_stock_item,
+					is_stock_item=local_template_item.is_stock_item,
 					price=item.get(ITEM_SELLING_RATE_FIELD),
 				)
 			else:
 				variant_attributes = {"sku": item.item_code, "price": item.get(ITEM_SELLING_RATE_FIELD)}
 				product.options = []
-				max_index_range = min(3, len(template_item.attributes))
+				max_index_range = min(3, len(local_template_item.attributes))
 				for i in range(0, max_index_range):
-					attr = template_item.attributes[i]
+					attr = local_template_item.attributes[i]
 					product.options.append(
 						{
 							"name": attr.attribute,
@@ -457,9 +471,7 @@ def upload_erpnext_item(doc, method=None):
 					try:
 						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
 					except IndexError:
-						frappe.throw(
-							_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
-						)
+						frappe.throw(_("Shopify Error: Missing value for attribute {}").format(attr.attribute))
 				product.variants.append(Variant(variant_attributes))
 
 			is_successful = product.save()

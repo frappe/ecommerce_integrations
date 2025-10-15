@@ -14,7 +14,8 @@ from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYP
 class TestShopifyConnection(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
-		cls.setting = frappe.get_doc(SETTING_DOCTYPE)
+		setting_name = frappe.db.get_value(SETTING_DOCTYPE, {"shopify_url": "frappetest.myshopify.com"}, "name")
+		cls.setting = frappe.get_doc(SETTING_DOCTYPE, setting_name)
 
 	@unittest.skip("Can't run these tests in CI")
 	def test_register_webhooks(self):

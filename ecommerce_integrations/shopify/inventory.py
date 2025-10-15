@@ -12,7 +12,11 @@ from ecommerce_integrations.controllers.inventory import (
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_shopify_setting_doc,
+	iter_enabled_shopify_settings,
+)
 
 
 def update_inventory_on_shopify() -> None:
@@ -20,19 +24,31 @@ def update_inventory_on_shopify() -> None:
 
 	Called by scheduler on configured interval.
 	"""
-	setting = frappe.get_doc(SETTING_DOCTYPE)
+	for setting_name in iter_enabled_shopify_settings():
+		setting = get_shopify_setting_doc(setting_name, require_enabled=True)
 
-	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
-		return
+		if not setting.update_erpnext_stock_levels_to_shopify:
+			continue
 
-	if not need_to_run(SETTING_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
-		return
+		previous_flag = getattr(frappe.flags, "shopify_setting", None)
+		frappe.flags.shopify_setting = setting.name
 
-	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
-	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
+		try:
+			if not need_to_run(
+				SETTING_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync", docname=setting.name
+			):
+				continue
 
-	if inventory_levels:
-		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
+			warehous_map = setting.get_erpnext_to_integration_wh_mapping()
+			if not warehous_map:
+				continue
+
+			inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
+
+			if inventory_levels:
+				upload_inventory_data_to_shopify(inventory_levels, warehous_map)
+		finally:
+			frappe.flags.shopify_setting = previous_flag
 
 
 @temp_shopify_session

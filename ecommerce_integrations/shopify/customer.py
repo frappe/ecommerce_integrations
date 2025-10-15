@@ -9,13 +9,13 @@ from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
 )
+from ecommerce_integrations.shopify.utils import get_shopify_setting_doc
 
 
 class ShopifyCustomer(EcommerceCustomer):
-	def __init__(self, customer_id: str):
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+	def __init__(self, customer_id: str, shopify_setting=None):
+		self.setting = get_shopify_setting_doc(shopify_setting, require_enabled=True)
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: dict[str, Any]) -> None:

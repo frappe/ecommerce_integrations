@@ -28,6 +28,7 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import (
 	ensure_old_connector_is_disabled,
 	migrate_from_old_connector,
+	normalize_shop_domain,
 )
 
 
@@ -35,11 +36,15 @@ class ShopifySetting(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
+	def before_insert(self):
+		if self.shopify_url:
+			self.shopify_url = normalize_shop_domain(self.shopify_url)
+
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = self.shopify_url.replace("https://", "")
+			self.shopify_url = normalize_shop_domain(self.shopify_url)
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()

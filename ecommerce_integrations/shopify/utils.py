@@ -1,8 +1,11 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
+from __future__ import annotations
+
 import frappe
 from frappe import _, _dict
+from frappe.model.document import Document
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log import (
 	create_log,
@@ -14,7 +17,77 @@ from ecommerce_integrations.shopify.constants import (
 )
 
 
+def normalize_shop_domain(domain: str | None) -> str:
+	if not domain:
+		return ""
+
+	domain = domain.strip()
+	for prefix in ("https://", "http://"):
+		if domain.lower().startswith(prefix):
+			domain = domain[len(prefix) :]
+	return domain.strip().strip("/").lower()
+
+
+def get_shopify_setting_name_by_domain(shop_domain: str | None) -> str | None:
+	normalized = normalize_shop_domain(shop_domain)
+	if not normalized:
+		return None
+
+	return frappe.db.get_value(SETTING_DOCTYPE, {"shopify_url": normalized})
+
+
+def get_shopify_setting_doc(
+	shopify_setting: str | Document | None = None,
+	*,
+	require_enabled: bool = False,
+	allow_implicit_singleton: bool = True,
+) -> Document:
+	if isinstance(shopify_setting, Document):
+		doc = shopify_setting
+	elif isinstance(shopify_setting, str):
+		doc = frappe.get_doc(SETTING_DOCTYPE, shopify_setting)
+	elif shopify_setting is None:
+		doc = _resolve_default_shopify_setting(require_enabled=require_enabled, allow_implicit=allow_implicit_singleton)
+	else:
+		frappe.throw(_("Invalid Shopify Setting reference."))
+
+	if require_enabled and not doc.enable_shopify:
+		frappe.throw(_("Shopify Setting {0} is disabled.").format(doc.name))
+
+	return doc
+
+
+def _resolve_default_shopify_setting(*, require_enabled: bool, allow_implicit: bool) -> Document:
+	filters = {}
+	if require_enabled:
+		filters["enable_shopify"] = 1
+
+	names = frappe.get_all(SETTING_DOCTYPE, filters=filters, pluck="name")
+
+	if len(names) == 1:
+		return frappe.get_doc(SETTING_DOCTYPE, names[0])
+
+	if len(names) == 0:
+		frappe.throw(_("No Shopify Setting configured."))
+
+	if allow_implicit:
+		frappe.throw(_("Multiple Shopify Settings found. Please specify which store to act on."))
+
+	frappe.throw(_("Multiple Shopify Settings available; unable to pick a default."))
+
+
+def iter_enabled_shopify_settings(field: str = "name") -> list[str]:
+	return frappe.get_all(SETTING_DOCTYPE, filters={"enable_shopify": 1}, pluck=field)
+
+
 def create_shopify_log(**kwargs):
+	reference_docname = kwargs.get("reference_docname")
+	if not kwargs.get("reference_doctype") and getattr(frappe.flags, "shopify_setting", None):
+		kwargs.setdefault("reference_doctype", SETTING_DOCTYPE)
+
+	if not reference_docname and getattr(frappe.flags, "shopify_setting", None):
+		kwargs["reference_docname"] = frappe.flags.shopify_setting
+
 	return create_log(module_def=MODULE_NAME, **kwargs)
 
 
@@ -67,7 +140,8 @@ def _migrate_items_to_ecommerce_item(log):
 		log.save()
 		return
 
-	frappe.db.set_value(SETTING_DOCTYPE, SETTING_DOCTYPE, "is_old_data_migrated", 1)
+	for name in frappe.get_all(SETTING_DOCTYPE, pluck="name"):
+		frappe.db.set_value(SETTING_DOCTYPE, name, "is_old_data_migrated", 1)
 	log.status = "Success"
 	log.save()
 

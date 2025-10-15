@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "autoname": "field:shopify_url",
  "creation": "2021-04-13 13:30:54.909583",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -82,7 +83,9 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Shop URL",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify",
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "column_break_3",
@@ -390,7 +393,7 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "issingle": 1,
+ "issingle": 0,
  "links": [],
  "modified": "2023-10-24 10:38:49.247431",
  "modified_by": "Administrator",

@@ -9,6 +9,8 @@
   "integration",
   "status",
   "method",
+  "reference_doctype",
+  "reference_docname",
   "message",
   "traceback",
   "request_data",
@@ -41,6 +43,20 @@
    "fieldname": "method",
    "fieldtype": "Small Text",
    "label": "Method",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reference DocType",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reference_docname",
+   "fieldtype": "Dynamic Link",
+   "label": "Reference Document",
+   "options": "reference_doctype",
    "read_only": 1
   },
   {

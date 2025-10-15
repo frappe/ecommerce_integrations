@@ -2,22 +2,20 @@ import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 from frappe.utils import cint, cstr, getdate, nowdate
 
-from ecommerce_integrations.shopify.constants import (
-	ORDER_ID_FIELD,
-	ORDER_NUMBER_FIELD,
-	SETTING_DOCTYPE,
-)
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.constants import ORDER_ID_FIELD, ORDER_NUMBER_FIELD
+from ecommerce_integrations.shopify.utils import create_shopify_log, get_shopify_setting_doc
 
 
-def prepare_sales_invoice(payload, request_id=None):
+def prepare_sales_invoice(payload, request_id=None, shopify_setting=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	order = payload
 
 	frappe.set_user("Administrator")
-	setting = frappe.get_doc(SETTING_DOCTYPE)
+	setting = get_shopify_setting_doc(shopify_setting, require_enabled=True)
 	frappe.flags.request_id = request_id
+	previous_setting_flag = getattr(frappe.flags, "shopify_setting", None)
+	frappe.flags.shopify_setting = setting.name
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
@@ -28,6 +26,8 @@ def prepare_sales_invoice(payload, request_id=None):
 			create_shopify_log(status="Invalid", message="Sales Order not found for syncing sales invoice.")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
+	finally:
+		frappe.flags.shopify_setting = previous_setting_flag
 
 
 def create_sales_invoice(shopify_order, setting, so):

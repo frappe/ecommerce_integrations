@@ -19,7 +19,11 @@ from ecommerce_integrations.shopify.constants import (
 )
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
 from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_shopify_setting_doc,
+	iter_enabled_shopify_settings,
+)
 from ecommerce_integrations.utils.price_list import get_dummy_price_list
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
@@ -29,35 +33,40 @@ DEFAULT_TAX_FIELDS = {
 }
 
 
-def sync_sales_order(payload, request_id=None):
+def sync_sales_order(payload, request_id=None, shopify_setting=None):
 	order = payload
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
+	setting = get_shopify_setting_doc(shopify_setting, require_enabled=True)
 
-	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
-		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
-		return
+	previous_setting_flag = getattr(frappe.flags, "shopify_setting", None)
+	frappe.flags.shopify_setting = setting.name
+
 	try:
-		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
-		shopify_customer["billing_address"] = order.get("billing_address", "")
-		shopify_customer["shipping_address"] = order.get("shipping_address", "")
-		customer_id = shopify_customer.get("id")
-		if customer_id:
-			customer = ShopifyCustomer(customer_id=customer_id)
-			if not customer.is_synced():
-				customer.sync_customer(customer=shopify_customer)
-			else:
-				customer.update_existing_addresses(shopify_customer)
+		if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
+			create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
+			return
+		try:
+			shopify_customer = order.get("customer") if order.get("customer") is not None else {}
+			shopify_customer["billing_address"] = order.get("billing_address", "")
+			shopify_customer["shipping_address"] = order.get("shipping_address", "")
+			customer_id = shopify_customer.get("id")
+			if customer_id:
+				customer = ShopifyCustomer(customer_id=customer_id, shopify_setting=setting)
+				if not customer.is_synced():
+					customer.sync_customer(customer=shopify_customer)
+				else:
+					customer.update_existing_addresses(shopify_customer)
 
-		create_items_if_not_exist(order)
+			create_items_if_not_exist(order)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
-		create_order(order, setting)
-	except Exception as e:
-		create_shopify_log(status="Error", exception=e, rollback=True)
-	else:
-		create_shopify_log(status="Success")
-
+			create_order(order, setting)
+		except Exception as e:
+			create_shopify_log(status="Error", exception=e, rollback=True)
+		else:
+			create_shopify_log(status="Success")
+	finally:
+		frappe.flags.shopify_setting = previous_setting_flag
 
 def create_order(order, setting, company=None):
 	# local import to avoid circular dependencies
@@ -203,9 +212,9 @@ def get_order_taxes(shopify_order, setting, items):
 			taxes.append(
 				{
 					"charge_type": "Actual",
-					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
+					"account_head": get_tax_account_head(tax, setting, charge_type="sales_tax"),
 					"description": (
-						get_tax_account_description(tax)
+						get_tax_account_description(tax, setting)
 						or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax.get("price"),
@@ -259,17 +268,17 @@ def consolidate_order_taxes(taxes):
 	return tax_account_wise_data.values()
 
 
-def get_tax_account_head(tax, charge_type: Literal["shipping", "sales_tax"] | None = None):
+def get_tax_account_head(tax, setting, charge_type: Literal["shipping", "sales_tax"] | None = None):
 	tax_title = str(tax.get("title"))
 
 	tax_account = frappe.db.get_value(
 		"Shopify Tax Account",
-		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
+		{"parent": setting.name, "parenttype": SETTING_DOCTYPE, "shopify_tax": tax_title},
 		"tax_account",
 	)
 
 	if not tax_account and charge_type:
-		tax_account = frappe.db.get_single_value(SETTING_DOCTYPE, DEFAULT_TAX_FIELDS[charge_type])
+		tax_account = setting.get(DEFAULT_TAX_FIELDS[charge_type])
 
 	if not tax_account:
 		frappe.throw(_("Tax Account not specified for Shopify Tax {0}").format(tax.get("title")))
@@ -277,12 +286,12 @@ def get_tax_account_head(tax, charge_type: Literal["shipping", "sales_tax"] | No
 	return tax_account
 
 
-def get_tax_account_description(tax):
+def get_tax_account_description(tax, setting):
 	tax_title = tax.get("title")
 
 	tax_description = frappe.db.get_value(
 		"Shopify Tax Account",
-		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
+		{"parent": setting.name, "parenttype": SETTING_DOCTYPE, "shopify_tax": tax_title},
 		"tax_description",
 	)
 
@@ -320,8 +329,8 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 				taxes.append(
 					{
 						"charge_type": "Actual",
-						"account_head": get_tax_account_head(shipping_charge, charge_type="shipping"),
-						"description": get_tax_account_description(shipping_charge)
+						"account_head": get_tax_account_head(shipping_charge, setting, charge_type="shipping"),
+						"description": get_tax_account_description(shipping_charge, setting)
 						or shipping_charge["title"],
 						"tax_amount": shipping_charge_amount,
 						"cost_center": setting.cost_center,
@@ -332,9 +341,9 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 			taxes.append(
 				{
 					"charge_type": "Actual",
-					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
+					"account_head": get_tax_account_head(tax, setting, charge_type="sales_tax"),
 					"description": (
-						get_tax_account_description(tax)
+						get_tax_account_description(tax, setting)
 						or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax["price"],
@@ -356,7 +365,7 @@ def get_sales_order(order_id):
 		return frappe.get_doc("Sales Order", sales_order)
 
 
-def cancel_order(payload, request_id=None):
+def cancel_order(payload, request_id=None, shopify_setting=None):
 	"""Called by order/cancelled event.
 
 	When shopify order is cancelled there could be many different someone handles it.
@@ -367,6 +376,9 @@ def cancel_order(payload, request_id=None):
 	"""
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
+	setting = get_shopify_setting_doc(shopify_setting, require_enabled=False)
+	previous_setting_flag = getattr(frappe.flags, "shopify_setting", None)
+	frappe.flags.shopify_setting = setting.name
 
 	order = payload
 
@@ -398,12 +410,23 @@ def cancel_order(payload, request_id=None):
 		create_shopify_log(status="Error", exception=e)
 	else:
 		create_shopify_log(status="Success")
+	finally:
+		frappe.flags.shopify_setting = previous_setting_flag
 
 
 @temp_shopify_session
-def sync_old_orders():
-	shopify_setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+def sync_old_orders(shopify_setting=None):
+	if shopify_setting is None:
+		for setting_name in iter_enabled_shopify_settings():
+			sync_old_orders(shopify_setting=setting_name)
+		return
+
+	shopify_setting = get_shopify_setting_doc(shopify_setting, require_enabled=True)
+	previous_setting_flag = getattr(frappe.flags, "shopify_setting", None)
+	frappe.flags.shopify_setting = shopify_setting.name
+
 	if not cint(shopify_setting.sync_old_orders):
+		frappe.flags.shopify_setting = previous_setting_flag
 		return
 
 	orders = _fetch_old_orders(shopify_setting.old_orders_from, shopify_setting.old_orders_to)
@@ -412,11 +435,11 @@ def sync_old_orders():
 		log = create_shopify_log(
 			method=EVENT_MAPPER["orders/create"], request_data=json.dumps(order), make_new=True
 		)
-		sync_sales_order(order, request_id=log.name)
+		sync_sales_order(order, request_id=log.name, shopify_setting=shopify_setting.name)
 
-	shopify_setting = frappe.get_doc(SETTING_DOCTYPE)
 	shopify_setting.sync_old_orders = 0
 	shopify_setting.save()
+	frappe.flags.shopify_setting = previous_setting_flag
 
 
 def _fetch_old_orders(from_time, to_time):

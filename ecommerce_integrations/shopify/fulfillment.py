@@ -4,20 +4,17 @@ import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
 from frappe.utils import cint, cstr, getdate
 
-from ecommerce_integrations.shopify.constants import (
-	FULLFILLMENT_ID_FIELD,
-	ORDER_ID_FIELD,
-	ORDER_NUMBER_FIELD,
-	SETTING_DOCTYPE,
-)
+from ecommerce_integrations.shopify.constants import FULLFILLMENT_ID_FIELD, ORDER_ID_FIELD, ORDER_NUMBER_FIELD
 from ecommerce_integrations.shopify.order import get_sales_order
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, get_shopify_setting_doc
 
 
-def prepare_delivery_note(payload, request_id=None):
+def prepare_delivery_note(payload, request_id=None, shopify_setting=None):
 	frappe.set_user("Administrator")
-	setting = frappe.get_doc(SETTING_DOCTYPE)
+	setting = get_shopify_setting_doc(shopify_setting, require_enabled=True)
 	frappe.flags.request_id = request_id
+	previous_setting_flag = getattr(frappe.flags, "shopify_setting", None)
+	frappe.flags.shopify_setting = setting.name
 
 	order = payload
 
@@ -30,6 +27,8 @@ def prepare_delivery_note(payload, request_id=None):
 			create_shopify_log(status="Invalid", message="Sales Order not found for syncing delivery note.")
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
+	finally:
+		frappe.flags.shopify_setting = previous_setting_flag
 
 
 def create_delivery_note(shopify_order, setting, so):
@@ -65,7 +64,7 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 
 	fulfillment_items = deepcopy(fulfillment_items)
 
-	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+	setting = get_shopify_setting_doc(getattr(frappe.flags, "shopify_setting", None), require_enabled=True)
 	wh_map = setting.get_integration_to_erpnext_wh_mapping()
 	warehouse = wh_map.get(str(location_id)) or setting.warehouse
 

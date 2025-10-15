@@ -36,15 +36,12 @@ from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYP
 
 
 class TestCase(unittest.TestCase):
-	@classmethod
-	def setUpClass(cls):
-		with patch(
-			"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.ShopifySetting._handle_webhooks"
-		):
-			setting = frappe.get_doc(SETTING_DOCTYPE)
-
-			setting.update(
-				{
+		@classmethod
+		def setUpClass(cls):
+			with patch(
+				"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.ShopifySetting._handle_webhooks"
+			):
+				setting_defaults = {
 					"enable_shopify": 1,
 					"shopify_url": "frappetest.myshopify.com",
 					"password": "supersecret",
@@ -64,7 +61,6 @@ class TestCase(unittest.TestCase):
 					"upload_erpnext_items": 1,
 					"update_shopify_item_on_update": 1,
 					"update_erpnext_stock_levels_to_shopify": 1,
-					"doctype": "Shopify Setting",
 					"shopify_warehouse_mapping": [
 						{
 							"shopify_location_id": "62279942297",
@@ -78,7 +74,19 @@ class TestCase(unittest.TestCase):
 						},
 					],
 				}
-			).save(ignore_permissions=True)
+
+				setting_name = frappe.db.get_value(
+					SETTING_DOCTYPE, {"shopify_url": setting_defaults["shopify_url"]}, "name"
+				)
+				if setting_name:
+					setting = frappe.get_doc(SETTING_DOCTYPE, setting_name)
+				else:
+					setting = frappe.get_doc(
+						{"doctype": SETTING_DOCTYPE, "shopify_url": setting_defaults["shopify_url"]}
+					)
+
+				setting.set(setting_defaults)
+				setting.save(ignore_permissions=True)
 
 	def setUp(self):
 		ActiveResource.site = None
