@@ -15,11 +15,12 @@ from ecommerce_integrations.shopify.constants import (
 	ACCOUNT_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
 
 
-def temp_shopify_session(shopify_account):
+def temp_shopify_session(shopify_account=None):
     """Decorator for functions that need a temporary Shopify session."""
+    print("temp_shopify_session called with ", shopify_account)
 
     def decorator(func):
         @functools.wraps(func)
@@ -29,13 +30,16 @@ def temp_shopify_session(shopify_account):
                 return func(*args, **kwargs)
 
             # If a callable is passed, call it with self to get the account
-            account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
+            if shopify_account is None:
+                # TODO: handle if get_user_shopify_account returns None
+                account = get_user_shopify_account().name
+            else:
+                account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
 
             setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
             if setting.is_enabled():
                 auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
                 with Session.temp(*auth_details):
-                    print("auth_details", auth_details)
                     return func(*args, **kwargs)
 
         return wrapper

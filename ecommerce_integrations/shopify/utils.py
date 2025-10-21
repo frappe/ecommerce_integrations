@@ -9,9 +9,22 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 )
 from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
-	OLD_SETTINGS_DOCTYPE,
-	SETTING_DOCTYPE,
+	# OLD_SETTINGS_DOCTYPE,
+	# SETTING_DOCTYPE,
+	ACCOUNT_DOCTYPE,
 )
+
+
+def get_user_shopify_account():
+    user = frappe.session.user
+    print("get_user_shopify_account called for user ", user)
+    existing_permission = frappe.db.exists("User Permission", {"user": user, "allow": "Company"})
+    has_company = bool(existing_permission)
+    if has_company:
+        company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
+        account = frappe.get_doc("Shopify Account", {"company": company_id})
+        return account
+    return None
 
 
 def create_shopify_log(**kwargs):
@@ -38,16 +51,17 @@ def migrate_from_old_connector(payload=None, request_id=None):
 
 
 def ensure_old_connector_is_disabled():
-	try:
-		old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
-	except Exception:
-		frappe.clear_last_message()
-		return
+	# try:
+	# 	old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
+	# except Exception:
+	# 	frappe.clear_last_message()
+	# 	return
 
-	if old_setting.enable_shopify:
-		link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)
-		msg = _("Please disable old Shopify integration from {0} to proceed.").format(link)
-		frappe.throw(msg)
+	# if old_setting.enable_shopify:
+	# 	link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)
+	# 	msg = _("Please disable old Shopify integration from {0} to proceed.").format(link)
+	# 	frappe.throw(msg)
+	pass
 
 
 def _migrate_items_to_ecommerce_item(log):
@@ -66,8 +80,8 @@ def _migrate_items_to_ecommerce_item(log):
 		log.traceback = frappe.get_traceback()
 		log.save()
 		return
-
-	frappe.db.set_value(SETTING_DOCTYPE, SETTING_DOCTYPE, "is_old_data_migrated", 1)
+	account_name = get_user_shopify_account().name
+	frappe.db.set_value(ACCOUNT_DOCTYPE, account_name, "is_old_data_migrated", 1)
 	log.status = "Success"
 	log.save()
 
