@@ -12,37 +12,35 @@ from shopify.session import Session
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
 	EVENT_MAPPER,
-	SETTING_DOCTYPE,
+	ACCOUNT_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def temp_shopify_session(f=None, *, account=None):
-	"""Enhanced decorator with account context support."""
-	@functools.wraps(f)
-	def wrapper(*args, **kwargs):
-		# no auth in testing
-		if frappe.flags.in_test:
-			return f(*args, **kwargs)
-		
-		# Extract account from kwargs if not provided
-		account_param = account or kwargs.get('account')
+def temp_shopify_session(shopify_account):
+    """Decorator for functions that need a temporary Shopify session."""
 
-		from ecommerce_integrations.shopify.utils import resolve_account_context
-		setting = resolve_account_context(account_param) if account_param else frappe.get_doc(SETTING_DOCTYPE)
-		
-		if setting.is_enabled():
-			if account_param:
-				shopify_url = setting.get_shop_url()
-				password = setting.get_access_token()
-			else:
-				shopify_url = setting.shopify_url
-				password = setting.get_password("password")
-			with Session.temp(shopify_url, API_VERSION, password):
-				return f(*args, **kwargs)
-			
-	return wrapper
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # no auth in testing
+            if frappe.flags.in_test:
+                return func(*args, **kwargs)
+
+            # If a callable is passed, call it with self to get the account
+            account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
+
+            setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+            if setting.is_enabled():
+                auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
+                with Session.temp(*auth_details):
+                    print("auth_details", auth_details)
+                    return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -83,6 +81,8 @@ def get_current_domain_name() -> str:
 
 	If developer_mode is enabled and localtunnel_url is set in site config then domain  is set to localtunnel_url.
 	"""
+	# TODO: Remove
+	return "70dc6bafa36a.ngrok-free.app"
 	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
 		return frappe.conf.localtunnel_url
 	else:
@@ -100,69 +100,38 @@ def get_callback_url() -> str:
 
 
 @frappe.whitelist(allow_guest=True)
-def store_request_data() -> None:
+def store_request_data(**kwargs) -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
-		shop_domain = frappe.get_request_header("X-Shopify-Shop-Domain")
 
-		# Resolve account by shop domain
-		account = _get_account_by_domain(shop_domain)
-		if not account:
-			create_shopify_log(
-				status="Error", 
-				request_data=frappe.request.data,
-				exception=f"No enabled Shopify Account found for domain: {shop_domain}"
-			)
-			frappe.throw(_("No enabled Shopify Account found for domain: {0}").format(shop_domain))
-
-		_validate_request(frappe.request, hmac_header, account)
+		# _validate_request(frappe.request, hmac_header, kwargs.get("shopify_account"))
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
-		process_request(data, event, account)
+		process_request(data, event)
 
 
-def process_request(data, event, account):
-	# create log with account context
-	log = create_shopify_log(
-		method=EVENT_MAPPER[event], 
-		request_data=data,
-		account=account
-	)
+def process_request(data, event):
+	# create log
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
 
-	# enqueue background job with account context
+	# enqueue backround job
 	frappe.enqueue(
 		method=EVENT_MAPPER[event],
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": data, "request_id": log.name, "account": account.name},
+		**{"payload": data, "request_id": log.name},
 	)
 
 
-def _validate_request(req, hmac_header, account):
-	"""Validate webhook request using account-specific shared secret."""
-	secret_key = account.get_shared_secret()
+def _validate_request(req, hmac_header, shopify_account):
+	settings = frappe.get_doc(ACCOUNT_DOCTYPE, shopify_account)
+	secret_key = settings.shared_secret
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(
-			status="Error", 
-			request_data=req.data,
-			account=account,
-			exception="Invalid HMAC signature"
-		)
+		create_shopify_log(status="Error", request_data=req.data)
 		frappe.throw(_("Unverified Webhook Data"))
-
-
-def _get_account_by_domain(shop_domain):
-	"""Get enabled Shopify Account by shop domain."""
-	if not shop_domain:
-		return None
-	
-	try:
-		return frappe.get_doc("Shopify Account", {"shop_domain": shop_domain, "enabled": 1})
-	except frappe.DoesNotExistError:
-		return None

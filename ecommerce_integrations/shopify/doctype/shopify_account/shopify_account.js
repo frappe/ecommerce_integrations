@@ -21,7 +21,7 @@ frappe.ui.form.on("Shopify Account", {
 	fetch_shopify_locations: function (frm) {
 		frappe.call({
 			doc: frm.doc,
-			method: "fetch_shopify_locations",
+			method: "update_location_table",
 			callback: (r) => {
 				if (!r.exc) refresh_field("warehouse_mappings");
 			},
