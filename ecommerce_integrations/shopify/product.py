@@ -52,7 +52,7 @@ class ShopifyProduct:
 			has_variants=self.has_variants,
 		)
 
-	@temp_shopify_session
+	@temp_shopify_session(shopify_account=None)
 	def sync_product(self):
 		if not self.is_synced():
 			shopify_product = Product.find(self.product_id)

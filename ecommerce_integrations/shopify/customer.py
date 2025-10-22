@@ -9,17 +9,13 @@ from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
-	ACCOUNT_DOCTYPE,
 )
+from ecommerce_integrations.shopify.utils import get_user_shopify_account
 
 
 class ShopifyCustomer(EcommerceCustomer):
-	def __init__(self, customer_id: str, account=None):
-		# Standardized account resolution
-		from ecommerce_integrations.shopify.utils import resolve_account_context
-		self.setting = resolve_account_context(account)
-		
+	def __init__(self, customer_id: str):
+		self.setting = get_user_shopify_account()
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
 	def sync_customer(self, customer: dict[str, Any]) -> None:

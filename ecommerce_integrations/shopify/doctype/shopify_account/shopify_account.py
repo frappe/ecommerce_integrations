@@ -87,9 +87,7 @@ class ShopifyAccount(SettingController):
 
 		self.shopify_warehouse_mapping = []
 		for locations in PaginatedIterator(Location.find()):
-			print("locations", locations)
 			for location in locations:
-				print("location", location, location.id, location.name)
 				self.append(
 					"shopify_warehouse_mapping",
 					{"shopify_location_id": location.id, "shopify_location_name": location.name},

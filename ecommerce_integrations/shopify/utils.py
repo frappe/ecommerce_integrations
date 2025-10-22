@@ -27,6 +27,12 @@ def get_user_shopify_account():
     return None
 
 
+def get_company_shopify_account(company):
+    print("get_company_shopify_account called for company ", company)
+    account = frappe.get_doc("Shopify Account", {"company": company})
+    return account
+
+
 def create_shopify_log(**kwargs):
 	return create_log(module_def=MODULE_NAME, **kwargs)
 

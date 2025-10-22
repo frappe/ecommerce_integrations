@@ -85,8 +85,6 @@ def get_current_domain_name() -> str:
 
 	If developer_mode is enabled and localtunnel_url is set in site config then domain  is set to localtunnel_url.
 	"""
-	# TODO: Remove
-	return "70dc6bafa36a.ngrok-free.app"
 	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
 		return frappe.conf.localtunnel_url
 	else:
@@ -117,6 +115,7 @@ def store_request_data(**kwargs) -> None:
 
 
 def process_request(data, event):
+	print("Processing webhook event: ", event, "\n", data)
 	# create log
 	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
 
