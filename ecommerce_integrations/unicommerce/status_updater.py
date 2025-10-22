@@ -47,7 +47,6 @@ SHIPMENT_FINAL_STATES = ["DELIVERED", "RETURNED"]
 
 
 def update_sales_order_status():
-
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	if not settings.is_enabled():
 		return
@@ -58,9 +57,7 @@ def update_sales_order_status():
 	minutes = days_to_sync * 24 * 60
 	updated_orders = client.search_sales_order(updated_since=minutes)
 
-	enabled_channels = frappe.db.get_list(
-		"Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id"
-	)
+	enabled_channels = frappe.db.get_list("Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id")
 	valid_orders = [order for order in updated_orders if order.get("channel") in enabled_channels]
 	if valid_orders:
 		_update_order_status_fields(valid_orders)
@@ -79,7 +76,6 @@ def update_sales_order_status():
 
 
 def _update_order_status_fields(orders):
-
 	order_status_map = {d["code"]: d["status"] for d in orders}
 	order_codes = list(order_status_map.keys())
 
@@ -121,9 +117,7 @@ def update_shipping_package_status():
 
 	# find all Facilities
 	enabled_facilities = list(settings.get_integration_to_erpnext_wh_mapping().keys())
-	enabled_channels = frappe.db.get_list(
-		"Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id"
-	)
+	enabled_channels = frappe.db.get_list("Unicommerce Channel", filters={"enabled": 1}, pluck="channel_id")
 
 	for facility in enabled_facilities:
 		updated_packages = client.search_shipping_packages(updated_since=minutes, facility_code=facility)
@@ -140,7 +134,6 @@ def update_shipping_package_status():
 
 
 def _update_package_status_fields(packages):
-
 	package_status_map = {d["code"]: d["status"] for d in packages}
 	package_codes = list(package_status_map.keys())
 

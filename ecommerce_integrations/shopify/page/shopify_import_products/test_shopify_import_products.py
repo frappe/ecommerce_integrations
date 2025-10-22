@@ -12,16 +12,13 @@ from .shopify_import_products import queue_sync_all_products
 
 class TestShopifyImportProducts(TestCase):
 	def __init__(self, obj):
-		with open(
-			os.path.join(os.path.dirname(__file__), "../../tests/data/bulk_products.json"), "rb"
-		) as f:
+		with open(os.path.join(os.path.dirname(__file__), "../../tests/data/bulk_products.json"), "rb") as f:
 			products_json = json.loads(f.read())
 			self._products = products_json["products"]
 
-		super(TestShopifyImportProducts, self).__init__(obj)
+		super().__init__(obj)
 
 	def test_import_all_products(self):
-
 		required_products = {
 			"6808908169263": [
 				"40279118250031",
@@ -31,7 +28,12 @@ class TestShopifyImportProducts(TestCase):
 				"40279118381103",
 				"40279118413871",
 			],
-			"6808928124975": ["40279218028591", "40279218061359", "40279218094127", "40279218126895",],
+			"6808928124975": [
+				"40279218028591",
+				"40279218061359",
+				"40279218094127",
+				"40279218126895",
+			],
 			"6808887689263": ["40279042883631", "40279042916399", "40279042949167"],
 			"6808908955695": ["40279122673711", "40279122706479", "40279122739247"],
 			"6808917737519": ["40279168221231", "40279168253999", "40279168286767"],
@@ -64,7 +66,6 @@ class TestShopifyImportProducts(TestCase):
 		queue_sync_all_products()
 
 		for product, required_variants in required_products.items():
-
 			# has_variants is needed to avoid get_erpnext_item()
 			# fetching the variant instead of template because of
 			# matching integration_item_code
@@ -95,8 +96,8 @@ class TestShopifyImportProducts(TestCase):
 			self.assertEqual(sorted(required_variants), sorted(created_ecom_variants))
 
 	def fake_single_product_from_bulk(self, product):
-		item = [p for p in self._products if str(p["id"]) == product][0]
+		item = next(p for p in self._products if str(p["id"]) == product)
 
 		product_json = json.dumps({"product": item})
 
-		self.fake("products/%s" % product, body=product_json)
+		self.fake(f"products/{product}", body=product_json)

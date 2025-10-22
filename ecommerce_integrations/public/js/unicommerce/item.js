@@ -5,8 +5,7 @@ frappe.ui.form.on("Item", {
 				__("Open Unicommerce Item"),
 				function () {
 					frappe.call({
-						method:
-							"ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
+						method: "ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
 						args: {
 							code: frm.doc.item_code,
 							doctype: frm.doc.doctype,

@@ -172,7 +172,6 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 
 
 def _get_item_price(line_item, taxes_inclusive: bool) -> float:
-
 	price = flt(line_item.get("price"))
 	qty = cint(line_item.get("quantity"))
 
@@ -206,7 +205,8 @@ def get_order_taxes(shopify_order, setting, items):
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
 					"description": (
-						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+						get_tax_account_description(tax)
+						or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax.get("price"),
 					"included_in_print_rate": 0,
@@ -259,11 +259,13 @@ def consolidate_order_taxes(taxes):
 	return tax_account_wise_data.values()
 
 
-def get_tax_account_head(tax, charge_type: Optional[Literal["shipping", "sales_tax"]] = None):
+def get_tax_account_head(tax, charge_type: Literal["shipping", "sales_tax"] | None = None):
 	tax_title = str(tax.get("title"))
 
 	tax_account = frappe.db.get_value(
-		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_account",
+		"Shopify Tax Account",
+		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
+		"tax_account",
 	)
 
 	if not tax_account and charge_type:
@@ -279,7 +281,9 @@ def get_tax_account_description(tax):
 	tax_title = tax.get("title")
 
 	tax_description = frappe.db.get_value(
-		"Shopify Tax Account", {"parent": SETTING_DOCTYPE, "shopify_tax": tax_title}, "tax_description",
+		"Shopify Tax Account",
+		{"parent": SETTING_DOCTYPE, "shopify_tax": tax_title},
+		"tax_description",
 	)
 
 	return tax_description
@@ -317,7 +321,8 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					{
 						"charge_type": "Actual",
 						"account_head": get_tax_account_head(shipping_charge, charge_type="shipping"),
-						"description": get_tax_account_description(shipping_charge) or shipping_charge["title"],
+						"description": get_tax_account_description(shipping_charge)
+						or shipping_charge["title"],
 						"tax_amount": shipping_charge_amount,
 						"cost_center": setting.cost_center,
 					}
@@ -329,7 +334,8 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					"charge_type": "Actual",
 					"account_head": get_tax_account_head(tax, charge_type="sales_tax"),
 					"description": (
-						get_tax_account_description(tax) or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
+						get_tax_account_description(tax)
+						or f"{tax.get('title')} - {tax.get('rate') * 100.0:.2f}%"
 					),
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,

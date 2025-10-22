@@ -8,7 +8,9 @@ frappe.ui.form.on("Unicommerce Settings", {
 		}
 
 		frm.add_custom_button(__("View Logs"), () => {
-			frappe.set_route("List", "Ecommerce Integration Log", {"integration": "Unicommerce"});
+			frappe.set_route("List", "Ecommerce Integration Log", {
+				integration: "Unicommerce",
+			});
 		});
 
 		let sync_buttons = ["Items", "Orders", "Inventory"];
@@ -18,8 +20,7 @@ frappe.ui.form.on("Unicommerce Settings", {
 				action,
 				() => {
 					frappe.call({
-						method:
-							"ecommerce_integrations.unicommerce.utils.force_sync",
+						method: "ecommerce_integrations.unicommerce.utils.force_sync",
 						args: {
 							document: action,
 						},

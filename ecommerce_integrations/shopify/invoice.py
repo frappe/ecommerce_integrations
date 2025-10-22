@@ -37,7 +37,6 @@ def create_sales_invoice(shopify_order, setting, so):
 		and not so.per_billed
 		and cint(setting.sync_sales_invoice)
 	):
-
 		posting_date = getdate(shopify_order.get("created_at")) or nowdate()
 
 		sales_invoice = make_sales_invoice(so.name, ignore_permissions=True)

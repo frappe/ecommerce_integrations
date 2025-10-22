@@ -1,6 +1,7 @@
 import json
 from collections import defaultdict, namedtuple
-from typing import Any, Dict, Iterator, List, NewType, Optional, Set, Tuple
+from collections.abc import Iterator
+from typing import Any, NewType
 
 import frappe
 from frappe.utils import add_to_date, flt
@@ -29,7 +30,7 @@ from ecommerce_integrations.unicommerce.product import import_product_from_unico
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
 
-UnicommerceOrder = NewType("UnicommerceOrder", Dict[str, Any])
+UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
@@ -61,10 +62,7 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 			_create_sales_invoices(order, sales_order, client)
 
 
-def _get_new_orders(
-	client: UnicommerceAPIClient, status: Optional[str]
-) -> Optional[Iterator[UnicommerceOrder]]:
-
+def _get_new_orders(client: UnicommerceAPIClient, status: str | None) -> Iterator[UnicommerceOrder] | None:
 	"""Search new sales order from unicommerce."""
 
 	updated_since = 24 * 60  # minutes
@@ -124,8 +122,7 @@ def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAP
 			frappe.flags.request_id = None
 
 
-def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, client=None) -> None:
-
+def create_order(payload: UnicommerceOrder, request_id: str | None = None, client=None) -> None:
 	order = payload
 
 	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
@@ -158,7 +155,7 @@ def create_order(payload: UnicommerceOrder, request_id: Optional[str] = None, cl
 		return order
 
 
-def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> Set[str]:
+def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> set[str]:
 	"""Ensure all items are synced before processing order.
 
 	If not synced then product sync for specific item is initiated"""
@@ -174,7 +171,6 @@ def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> 
 
 
 def _create_order(order: UnicommerceOrder, customer) -> None:
-
 	channel_config = frappe.get_doc("Unicommerce Channel", order["channel"])
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
@@ -219,9 +215,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 
 
 def _get_line_items(
-	line_items, default_warehouse: Optional[str] = None, is_cancelled: bool = False
-) -> List[Dict[str, Any]]:
-
+	line_items, default_warehouse: str | None = None, is_cancelled: bool = False
+) -> list[dict[str, Any]]:
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 	wh_map = settings.get_integration_to_erpnext_wh_mapping(all_wh=True)
 	so_items = []
@@ -249,7 +244,7 @@ def _get_line_items(
 	return so_items
 
 
-def get_taxes(line_items, channel_config) -> List:
+def get_taxes(line_items, channel_config) -> list:
 	taxes = []
 
 	# Note: Tax details are NOT available during SO stage.
@@ -301,7 +296,7 @@ def _get_facility_code(line_items) -> str:
 	if len(facility_codes) > 1:
 		frappe.throw("Multiple facility codes found in single order")
 
-	return list(facility_codes)[0]
+	return next(iter(facility_codes))
 
 
 def update_shipping_info(doc, method=None):
@@ -330,9 +325,7 @@ def _update_package_info_on_unicommerce(so_code):
 		shipping_packages = updated_so_data.get("shippingPackages")
 
 		if not shipping_packages:
-			frappe.throw(
-				frappe._("Shipping package not present on Unicommerce for order {}").format(so.name)
-			)
+			frappe.throw(frappe._("Shipping package not present on Unicommerce for order {}").format(so.name))
 
 		shipping_package_code = shipping_packages[0].get("code")
 
@@ -356,7 +349,7 @@ def _update_package_info_on_unicommerce(so_code):
 		raise
 
 
-def _get_batch_no(so_line_item) -> Optional[str]:
+def _get_batch_no(so_line_item) -> str | None:
 	"""If specified vendor batch code is valid batch number in ERPNext then get batch no.
 
 	SO line items contain batch no detail like this:
@@ -374,9 +367,7 @@ def _get_batch_no(so_line_item) -> Optional[str]:
 	        }
 	},
 	"""
-	batch_no = ((so_line_item.get("batchDTO") or {}).get("batchFieldsDTO") or {}).get(
-		"vendorBatchNumber"
-	)
+	batch_no = ((so_line_item.get("batchDTO") or {}).get("batchFieldsDTO") or {}).get("vendorBatchNumber")
 	if batch_no and frappe.db.exists("Batch", batch_no):
 		return batch_no
 

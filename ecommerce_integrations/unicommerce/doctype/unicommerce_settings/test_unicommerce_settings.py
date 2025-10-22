@@ -44,9 +44,7 @@ class TestUnicommerceSettings(TestCase):
 		"""requirement: When improper credentials are provided, system throws error."""
 
 		# failure case
-		responses.add(
-			responses.GET, "https://demostaging.unicommerce.com/oauth/token", json={}, status=401
-		)
+		responses.add(responses.GET, "https://demostaging.unicommerce.com/oauth/token", json={}, status=401)
 		self.assertRaises(frappe.ValidationError, self.settings.update_tokens)
 
 	@responses.activate

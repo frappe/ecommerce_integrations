@@ -28,9 +28,7 @@ def get_list_of_purchase_orders_for_center(center, date=None):
 		start_date = add_to_date(end_date, days=-1)
 	route = "inventory/purchase_orders?center_id="
 	url_end = "&show_delivery_details=true&date_criteria=1&status=-1"
-	full_url = (
-		api_url + route + center + "&start_date=" + start_date + "&end_date=" + end_date + url_end
-	)
+	full_url = api_url + route + center + "&start_date=" + start_date + "&end_date=" + end_date + url_end
 	all_orders = make_api_call(full_url)
 	return all_orders
 
@@ -208,7 +206,9 @@ def add_items(doc, item_data):
 			invoice_item[key] = value
 			if key == "item_code":
 				item_code = frappe.db.get_value(
-					"Item", {"zenoti_item_code": item["item_code"], "item_name": item["item_name"]}, "item_code"
+					"Item",
+					{"zenoti_item_code": item["item_code"], "item_name": item["item_name"]},
+					"item_code",
 				)
 				invoice_item["item_code"] = item_code
 

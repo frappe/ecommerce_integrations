@@ -47,7 +47,7 @@ class AmazonRepository:
 		errors = {}
 		max_retries = self.amz_setting.max_retry_limit
 
-		for x in range(max_retries):
+		for _x in range(max_retries):
 			try:
 				result = sp_api_method(**kwargs)
 				return result.get("payload")
@@ -62,7 +62,8 @@ class AmazonRepository:
 			msg = f"<b>Error:</b> {error}<br/><b>Error Description:</b> {errors.get(error)}"
 			frappe.msgprint(msg, alert=True, indicator="red")
 			frappe.log_error(
-				message=f"{error}: {errors.get(error)}", title=f'Method "{sp_api_method.__name__}" failed',
+				message=f"{error}: {errors.get(error)}",
+				title=f'Method "{sp_api_method.__name__}" failed',
 			)
 
 		self.amz_setting.enable_sync = 0
@@ -76,11 +77,11 @@ class AmazonRepository:
 		return Finances(**self.instance_params)
 
 	def get_account(self, name) -> str:
-		account_name = frappe.db.get_value("Account", {"account_name": "Amazon {0}".format(name)})
+		account_name = frappe.db.get_value("Account", {"account_name": f"Amazon {name}"})
 
 		if not account_name:
 			new_account = frappe.new_doc("Account")
-			new_account.account_name = "Amazon {0}".format(name)
+			new_account.account_name = f"Amazon {name}"
 			new_account.company = self.amz_setting.company
 			new_account.parent_account = self.amz_setting.market_place_account_group
 			new_account.insert(ignore_permissions=True)
@@ -271,9 +272,7 @@ class AmazonRepository:
 
 	def get_order_items(self, order_id) -> list:
 		orders = self.get_orders_instance()
-		order_items_payload = self.call_sp_api_method(
-			sp_api_method=orders.get_order_items, order_id=order_id
-		)
+		order_items_payload = self.call_sp_api_method(sp_api_method=orders.get_order_items, order_id=order_id)
 
 		final_order_items = []
 		warehouse = self.amz_setting.warehouse
@@ -301,7 +300,9 @@ class AmazonRepository:
 				break
 
 			order_items_payload = self.call_sp_api_method(
-				sp_api_method=orders.get_order_items, order_id=order_id, next_token=next_token,
+				sp_api_method=orders.get_order_items,
+				order_id=order_id,
+				next_token=next_token,
 			)
 
 		return final_order_items
@@ -333,7 +334,8 @@ class AmazonRepository:
 					new_contact = frappe.new_doc("Contact")
 					new_contact.first_name = order_customer_name
 					new_contact.append(
-						"links", {"link_doctype": "Customer", "link_name": existing_customer_name},
+						"links",
+						{"link_doctype": "Customer", "link_name": existing_customer_name},
 					)
 					new_contact.insert()
 
@@ -363,7 +365,11 @@ class AmazonRepository:
 				make_address = frappe.new_doc("Address")
 				make_address.address_line1 = shipping_address.get("AddressLine1", "Not Provided")
 				make_address.city = shipping_address.get("City", "Not Provided")
-				make_address.state = shipping_address.get("StateOrRegion").title()
+				make_address.state = get_state_name_from_pincode(
+					shipping_address.get("CountryCode", ""),
+					shipping_address.get("PostalCode", ""),
+					shipping_address.get("StateOrRegion", "").title(),
+				)
 				make_address.pincode = shipping_address.get("PostalCode")
 
 				filters = [
@@ -469,7 +475,9 @@ class AmazonRepository:
 				break
 
 			orders_payload = self.call_sp_api_method(
-				sp_api_method=orders.get_orders, created_after=created_after, next_token=next_token,
+				sp_api_method=orders.get_orders,
+				created_after=created_after,
+				next_token=next_token,
 			)
 
 		return sales_orders
@@ -504,3 +512,42 @@ def validate_amazon_sp_api_credentials(**args) -> None:
 def get_orders(amz_setting_name, created_after) -> list:
 	ar = AmazonRepository(amz_setting_name)
 	return ar.get_orders(created_after)
+
+
+def get_state_name_from_pincode(country_code=None, postal_code=None, state=None):
+	if not all((country_code, postal_code)):
+		return state
+
+	def get_first_three_digits(value):
+		if isinstance(value, str):
+			if len(value.strip()) == 6 and value.strip().isdigit():
+				return int(value[:3])
+		elif isinstance(value, int):
+			if len(str(value)) == 6:
+				return int(str(value)[:3])
+
+	if "india_compliance" in frappe.get_installed_apps() and country_code.lower() == "in":
+		from india_compliance.gst_india.constants import STATE_PINCODE_MAPPING
+
+		first_three_digits = get_first_three_digits(postal_code)
+
+		if first_three_digits:
+			state_name = ""
+			for _state, _range in STATE_PINCODE_MAPPING.items():
+				if isinstance(_range[0], tuple):
+					for c_range in _range:
+						lower_range, upper_range = c_range
+						if lower_range <= first_three_digits <= upper_range:
+							state_name = _state
+							if state and state[0].lower() == _state[0].lower():
+								return _state
+				else:
+					lower_range, upper_range = _range
+					if lower_range <= first_three_digits <= upper_range:
+						state_name = _state
+						if state and state[0].lower() == _state[0].lower():
+							return _state
+			if state_name:
+				return state_name
+
+	return state

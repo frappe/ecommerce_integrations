@@ -1,7 +1,7 @@
 import base64
 import json
 from collections import defaultdict
-from typing import Any, Dict, List, NewType, Optional
+from typing import Any, NewType
 
 import frappe
 import requests
@@ -34,7 +34,7 @@ from ecommerce_integrations.unicommerce.utils import (
 	remove_non_alphanumeric_chars,
 )
 
-JsonDict = Dict[str, Any]
+JsonDict = dict[str, Any]
 SOCode = NewType("SOCode", str)
 
 # TypedDict
@@ -42,17 +42,17 @@ SOCode = NewType("SOCode", str)
 # 	item_code: str
 # 	warehouse: str
 # 	batch_no: str
-ItemWHAlloc = Dict[str, str]
+ItemWHAlloc = dict[str, str]
 
 
-WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
+WHAllocation = dict[SOCode, list[ItemWHAlloc]]
 
 INVOICED_STATE = ["PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED"]
 
 
 @frappe.whitelist()
 def generate_unicommerce_invoices(
-	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None
+	sales_orders: list[SOCode], warehouse_allocation: WHAllocation | None = None
 ):
 	"""Request generation of invoice to Unicommerce and sync that invoice.
 
@@ -126,8 +126,8 @@ def generate_unicommerce_invoices(
 
 
 def bulk_generate_invoices(
-	sales_orders: List[SOCode],
-	warehouse_allocation: Optional[WHAllocation] = None,
+	sales_orders: list[SOCode],
+	warehouse_allocation: WHAllocation | None = None,
 	request_id=None,
 	client=None,
 ):
@@ -153,7 +153,6 @@ def bulk_generate_invoices(
 
 
 def _log_invoice_generation(sales_orders, failed_orders):
-
 	failed_orders = set(failed_orders)
 	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
 	successful_orders = list(set(sales_orders) - set(failed_orders))
@@ -187,7 +186,7 @@ def _get_orders_with_missing_invoice(sales_orders):
 	return missing_invoices
 
 
-def update_invoicing_status(sales_orders: List[str], status: str) -> None:
+def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
 
@@ -236,9 +235,7 @@ def _validate_wh_allocation(warehouse_allocation: WHAllocation):
 				frappe.throw(msg)
 
 
-def _generate_invoice(
-	client: UnicommerceAPIClient, erpnext_order, channel_config, warehouse_allocation=None
-):
+def _generate_invoice(client: UnicommerceAPIClient, erpnext_order, channel_config, warehouse_allocation=None):
 	unicommerce_so_code = erpnext_order.get(ORDER_CODE_FIELD)
 
 	so_data = client.get_sales_order(unicommerce_so_code)
@@ -286,16 +283,12 @@ def _fetch_and_sync_invoice(
 	"""
 
 	so_data = client.get_sales_order(unicommerce_so_code)
-	shipping_packages = [
-		d["code"] for d in so_data["shippingPackages"] if d["status"] in INVOICED_STATE
-	]
+	shipping_packages = [d["code"] for d in so_data["shippingPackages"] if d["status"] in INVOICED_STATE]
 
 	for package in shipping_packages:
 		invoice_response = invoice_responses.get(package) or {}
 		invoice_data = client.get_sales_invoice(package, facility_code)["invoice"]
-		label_pdf = fetch_label_pdf(
-			package, invoice_response, client=client, facility_code=facility_code
-		)
+		label_pdf = fetch_label_pdf(package, invoice_response, client=client, facility_code=facility_code)
 		create_sales_invoice(
 			invoice_data,
 			erpnext_so_code,
@@ -315,7 +308,7 @@ def create_sales_invoice(
 	shipping_label=None,
 	warehouse_allocations=None,
 	invoice_response=None,
-	so_data: Optional[JsonDict] = None,
+	so_data: JsonDict | None = None,
 ):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
@@ -351,9 +344,7 @@ def create_sales_invoice(
 	shipping_package_code = si_data.get("shippingPackageCode")
 	shipping_package_info = _get_shipping_package(so_data, shipping_package_code) or {}
 
-	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get(
-		"trackingNumber"
-	)
+	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get("trackingNumber")
 	shipping_provider_code = (
 		invoice_response.get("shippingProviderCode")
 		or shipping_package_info.get("shippingProvider")
@@ -412,10 +403,10 @@ def create_sales_invoice(
 
 def attach_unicommerce_docs(
 	sales_invoice: str,
-	invoice: Optional[str],
-	label: Optional[str],
-	invoice_code: Optional[str],
-	package_code: Optional[str],
+	invoice: str | None,
+	label: str | None,
+	invoice_code: str | None,
+	package_code: str | None,
 ) -> None:
 	"""Attach invoice and label to specified sales invoice.
 
@@ -452,9 +443,9 @@ def _get_line_items(
 	warehouse: str,
 	so_code: str,
 	cost_center: str,
-	warehouse_allocations: Optional[WHAllocation] = None,
-) -> List[Dict[str, Any]]:
-	""" Invoice items can be different and are consolidated, hence recomputing is required """
+	warehouse_allocations: WHAllocation | None = None,
+) -> list[dict[str, Any]]:
+	"""Invoice items can be different and are consolidated, hence recomputing is required"""
 
 	si_items = []
 	for item in line_items:
@@ -481,15 +472,12 @@ def _get_line_items(
 	return si_items
 
 
-def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], so_code: str):
-
+def _assign_wh_and_so_row(line_items, warehouse_allocation: list[ItemWHAlloc], so_code: str):
 	so_items = frappe.get_doc("Sales Order", so_code).items
 	so_item_price_map = {d.name: d.rate for d in so_items}
 
 	# remove cancelled items
-	warehouse_allocation = [
-		d for d in warehouse_allocation if d["sales_order_row"] in so_item_price_map
-	]
+	warehouse_allocation = [d for d in warehouse_allocation if d["sales_order_row"] in so_item_price_map]
 
 	# update price
 	for item in warehouse_allocation:
@@ -501,7 +489,7 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 	line_items.sort(key=sort_key)
 
 	# update references
-	for item, wh_alloc in zip(line_items, warehouse_allocation):
+	for item, wh_alloc in zip(line_items, warehouse_allocation, strict=False):
 		item["so_detail"] = wh_alloc["sales_order_row"]
 		item["warehouse"] = wh_alloc["warehouse"]
 		item["batch_no"] = wh_alloc.get("batch_no")
@@ -510,7 +498,7 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 
 
 def _verify_total(si, si_data) -> None:
-	""" Leave a comment if grand total does not match unicommerce total"""
+	"""Leave a comment if grand total does not match unicommerce total"""
 	if abs(si.grand_total - flt(si_data["total"])) > 0.5:
 		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")
 
@@ -541,7 +529,6 @@ def make_payment_entry(invoice, channel_config, invoice_posting_date=None):
 
 
 def fetch_label_pdf(package, invoicing_response, client, facility_code):
-
 	if invoicing_response and invoicing_response.get("shippingLabelLink"):
 		link = invoicing_response.get("shippingLabelLink")
 		return fetch_pdf_as_base64(link)

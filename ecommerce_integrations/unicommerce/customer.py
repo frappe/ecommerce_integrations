@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 import frappe
 from frappe import _
@@ -78,7 +78,7 @@ def _check_if_customer_exists(address, customer_code):
 		return frappe.get_doc("Customer", customer_name)
 
 
-def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> None:
+def _create_customer_addresses(addresses: list[dict[str, Any]], customer) -> None:
 	"""Create address from dictionary containing fields used in Address doctype of ERPNext.
 
 	Unicommerce orders contain address list,
@@ -93,7 +93,6 @@ def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> Non
 
 
 def _create_customer_address(uni_address, address_type, customer, also_shipping=False):
-
 	country_code = uni_address.get("country")
 	country = UNICOMMERCE_COUNTRY_MAPPING.get(country_code)
 

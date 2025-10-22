@@ -131,7 +131,6 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assertTrue(response["successful"])
 
 	def test_bulk_inventory_sync(self):
-
 		expected_body = {
 			"inventoryAdjustments": [
 				{
@@ -289,9 +288,7 @@ class TestUnicommerceClient(TestCaseApiClient):
 			],
 		)
 
-		self.client.update_shipping_package(
-			"SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300
-		)
+		self.client.update_shipping_package("SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300)
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_invoice_label(self):
@@ -323,7 +320,9 @@ class TestUnicommerceClient(TestCaseApiClient):
 			responses.POST,
 			"https://demostaging.unicommerce.com/services/rest/v1/data/import/job/create",
 			status=200,
-			match=[query_param_matcher({"name": "Auto GRN Items", "importOption": "CREATE_NEW"}),],
+			match=[
+				query_param_matcher({"name": "Auto GRN Items", "importOption": "CREATE_NEW"}),
+			],
 			json={"successful": True},
 		)
 

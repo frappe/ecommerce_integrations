@@ -1,8 +1,6 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
-from typing import Dict, Optional
-
 import frappe
 from erpnext import get_default_company
 from frappe import _
@@ -56,8 +54,8 @@ class EcommerceItem(Document):
 def is_synced(
 	integration: str,
 	integration_item_code: str,
-	variant_id: Optional[str] = None,
-	sku: Optional[str] = None,
+	variant_id: str | None = None,
+	sku: str | None = None,
 ) -> bool:
 	"""Check if item is synced from integration.
 
@@ -86,9 +84,9 @@ def _is_sku_synced(integration: str, sku: str) -> bool:
 def get_erpnext_item_code(
 	integration: str,
 	integration_item_code: str,
-	variant_id: Optional[str] = None,
-	has_variants: Optional[int] = 0,
-) -> Optional[str]:
+	variant_id: str | None = None,
+	has_variants: int | None = 0,
+) -> str | None:
 	filters = {"integration": integration, "integration_item_code": integration_item_code}
 	if variant_id:
 		filters.update({"variant_id": variant_id})
@@ -101,9 +99,9 @@ def get_erpnext_item_code(
 def get_erpnext_item(
 	integration: str,
 	integration_item_code: str,
-	variant_id: Optional[str] = None,
-	sku: Optional[str] = None,
-	has_variants: Optional[int] = 0,
+	variant_id: str | None = None,
+	sku: str | None = None,
+	has_variants: int | None = 0,
 ):
 	"""Get ERPNext item for specified ecommerce_item.
 
@@ -127,10 +125,10 @@ def get_erpnext_item(
 def create_ecommerce_item(
 	integration: str,
 	integration_item_code: str,
-	item_dict: Dict,
-	variant_id: Optional[str] = None,
-	sku: Optional[str] = None,
-	variant_of: Optional[str] = None,
+	item_dict: dict,
+	variant_id: str | None = None,
+	sku: str | None = None,
+	variant_of: str | None = None,
 	has_variants=0,
 ) -> None:
 	"""Create Item in erpnext and link it with Ecommerce item doctype.

@@ -18,7 +18,6 @@ class TestShopifyConnection(unittest.TestCase):
 
 	@unittest.skip("Can't run these tests in CI")
 	def test_register_webhooks(self):
-
 		webhooks = connection.register_webhooks(
 			self.setting.shopify_url, self.setting.get_password("password")
 		)
@@ -30,7 +29,6 @@ class TestShopifyConnection(unittest.TestCase):
 
 	@unittest.skip("Can't run these tests in CI")
 	def test_unregister_webhooks(self):
-
 		connection.unregister_webhooks(self.setting.shopify_url, self.setting.get_password("password"))
 
 		callback_url = connection.get_callback_url()

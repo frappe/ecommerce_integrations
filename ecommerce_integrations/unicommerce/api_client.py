@@ -1,5 +1,5 @@
 import base64
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import frappe
 import requests
@@ -10,7 +10,7 @@ from pytz import timezone
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
-JsonDict = Dict[str, Any]
+JsonDict = dict[str, Any]
 
 
 class UnicommerceAPIClient:
@@ -20,7 +20,9 @@ class UnicommerceAPIClient:
 	"""
 
 	def __init__(
-		self, url: Optional[str] = None, access_token: Optional[str] = None,
+		self,
+		url: str | None = None,
+		access_token: str | None = None,
 	):
 		self.settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		self.base_url = url or f"https://{self.settings.unicommerce_site}"
@@ -39,13 +41,12 @@ class UnicommerceAPIClient:
 		self,
 		endpoint: str,
 		method: str = "POST",
-		headers: Optional[JsonDict] = None,
-		body: Optional[JsonDict] = None,
-		params: Optional[JsonDict] = None,
-		files: Optional[JsonDict] = None,
+		headers: JsonDict | None = None,
+		body: JsonDict | None = None,
+		params: JsonDict | None = None,
+		files: JsonDict | None = None,
 		log_error=True,
-	) -> Tuple[JsonDict, bool]:
-
+	) -> tuple[JsonDict, bool]:
 		if headers is None:
 			headers = {}
 
@@ -83,7 +84,7 @@ class UnicommerceAPIClient:
 
 		return data, status
 
-	def get_unicommerce_item(self, sku: str, log_error=True) -> Optional[JsonDict]:
+	def get_unicommerce_item(self, sku: str, log_error=True) -> JsonDict | None:
 		"""Get Unicommerce item data for specified SKU code.
 
 		ref: https://documentation.unicommerce.com/docs/itemtype-get.html
@@ -94,7 +95,7 @@ class UnicommerceAPIClient:
 		if status:
 			return item
 
-	def create_update_item(self, item_dict: JsonDict, update=False) -> Tuple[JsonDict, bool]:
+	def create_update_item(self, item_dict: JsonDict, update=False) -> tuple[JsonDict, bool]:
 		"""Create/update item on unicommerce.
 
 		ref: https://documentation.unicommerce.com/docs/createoredit-itemtype.html
@@ -106,7 +107,7 @@ class UnicommerceAPIClient:
 			endpoint = "/services/rest/v1/catalog/itemType/edit"
 		return self.request(endpoint=endpoint, body={"itemType": item_dict})
 
-	def get_sales_order(self, order_code: str) -> Optional[JsonDict]:
+	def get_sales_order(self, order_code: str) -> JsonDict | None:
 		"""Get details for a sales order.
 
 		ref: https://documentation.unicommerce.com/docs/saleorder-get.html
@@ -120,13 +121,13 @@ class UnicommerceAPIClient:
 
 	def search_sales_order(
 		self,
-		from_date: Optional[str] = None,
-		to_date: Optional[str] = None,
-		status: Optional[str] = None,
-		channel: Optional[str] = None,
-		facility_codes: Optional[List[str]] = None,
-		updated_since: Optional[int] = None,
-	) -> Optional[List[JsonDict]]:
+		from_date: str | None = None,
+		to_date: str | None = None,
+		status: str | None = None,
+		channel: str | None = None,
+		facility_codes: list[str] | None = None,
+		updated_since: int | None = None,
+	) -> list[JsonDict] | None:
 		"""Search sales order using specified parameters and return search results.
 
 		ref: https://documentation.unicommerce.com/docs/saleorder-search.html
@@ -143,16 +144,14 @@ class UnicommerceAPIClient:
 		# remove None values.
 		body = {k: v for k, v in body.items() if v is not None}
 
-		search_results, status = self.request(
-			endpoint="/services/rest/v1/oms/saleOrder/search", body=body
-		)
+		search_results, status = self.request(endpoint="/services/rest/v1/oms/saleOrder/search", body=body)
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
 
 	def get_inventory_snapshot(
-		self, sku_codes: List[str], facility_code: str, updated_since: int = 1430
-	) -> Optional[JsonDict]:
+		self, sku_codes: list[str], facility_code: str, updated_since: int = 1430
+	) -> JsonDict | None:
 		"""Get current inventory snapshot.
 
 		ref: https://documentation.unicommerce.com/docs/inventory-snapshot.html
@@ -163,13 +162,15 @@ class UnicommerceAPIClient:
 		body = {"itemTypeSKUs": sku_codes, "updatedSinceInMinutes": updated_since}
 
 		response, status = self.request(
-			endpoint="/services/rest/v1/inventory/inventorySnapshot/get", headers=extra_headers, body=body,
+			endpoint="/services/rest/v1/inventory/inventorySnapshot/get",
+			headers=extra_headers,
+			body=body,
 		)
 
 		if status:
 			return response
 
-	def bulk_inventory_update(self, facility_code: str, inventory_map: Dict[str, int]):
+	def bulk_inventory_update(self, facility_code: str, inventory_map: dict[str, int]):
 		"""Bulk update inventory on unicommerce using SKU and qty.
 
 		The qty should be "total" quantity.
@@ -219,8 +220,8 @@ class UnicommerceAPIClient:
 				return response, False
 
 	def create_sales_invoice(
-		self, so_code: str, so_item_codes: List[str], facility_code: str
-	) -> Optional[JsonDict]:
+		self, so_code: str, so_item_codes: list[str], facility_code: str
+	) -> JsonDict | None:
 		body = {"saleOrderCode": so_code, "saleOrderItemCodes": so_item_codes}
 		extra_headers = {"Facility": facility_code}
 
@@ -280,7 +281,7 @@ class UnicommerceAPIClient:
 
 	def get_sales_invoice(
 		self, shipping_package_code: str, facility_code: str, is_return: bool = False
-	) -> Optional[JsonDict]:
+	) -> JsonDict | None:
 		"""Get invoice details
 
 		ref: https://documentation.unicommerce.com/docs/invoice-getdetails.html
@@ -329,10 +330,12 @@ class UnicommerceAPIClient:
 
 		extra_headers = {"Facility": facility_code}
 		return self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingPackage/edit",
+			body=body,
+			headers=extra_headers,
 		)
 
-	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> Optional[str]:
+	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> str | None:
 		"""Get the generated label for a given shipping package.
 
 		ref: undocumented.
@@ -352,7 +355,7 @@ class UnicommerceAPIClient:
 		channel: str,
 		shipping_provider_code: str,
 		shipping_method_code: str,
-		shipping_packages: List[str],
+		shipping_packages: list[str],
 		facility_code: str,
 		third_party_shipping: bool = True,
 	):
@@ -371,7 +374,9 @@ class UnicommerceAPIClient:
 		}
 
 		response, status = self.request(
-			endpoint="/services/rest/v1/oms/shippingManifest/createclose", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingManifest/createclose",
+			body=body,
+			headers=extra_headers,
 		)
 
 		if status:
@@ -390,9 +395,9 @@ class UnicommerceAPIClient:
 	def search_shipping_packages(
 		self,
 		facility_code: str,
-		channel: Optional[str] = None,
-		statuses: Optional[List[str]] = None,
-		updated_since: Optional[int] = 6 * 60,
+		channel: str | None = None,
+		statuses: list[str] | None = None,
+		updated_since: int | None = 6 * 60,
 	):
 		"""Search shipping packages on unicommerce matching specified criterias.
 
@@ -408,14 +413,20 @@ class UnicommerceAPIClient:
 		body = {k: v for k, v in body.items() if v is not None}
 
 		search_results, statuses = self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/search", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingPackage/search",
+			body=body,
+			headers=extra_headers,
 		)
 
 		if statuses and "elements" in search_results:
 			return search_results["elements"]
 
 	def create_import_job(
-		self, job_name: str, csv_filename: str, facility_code: str, job_type: str = "CREATE_NEW",
+		self,
+		job_name: str,
+		csv_filename: str,
+		facility_code: str,
+		job_type: str = "CREATE_NEW",
 	):
 		"""Create import job by specifying job name and CSV file
 
@@ -448,7 +459,7 @@ class UnicommerceAPIClient:
 
 
 def _utc_timeformat(datetime) -> str:
-	""" Get datetime in UTC/GMT as required by Unicommerce"""
+	"""Get datetime in UTC/GMT as required by Unicommerce"""
 	return get_datetime(datetime).astimezone(timezone("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

@@ -55,9 +55,7 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertGreaterEqual(
-			len(attachments), 2, msg=f"Expected 2 attachments, found: {str(attachments)}"
-		)
+		self.assertGreaterEqual(len(attachments), 2, msg=f"Expected 2 attachments, found: {attachments!s}")
 
 	def test_end_to_end_invoice_generation(self):
 		"""Full invoice generation test with mocked responses."""
@@ -113,6 +111,4 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertGreaterEqual(
-			len(attachments), 2, msg=f"Expected 2 attachments, found: {str(attachments)}"
-		)
+		self.assertGreaterEqual(len(attachments), 2, msg=f"Expected 2 attachments, found: {attachments!s}")

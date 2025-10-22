@@ -1,7 +1,6 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
-from typing import Dict, List, Optional, Tuple
 
 import frappe
 import requests
@@ -143,18 +142,16 @@ class UnicommerceSettings(SettingController):
 				_("Warehouse Mapping should be unique and one-to-one without repeating same warehouses.")
 			)
 
-	def get_erpnext_warehouses(self, all_wh=False) -> List[ERPNextWarehouse]:
+	def get_erpnext_warehouses(self, all_wh=False) -> list[ERPNextWarehouse]:
 		"""Get list of configured ERPNext warehouses.
 
 		all_wh flag ignores enabled status.
 		"""
-		return [
-			wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled or all_wh
-		]
+		return [wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled or all_wh]
 
 	def get_erpnext_to_integration_wh_mapping(
 		self, all_wh=False
-	) -> Dict[ERPNextWarehouse, IntegrationWarehouse]:
+	) -> dict[ERPNextWarehouse, IntegrationWarehouse]:
 		"""Get enabled mapping from ERPNextWarehouse to Unicommerce facility.
 
 		all_wh flag ignores enabled status."""
@@ -166,7 +163,7 @@ class UnicommerceSettings(SettingController):
 
 	def get_integration_to_erpnext_wh_mapping(
 		self, all_wh=False
-	) -> Dict[IntegrationWarehouse, ERPNextWarehouse]:
+	) -> dict[IntegrationWarehouse, ERPNextWarehouse]:
 		"""Get enabled mapping from Unicommerce facility to ERPNext warehouse.
 
 		all_wh flag ignores enabled status."""
@@ -174,8 +171,8 @@ class UnicommerceSettings(SettingController):
 
 		return {v: k for k, v in reverse_map.items()}
 
-	def get_company_addresses(self, facility_code: str) -> Tuple[Optional[str], Optional[str]]:
-		""" Get mapped company billing and shipping addresses."""
+	def get_company_addresses(self, facility_code: str) -> tuple[str | None, str | None]:
+		"""Get mapped company billing and shipping addresses."""
 		for wh_map in self.warehouse_mapping:
 			if wh_map.unicommerce_facility_code == facility_code:
 				return wh_map.company_address, wh_map.dispatch_address
@@ -183,7 +180,6 @@ class UnicommerceSettings(SettingController):
 
 
 def setup_custom_fields(update=True):
-
 	custom_sections = {
 		"Sales Order": [
 			dict(

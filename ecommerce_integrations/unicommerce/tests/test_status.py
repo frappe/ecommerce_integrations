@@ -15,7 +15,6 @@ class TestUnicommerceStatusUpdates(TestCaseApiClient):
 		_serialize_items([si_item.as_dict()])
 
 	def test_delete_cancelled_items(self):
-
 		item1 = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "cancelled"})
 		item2 = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "not cancelled"})
 

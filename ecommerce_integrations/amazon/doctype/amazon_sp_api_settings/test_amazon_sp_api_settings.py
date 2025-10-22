@@ -6,6 +6,7 @@ import json
 import os
 import time
 import unittest
+from typing import ClassVar
 
 import frappe
 import responses
@@ -30,7 +31,7 @@ from ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_
 )
 
 file_path = os.path.join(os.path.dirname(__file__), "test_data.json")
-with open(file_path, "r") as json_file:
+with open(file_path) as json_file:
 	try:
 		DATA = json.load(json_file)
 	except json.decoder.JSONDecodeError as e:
@@ -38,13 +39,16 @@ with open(file_path, "r") as json_file:
 
 
 class TestSPAPI(SPAPI):
-
 	# Expected response after hitting the URL.
-	expected_response = {}
+	expected_response: ClassVar = {}
 
 	@responses.activate
 	def make_request(
-		self, method: str = "GET", append_to_base_uri: str = "", params: dict = None, data: dict = None,
+		self,
+		method: str = "GET",
+		append_to_base_uri: str = "",
+		params: dict | None = None,
+		data: dict | None = None,
 	) -> object:
 		if isinstance(params, dict):
 			params = Util.remove_empty(params)
@@ -78,7 +82,7 @@ class TestSPAPI(SPAPI):
 
 class TestFinances(Finances, TestSPAPI):
 	def list_financial_events_by_order_id(
-		self, order_id: str, max_results: int = None, next_token: str = None
+		self, order_id: str, max_results: int | None = None, next_token: str | None = None
 	) -> object:
 		self.expected_response = DATA.get("list_financial_events_by_order_id_200")
 		return super().list_financial_events_by_order_id(order_id, max_results, next_token)
@@ -88,22 +92,22 @@ class TestOrders(Orders, TestSPAPI):
 	def get_orders(
 		self,
 		created_after: str,
-		created_before: str = None,
-		last_updated_after: str = None,
-		last_updated_before: str = None,
-		order_statuses: list = None,
-		marketplace_ids: list = None,
-		fulfillment_channels: list = None,
-		payment_methods: list = None,
-		buyer_email: str = None,
-		seller_order_id: str = None,
+		created_before: str | None = None,
+		last_updated_after: str | None = None,
+		last_updated_before: str | None = None,
+		order_statuses: list | None = None,
+		marketplace_ids: list | None = None,
+		fulfillment_channels: list | None = None,
+		payment_methods: list | None = None,
+		buyer_email: str | None = None,
+		seller_order_id: str | None = None,
 		max_results: int = 100,
-		easyship_shipment_statuses: list = None,
-		next_token: str = None,
-		amazon_order_ids: list = None,
-		actual_fulfillment_supply_source_id: str = None,
+		easyship_shipment_statuses: list | None = None,
+		next_token: str | None = None,
+		amazon_order_ids: list | None = None,
+		actual_fulfillment_supply_source_id: str | None = None,
 		is_ispu: bool = False,
-		store_chain_store_id: str = None,
+		store_chain_store_id: str | None = None,
 	) -> object:
 		self.expected_response = DATA.get("get_orders_200")
 		return super().get_orders(
@@ -126,13 +130,17 @@ class TestOrders(Orders, TestSPAPI):
 			store_chain_store_id,
 		)
 
-	def get_order_items(self, order_id: str, next_token: str = None) -> object:
+	def get_order_items(self, order_id: str, next_token: str | None = None) -> object:
 		self.expected_response = DATA.get("get_order_items_200")
 		return super().get_order_items(order_id, next_token)
 
 
 class TestCatalogItems(CatalogItems, TestSPAPI):
-	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> object:
+	def get_catalog_item(
+		self,
+		asin: str,
+		marketplace_id: str | None = None,
+	) -> object:
 		self.expected_response = DATA.get("get_catalog_item_200")
 		return super().get_catalog_item(asin, marketplace_id)
 
@@ -163,7 +171,11 @@ class TestAmazonSettings:
 
 		def get_warehouse():
 			warehouse_name = frappe.db.get_value(
-				"Warehouse", {"warehouse_name": "Amazon Test Warehouse",}, "warehouse_name"
+				"Warehouse",
+				{
+					"warehouse_name": "Amazon Test Warehouse",
+				},
+				"warehouse_name",
 			)
 
 			if not warehouse_name:
@@ -181,12 +193,19 @@ class TestAmazonSettings:
 
 		def get_item_group():
 			item_group_name = frappe.db.get_value(
-				"Item Group", {"item_group_name": "Amazon Test Warehouse",}, "item_group_name"
+				"Item Group",
+				{
+					"item_group_name": "Amazon Test Warehouse",
+				},
+				"item_group_name",
 			)
 
 			if not item_group_name:
 				item_group = frappe.get_doc(
-					{"doctype": "Item Group", "item_group_name": "Amazon Test Warehouse",}
+					{
+						"doctype": "Item Group",
+						"item_group_name": "Amazon Test Warehouse",
+					}
 				)
 				item_group.insert(ignore_permissions=True)
 				item_group_name = item_group.item_group_name
@@ -235,7 +254,7 @@ class TestAmazonRepository(AmazonRepository):
 	def call_sp_api_method(self, sp_api_method, **kwargs):
 		max_retries = self.amz_setting.max_retry_limit
 
-		for x in range(max_retries):
+		for _x in range(max_retries):
 			try:
 				result = sp_api_method(**kwargs)
 				return result.get("payload")

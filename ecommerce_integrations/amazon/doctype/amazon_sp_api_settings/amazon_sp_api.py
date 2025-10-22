@@ -136,7 +136,7 @@ class AWSSigV4(AuthBase):
 
 		# Create payload hash (hash of the request body content).
 		if request.method == "GET":
-			payload_hash = hashlib.sha256(("").encode("utf-8")).hexdigest()
+			payload_hash = hashlib.sha256(b"").hexdigest()
 		else:
 			if request.body:
 				if isinstance(request.body, bytes):
@@ -156,9 +156,7 @@ class AWSSigV4(AuthBase):
 				map(lambda H: H.lower(), request.headers.keys()),
 			)
 		)
-		canonical_headers = "".join(
-			map(lambda h: ":".join((h, request.headers[h])) + "\n", headers_to_sign)
-		)
+		canonical_headers = "".join([f"{h}:{request.headers[h]}\n" for h in headers_to_sign])
 		signed_headers = ";".join(headers_to_sign)
 
 		# Combine elements to create canonical request.
@@ -207,8 +205,8 @@ class SPAPIError(Exception):
 		super().__init__(*args)
 
 
-class SPAPI(object):
-	""" Base Amazon SP-API class """
+class SPAPI:
+	"""Base Amazon SP-API class"""
 
 	# https://github.com/amzn/selling-partner-api-docs/blob/main/guides/en-US/developer-guide/SellingPartnerApiDeveloperGuide.md#connecting-to-the-selling-partner-api
 	AUTH_URL = "https://api.amazon.com/auth/o2/token"
@@ -246,9 +244,7 @@ class SPAPI(object):
 		result = response.json()
 		if response.status_code == 200:
 			return result.get("access_token")
-		exception = SPAPIError(
-			error=result.get("error"), error_description=result.get("error_description")
-		)
+		exception = SPAPIError(error=result.get("error"), error_description=result.get("error_description"))
 		raise exception
 
 	def get_auth(self) -> AWSSigV4:
@@ -281,7 +277,11 @@ class SPAPI(object):
 		return {"x-amz-access-token": self.get_access_token()}
 
 	def make_request(
-		self, method: str = "GET", append_to_base_uri: str = "", params: dict = None, data: dict = None,
+		self,
+		method: str = "GET",
+		append_to_base_uri: str = "",
+		params: dict | None = None,
+		data: dict | None = None,
 	) -> dict:
 		if isinstance(params, dict):
 			params = Util.remove_empty(params)
@@ -307,45 +307,45 @@ class SPAPI(object):
 
 
 class Finances(SPAPI):
-	""" Amazon Finances API """
+	"""Amazon Finances API"""
 
 	BASE_URI = "/finances/v0/"
 
 	def list_financial_events_by_order_id(
-		self, order_id: str, max_results: int = None, next_token: str = None
+		self, order_id: str, max_results: int | None = None, next_token: str | None = None
 	) -> dict:
-		""" Returns all financial events for the specified order. """
+		"""Returns all financial events for the specified order."""
 		append_to_base_uri = f"orders/{order_id}/financialEvents"
 		data = dict(MaxResultsPerPage=max_results, NextToken=next_token)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 
 class Orders(SPAPI):
-	""" Amazon Orders API """
+	"""Amazon Orders API"""
 
 	BASE_URI = "/orders/v0/orders"
 
 	def get_orders(
 		self,
 		created_after: str,
-		created_before: str = None,
-		last_updated_after: str = None,
-		last_updated_before: str = None,
-		order_statuses: list = None,
-		marketplace_ids: list = None,
-		fulfillment_channels: list = None,
-		payment_methods: list = None,
-		buyer_email: str = None,
-		seller_order_id: str = None,
+		created_before: str | None = None,
+		last_updated_after: str | None = None,
+		last_updated_before: str | None = None,
+		order_statuses: list | None = None,
+		marketplace_ids: list | None = None,
+		fulfillment_channels: list | None = None,
+		payment_methods: list | None = None,
+		buyer_email: str | None = None,
+		seller_order_id: str | None = None,
 		max_results: int = 100,
-		easyship_shipment_statuses: list = None,
-		next_token: str = None,
-		amazon_order_ids: list = None,
-		actual_fulfillment_supply_source_id: str = None,
+		easyship_shipment_statuses: list | None = None,
+		next_token: str | None = None,
+		amazon_order_ids: list | None = None,
+		actual_fulfillment_supply_source_id: str | None = None,
 		is_ispu: bool = False,
-		store_chain_store_id: str = None,
+		store_chain_store_id: str | None = None,
 	) -> dict:
-		""" Returns orders created or updated during the time frame indicated by the specified parameters. You can also apply a range of filtering criteria to narrow the list of orders returned. If NextToken is present, that will be used to retrieve the orders instead of other criteria. """
+		"""Returns orders created or updated during the time frame indicated by the specified parameters. You can also apply a range of filtering criteria to narrow the list of orders returned. If NextToken is present, that will be used to retrieve the orders instead of other criteria."""
 		data = dict(
 			CreatedAfter=created_after,
 			CreatedBefore=created_before,
@@ -373,20 +373,24 @@ class Orders(SPAPI):
 
 		return self.make_request(params=data)
 
-	def get_order_items(self, order_id: str, next_token: str = None) -> dict:
-		""" Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items. """
+	def get_order_items(self, order_id: str, next_token: str | None = None) -> dict:
+		"""Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items."""
 		append_to_base_uri = f"/{order_id}/orderItems"
 		data = dict(NextToken=next_token)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 
 class CatalogItems(SPAPI):
-	""" Amazon Catalog Items API """
+	"""Amazon Catalog Items API"""
 
 	BASE_URI = "/catalog/v0"
 
-	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> dict:
-		""" Returns a specified item and its attributes. """
+	def get_catalog_item(
+		self,
+		asin: str,
+		marketplace_id: str | None = None,
+	) -> dict:
+		"""Returns a specified item and its attributes."""
 		if not marketplace_id:
 			marketplace_id = self.marketplace_id
 

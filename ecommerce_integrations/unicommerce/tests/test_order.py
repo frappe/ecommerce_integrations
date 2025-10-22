@@ -26,9 +26,15 @@ class TestUnicommerceOrder(TestCaseApiClient):
 
 	def test_validate_item_list(self):
 		order_files = ["order-SO5905", "order-SO5906", "order-SO5907"]
-		items_list = [{"MC-100", "TITANIUM_WATCH"}, {"MC-100",}, {"MC-100", "TITANIUM_WATCH"}]
+		items_list = [
+			{"MC-100", "TITANIUM_WATCH"},
+			{
+				"MC-100",
+			},
+			{"MC-100", "TITANIUM_WATCH"},
+		]
 
-		for order_file, items in zip(order_files, items_list):
+		for order_file, items in zip(order_files, items_list, strict=False):
 			order = self.load_fixture(order_file)["saleOrderDTO"]
 			self.assertEqual(items, _sync_order_items(order, client=self.client))
 

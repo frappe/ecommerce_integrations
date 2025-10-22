@@ -5,8 +5,7 @@ frappe.ui.form.on("Sales Invoice", {
 				__("Open Unicommerce Order"),
 				function () {
 					frappe.call({
-						method:
-							"ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
+						method: "ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
 						args: {
 							code: frm.doc.unicommerce_order_code,
 							doctype: frm.doc.doctype,

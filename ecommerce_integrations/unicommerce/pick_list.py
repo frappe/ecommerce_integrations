@@ -21,7 +21,9 @@ def validate(self, method=None):
 					if pl.picked_qty > pl.qty:
 						pl.picked_qty = pl.qty
 
-						frappe.throw(_("Row {0} Picked Qty cannot be more than Sales Order Qty").format(pl.idx))
+						frappe.throw(
+							_("Row {0} Picked Qty cannot be more than Sales Order Qty").format(pl.idx)
+						)
 				if pl.picked_qty == 0 and pl.docstatus == 1:
 					frappe.throw(
 						_("You have not picked {0} in row {1} . Pick the item to proceed!").format(
