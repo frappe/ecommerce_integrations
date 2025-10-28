@@ -47,6 +47,18 @@ def temp_shopify_session(shopify_account=None):
     return decorator
 
 
+def get_auth_details(setting) -> tuple[str, str, str]:
+    """Get authentication details for Shopify API."""
+    # setting = frappe.get_doc(ACCOUNT_DOCTYPE, setting)
+    return setting.shopify_url, API_VERSION, setting.get_password("password")
+
+
+def get_temp_session_context(setting):
+	"""Get a temporary Shopify session context manager."""
+	auth_details = get_auth_details(setting)
+	return Session.temp(*auth_details)
+
+
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
 	"""Register required webhooks with shopify and return registered webhooks."""
 	new_webhooks = []
@@ -105,34 +117,34 @@ def get_callback_url() -> str:
 def store_request_data(**kwargs) -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
+		# Get shopify account
+		shop_domain = frappe.get_request_header("X-Shopify-Shop-Domain")
+		settings = frappe.get_doc(ACCOUNT_DOCTYPE, shop_domain)
 
-		# _validate_request(frappe.request, hmac_header, kwargs.get("shopify_account"))
+		_validate_request(frappe.request, hmac_header, secret_key=settings.shared_secret)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
-		process_request(data, event)
+		process_request(data, event, shopify_account=settings)
 
 
-def process_request(data, event):
-	print("Processing webhook event: ", event, "\n", data)
+def process_request(data, event, shopify_account=None):
+	print("Processing webhook event: ", event, "\n", shopify_account)
 	# create log
-	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
-
-	# enqueue backround job
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account.name)
+	print("log created")
+	# enqueue background job
 	frappe.enqueue(
 		method=EVENT_MAPPER[event],
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": data, "request_id": log.name},
+		**{"payload": data, "request_id": log.name, "shopify_account": shopify_account},
 	)
 
 
-def _validate_request(req, hmac_header, shopify_account):
-	settings = frappe.get_doc(ACCOUNT_DOCTYPE, shopify_account)
-	secret_key = settings.shared_secret
-
+def _validate_request(req, hmac_header, secret_key):
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):

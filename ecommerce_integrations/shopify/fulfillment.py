@@ -11,25 +11,25 @@ from ecommerce_integrations.shopify.constants import (
 	# SETTING_DOCTYPE,
 )
 from ecommerce_integrations.shopify.order import get_sales_order
-from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_delivery_note(payload, request_id=None):
+def prepare_delivery_note(payload, request_id=None, shopify_account=None):
 	frappe.set_user("Administrator")
-	setting = get_user_shopify_account()
 	frappe.flags.request_id = request_id
 
 	order = payload
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
+		shopify_account_name = shopify_account.name if shopify_account else None
 		if sales_order:
-			create_delivery_note(order, setting, sales_order)
-			create_shopify_log(status="Success")
+			create_delivery_note(order, shopify_account, sales_order)
+			create_shopify_log(status="Success", shopify_account=shopify_account_name)
 		else:
-			create_shopify_log(status="Invalid", message="Sales Order not found for syncing delivery note.")
+			create_shopify_log(status="Invalid", message="Sales Order not found for syncing delivery note.", shopify_account=shopify_account_name)
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e, rollback=True)
+		create_shopify_log(status="Error", exception=e, rollback=True, shopify_account=shopify_account_name)
 
 
 def create_delivery_note(shopify_order, setting, so):
@@ -49,7 +49,7 @@ def create_delivery_note(shopify_order, setting, so):
 			dn.posting_date = getdate(fulfillment.get("created_at"))
 			dn.naming_series = setting.delivery_note_series or "DN-Shopify-"
 			dn.items = get_fulfillment_items(
-				dn.items, fulfillment.get("line_items"), fulfillment.get("location_id")
+				dn.items, fulfillment.get("line_items"), setting, fulfillment.get("location_id")
 			)
 			dn.flags.ignore_mandatory = True
 			dn.save()
@@ -59,13 +59,12 @@ def create_delivery_note(shopify_order, setting, so):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
 
-def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
+def get_fulfillment_items(dn_items, fulfillment_items, setting, location_id=None):
 	# local import to avoid circular imports
 	from ecommerce_integrations.shopify.product import get_item_code
 
 	fulfillment_items = deepcopy(fulfillment_items)
 
-	setting = get_user_shopify_account()
 	wh_map = setting.get_integration_to_erpnext_wh_mapping()
 	warehouse = wh_map.get(str(location_id)) or setting.warehouse
 

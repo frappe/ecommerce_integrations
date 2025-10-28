@@ -10,9 +10,9 @@ from ecommerce_integrations.controllers.inventory import (
 	update_inventory_sync_status,
 )
 from ecommerce_integrations.controllers.scheduling import need_to_run
-from ecommerce_integrations.shopify.connection import temp_shopify_session
+from ecommerce_integrations.shopify.connection import get_temp_session_context
 from ecommerce_integrations.shopify.constants import MODULE_NAME, ACCOUNT_DOCTYPE
-from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
+from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def update_inventory_on_shopify() -> None:
@@ -20,24 +20,29 @@ def update_inventory_on_shopify() -> None:
 
 	Called by scheduler on configured interval.
 	"""
-	setting = get_user_shopify_account()
-	print("Updating inventory on shopify for account ", setting.name)
+	all_accounts = frappe.get_all(
+		ACCOUNT_DOCTYPE,
+		filters={"enable_shopify": 1, "update_erpnext_stock_levels_to_shopify": 1},
+		pluck="name",
+	)
+	for account in all_accounts:
+		setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+		if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
+			continue
 
-	if not setting.is_enabled() or not setting.update_erpnext_stock_levels_to_shopify:
-		return
-
-	if not need_to_run(ACCOUNT_DOCTYPE, setting.name, "inventory_sync_frequency", "last_inventory_sync"):
-		return
-
-	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
-	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
-
-	if inventory_levels:
-		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
+		if not need_to_run(ACCOUNT_DOCTYPE, setting.name, "inventory_sync_frequency", "last_inventory_sync"):
+			continue
 
 
-@temp_shopify_session(shopify_account=None)
-def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
+		warehous_map = setting.get_erpnext_to_integration_wh_mapping()
+		inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
+
+		if inventory_levels:
+			with get_temp_session_context(setting):
+				upload_inventory_data_to_shopify(inventory_levels, warehous_map, setting)
+
+
+def upload_inventory_data_to_shopify(inventory_levels, warehous_map, setting) -> None:
 	synced_on = now()
 
 	for inventory_sync_batch in create_batch(inventory_levels, 50):
@@ -66,10 +71,10 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 
 			frappe.db.commit()
 
-		_log_inventory_update_status(inventory_sync_batch)
+		_log_inventory_update_status(inventory_sync_batch, setting)
 
 
-def _log_inventory_update_status(inventory_levels) -> None:
+def _log_inventory_update_status(inventory_levels, setting) -> None:
 	"""Create log of inventory update."""
 	log_message = "variant_id,location_id,status,failure_reason\n"
 
@@ -91,4 +96,4 @@ def _log_inventory_update_status(inventory_levels) -> None:
 
 	log_message = f"Updated {percent_successful * 100}% items\n\n" + log_message
 
-	create_shopify_log(method="update_inventory_on_shopify", status=status, message=log_message)
+	create_shopify_log(method="update_inventory_on_shopify", status=status, message=log_message, shopify_account=setting.name)

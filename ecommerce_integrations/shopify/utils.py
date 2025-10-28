@@ -22,9 +22,14 @@ def get_user_shopify_account():
     has_company = bool(existing_permission)
     if has_company:
         company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
-        account = frappe.get_doc("Shopify Account", {"company": company_id})
-        return account
+        return get_company_shopify_account(company_id)
     return None
+
+
+def get_company_shopify_account(company):
+    print("get_company_shopify_account called for company ", company)
+    account = frappe.get_doc("Shopify Account", {"company": company})
+    return account
 
 
 def get_company_shopify_account(company):

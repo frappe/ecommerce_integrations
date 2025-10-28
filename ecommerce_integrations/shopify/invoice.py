@@ -10,24 +10,24 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
 
 
-def prepare_sales_invoice(payload, request_id=None):
+def prepare_sales_invoice(payload, request_id=None, shopify_account=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	order = payload
 
 	frappe.set_user("Administrator")
-	setting = get_user_shopify_account()
 	frappe.flags.request_id = request_id
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
+		shopify_account_name = shopify_account.name if shopify_account else None
 		if sales_order:
-			create_sales_invoice(order, setting, sales_order)
-			create_shopify_log(status="Success")
+			create_sales_invoice(order, shopify_account, sales_order)
+			create_shopify_log(status="Success", shopify_account=shopify_account_name)
 		else:
-			create_shopify_log(status="Invalid", message="Sales Order not found for syncing sales invoice.")
+			create_shopify_log(status="Invalid", message="Sales Order not found for syncing sales invoice.", shopify_account=shopify_account_name)
 	except Exception as e:
-		create_shopify_log(status="Error", exception=e, rollback=True)
+		create_shopify_log(status="Error", exception=e, rollback=True, shopify_account=shopify_account_name)
 
 
 def create_sales_invoice(shopify_order, setting, so):
