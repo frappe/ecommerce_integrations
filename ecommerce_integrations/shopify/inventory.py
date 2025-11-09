@@ -12,6 +12,7 @@ from ecommerce_integrations.controllers.inventory import (
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
+from ecommerce_integrations.shopify.product import sync_item_to_shopify
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
@@ -32,7 +33,10 @@ def update_inventory_on_shopify() -> None:
 	inventory_levels = get_inventory_levels(tuple(warehous_map.keys()), MODULE_NAME)
 
 	if inventory_levels:
-		upload_inventory_data_to_shopify(inventory_levels, warehous_map)
+		# Filter inventory levels to only include items that should sync
+		inventory_levels = _filter_syncable_items(inventory_levels)
+		if inventory_levels:
+			upload_inventory_data_to_shopify(inventory_levels, warehous_map)
 
 
 @temp_shopify_session
@@ -66,6 +70,27 @@ def upload_inventory_data_to_shopify(inventory_levels, warehous_map) -> None:
 			frappe.db.commit()
 
 		_log_inventory_update_status(inventory_sync_batch)
+
+
+def _filter_syncable_items(inventory_levels) -> list:
+	"""Filter inventory levels to only include items that should sync to Shopify.
+	
+	Items are included if:
+	- Item has custom_sync_to_shopify enabled, OR
+	- Item's Item Group has custom_sync_to_shopify enabled
+	"""
+	filtered_levels = []
+	
+	for inv_level in inventory_levels:
+		try:
+			item = frappe.get_doc("Item", inv_level.item_code)
+			if sync_item_to_shopify(item):
+				filtered_levels.append(inv_level)
+		except frappe.DoesNotExistError:
+			# Item doesn't exist, skip it
+			continue
+	
+	return filtered_levels
 
 
 def _log_inventory_update_status(inventory_levels) -> None:

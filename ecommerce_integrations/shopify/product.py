@@ -340,6 +340,10 @@ def upload_erpnext_item(doc, method=None):
 	if item.flags.from_integration:
 		return
 
+	# Check if item or item group has sync enabled
+	if not sync_item_to_shopify(doc):
+		return
+
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	if not setting.is_enabled() or not setting.upload_erpnext_items:
@@ -467,6 +471,33 @@ def upload_erpnext_item(doc, method=None):
 				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
 
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+
+
+def sync_item_to_shopify(doc):
+	"""Check if item should be synced to Shopify.
+
+	Returns True if sync should proceed, False otherwise.
+	Sync proceeds if:
+	- Item has custom_sync_to_shopify enabled, OR
+	- Item's Item Group has custom_sync_to_shopify enabled
+	"""
+	# Check if item itself has sync enabled
+	item_sync = cint(doc.get("custom_sync_to_shopify", 0))
+	if item_sync:
+		return True
+
+	# Check if item group has sync enabled
+	if doc.item_group:
+		try:
+			item_group = frappe.get_doc("Item Group", doc.item_group)
+			item_group_sync = cint(item_group.get("custom_sync_to_shopify", 0))
+			if item_group_sync:
+				return True
+		except frappe.DoesNotExistError:
+			pass
+
+	# Neither item nor item group has sync enabled
+	return False
 
 
 def map_erpnext_variant_to_shopify_variant(shopify_product: Product, erpnext_item, variant_attributes):
