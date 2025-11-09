@@ -10,6 +10,22 @@ app_email = "developers@frappe.io"
 app_license = "GNU GPL v3.0"
 required_apps = ["frappe/erpnext"]
 
+
+fixtures = [
+	{
+		"doctype": "Custom Field",
+  "filters":[
+	  [
+		  "name",
+			"in",
+   (
+	   "Item Group-custom_sync_to_shopify",
+		"Item-custom_sync_to_shopify"
+   )
+	  ]
+  ]
+	}
+]
 # Includes in <head>
 # ------------------
 
