@@ -15,6 +15,19 @@ from ecommerce_integrations.shopify.constants import (
 )
 
 
+@frappe.whitelist()
+def get_jobs():
+    return frappe.utils.background_jobs.get_jobs(site=frappe.local.site)
+
+
+def get_user_company(user):
+    existing_permission = frappe.db.exists("User Permission", {"user": user, "allow": "Company"})
+    has_company = bool(existing_permission)
+    if has_company:
+        company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
+        return company_id
+    return None
+
 def get_user_shopify_account():
     user = frappe.session.user
     print("get_user_shopify_account called for user ", user)
@@ -24,12 +37,6 @@ def get_user_shopify_account():
         company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
         return get_company_shopify_account(company_id)
     return None
-
-
-def get_company_shopify_account(company):
-    print("get_company_shopify_account called for company ", company)
-    account = frappe.get_doc("Shopify Account", {"company": company})
-    return account
 
 
 def get_company_shopify_account(company):
