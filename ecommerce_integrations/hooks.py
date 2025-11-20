@@ -152,6 +152,7 @@ doc_events = {
 	},
 	"Work Order": {
 		"before_save": "ecommerce_integrations.shopify.work_order.set_shopify_order_barcode",
+		"on_update": "ecommerce_integrations.shopify.work_order.tag_shopify_order_in_production",
 	},
 }
 
