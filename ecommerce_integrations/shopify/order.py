@@ -205,9 +205,10 @@ def _format_line_item_properties(line_item) -> str:
 		if not name:
 			continue
 
-		# Represent empty values consistently as an empty string in quotes.
-		value = "" if value is None else cstr(value)
-		formatted_properties.append(f'{name} - "{value}"')
+		value = ("" if value is None else cstr(value)).strip()
+		value = value or "NONE"
+
+		formatted_properties.append(f"{name}: {value}")
 
 	return "\n".join(formatted_properties)
 
