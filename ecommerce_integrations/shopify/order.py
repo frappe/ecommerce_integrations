@@ -198,7 +198,7 @@ def _format_line_item_properties(line_item) -> str:
 	properties = line_item.get("properties") or []
 	formatted_properties = []
 
-	for prop in properties:
+	for idx, prop in enumerate(properties):
 		name = (prop.get("name") or "").strip()
 		value = prop.get("value")
 
@@ -208,7 +208,8 @@ def _format_line_item_properties(line_item) -> str:
 		value = ("" if value is None else cstr(value)).strip()
 		value = value or "NONE"
 
-		formatted_properties.append(f"{name}: {value}")
+		suffix = "," if idx < len(properties) - 1 else ""
+		formatted_properties.append(f"{name}: {value}{suffix}")
 
 	return "<br>".join(formatted_properties)
 
