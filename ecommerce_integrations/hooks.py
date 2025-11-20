@@ -141,7 +141,10 @@ doc_events = {
 	},
 	"Stock Entry": {
 		"validate": "ecommerce_integrations.unicommerce.grn.validate_stock_entry_for_grn",
-		"on_submit": "ecommerce_integrations.unicommerce.grn.upload_grn",
+		"on_submit": [
+			"ecommerce_integrations.unicommerce.grn.upload_grn",
+			"ecommerce_integrations.shopify.work_order.handle_stock_entry_shopify_tag",
+		],
 		"on_cancel": "ecommerce_integrations.unicommerce.grn.prevent_grn_cancel",
 	},
 	"Item Price": {"on_change": "ecommerce_integrations.utils.price_list.discard_item_prices"},

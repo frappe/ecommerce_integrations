@@ -38,17 +38,40 @@ def set_shopify_order_barcode(doc, method=None):
 def tag_shopify_order_in_production(doc, method=None):
 	"""Add IN PRODUCTION tag to Shopify order when Work Order moves to In Process."""
 
-	if doc.status != "In Process":
+	try:
+		if isinstance(doc, str):
+			doc = frappe.get_doc("Work Order", doc)
+
+		doc.reload()
+
+		if doc.status != "In Process":
+			return
+
+		if not doc.sales_order:
+			return
+
+		shopify_order_id = frappe.db.get_value("Sales Order", doc.sales_order, "shopify_order_id")
+		if not shopify_order_id:
+			return
+
+		_update_shopify_order_tag(shopify_order_id, "IN PRODUCTION")
+	except Exception:
+		frappe.log_error(
+			frappe.get_traceback(),
+			"Shopify Work Order Tag Update Failed",
+		)
+
+
+def handle_stock_entry_shopify_tag(doc, method=None):
+	"""Trigger Shopify tagging when stock entry pushes Work Order to In Process."""
+
+	if doc.purpose not in {"Manufacture", "Material Transfer for Manufacture"}:
 		return
 
-	if not doc.sales_order:
+	if not doc.work_order:
 		return
 
-	shopify_order_id = frappe.db.get_value("Sales Order", doc.sales_order, "shopify_order_id")
-	if not shopify_order_id:
-		return
-
-	_update_shopify_order_tag(shopify_order_id, "IN PRODUCTION")
+	tag_shopify_order_in_production(doc.work_order)
 
 
 @temp_shopify_session
@@ -61,7 +84,13 @@ def _update_shopify_order_tag(shopify_order_id, tag):
 	if tag not in existing_tags:
 		existing_tags.append(tag)
 		order.tags = ", ".join(existing_tags)
-		order.save()
+		try:
+			order.save()
+		except Exception:
+			frappe.log_error(
+				frappe.get_traceback(),
+				"Shopify Order Tag Save Failed",
+			)
 
 
 def _generate_barcode_attachment(doc, order_number: str) -> str:
