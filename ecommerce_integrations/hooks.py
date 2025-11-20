@@ -20,7 +20,9 @@ fixtures = [
 			"in",
    (
 	   "Item Group-custom_sync_to_shopify",
-		"Item-custom_sync_to_shopify"
+		"Item-custom_sync_to_shopify",
+		"Sales Order Item-custom_item_properties",
+  "Sales Order Item-custom_properties",
    )
 	  ]
   ]
