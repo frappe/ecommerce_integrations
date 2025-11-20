@@ -1,11 +1,11 @@
-import io
-
 import frappe
-from barcode import get_barcode_class
+from barcode import Code128
 from barcode.writer import ImageWriter
 from frappe.core.doctype.file.utils import remove_file_by_url
-from frappe.utils import cstr, scrub
+from frappe.utils import cstr
 from frappe.utils.file_manager import save_file
+import os
+import re
 
 from ecommerce_integrations.shopify.constants import ORDER_NUMBER_FIELD
 
@@ -33,24 +33,17 @@ def set_shopify_order_barcode(doc, method=None):
 
 
 def _generate_barcode_attachment(doc, order_number: str) -> str:
-	barcode_class = get_barcode_class("code128")
-	buffer = io.BytesIO()
+	safe_name = _sanitize_filename(f"{doc.name or 'work-order'}-{order_number}")
+	file_path = frappe.get_site_path("private", "files", f"{safe_name}.png")
 
-	barcode_obj = barcode_class(cstr(order_number), writer=ImageWriter())
-	barcode_obj.write(
-		buffer,
-		{
-			"write_text": False,
-			"module_width": 0.2,
-			"module_height": 15.0,
-			"quiet_zone": 3.0,
-		},
-	)
+	code = Code128(cstr(order_number), writer=ImageWriter())
+	code.save(file_path.replace(".png", ""))
 
-	buffer.seek(0)
+	with open(file_path, "rb") as image_file:
+		file_doc = save_file(f"{safe_name}.png", image_file.read(), doc.doctype, doc.name, is_private=1)
 
-	file_name = f"{scrub(doc.name or 'work-order')}-{scrub(order_number)}-barcode.png"
-	file_doc = save_file(file_name, buffer.getvalue(), doc.doctype, doc.name, is_private=0)
+	if os.path.exists(file_path):
+		os.remove(file_path)
 
 	return file_doc.file_url
 
@@ -59,4 +52,9 @@ def _clear_existing_barcode(doc):
 	if doc.custom_order_barcode:
 		remove_file_by_url(doc.custom_order_barcode, doc.doctype, doc.name)
 	doc.custom_order_barcode = ""
+
+
+def _sanitize_filename(filename: str) -> str:
+	filename = re.sub(r"[^\w\s.-]", "", filename or "")
+	return filename.replace(" ", "_")
 
