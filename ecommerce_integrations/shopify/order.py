@@ -160,6 +160,7 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
 					"warehouse": setting.warehouse,
+					"custom_properties": _format_line_item_properties(shopify_item),
 					ORDER_ITEM_DISCOUNT_FIELD: (
 						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 					),
@@ -191,6 +192,24 @@ def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 def _get_total_discount(line_item) -> float:
 	discount_allocations = line_item.get("discount_allocations") or []
 	return sum(flt(discount.get("amount")) for discount in discount_allocations)
+
+
+def _format_line_item_properties(line_item) -> str:
+	properties = line_item.get("properties") or []
+	formatted_properties = []
+
+	for prop in properties:
+		name = (prop.get("name") or "").strip()
+		value = prop.get("value")
+
+		if not name:
+			continue
+
+		# Represent empty values consistently as an empty string in quotes.
+		value = "" if value is None else cstr(value)
+		formatted_properties.append(f'{name} - "{value}"')
+
+	return "\n".join(formatted_properties)
 
 
 def get_order_taxes(shopify_order, setting, items):

@@ -26,6 +26,7 @@ fixtures = [
   ]
 	}
 ]
+
 # Includes in <head>
 # ------------------
 
