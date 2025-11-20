@@ -11,7 +11,7 @@ from ecommerce_integrations.shopify.constants import ORDER_NUMBER_FIELD
 
 
 def set_shopify_order_barcode(doc, method=None):
-	"""Populate Work Order custom barcode field using linked Sales Order."""
+	"""Populate Work Order custom barcode image using linked Sales Order."""
 
 	if not hasattr(doc, "custom_order_barcode"):
 		return

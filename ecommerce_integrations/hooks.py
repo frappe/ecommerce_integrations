@@ -23,6 +23,7 @@ fixtures = [
 					"Item-custom_sync_to_shopify",
 					"Sales Order Item-custom_item_properties",
 					"Sales Order Item-custom_properties",
+					"Work Order-custom_order_barcode",
 			)
 	  ]
   ]
