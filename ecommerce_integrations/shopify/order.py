@@ -210,7 +210,7 @@ def _format_line_item_properties(line_item) -> str:
 
 		formatted_properties.append(f"{name}: {value}")
 
-	return "\n".join(formatted_properties)
+	return "<br>".join(formatted_properties)
 
 
 def get_order_taxes(shopify_order, setting, items):
