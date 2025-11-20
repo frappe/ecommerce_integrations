@@ -9,7 +9,7 @@ from frappe.core.doctype.file.utils import remove_file_by_url
 from frappe.utils import cstr
 from frappe.utils.file_manager import save_file
 
-from ecommerce_integrations.shopify.constants import ORDER_NUMBER_FIELD
+from ecommerce_integrations.shopify.constants import ORDER_NUMBER_FIELD, SETTING_DOCTYPE
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 
 
@@ -48,6 +48,9 @@ def tag_shopify_order_in_production(doc, method=None):
 			return
 
 		if not doc.sales_order:
+			return
+
+		if not _is_order_tag_update_enabled():
 			return
 
 		shopify_order_id = frappe.db.get_value("Sales Order", doc.sales_order, "shopify_order_id")
@@ -118,4 +121,12 @@ def _clear_existing_barcode(doc):
 def _sanitize_filename(filename: str) -> str:
 	filename = re.sub(r"[^\w\s.-]", "", filename or "")
 	return filename.replace(" ", "_")
+
+
+def _is_order_tag_update_enabled() -> bool:
+	try:
+		return bool(frappe.db.get_single_value(SETTING_DOCTYPE, "update_order_tags"))
+	except Exception:
+		frappe.log_error(frappe.get_traceback(), "Shopify Setting Fetch Failed (update_order_tags)")
+		return False
 

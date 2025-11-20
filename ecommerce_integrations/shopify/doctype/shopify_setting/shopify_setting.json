@@ -43,6 +43,7 @@
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
+  "update_order_tags",
   "column_break_34",
   "sync_new_item_as_active",
   "upload_variants_as_items",
@@ -387,12 +388,18 @@
    "fieldtype": "Link",
    "label": "Default Shipping Charges Account",
    "options": "Account"
+  },
+  {
+   "default": "0",
+   "fieldname": "update_order_tags",
+   "fieldtype": "Check",
+   "label": "Update Order Tags"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-10-24 10:38:49.247431",
+ "modified": "2025-11-20 17:13:37.357494",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
@@ -409,6 +416,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
