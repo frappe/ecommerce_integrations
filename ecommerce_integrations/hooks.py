@@ -18,12 +18,12 @@ fixtures = [
 	  [
 		  "name",
 			"in",
-   (
-	   "Item Group-custom_sync_to_shopify",
-		"Item-custom_sync_to_shopify",
-		"Sales Order Item-custom_item_properties",
-  "Sales Order Item-custom_properties",
-   )
+			(
+				"Item Group-custom_sync_to_shopify",
+					"Item-custom_sync_to_shopify",
+					"Sales Order Item-custom_item_properties",
+					"Sales Order Item-custom_properties",
+			)
 	  ]
   ]
 	}
@@ -148,6 +148,9 @@ doc_events = {
 	"Sales Invoice": {
 		"on_submit": "ecommerce_integrations.unicommerce.invoice.on_submit",
 		"on_cancel": "ecommerce_integrations.unicommerce.invoice.on_cancel",
+	},
+	"Work Order": {
+		"before_save": "ecommerce_integrations.shopify.work_order.set_shopify_order_barcode",
 	},
 }
 
