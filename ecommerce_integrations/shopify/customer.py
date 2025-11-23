@@ -9,28 +9,22 @@ from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
-	ACCOUNT_DOCTYPE,
 )
+from ecommerce_integrations.shopify.utils import get_company_shopify_account
 
 
 class ShopifyCustomer(EcommerceCustomer):
-	def __init__(self, customer_id: str, account=None):
-		# Standardized account resolution
-		from ecommerce_integrations.shopify.utils import resolve_account_context
-		self.setting = resolve_account_context(account)
-		
+	def __init__(self, customer_id: str):
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
-	def sync_customer(self, customer: dict[str, Any]) -> None:
+	def sync_customer(self, customer: dict[str, Any], customer_group: str) -> None:
 		"""Create Customer in ERPNext using shopify's Customer dict."""
 
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		if len(customer_name.strip()) == 0:
 			customer_name = customer.get("email")
 
-		customer_group = self.setting.customer_group
-		super().sync_customer(customer_name, customer_group)
+		super().sync_customer(customer_name, customer_group, company=customer.get("company"))
 
 		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
 		shipping_address = customer.get("shipping_address", {})

@@ -10,11 +10,23 @@ from ecommerce_integrations.controllers.inventory import (
 )
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
-from ecommerce_integrations.unicommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.constants import MODULE_NAME, ACCOUNT_DOCTYPE
 
 # Note: Undocumented but currently handles ~1000 inventory changes in one request.
 # Remaining to be done in next interval.
 MAX_INVENTORY_UPDATE_IN_REQUEST = 1000
+
+
+def get_user_shopify_account():
+    user = frappe.session.user
+    print("get_user_shopify_account called for user ", user)
+    existing_permission = frappe.db.exists("User Permission", {"user": user, "allow": "Company"})
+    has_company = bool(existing_permission)
+    if has_company:
+        company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
+        account = frappe.get_doc("Shopify Account", {"company": company_id})
+        return account
+    return None
 
 
 def update_inventory_on_unicommerce(client=None, force=False):
@@ -25,13 +37,13 @@ def update_inventory_on_unicommerce(client=None, force=False):
 
 	force=True ignores the set frequency.
 	"""
-	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+	settings = get_user_shopify_account()
 
 	if not settings.is_enabled() or not settings.enable_inventory_sync:
 		return
 
 	# check if need to run based on configured sync frequency
-	if not force and not need_to_run(SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
+	if not force and not need_to_run(ACCOUNT_DOCTYPE, settings, "inventory_sync_frequency", "last_inventory_sync"):
 		return
 
 	# get configured warehouses

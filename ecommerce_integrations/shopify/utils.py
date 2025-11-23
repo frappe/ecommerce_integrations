@@ -9,82 +9,44 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 )
 from ecommerce_integrations.shopify.constants import (
 	MODULE_NAME,
-	OLD_SETTINGS_DOCTYPE,
-	SETTING_DOCTYPE,
+	# OLD_SETTINGS_DOCTYPE,
+	# SETTING_DOCTYPE,
 	ACCOUNT_DOCTYPE,
 )
-from frappe.model.document import Document
 
 
-def resolve_account_context(account=None):
-	"""Standardized account resolution with legacy fallback.
-	
-	This function serves as a unified resolver for Shopify account contexts,
-	handling both the new multi-tenant Shopify Account system and the legacy
-	Shopify Setting singleton pattern.
-	
-	Args:
-		account (None | str | Document, optional): Account context to resolve.
-			- None: Returns legacy Shopify Setting document for backward compatibility
-			- str: Account name to fetch the corresponding Shopify Account document
-			- Document: Assumes it's already a loaded Frappe document (Shopify Account 
-			  or Shopify Setting) and returns it directly without validation
-			  
-	Returns:
-		Document: Either a Shopify Account document (new multi-tenant) or 
-				 Shopify Setting document (legacy singleton)
-				 
-	Raises:
-		frappe.DoesNotExistError: If the specified account name doesn't exist
-		
-	Note:
-		The function assumes that any non-string, non-None parameter is a valid
-		Frappe document object. This assumption is based on the controlled usage
-		patterns within the Shopify integration system where only document objects
-		or account names are passed. No type validation is performed on document
-		objects for performance reasons.
-		
-	Examples:
-		>>> # Legacy fallback
-		>>> setting = resolve_account_context(None)
-		>>> 
-		>>> # Fetch by account name
-		>>> account = resolve_account_context("My Shopify Store")
-		>>> 
-		>>> # Pass existing document
-		>>> existing_doc = frappe.get_doc("Shopify Account", "My Store")
-		>>> same_doc = resolve_account_context(existing_doc)
-		>>> assert existing_doc is same_doc  # Returns same object
-	"""
-	
-	if account:
-		if isinstance(account, str):
-			return frappe.get_doc(ACCOUNT_DOCTYPE, account)
-		elif isinstance(account, Document):  # Check if it's a Frappe document
-			return account
-		else:
-			frappe.throw(f"Invalid account parameter type: {type(account)}")
-	else:
-		# Legacy fallback for backward compatibility
-		return frappe.get_doc(SETTING_DOCTYPE)
+@frappe.whitelist()
+def get_jobs():
+    return frappe.utils.background_jobs.get_jobs(site=frappe.local.site)
 
-def create_shopify_log(account=None, **kwargs):
-	"""Enhanced logging with account context support."""
-	# Include account context in the message instead of using unsupported reference_document parameter
-	
-	if account:
-		account_doc = resolve_account_context(account)
-		if hasattr(account_doc, 'name') and account_doc.doctype == "Shopify Account":
-			# Include account info in message if not already present
-			if 'message' in kwargs and kwargs['message']:
-				kwargs['message'] = f"[Account: {account_doc.name}] {kwargs['message']}"
-			elif 'message' not in kwargs:
-				kwargs['message'] = f"Account: {account_doc.name}"
-	
-	return create_log(
-		module_def=MODULE_NAME, 
-		**kwargs
-	)
+
+def get_user_company(user):
+    existing_permission = frappe.db.exists("User Permission", {"user": user, "allow": "Company"})
+    has_company = bool(existing_permission)
+    if has_company:
+        company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
+        return company_id
+    return None
+
+def get_user_shopify_account():
+    user = frappe.session.user
+    print("get_user_shopify_account called for user ", user)
+    existing_permission = frappe.db.exists("User Permission", {"user": user, "allow": "Company"})
+    has_company = bool(existing_permission)
+    if has_company:
+        company_id = frappe.db.get_value("User Permission", existing_permission, "for_value")
+        return get_company_shopify_account(company_id)
+    return None
+
+
+def get_company_shopify_account(company):
+    print("get_company_shopify_account called for company ", company)
+    account = frappe.get_doc("Shopify Account", {"company": company})
+    return account
+
+
+def create_shopify_log(**kwargs):
+	return create_log(module_def=MODULE_NAME, **kwargs)
 
 
 def migrate_from_old_connector(payload=None, request_id=None):
@@ -107,16 +69,17 @@ def migrate_from_old_connector(payload=None, request_id=None):
 
 
 def ensure_old_connector_is_disabled():
-	try:
-		old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
-	except Exception:
-		frappe.clear_last_message()
-		return
+	# try:
+	# 	old_setting = frappe.get_doc(OLD_SETTINGS_DOCTYPE)
+	# except Exception:
+	# 	frappe.clear_last_message()
+	# 	return
 
-	if old_setting.enable_shopify:
-		link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)
-		msg = _("Please disable old Shopify integration from {0} to proceed.").format(link)
-		frappe.throw(msg)
+	# if old_setting.enable_shopify:
+	# 	link = frappe.utils.get_link_to_form(OLD_SETTINGS_DOCTYPE, OLD_SETTINGS_DOCTYPE)
+	# 	msg = _("Please disable old Shopify integration from {0} to proceed.").format(link)
+	# 	frappe.throw(msg)
+	pass
 
 
 def _migrate_items_to_ecommerce_item(log):
@@ -135,8 +98,8 @@ def _migrate_items_to_ecommerce_item(log):
 		log.traceback = frappe.get_traceback()
 		log.save()
 		return
-
-	frappe.db.set_value(SETTING_DOCTYPE, SETTING_DOCTYPE, "is_old_data_migrated", 1)
+	account_name = get_user_shopify_account().name
+	frappe.db.set_value(ACCOUNT_DOCTYPE, account_name, "is_old_data_migrated", 1)
 	log.status = "Success"
 	log.save()
 

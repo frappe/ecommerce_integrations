@@ -9,6 +9,7 @@
   "erpnext_item_code",
   "integration_item_code",
   "sku",
+  "company",
   "column_break_5",
   "has_variants",
   "variant_id",
@@ -91,12 +92,20 @@
    "fieldtype": "Datetime",
    "label": "Item Data Synced On",
    "read_only": 1
+  },
+  {
+   "fetch_from": "erpnext_item_code.custom_company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-15 11:36:04.733227",
- "modified_by": "Administrator",
+ "modified": "2025-10-26 11:38:45.690155",
+ "modified_by": "user@nexus.com",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
  "owner": "Administrator",
@@ -114,6 +123,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

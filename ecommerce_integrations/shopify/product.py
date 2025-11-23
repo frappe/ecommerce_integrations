@@ -7,16 +7,15 @@ from frappe.utils.nestedset import get_root_of
 from shopify.resources import Product, Variant
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
-from ecommerce_integrations.shopify.connection import temp_shopify_session
+from ecommerce_integrations.shopify.connection import get_temp_session_context
 from ecommerce_integrations.shopify.constants import (
 	ITEM_SELLING_RATE_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
 	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, get_company_shopify_account, get_user_shopify_account
 
 
 class ShopifyProduct:
@@ -26,16 +25,14 @@ class ShopifyProduct:
 		variant_id: str | None = None,
 		sku: str | None = None,
 		has_variants: int | None = 0,
-		account=None,  # NEW: Add account parameter
+		company: str | None = None,
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
 		self.has_variants = has_variants
-		
-		# Use standardized account resolution
-		from ecommerce_integrations.shopify.utils import resolve_account_context
-		self.setting = resolve_account_context(account)
+		self.company = company
+		self.setting = get_company_shopify_account(company)
 
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
@@ -57,12 +54,12 @@ class ShopifyProduct:
 			has_variants=self.has_variants,
 		)
 
-	@temp_shopify_session
-	def sync_product(self, account=None):
+	def sync_product(self):
 		if not self.is_synced():
-			shopify_product = Product.find(self.product_id)
-			product_dict = shopify_product.to_dict()
-			self._make_item(product_dict)
+			with get_temp_session_context(self.setting):
+				shopify_product = Product.find(self.product_id)
+				product_dict = shopify_product.to_dict()
+				self._make_item(product_dict)
 
 	def _make_item(self, product_dict):
 		_add_weight_details(product_dict)
@@ -143,6 +140,9 @@ class ShopifyProduct:
 			"default_supplier": self._get_supplier(product_dict),
 		}
 
+		if self.company:
+			item_dict["custom_company"] = self.company
+
 		integration_item_code = product_dict["id"]  # shopify product_id
 		variant_id = product_dict.get("variant_id", "")  # shopify variant_id if has variants
 		sku = item_dict["sku"]
@@ -215,7 +215,10 @@ class ShopifyProduct:
 				"parent_item_group": parent_item_group,
 				"is_group": "No",
 			}
-		).insert()
+		)
+		if self.company:
+			item_group["custom_company"] = self.company
+		item_group = item_group.insert()
 		return item_group.name
 
 	def _get_supplier(self, product_dict):
@@ -305,18 +308,13 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 			return False
 
 
-def create_items_if_not_exist(order, account=None):
-	"""Using shopify order, sync all items that are not already synced.
-	
-	Args:
-		order: Shopify order dict
-		account: Shopify Account doc (optional, falls back to legacy singleton)
-	"""
+def create_items_if_not_exist(order, company):
+	"""Using shopify order, sync all items that are not already synced."""
 	for item in order.get("line_items", []):
 		product_id = item["product_id"]
 		variant_id = item.get("variant_id")
 		sku = item.get("sku")
-		product = ShopifyProduct(product_id, variant_id=variant_id, sku=sku, account=account)
+		product = ShopifyProduct(product_id, company=company, variant_id=variant_id, sku=sku)
 
 		if not product.is_synced():
 			product.sync_product()
@@ -337,16 +335,28 @@ def get_item_code(shopify_item):
 		return item.item_code
 
 
-@temp_shopify_session
 def upload_erpnext_item(doc, method=None):
 	"""This hook is called when inserting new or updating existing `Item`.
 
-	New items are pushed to all enabled Shopify accounts and changes to existing items are
-	updated depending on what is configured in each "Shopify Account" doctype.
+	New items are pushed to shopify and changes to existing items are
+	updated depending on what is configured in "Shopify Setting" doctype.
 	"""
 	template_item = item = doc  # alias for readability
-	# a new item received from ecommerce_integrations is being inserted
+	# a new item recieved from ecommerce_integrations is being inserted
 	if item.flags.from_integration:
+		return
+
+	# TODO: Handle if doc.custom_company is None
+	if doc.custom_company:
+		setting = get_company_shopify_account(company=doc.custom_company)
+	else:
+		setting = get_user_shopify_account()
+
+	if not setting:
+		msgprint(_("Could not find Shopify Account for uploading item."))
+		return
+
+	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
 	if frappe.flags.in_import:
@@ -359,46 +369,8 @@ def upload_erpnext_item(doc, method=None):
 		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
 		return
 
-	# Get all enabled Shopify accounts with product upload enabled
-	enabled_accounts = frappe.get_all(
-		ACCOUNT_DOCTYPE,
-		filters={"enabled": 1, "upload_erpnext_items": 1},
-		pluck="name"
-	)
-
-	# FIXED: Use standardized account resolution for legacy fallback
-	if not enabled_accounts:
-		from ecommerce_integrations.shopify.utils import resolve_account_context
-		setting = resolve_account_context()  # This will get legacy setting
-		if setting.is_enabled() and setting.upload_erpnext_items:
-			_upload_item_to_account(item, template_item, None)  # Use legacy singleton
-		return
-
-	# FIXED: Use standardized resolution for account loading
-	for account_name in enabled_accounts:
-		try:
-			from ecommerce_integrations.shopify.utils import resolve_account_context
-			account = resolve_account_context(account_name)
-			_upload_item_to_account(item, template_item, account)
-		except Exception as e:
-			frappe.log_error(
-				message=f"Failed to upload item {item.name} to Shopify Account {account_name}: {str(e)}",
-				title="Shopify Product Upload Error"
-			)
-
-
-def _upload_item_to_account(item, template_item, account):
-	"""Upload item to a specific Shopify account or legacy singleton."""
-	# Use standardized account resolution
-	from ecommerce_integrations.shopify.utils import resolve_account_context
-	setting = resolve_account_context(account)
-	account_context = f" (Account: {setting.name})" if hasattr(setting, 'name') else " (Legacy)"
-
-	if not setting.is_enabled() or not setting.upload_erpnext_items:
-		return
-
-	if item.variant_of and not setting.upload_variants_as_items:
-		msgprint(_(f"Enable variant sync in setting to upload item to Shopify{account_context}."))
+	if doc.variant_of and not setting.upload_variants_as_items:
+		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
 		return
 
 	if item.variant_of:
@@ -411,115 +383,105 @@ def _upload_item_to_account(item, template_item, account):
 	)
 	is_new_product = not bool(product_id)
 
-	# Set up Shopify session context for this account
-	if hasattr(setting, 'name'):  # Multi-tenant account
-		with temp_shopify_session(account=setting):
-			_process_item_upload(item, template_item, setting, is_new_product, product_id, account_context)
-	else:  # Legacy singleton
-		with temp_shopify_session():
-			_process_item_upload(item, template_item, setting, is_new_product, product_id, account_context)
+	with get_temp_session_context(setting):
+		if is_new_product:
+			product = Product()
+			product.published = False
+			product.status = "active" if setting.sync_new_item_as_active else "draft"
 
-
-def _process_item_upload(item, template_item, setting, is_new_product, product_id, account_context):
-	"""Process the actual item upload logic."""
-	if is_new_product:
-		product = Product()
-		product.published = False
-		product.status = "active" if setting.sync_new_item_as_active else "draft"
-
-		map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
-		is_successful = product.save()
-
-		if is_successful:
-			update_default_variant_properties(
-				product,
-				sku=template_item.item_code,
-				price=template_item.get(ITEM_SELLING_RATE_FIELD),
-				is_stock_item=template_item.is_stock_item,
-			)
-			if item.variant_of:
-				product.options = []
-				product.variants = []
-				variant_attributes = {
-					"title": template_item.item_name,
-					"sku": item.item_code,
-					"price": item.get(ITEM_SELLING_RATE_FIELD),
-				}
-				max_index_range = min(3, len(template_item.attributes))
-				for i in range(0, max_index_range):
-					attr = template_item.attributes[i]
-					product.options.append(
-						{
-							"name": attr.attribute,
-							"values": frappe.db.get_all(
-								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
-							),
-						}
-					)
-					try:
-						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
-					except IndexError:
-						frappe.throw(
-							_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
-						)
-				product.variants.append(Variant(variant_attributes))
-
-			product.save()  # push variant
-
-			ecom_items = list(set([item, template_item]))
-			for d in ecom_items:
-				ecom_item = frappe.get_doc(
-					{
-						"doctype": "Ecommerce Item",
-						"erpnext_item_code": d.name,
-						"integration": MODULE_NAME,
-						"integration_item_code": str(product.id),
-						"variant_id": "" if d.has_variants else str(product.variants[0].id),
-						"sku": "" if d.has_variants else str(product.variants[0].sku),
-						"has_variants": d.has_variants,
-						"variant_of": d.variant_of,
-					}
-				)
-				ecom_item.insert()
-
-		write_upload_log(status=is_successful, product=product, item=item, account_context=account_context)
-	elif setting.update_shopify_item_on_update:
-		product = Product.find(product_id)
-		if product:
 			map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
-			if not item.variant_of:
+			is_successful = product.save()
+
+			if is_successful:
 				update_default_variant_properties(
 					product,
+					sku=template_item.item_code,
+					price=template_item.get(ITEM_SELLING_RATE_FIELD),
 					is_stock_item=template_item.is_stock_item,
-					price=item.get(ITEM_SELLING_RATE_FIELD),
 				)
-			else:
-				variant_attributes = {"sku": item.item_code, "price": item.get(ITEM_SELLING_RATE_FIELD)}
-				product.options = []
-				max_index_range = min(3, len(template_item.attributes))
-				for i in range(0, max_index_range):
-					attr = template_item.attributes[i]
-					product.options.append(
+				if item.variant_of:
+					product.options = []
+					product.variants = []
+					variant_attributes = {
+						"title": template_item.item_name,
+						"sku": item.item_code,
+						"price": item.get(ITEM_SELLING_RATE_FIELD),
+					}
+					max_index_range = min(3, len(template_item.attributes))
+					for i in range(0, max_index_range):
+						attr = template_item.attributes[i]
+						product.options.append(
+							{
+								"name": attr.attribute,
+								"values": frappe.db.get_all(
+									"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+								),
+							}
+						)
+						try:
+							variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+						except IndexError:
+							frappe.throw(
+								_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
+							)
+					product.variants.append(Variant(variant_attributes))
+
+				product.save()  # push variant
+
+				ecom_items = list(set([item, template_item]))
+				for d in ecom_items:
+					ecom_item = frappe.get_doc(
 						{
-							"name": attr.attribute,
-							"values": frappe.db.get_all(
-								"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
-							),
+							"doctype": "Ecommerce Item",
+							"erpnext_item_code": d.name,
+							"integration": MODULE_NAME,
+							"integration_item_code": str(product.id),
+							"variant_id": "" if d.has_variants else str(product.variants[0].id),
+							"sku": "" if d.has_variants else str(product.variants[0].sku),
+							"has_variants": d.has_variants,
+							"variant_of": d.variant_of,
 						}
 					)
-					try:
-						variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
-					except IndexError:
-						frappe.throw(
-							_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
+					ecom_item.insert()
+
+			write_upload_log(status=is_successful, product=product, item=item, shopify_account=setting.name)
+		elif setting.update_shopify_item_on_update:
+			product = Product.find(product_id)
+			if product:
+				map_erpnext_item_to_shopify(shopify_product=product, erpnext_item=template_item)
+				if not item.variant_of:
+					update_default_variant_properties(
+						product,
+						is_stock_item=template_item.is_stock_item,
+						price=item.get(ITEM_SELLING_RATE_FIELD),
+					)
+				else:
+					variant_attributes = {"sku": item.item_code, "price": item.get(ITEM_SELLING_RATE_FIELD)}
+					product.options = []
+					max_index_range = min(3, len(template_item.attributes))
+					for i in range(0, max_index_range):
+						attr = template_item.attributes[i]
+						product.options.append(
+							{
+								"name": attr.attribute,
+								"values": frappe.db.get_all(
+									"Item Attribute Value", {"parent": attr.attribute}, pluck="attribute_value"
+								),
+							}
 						)
-				product.variants.append(Variant(variant_attributes))
+						try:
+							variant_attributes[f"option{i+1}"] = item.attributes[i].attribute_value
+						except IndexError:
+							frappe.throw(
+								_("Shopify Error: Missing value for attribute {}").format(attr.attribute)
+							)
+					product.variants.append(Variant(variant_attributes))
 
-			is_successful = product.save()
-			if is_successful and item.variant_of:
-				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
+				is_successful = product.save()
+				if is_successful and item.variant_of:
+					map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
 
-			write_upload_log(status=is_successful, product=product, item=item, action="Updated", account_context=account_context)
+				write_upload_log(status=is_successful, product=product, item=item, action="Updated", shopify_account=setting.name)
 
 
 def map_erpnext_variant_to_shopify_variant(shopify_product: Product, erpnext_item, variant_attributes):
@@ -602,9 +564,9 @@ def update_default_variant_properties(
 		default_variant.sku = sku
 
 
-def write_upload_log(status: bool, product: Product, item, action="Created", account_context="") -> None:
+def write_upload_log(status: bool, product: Product, item, action="Created", shopify_account=None) -> None:
 	if not status:
-		msg = _("Failed to upload item to Shopify") + account_context + "<br>"
+		msg = _("Failed to upload item to Shopify") + "<br>"
 		msg += _("Shopify reported errors:") + " " + ", ".join(product.errors.full_messages())
 		msgprint(msg, title="Note", indicator="orange")
 
@@ -613,11 +575,13 @@ def write_upload_log(status: bool, product: Product, item, action="Created", acc
 			request_data=product.to_dict(),
 			message=msg,
 			method="upload_erpnext_item",
+			shopify_account=shopify_account,
 		)
 	else:
 		create_shopify_log(
 			status="Success",
 			request_data=product.to_dict(),
-			message=f"{action} Item: {item.name}, shopify product: {product.id}{account_context}",
+			message=f"{action} Item: {item.name}, shopify product: {product.id}",
 			method="upload_erpnext_item",
+			shopify_account=shopify_account,
 		)
