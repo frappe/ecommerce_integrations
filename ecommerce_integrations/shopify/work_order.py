@@ -96,28 +96,26 @@ def _update_shopify_order_tag(shopify_order_id, tag):
 			)
 
 
-from barcode import Code128
-from barcode.writer import ImageWriter
-
 def _generate_barcode_attachment(doc, order_number: str) -> str:
     safe_name = _sanitize_filename(f"{doc.name or 'work-order'}-{order_number}")
     file_path = frappe.get_site_path("private", "files", f"{safe_name}.png")
 
-    # Set desired height
+    # Set desired height and width ratio
     height = 100  # in pixels
     width = height * 4
 
-    # Writer options
+    # Writer options for ImageWriter
     writer_options = {
-        "module_height": height,  # height of each barcode line
-        "module_width": width / len(order_number) / 10,  # approximate scaling to achieve desired width
+        "module_height": height,        # height of each bar
+        "module_width": width / len(order_number) / 10,  # approximate scaling
         "font_size": 14,
         "text_distance": 5,
         "quiet_zone": 6.5,
     }
 
-    code = Code128(str(order_number), writer=ImageWriter(), writer_options=writer_options)
-    code.save(file_path.replace(".png", ""))
+    code = Code128(str(order_number), writer=ImageWriter())
+    # Pass writer_options to save(), not to constructor
+    code.save(file_path.replace(".png", ""), options=writer_options)
 
     with open(file_path, "rb") as image_file:
         file_doc = save_file(f"{safe_name}.png", image_file.read(), doc.doctype, doc.name, is_private=1)
@@ -126,6 +124,7 @@ def _generate_barcode_attachment(doc, order_number: str) -> str:
         os.remove(file_path)
 
     return file_doc.file_url
+
 
 
 
