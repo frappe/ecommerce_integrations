@@ -198,7 +198,7 @@ def _format_line_item_properties(line_item) -> str:
 	properties = line_item.get("properties") or []
 	formatted_properties = []
 
-	for idx, prop in enumerate(properties):
+	for prop in properties:
 		name = (prop.get("name") or "").strip()
 		value = prop.get("value")
 
@@ -208,10 +208,11 @@ def _format_line_item_properties(line_item) -> str:
 		value = ("" if value is None else cstr(value)).strip()
 		value = value or "NONE"
 
-		suffix = "," if idx < len(properties) - 1 else ""
-		formatted_properties.append(f"{name}: {value}{suffix}")
+		formatted_properties.append(f"{name}: {value}")
+	
+	# Join with comma and space, no newlines
+	return ", ".join(formatted_properties)
 
-	return "<br>".join(formatted_properties)
 
 
 def get_order_taxes(shopify_order, setting, items):
