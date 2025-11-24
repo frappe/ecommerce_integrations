@@ -14,19 +14,20 @@ required_apps = ["frappe/erpnext"]
 fixtures = [
 	{
 		"doctype": "Custom Field",
-  "filters":[
-	  [
-		  "name",
-			"in",
+		"filters": [
+			[
+				"name",
+				"in",
 			(
 				"Item Group-custom_sync_to_shopify",
-					"Item-custom_sync_to_shopify",
-					"Sales Order Item-custom_item_properties",
-					"Sales Order Item-custom_properties",
-					"Work Order-custom_order_barcode",
-			)
-	  ]
-  ]
+				"Item-custom_sync_to_shopify",
+				"Sales Order Item-custom_item_properties",
+				"Sales Order Item-custom_properties",
+				"Work Order-custom_order_barcode",
+    "Item Group-custom_sync_orders",
+			),
+			]
+		],
 	}
 ]
 

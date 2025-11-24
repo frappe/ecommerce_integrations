@@ -101,6 +101,15 @@ def create_sales_order(shopify_order, setting, company=None):
 
 			return ""
 
+		if not _order_has_syncable_item_group(items):
+			create_shopify_log(
+				status="Skipped",
+				message=_("Skipped Shopify order {0} because none of its item groups allow order sync.").format(
+					shopify_order.get("id")
+				),
+			)
+			return ""
+
 		taxes = get_order_taxes(shopify_order, setting, items)
 		so = frappe.get_doc(
 			{
@@ -209,10 +218,35 @@ def _format_line_item_properties(line_item) -> str:
 		value = value or "NONE"
 
 		formatted_properties.append(f"{name}: {value}")
-	
+
 	# Join with comma and space, no newlines
 	return ", ".join(formatted_properties)
 
+
+def _order_has_syncable_item_group(items: list[dict]) -> bool:
+	"""Return True if any order item belongs to an Item Group with custom_sync_orders enabled."""
+	item_codes = [item.get("item_code") for item in items if item.get("item_code")]
+	if not item_codes:
+		return False
+
+	item_groups = frappe.db.get_all(
+		"Item",
+		filters={"name": ["in", list(set(item_codes))]},
+		pluck="item_group",
+	)
+
+	item_groups = [group for group in item_groups if group]
+	if not item_groups:
+		return False
+
+	return bool(
+		frappe.db.get_all(
+			"Item Group",
+			filters={"name": ["in", list(set(item_groups))], "custom_sync_orders": 1},
+			pluck="name",
+			limit_page_length=1,
+		)
+	)
 
 
 def get_order_taxes(shopify_order, setting, items):
