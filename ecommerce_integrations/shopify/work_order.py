@@ -65,6 +65,36 @@ def tag_shopify_order_in_production(doc, method=None):
 		)
 
 
+def update_sales_order_manufacture_status(doc, method=None):
+	"""Mirror Work Order status on linked Sales Order's custom_manufacture_status field."""
+
+	try:
+		if isinstance(doc, str):
+			doc = frappe.get_doc("Work Order", doc)
+
+		sales_order = doc.get("sales_order")
+		if not sales_order:
+			return
+
+		status_value = doc.get("status")
+		if not status_value:
+			return
+
+		if not frappe.db.has_column("Sales Order", "custom_manufacture_status"):
+			return
+
+		current_value = frappe.db.get_value("Sales Order", sales_order, "custom_manufacture_status")
+		if current_value == status_value:
+			return
+
+		frappe.db.set_value("Sales Order", sales_order, "custom_manufacture_status", status_value)
+	except Exception:
+		frappe.log_error(
+			frappe.get_traceback(),
+			"Sales Order Manufacture Status Sync Failed",
+		)
+
+
 def handle_stock_entry_shopify_tag(doc, method=None):
 	"""Trigger Shopify tagging when stock entry pushes Work Order to In Process."""
 
