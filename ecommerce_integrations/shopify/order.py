@@ -223,6 +223,20 @@ def _format_line_item_properties(line_item) -> str:
 	return ", ".join(formatted_properties)
 
 
+def _build_properties_map(line_items: list[dict]) -> dict[str, str]:
+	"""Return mapping of item_code to formatted Shopify properties."""
+	properties_map = {}
+
+	for shopify_item in line_items:
+		item_code = get_item_code(shopify_item)
+		if not item_code:
+			continue
+
+		properties_map[item_code] = _format_line_item_properties(shopify_item)
+
+	return properties_map
+
+
 def _order_has_syncable_item_group(items: list[dict]) -> bool:
 	"""Return True if any order item belongs to an Item Group with custom_sync_orders enabled."""
 	item_codes = [item.get("item_code") for item in items if item.get("item_code")]
@@ -454,6 +468,62 @@ def cancel_order(payload, request_id=None):
 		create_shopify_log(status="Error", exception=e)
 	else:
 		create_shopify_log(status="Success")
+
+
+def sync_sales_order_update(payload, request_id=None):
+	"""Handle Shopify orders/updated webhook by refreshing Sales Order item properties."""
+	frappe.set_user("Administrator")
+	frappe.flags.request_id = request_id
+
+	order = payload or {}
+	order_id = order.get("id")
+
+	if not order_id:
+		create_shopify_log(status="Invalid", message="Shopify order ID missing in update payload")
+		return
+
+	sales_order_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
+	if not sales_order_name:
+		create_shopify_log(
+			status="Invalid",
+			message=f"Sales Order for Shopify order {order_id} does not exist. Ignoring update.",
+		)
+		return
+
+	try:
+		sales_order = frappe.get_doc("Sales Order", sales_order_name)
+		properties_map = _build_properties_map(order.get("line_items") or [])
+
+		if not properties_map:
+			create_shopify_log(
+				status="Success",
+				message=f"No line items with properties found for Shopify order {order_id}.",
+			)
+			return
+
+		updated_rows = 0
+		for row in sales_order.items:
+			new_properties = properties_map.get(row.item_code)
+			if new_properties is None:
+				continue
+
+			if (row.custom_properties or "") != new_properties:
+				row.custom_properties = new_properties
+				updated_rows += 1
+
+		if updated_rows:
+			sales_order.flags.ignore_mandatory = True
+			sales_order.flags.ignore_validate = True
+			sales_order.save(ignore_permissions=True)
+
+		create_shopify_log(
+			status="Success",
+			message=_("Updated {0} Sales Order items for Shopify order {1}.").format(
+				updated_rows, order.get("name") or order_id
+			),
+		)
+	except Exception as e:
+		create_shopify_log(status="Error", exception=e, rollback=True)
 
 
 @temp_shopify_session
