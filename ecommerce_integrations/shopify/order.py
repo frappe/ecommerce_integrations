@@ -37,6 +37,17 @@ def sync_sales_order(payload, request_id=None):
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
 		return
+
+	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+	if cint(setting.only_sync_paid_orders):
+		financial_status = order.get("financial_status")
+		if financial_status != "paid":
+			create_shopify_log(
+				status="Skipped",
+				message=f"Order {order.get('id')} skipped: financial status is '{financial_status}' (only paid orders are synced)",
+			)
+			return
+
 	try:
 		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
 		shopify_customer["billing_address"] = order.get("billing_address", "")
@@ -51,7 +62,6 @@ def sync_sales_order(payload, request_id=None):
 
 		create_items_if_not_exist(order)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
 		create_order(order, setting)
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
@@ -471,7 +481,8 @@ def cancel_order(payload, request_id=None):
 
 
 def sync_sales_order_update(payload, request_id=None):
-	"""Handle Shopify orders/updated webhook by refreshing Sales Order item properties."""
+	"""Handle Shopify orders/updated webhook by refreshing Sales Order item properties.
+	If only_sync_paid_orders is enabled and order becomes paid, create the Sales Order if it doesn't exist."""
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
@@ -484,11 +495,21 @@ def sync_sales_order_update(payload, request_id=None):
 
 	sales_order_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
 	if not sales_order_name:
-		create_shopify_log(
-			status="Invalid",
-			message=f"Sales Order for Shopify order {order_id} does not exist. Ignoring update.",
-		)
-		return
+		setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+		# If only_sync_paid_orders is enabled and order is now paid, create it
+		if cint(setting.only_sync_paid_orders) and order.get("financial_status") == "paid":
+			create_shopify_log(
+				status="Info",
+				message=f"Sales Order for Shopify order {order_id} does not exist. Order is now paid, creating Sales Order.",
+			)
+			sync_sales_order(order, request_id=request_id)
+			return
+		else:
+			create_shopify_log(
+				status="Invalid",
+				message=f"Sales Order for Shopify order {order_id} does not exist. Ignoring update.",
+			)
+			return
 
 	try:
 		sales_order = frappe.get_doc("Sales Order", sales_order_name)

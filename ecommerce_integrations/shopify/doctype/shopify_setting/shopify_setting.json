@@ -33,6 +33,7 @@
   "sync_sales_invoice",
   "add_shipping_as_item",
   "consolidate_taxes",
+  "only_sync_paid_orders",
   "section_break_22",
   "html_16",
   "taxes",
@@ -394,12 +395,18 @@
    "fieldname": "update_order_tags",
    "fieldtype": "Check",
    "label": "Update Order Tags"
+  },
+  {
+   "default": "0",
+   "fieldname": "only_sync_paid_orders",
+   "fieldtype": "Check",
+   "label": "Only Sync Paid Orders"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-11-20 17:13:37.357494",
+ "modified": "2025-12-02 13:11:10.545302",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
