@@ -23,7 +23,7 @@ fixtures = [
 				"Item-custom_sync_to_shopify",
 				"Sales Order Item-custom_item_properties",
 				"Sales Order Item-custom_properties",
-				"Work Order-custom_order_barcode",
+			
     "Item Group-custom_sync_orders",
 			),
 			]
@@ -157,7 +157,7 @@ doc_events = {
 	"Work Order": {
 		"before_save": "ecommerce_integrations.shopify.work_order.set_shopify_order_barcode",
 		"on_update": "ecommerce_integrations.shopify.work_order.tag_shopify_order_in_production",
-		"on_change": "ecommerce_integrations.shopify.work_order.update_sales_order_manufacture_status",
+		# "on_change": "ecommerce_integrations.shopify.work_order.update_sales_order_manufacture_status",
 	},
 }
 
