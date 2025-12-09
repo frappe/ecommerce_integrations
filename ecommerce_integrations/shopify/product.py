@@ -33,7 +33,6 @@ class ShopifyProduct:
 		self.has_variants = has_variants
 		self.company = company
 		self.setting = get_company_shopify_account(company)
-
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
 
@@ -74,6 +73,7 @@ class ShopifyProduct:
 
 		else:
 			product_dict["variant_id"] = product_dict["variants"][0]["id"]
+			price = product_dict.get("variants", [{'price': None}])[0].get("price")
 			self._create_item(product_dict, warehouse)
 
 	def _create_attribute(self, product_dict):
@@ -122,6 +122,8 @@ class ShopifyProduct:
 				item_attr.append("item_attribute_values", {"attribute_value": attr_value, "abbr": attr_value})
 
 	def _create_item(self, product_dict, warehouse, has_variant=0, attributes=None, variant_of=None):
+		price = product_dict.get("price") if variant_of else product_dict.get("variants", [{'price': None}])[0].get("price")
+
 		item_dict = {
 			"variant_of": variant_of,
 			"is_stock_item": 1,
@@ -138,6 +140,7 @@ class ShopifyProduct:
 			"weight_uom": WEIGHT_TO_ERPNEXT_UOM_MAP[product_dict.get("weight_unit")],
 			"weight_per_unit": product_dict.get("weight"),
 			"default_supplier": self._get_supplier(product_dict),
+			"shopify_selling_rate": price,
 		}
 
 		if self.company:
@@ -178,6 +181,7 @@ class ShopifyProduct:
 					"item_price": variant.get("price"),
 					"weight_unit": variant.get("weight_unit"),
 					"weight": variant.get("weight"),
+					"price": variant.get("price"),
 				}
 
 				for i, variant_attr in enumerate(SHOPIFY_VARIANTS_ATTR_LIST):
