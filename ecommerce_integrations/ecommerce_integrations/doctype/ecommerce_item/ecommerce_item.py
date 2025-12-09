@@ -147,8 +147,12 @@ def create_ecommerce_item(
 		"doctype": "Item",
 		"is_stock_item": 1,
 		"is_sales_item": 1,
-		# TODO: see if get_default_company() should be replaced with item_dict.get("custom_company")
-		"item_defaults": [{"company": get_default_company()}],
+		"item_defaults": [
+			{
+				"company": item_dict.get("custom_company"),
+				"default_warehouse": item_dict.get("default_warehouse"),
+			}
+		],
 	}
 
 	item.update(item_dict)
