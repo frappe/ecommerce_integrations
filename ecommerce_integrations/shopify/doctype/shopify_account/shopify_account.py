@@ -93,6 +93,16 @@ class ShopifyAccount(SettingController):
 					{"shopify_location_id": location.id, "shopify_location_name": location.name},
 				)
 
+	def get_shopify_locations(self):
+		"""Fetch locations from shopify and add it to child table so user can
+		map it with correct ERPNext warehouse."""
+		result = []
+		with connection.get_temp_session_context(self):
+			for locations in PaginatedIterator(Location.find()):
+				for location in locations:
+					result.append(location)
+			return result
+
 	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]
 
