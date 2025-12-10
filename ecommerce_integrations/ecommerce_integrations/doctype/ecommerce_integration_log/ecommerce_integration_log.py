@@ -116,12 +116,14 @@ def _retry_job(job: str):
 	frappe.only_for("System Manager")
 
 	doc = frappe.get_doc("Ecommerce Integration Log", job)
-	if not doc.method.startswith("ecommerce_integrations.") or doc.status != "Error":
+	retry_status_list = ["Error", "Invalid"]
+	if not doc.method.startswith("ecommerce_integrations.") or doc.status not in retry_status_list:
 		return
 
 	doc.db_set("status", "Queued", update_modified=False)
 	doc.db_set("traceback", "", update_modified=False)
-
+	shopify_account = frappe.get_doc("Shopify Account", doc.shopify_account) if doc.shopify_account else None
+	
 	frappe.enqueue(
 		method=doc.method,
 		queue="short",
@@ -129,6 +131,7 @@ def _retry_job(job: str):
 		is_async=True,
 		payload=json.loads(doc.request_data),
 		request_id=doc.name,
+		shopify_account=shopify_account,
 		enqueue_after_commit=True,
 	)
 

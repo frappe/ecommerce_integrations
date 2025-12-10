@@ -132,7 +132,7 @@ def store_request_data(**kwargs) -> None:
 def process_request(data, event, shopify_account=None):
 	print("Processing webhook event: ", event, "\n", shopify_account)
 	# create log
-	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account.name)
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account)
 	print("log created")
 	# enqueue background job
 	frappe.enqueue(
