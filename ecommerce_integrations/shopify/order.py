@@ -35,6 +35,9 @@ def sync_sales_order(payload, request_id=None, shopify_account=None):
 
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
+	
+	if isinstance(shopify_account, str):
+		shopify_account = frappe.get_doc("Shopify Account", shopify_account)
 
 	shopify_account_name = shopify_account.name if shopify_account else None
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
