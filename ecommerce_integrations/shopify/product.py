@@ -19,6 +19,33 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
+def get_shopify_fallback_item(title):
+	"""Map Shopify line items without product_id to appropriate fallback items.
+	
+	Args:
+		title (str): Line item title from Shopify
+		
+	Returns:
+		str: ERPNext Item code
+	"""
+	if not title:
+		return "SHOPIFY-MISC"
+	
+	title_lower = title.lower()
+	
+	# Map based on title keywords
+	if "tip" in title_lower:
+		return "SHOPIFY-TIP"
+	elif "sample" in title_lower:
+		return "SHOPIFY-SAMPLE"
+	elif "rush" in title_lower or "rush order" in title_lower or "rush fee" in title_lower:
+		return "SHOPIFY-RUSH-FEE"
+	elif "adjustment" in title_lower or "price adjustment" in title_lower:
+		return "SHOPIFY-ADJUSTMENT"
+	else:
+		return "SHOPIFY-MISC"
+
+
 class ShopifyProduct:
 	def __init__(
 		self,
@@ -272,15 +299,37 @@ def _get_item_image(product_dict):
 
 
 def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None, has_variant=False) -> bool:
-	"""Tries to match new item with existing item using Shopify SKU == item_code.
+	"""Tries to match new item with existing item using Shopify SKU == item_code or product_id.
 
 	Returns true if matched and linked.
 	"""
 	sku = item_dict["sku"]
-	if not sku or variant_of or has_variant:
+	if variant_of or has_variant:
 		return False
 
-	item_name = frappe.db.get_value("Item", {"item_code": sku})
+	# Try matching by SKU first
+	if sku:
+		item_name = frappe.db.get_value("Item", {"item_code": sku})
+		if item_name:
+			try:
+				ecommerce_item = frappe.get_doc(
+					{
+						"doctype": "Ecommerce Item",
+						"integration": MODULE_NAME,
+						"erpnext_item_code": item_name,
+						"integration_item_code": product_id,
+						"has_variants": 0,
+						"variant_id": cstr(variant_id),
+						"sku": sku,
+					}
+				)
+				ecommerce_item.insert()
+				return True
+			except Exception:
+				pass
+
+	# Also try matching by product_id as item_code
+	item_name = frappe.db.get_value("Item", {"item_code": product_id})
 	if item_name:
 		try:
 			ecommerce_item = frappe.get_doc(
@@ -291,38 +340,73 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 					"integration_item_code": product_id,
 					"has_variants": 0,
 					"variant_id": cstr(variant_id),
-					"sku": sku,
+					"sku": sku or "",
 				}
 			)
-
 			ecommerce_item.insert()
 			return True
 		except Exception:
 			return False
 
+	return False
+
 
 def create_items_if_not_exist(order):
 	"""Using shopify order, sync all items that are not already synced."""
 	for item in order.get("line_items", []):
-		product_id = item["product_id"]
+		product_id = item.get("product_id")
 		variant_id = item.get("variant_id")
 		sku = item.get("sku")
-		product = ShopifyProduct(product_id, variant_id=variant_id, sku=sku)
-
-		if not product.is_synced():
-			product.sync_product()
+		
+		# Skip items with null product_id - mapped to fallback items
+		if not product_id:
+			continue
+		
+		try:
+			product = ShopifyProduct(product_id, variant_id=variant_id, sku=sku)
+			if not product.is_synced():
+				product.sync_product()
+		except frappe.DuplicateEntryError:
+			frappe.logger().info(f"Item {product_id} already exists, skipping")
+			continue
+		except Exception as e:
+			frappe.logger().error(f"Error syncing item {product_id}: {str(e)}")
+			if "IntegrityError" not in str(e):
+				raise
+			continue
 
 
 def get_item_code(shopify_item):
 	"""Get item code using shopify_item dict.
 
 	Item should contain both product_id and variant_id."""
-
+	
+	product_id = shopify_item.get("product_id")
+	variant_id = shopify_item.get("variant_id")
+	sku = shopify_item.get("sku")
+	title = shopify_item.get("title", "")
+	
+	# Handle items without product_id (tips, samples, fees)
+	if not product_id:
+		fallback_item = get_shopify_fallback_item(title)
+		
+		frappe.logger().info(
+			f"Line item '{title}' has no product_id - mapped to: {fallback_item}"
+		)
+		
+		if frappe.db.exists("Item", fallback_item):
+			return fallback_item
+		else:
+			frappe.throw(
+				f"Fallback item '{fallback_item}' not found for '{title}'"
+			)
+	
+	# Original logic continues
 	item = ecommerce_item.get_erpnext_item(
 		integration=MODULE_NAME,
-		integration_item_code=shopify_item.get("product_id"),
-		variant_id=shopify_item.get("variant_id"),
-		sku=shopify_item.get("sku"),
+		integration_item_code=product_id,
+		variant_id=variant_id,
+		sku=sku,
 	)
 	if item:
 		return item.item_code

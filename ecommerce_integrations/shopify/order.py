@@ -142,6 +142,29 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 	product_not_exists = []
 
 	for shopify_item in order_items:
+		product_id = shopify_item.get("product_id")
+		
+		# Handle items without product_id (tips, samples, fees) - skip product_exists check
+		if not product_id:
+			item_code = get_item_code(shopify_item)
+			if item_code:
+				items.append(
+					{
+						"item_code": item_code,
+						"item_name": shopify_item.get("name") or shopify_item.get("title"),
+						"rate": _get_item_price(shopify_item, taxes_inclusive),
+						"delivery_date": delivery_date,
+						"qty": shopify_item.get("quantity"),
+						"stock_uom": "Nos",
+						"warehouse": setting.warehouse,
+						ORDER_ITEM_DISCOUNT_FIELD: (
+							_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
+						),
+					}
+				)
+			continue
+		
+		# Original logic for items with product_id
 		if not shopify_item.get("product_exists"):
 			all_product_exists = False
 			product_not_exists.append(
