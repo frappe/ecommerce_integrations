@@ -10,7 +10,14 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_sales_invoice(payload, request_id=None):
+def prepare_sales_invoice(payload, request_id=None, store_name=None):
+	"""Prepare sales invoice from Shopify order.
+	
+	Args:
+		payload: Order data from Shopify
+		request_id: Shopify Log entry ID
+		store_name: Name of the store (for logging)
+	"""
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	order = payload
@@ -18,6 +25,9 @@ def prepare_sales_invoice(payload, request_id=None):
 	frappe.set_user("Administrator")
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
+	
+	if store_name:
+		frappe.logger().info(f"Preparing sales invoice for order from {store_name}")
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))

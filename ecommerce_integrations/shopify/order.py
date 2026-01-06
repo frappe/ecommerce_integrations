@@ -29,10 +29,21 @@ DEFAULT_TAX_FIELDS = {
 }
 
 
-def sync_sales_order(payload, request_id=None):
+def sync_sales_order(payload, request_id=None, store_name=None):
+	"""Sync Shopify order to ERPNext Sales Order.
+	
+	Args:
+		payload: Order data from Shopify
+		request_id: Shopify Log entry ID
+		store_name: Name of the store (for logging and context)
+	"""
 	order = payload
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
+	
+	# Log which store is syncing
+	if store_name:
+		frappe.logger().info(f"Syncing order {order.get('name')} from {store_name}")
 
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
@@ -49,6 +60,8 @@ def sync_sales_order(payload, request_id=None):
 			else:
 				customer.update_existing_addresses(shopify_customer)
 
+		# Store context is already set in frappe.local.shopify_store_name
+		# This will be used by temp_shopify_session decorator
 		create_items_if_not_exist(order)
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)

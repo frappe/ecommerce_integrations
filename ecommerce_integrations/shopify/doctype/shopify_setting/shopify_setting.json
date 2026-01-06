@@ -14,6 +14,15 @@
   "shared_secret",
   "section_break_4",
   "webhooks",
+  "store_2_section",
+  "enable_store_2",
+  "store_2_name",
+  "column_break_store_2",
+  "shopify_url_2",
+  "password_2",
+  "shared_secret_2",
+  "webhooks_section_2",
+  "webhooks_2",
   "customer_settings_section",
   "default_customer",
   "column_break_14",
@@ -111,6 +120,67 @@
    "fieldtype": "Table",
    "label": "Webhooks",
    "options": "Shopify Webhooks",
+   "read_only": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "store_2_section",
+   "fieldtype": "Section Break",
+   "label": "Store 2 - Additional Shopify Store"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_store_2",
+   "fieldtype": "Check",
+   "label": "Enable Store 2"
+  },
+  {
+   "default": "Store 2",
+   "depends_on": "enable_store_2",
+   "description": "User-friendly name for reporting (e.g., 'ZipCovers')",
+   "fieldname": "store_2_name",
+   "fieldtype": "Data",
+   "label": "Store 2 Name"
+  },
+  {
+   "fieldname": "column_break_store_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "enable_store_2",
+   "description": "e.g., zipcovers.myshopify.com",
+   "fieldname": "shopify_url_2",
+   "fieldtype": "Data",
+   "label": "Shop URL (Store 2)",
+   "mandatory_depends_on": "eval:doc.enable_store_2"
+  },
+  {
+   "depends_on": "enable_store_2",
+   "fieldname": "password_2",
+   "fieldtype": "Password",
+   "label": "Password / Access Token (Store 2)",
+   "mandatory_depends_on": "eval:doc.enable_store_2"
+  },
+  {
+   "depends_on": "enable_store_2",
+   "fieldname": "shared_secret_2",
+   "fieldtype": "Data",
+   "label": "Shared Secret / API Secret (Store 2)",
+   "mandatory_depends_on": "eval:doc.enable_store_2"
+  },
+  {
+   "collapsible": 1,
+   "depends_on": "enable_store_2",
+   "fieldname": "webhooks_section_2",
+   "fieldtype": "Section Break",
+   "label": "Webhooks (Store 2)"
+  },
+  {
+   "depends_on": "enable_store_2",
+   "fieldname": "webhooks_2",
+   "fieldtype": "Table",
+   "label": "Webhooks",
+   "options": "Shopify Webhook Store 2",
    "read_only": 1
   },
   {

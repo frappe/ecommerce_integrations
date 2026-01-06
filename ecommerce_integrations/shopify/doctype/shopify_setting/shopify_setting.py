@@ -40,6 +40,11 @@ class ShopifySetting(SettingController):
 
 		if self.shopify_url:
 			self.shopify_url = self.shopify_url.replace("https://", "")
+		
+		# Clean Store 2 URL if provided
+		if self.shopify_url_2:
+			self.shopify_url_2 = self.shopify_url_2.replace("https://", "")
+		
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -52,22 +57,68 @@ class ShopifySetting(SettingController):
 			migrate_from_old_connector()
 
 	def _handle_webhooks(self):
+		"""Handle webhook registration/unregistration for both stores."""
+		
+		# Handle Store 1 webhooks
 		if self.is_enabled() and not self.webhooks:
 			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
 
 			if not new_webhooks:
-				msg = _("Failed to register webhooks with Shopify.") + "<br>"
+				msg = _("Failed to register webhooks with Shopify Store 1.") + "<br>"
 				msg += _("Please check credentials and retry.") + " "
 				msg += _("Disabling and re-enabling the integration might also help.")
 				frappe.throw(msg)
 
 			for webhook in new_webhooks:
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
+			
+			frappe.logger().info(f"Registered {len(new_webhooks)} webhooks for Store 1")
 
 		elif not self.is_enabled():
 			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
-
 			self.webhooks = list()  # remove all webhooks
+			frappe.logger().info("Unregistered Store 1 webhooks")
+		
+		# Handle Store 2 webhooks
+		if self.enable_store_2 and self.shopify_url_2 and not self.webhooks_2:
+			try:
+				new_webhooks_2 = connection.register_webhooks(
+					self.shopify_url_2, 
+					self.get_password("password_2")
+				)
+
+				if not new_webhooks_2:
+					msg = _("Failed to register webhooks with Shopify Store 2.") + "<br>"
+					msg += _("Please check Store 2 credentials and retry.")
+					frappe.throw(msg)
+
+				for webhook in new_webhooks_2:
+					self.append("webhooks_2", {"webhook_id": webhook.id, "method": webhook.topic})
+				
+				frappe.logger().info(f"Registered {len(new_webhooks_2)} webhooks for Store 2 ({self.store_2_name})")
+			
+			except Exception as e:
+				frappe.log_error(
+					title="Store 2 Webhook Registration Failed",
+					message=f"Error registering webhooks for Store 2: {str(e)}"
+				)
+				# Don't throw - allow Store 1 to continue working
+				frappe.msgprint(
+					_("Warning: Failed to register Store 2 webhooks. Store 1 will continue working. Error: {0}").format(str(e)),
+					alert=True
+				)
+
+		elif not self.enable_store_2 and self.shopify_url_2 and self.webhooks_2:
+			# Store 2 disabled but webhooks exist - unregister them
+			try:
+				connection.unregister_webhooks(self.shopify_url_2, self.get_password("password_2"))
+				self.webhooks_2 = list()  # remove all Store 2 webhooks
+				frappe.logger().info("Unregistered Store 2 webhooks")
+			except Exception as e:
+				frappe.log_error(
+					title="Store 2 Webhook Unregistration Failed",
+					message=f"Error unregistering webhooks for Store 2: {str(e)}"
+				)
 
 	def _validate_warehouse_links(self):
 		for wh_map in self.shopify_warehouse_mapping:
