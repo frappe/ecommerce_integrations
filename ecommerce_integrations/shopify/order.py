@@ -48,6 +48,15 @@ def sync_sales_order(payload, request_id=None):
 			)
 			return
 
+	# Skip orders that are fully fulfilled
+	fulfillment_status = order.get("fulfillment_status")
+	if fulfillment_status and str(fulfillment_status).lower() == "fulfilled":
+		create_shopify_log(
+			status="Skipped",
+			message=f"Order {order.get('id')} skipped: fulfillment status is 'fulfilled'",
+		)
+		return
+
 	try:
 		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
 		shopify_customer["billing_address"] = order.get("billing_address", "")
@@ -496,6 +505,14 @@ def sync_sales_order_update(payload, request_id=None):
 	sales_order_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
 	if not sales_order_name:
 		setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+		# Skip if order is fully fulfilled
+		fulfillment_status = order.get("fulfillment_status")
+		if fulfillment_status and str(fulfillment_status).lower() == "fulfilled":
+			create_shopify_log(
+				status="Skipped",
+				message=f"Sales Order for Shopify order {order_id} not created: fulfillment status is 'fulfilled'",
+			)
+			return
 		# If only_sync_paid_orders is enabled and order is now paid, create it
 		if cint(setting.only_sync_paid_orders) and order.get("financial_status") == "paid":
 			create_shopify_log(
