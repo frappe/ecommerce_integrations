@@ -9,7 +9,7 @@
 ### Currently supported integrations:
 
 - Shopify - [User documentation](https://docs.frappe.io/erpnext/user/manual/en/shopify_integration)
-- Unicommerce - [User Documentation](https://docs.frappe.io/erpnext/user/manual/en/unicommerce_integration/unicommerce_integration)
+- Unicommerce - [User Documentation](https://docs.frappe.io/erpnext/user/manual/en/unicommerce_integration)
 - Zenoti - [User documentation](https://docs.frappe.io/erpnext/user/manual/en/zenoti_integration)
 - Amazon - [User documentation](https://docs.frappe.io/erpnext/user/manual/en/amazon_integration)
 
