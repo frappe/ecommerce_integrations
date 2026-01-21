@@ -236,6 +236,9 @@ def _format_line_item_properties(line_item) -> str:
 		value = ("" if value is None else cstr(value)).strip()
 		value = value or "NONE"
 
+		# Maintain Hack Smith Item Property / Item Property Value metadata
+		_sync_item_property_metadata(name, value)
+
 		formatted_properties.append(f"{name}: {value}")
 
 	# Join with comma and space, no newlines
@@ -254,6 +257,73 @@ def _build_properties_map(line_items: list[dict]) -> dict[str, str]:
 		properties_map[item_code] = _format_line_item_properties(shopify_item)
 
 	return properties_map
+
+
+def _sync_item_property_metadata(property_name: str, property_value: str) -> None:
+	"""Ensure Hack Smith Item Property / Item Property Value records exist and are linked.
+
+	This keeps `Item Property` and `Item Property Value` doctypes in sync with
+	the Shopify line item properties we store on Sales Order Item.custom_properties.
+
+	Rules:
+	- Skip technical properties starting with '_' (e.g. `_cl_options`).
+	- Create Item Property (property_name) if missing.
+	- Create Item Property Value (value) if missing.
+	- Ensure the Item Property Value's Table MultiSelect `property` contains
+	  a link row to this Item Property.
+	"""
+
+	# Skip internal / technical keys
+	if not property_name or property_name.startswith("_"):
+		return
+
+	try:
+		# 1) Ensure Item Property exists
+		item_property_name = frappe.db.get_value(
+			"Item Property", {"property_name": property_name}, "name"
+		)
+
+		if not item_property_name:
+			item_property_doc = frappe.get_doc(
+				{
+					"doctype": "Item Property",
+					"property_name": property_name,
+				}
+			)
+			item_property_doc.insert(ignore_permissions=True)
+			item_property_name = item_property_doc.name
+
+		# 2) Ensure Item Property Value exists
+		value_doc_name = frappe.db.get_value(
+			"Item Property Value", {"value": property_value}, "name"
+		)
+
+		if not value_doc_name:
+			value_doc = frappe.get_doc(
+				{
+					"doctype": "Item Property Value",
+					"value": property_value,
+				}
+			)
+			# Link this value to the property
+			value_doc.append("property", {"property": item_property_name})
+			value_doc.insert(ignore_permissions=True)
+			return
+
+		# 3) If value already exists, ensure it is linked to this property
+		value_doc = frappe.get_doc("Item Property Value", value_doc_name)
+		existing_links = {row.property for row in value_doc.get("property") or []}
+
+		if item_property_name not in existing_links:
+			value_doc.append("property", {"property": item_property_name})
+			value_doc.save(ignore_permissions=True)
+
+	except Exception:
+		# Don't break order sync if metadata sync fails; just log the error.
+		frappe.log_error(
+			frappe.get_traceback(),
+			"Shopify Item Property Metadata Sync Failed",
+		)
 
 
 def _order_has_syncable_item_group(items: list[dict]) -> bool:
