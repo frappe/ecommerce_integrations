@@ -24,8 +24,8 @@ class EcommerceItem(Document):
 		self.check_unique_constraints()
 
 	def check_unique_constraints(self) -> None:
-		filters = []
-
+		"""Check unique constraints based on product_id + variant_id only.
+		SKU is no longer used as a unique constraint - items can share SKUs."""
 		unique_integration_item_code = {
 			"integration": self.integration,
 			"erpnext_item_code": self.erpnext_item_code,
@@ -35,15 +35,8 @@ class EcommerceItem(Document):
 		if self.variant_id:
 			unique_integration_item_code.update({"variant_id": self.variant_id})
 
-		filters.append(unique_integration_item_code)
-
-		if self.sku:
-			unique_sku = {"integration": self.integration, "sku": self.sku}
-			filters.append(unique_sku)
-
-		for filter in filters:
-			if frappe.db.exists("Ecommerce Item", filter):
-				frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
+		if frappe.db.exists("Ecommerce Item", unique_integration_item_code):
+			frappe.throw(_("Ecommerce Item already exists"), exc=frappe.DuplicateEntryError)
 
 	def set_defaults(self):
 		if not self.inventory_synced_on:
@@ -58,22 +51,22 @@ def is_synced(
 	sku: str | None = None,
 ) -> bool:
 	"""Check if item is synced from integration.
-
-	sku is optional. Use SKU alone with integration to check if it's synced.
-	E.g.
-	        integration: shopify,
-	        integration_item_code: TSHIRT
+	
+	Uses product_id (integration_item_code) + variant_id as primary identifier.
+	SKU is no longer used for matching - items can share SKUs.
+	
+	Args:
+		integration: Integration name (e.g., "shopify")
+		integration_item_code: Shopify product_id
+		variant_id: Shopify variant_id (optional)
+		sku: SKU (optional, kept for backward compatibility but not used)
 	"""
 	filter = {"integration": integration, "integration_item_code": integration_item_code}
 
 	if variant_id:
 		filter.update({"variant_id": variant_id})
 
-	item_exists = bool(frappe.db.exists("Ecommerce Item", filter))
-
-	if not item_exists and sku:
-		return _is_sku_synced(integration, sku)
-	return item_exists
+	return bool(frappe.db.exists("Ecommerce Item", filter))
 
 
 def _is_sku_synced(integration: str, sku: str) -> bool:
@@ -104,19 +97,16 @@ def get_erpnext_item(
 	has_variants: int | None = 0,
 ):
 	"""Get ERPNext item for specified ecommerce_item.
+	
+	Uses product_id (integration_item_code) + variant_id as primary lookup.
+	SKU is no longer used for lookup - items can share SKUs.
 
 	Note: If variant_id is not specified then item is assumed to be single OR template.
 	"""
 
-	item_code = None
-	if sku:
-		item_code = frappe.db.get_value(
-			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
-		)
-	if not item_code:
-		item_code = get_erpnext_item_code(
-			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
-		)
+	item_code = get_erpnext_item_code(
+		integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
+	)
 
 	if item_code:
 		return frappe.get_doc("Item", item_code)
@@ -139,7 +129,8 @@ def create_ecommerce_item(
 	# SKU not allowed for template items
 	sku = cstr(sku) if not has_variants else None
 
-	if is_synced(integration, integration_item_code, variant_id, sku):
+	# Check if item already exists using product_id + variant_id (SKU not used for matching)
+	if is_synced(integration, integration_item_code, variant_id):
 		return
 
 	# crete default item

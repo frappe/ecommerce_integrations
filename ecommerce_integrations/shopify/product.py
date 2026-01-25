@@ -143,18 +143,17 @@ class ShopifyProduct:
 		variant_id = product_dict.get("variant_id", "")  # shopify variant_id if has variants
 		sku = item_dict["sku"]
 
-		if not _match_sku_and_link_item(
-			item_dict, integration_item_code, variant_id, variant_of=variant_of, has_variant=has_variant
-		):
-			ecommerce_item.create_ecommerce_item(
-				MODULE_NAME,
-				integration_item_code,
-				item_dict,
-				variant_id=variant_id,
-				sku=sku,
-				variant_of=variant_of,
-				has_variants=has_variant,
-			)
+		# Create item using product_id + variant_id as primary identifier
+		# SKU matching is disabled - items can share SKUs
+		ecommerce_item.create_ecommerce_item(
+			MODULE_NAME,
+			integration_item_code,
+			item_dict,
+			variant_id=variant_id,
+			sku=sku,
+			variant_of=variant_of,
+			has_variants=has_variant,
+		)
 
 	def _create_item_variants(self, product_dict, warehouse, attributes):
 		template_item = ecommerce_item.get_erpnext_item(
