@@ -25,7 +25,7 @@ class EcommerceItem(Document):
 
 	def check_unique_constraints(self) -> None:
 		"""Check unique constraints based on product_id + variant_id only.
-		SKU is no longer used as a unique constraint - items can share SKUs."""
+		SKU is no longer used as a unique constraint - items can share SKUs. Hacksmith case."""
 		unique_integration_item_code = {
 			"integration": self.integration,
 			"erpnext_item_code": self.erpnext_item_code,
@@ -51,9 +51,6 @@ def is_synced(
 	sku: str | None = None,
 ) -> bool:
 	"""Check if item is synced from integration.
-	
-	Uses product_id (integration_item_code) + variant_id as primary identifier.
-	SKU is no longer used for matching - items can share SKUs.
 	
 	Args:
 		integration: Integration name (e.g., "shopify")
