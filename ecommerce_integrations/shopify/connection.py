@@ -118,12 +118,87 @@ def store_request_data() -> None:
 			)
 			frappe.throw(_("Missing shop domain header"))
 		
-		# Get settings
-		setting = frappe.get_doc(SETTING_DOCTYPE)
+	# Get settings
+	setting = frappe.get_doc(SETTING_DOCTYPE)
+	
+	# === COMPREHENSIVE DEBUG LOGGING ===
+	debug_info = []
+	debug_info.append("=" * 80)
+	debug_info.append("SHOPIFY WEBHOOK STORE MATCHING DEBUG")
+	debug_info.append("=" * 80)
+	debug_info.append("")
+	
+	# 1. Incoming shop_domain with quotes
+	debug_info.append(f"1. Incoming shop_domain: '{shop_domain}'")
+	debug_info.append(f"   Type: {type(shop_domain)}")
+	debug_info.append(f"   Length: {len(shop_domain) if shop_domain else 0}")
+	debug_info.append(f"   Byte representation: {shop_domain.encode('utf-8') if shop_domain else 'None'}")
+	debug_info.append("")
+	
+	# 2. Store 1 configuration
+	debug_info.append(f"2. Store 1 Configuration:")
+	debug_info.append(f"   shopify_url: '{setting.shopify_url}'")
+	debug_info.append(f"   Type: {type(setting.shopify_url)}")
+	debug_info.append(f"   Length: {len(setting.shopify_url) if setting.shopify_url else 0}")
+	debug_info.append(f"   Byte representation: {setting.shopify_url.encode('utf-8') if setting.shopify_url else 'None'}")
+	debug_info.append("")
+	
+	# 3. Store 2 configuration
+	debug_info.append(f"3. Store 2 Configuration:")
+	debug_info.append(f"   enable_store_2: {setting.enable_store_2}")
+	debug_info.append(f"   shopify_url_2: '{setting.shopify_url_2 if setting.shopify_url_2 else 'Not Set'}'")
+	if setting.shopify_url_2:
+		debug_info.append(f"   Type: {type(setting.shopify_url_2)}")
+		debug_info.append(f"   Length: {len(setting.shopify_url_2)}")
+		debug_info.append(f"   Byte representation: {setting.shopify_url_2.encode('utf-8')}")
+	debug_info.append("")
+	
+	# 4. Comparison checks for Store 1
+	debug_info.append(f"4. Store 1 Comparison:")
+	debug_info.append(f"   Condition: setting.shopify_url and shop_domain in setting.shopify_url")
+	debug_info.append(f"   setting.shopify_url exists: {bool(setting.shopify_url)}")
+	if setting.shopify_url:
+		debug_info.append(f"   shop_domain in setting.shopify_url: {shop_domain in setting.shopify_url}")
+		debug_info.append(f"   Are they equal (==): {shop_domain == setting.shopify_url}")
+		debug_info.append(f"   Stripped comparison: '{shop_domain.strip()}' == '{setting.shopify_url.strip()}': {shop_domain.strip() == setting.shopify_url.strip()}")
+	debug_info.append("")
+	
+	# 5. Comparison checks for Store 2
+	debug_info.append(f"5. Store 2 Comparison:")
+	debug_info.append(f"   Condition: setting.enable_store_2 and setting.shopify_url_2 and shop_domain in setting.shopify_url_2")
+	debug_info.append(f"   enable_store_2: {setting.enable_store_2}")
+	debug_info.append(f"   setting.shopify_url_2 exists: {bool(setting.shopify_url_2)}")
+	if setting.shopify_url_2:
+		debug_info.append(f"   shop_domain in setting.shopify_url_2: {shop_domain in setting.shopify_url_2}")
+		debug_info.append(f"   Are they equal (==): {shop_domain == setting.shopify_url_2}")
+		debug_info.append(f"   Stripped comparison: '{shop_domain.strip()}' == '{setting.shopify_url_2.strip()}': {shop_domain.strip() == setting.shopify_url_2.strip()}")
+	debug_info.append("")
+	
+	# 6. Character-by-character comparison for Store 2 (if applicable)
+	if setting.shopify_url_2 and shop_domain:
+		debug_info.append(f"6. Character-by-Character Analysis (Store 2):")
+		debug_info.append(f"   shop_domain chars: {[c for c in shop_domain]}")
+		debug_info.append(f"   shopify_url_2 chars: {[c for c in setting.shopify_url_2]}")
+		debug_info.append(f"   shop_domain repr: {repr(shop_domain)}")
+		debug_info.append(f"   shopify_url_2 repr: {repr(setting.shopify_url_2)}")
 		
-		# Determine store and credentials
-		store_name = None
-		shared_secret = None
+		# Check for whitespace
+		debug_info.append(f"   shop_domain has leading/trailing spaces: {shop_domain != shop_domain.strip()}")
+		debug_info.append(f"   shopify_url_2 has leading/trailing spaces: {setting.shopify_url_2 != setting.shopify_url_2.strip()}")
+	debug_info.append("")
+	
+	debug_info.append("=" * 80)
+	
+	# Log everything to Error Log
+	frappe.log_error(
+		title="Shopify Webhook Debug Info",
+		message="\n".join(debug_info)
+	)
+	# === END DEBUG LOGGING ===
+	
+	# Determine store and credentials
+	store_name = None
+	shared_secret = None
 		
 		# Check Store 1
 		if setting.shopify_url and shop_domain in setting.shopify_url:
