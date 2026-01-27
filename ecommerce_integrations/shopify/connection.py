@@ -199,38 +199,38 @@ def store_request_data() -> None:
 	# Determine store and credentials
 	store_name = None
 	shared_secret = None
-		
-		# Check Store 1
-		if setting.shopify_url and shop_domain in setting.shopify_url:
-			store_name = "Store 1"
-			shared_secret = setting.shared_secret
-			frappe.logger().info(f"Webhook from Store 1: {shop_domain}")
-		
-		# Check Store 2
-		elif setting.enable_store_2 and setting.shopify_url_2 and shop_domain in setting.shopify_url_2:
-			store_name = setting.store_2_name or "Store 2"
-			shared_secret = setting.shared_secret_2
-			frappe.logger().info(f"Webhook from Store 2 ({store_name}): {shop_domain}")
-		
-		# Unknown store
-		else:
-			frappe.log_error(
-				title="Shopify Webhook - Unknown Store",
-				message=f"Shop domain '{shop_domain}' does not match configured stores"
-			)
-			frappe.throw(_(f"Unknown Shopify store: {shop_domain}"))
-		
-		# Validate with correct secret
-		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
-		_validate_request(frappe.request, hmac_header, shared_secret)
+	
+	# Check Store 1
+	if setting.shopify_url and shop_domain in setting.shopify_url:
+		store_name = "Store 1"
+		shared_secret = setting.shared_secret
+		frappe.logger().info(f"Webhook from Store 1: {shop_domain}")
+	
+	# Check Store 2
+	elif setting.enable_store_2 and setting.shopify_url_2 and shop_domain in setting.shopify_url_2:
+		store_name = setting.store_2_name or "Store 2"
+		shared_secret = setting.shared_secret_2
+		frappe.logger().info(f"Webhook from Store 2 ({store_name}): {shop_domain}")
+	
+	# Unknown store
+	else:
+		frappe.log_error(
+			title="Shopify Webhook - Unknown Store",
+			message=f"Shop domain '{shop_domain}' does not match configured stores"
+		)
+		frappe.throw(_(f"Unknown Shopify store: {shop_domain}"))
+	
+	# Validate with correct secret
+	hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
+	_validate_request(frappe.request, hmac_header, shared_secret)
 
-		data = json.loads(frappe.request.data)
-		event = frappe.request.headers.get("X-Shopify-Topic")
-		
-		# Set store context for API sessions
-		frappe.local.shopify_store_name = store_name
+	data = json.loads(frappe.request.data)
+	event = frappe.request.headers.get("X-Shopify-Topic")
+	
+	# Set store context for API sessions
+	frappe.local.shopify_store_name = store_name
 
-		process_request(data, event, store_name)
+	process_request(data, event, store_name)
 
 
 def process_request(data, event, store_name=None):
