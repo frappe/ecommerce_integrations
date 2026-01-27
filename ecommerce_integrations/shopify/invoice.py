@@ -26,8 +26,10 @@ def prepare_sales_invoice(payload, request_id=None, store_name=None):
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 	
+	# Set store context for API calls in this background job
 	if store_name:
 		frappe.logger().info(f"Preparing sales invoice for order from {store_name}")
+		frappe.local.shopify_store_name = store_name
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))

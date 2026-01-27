@@ -41,9 +41,10 @@ def sync_sales_order(payload, request_id=None, store_name=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 	
-	# Log which store is syncing
+	# Set store context for API calls in this background job
 	if store_name:
 		frappe.logger().info(f"Syncing order {order.get('name')} from {store_name}")
+		frappe.local.shopify_store_name = store_name
 
 	if frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: cstr(order["id"])}):
 		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
@@ -60,8 +61,8 @@ def sync_sales_order(payload, request_id=None, store_name=None):
 			else:
 				customer.update_existing_addresses(shopify_customer)
 
-		# Store context is already set in frappe.local.shopify_store_name
-		# This will be used by temp_shopify_session decorator
+		# Store context has been set in frappe.local.shopify_store_name above
+		# This will be used by temp_shopify_session decorator when syncing items
 		create_items_if_not_exist(order)
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)

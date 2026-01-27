@@ -28,8 +28,10 @@ def prepare_delivery_note(payload, request_id=None, store_name=None):
 
 	order = payload
 	
+	# Set store context for API calls in this background job
 	if store_name:
 		frappe.logger().info(f"Preparing delivery note for order from {store_name}")
+		frappe.local.shopify_store_name = store_name
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
