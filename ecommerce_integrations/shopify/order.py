@@ -38,7 +38,10 @@ def sync_sales_order(payload, request_id=None):
 		create_shopify_log(status="Invalid", message="Sales order already exists, not synced")
 		return
 	try:
-		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
+		shopify_customer = order.get("customer")
+		if shopify_customer is None:
+			create_shopify_log(status="Error", message="Invalid Order:customer is null")
+			return
 		shopify_customer["billing_address"] = order.get("billing_address", "")
 		shopify_customer["shipping_address"] = order.get("shipping_address", "")
 		customer_id = shopify_customer.get("id")
