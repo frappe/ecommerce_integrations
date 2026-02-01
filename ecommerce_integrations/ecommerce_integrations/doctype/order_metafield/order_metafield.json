@@ -1,0 +1,61 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-02-01 05:55:51.164505",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "namespace",
+  "metafield",
+  "column_break_hkei",
+  "value"
+ ],
+ "fields": [
+  {
+   "allow_on_submit": 1,
+   "fieldname": "namespace",
+   "fieldtype": "Data",
+   "ignore_user_permissions": 1,
+   "label": "Namespace"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "metafield",
+   "fieldtype": "Data",
+   "ignore_user_permissions": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "MetaField",
+   "reqd": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "column_break_hkei",
+   "fieldtype": "Column Break",
+   "ignore_user_permissions": 1
+  },
+  {
+   "fieldname": "value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Value"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-02-01 06:01:17.680933",
+ "modified_by": "Administrator",
+ "module": "Ecommerce Integrations",
+ "name": "Order Metafield",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

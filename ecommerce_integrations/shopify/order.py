@@ -709,3 +709,71 @@ def get_order_metafields(sales_order_name):
 		return {"ok": True, "metafields": metafields}
 	except Exception as e:
 		return {"ok": False, "message": str(e)}
+
+
+# Metafields to sync into Sales Order child table (namespace, key). Only these are fetched and stored.
+SHOPIFY_ORDER_METAFIELDS_TO_SYNC = [
+	{"namespace": "custom", "key": "kickstarter_backer_number_smith_blade_campaign"},
+]
+
+
+def _fill_metafields_into_doc(doc, metafields):
+	"""Fill Sales Order custom_shopify_order_metafield child table from Shopify metafields list."""
+	doc.custom_shopify_order_metafield = []
+	for m in metafields:
+		ns = m.get("namespace") or ""
+		key = m.get("key") or ""
+		for want in SHOPIFY_ORDER_METAFIELDS_TO_SYNC:
+			if ns == want["namespace"] and key == want["key"]:
+				value = m.get("value")
+				if value is None:
+					value = ""
+				elif not isinstance(value, str):
+					value = str(value)
+				doc.append(
+					"custom_shopify_order_metafield",
+					{"namespace": ns, "metafield": key, "value": value},
+				)
+				break
+
+
+def fill_shopify_order_metafields_on_submit(doc, method=None):
+	"""On Sales Order submit, fetch Shopify order metafields via REST and fill custom_shopify_order_metafield child table."""
+	if not doc.get(ORDER_ID_FIELD):
+		return
+	if not hasattr(doc, "custom_shopify_order_metafield"):
+		return
+
+	result = get_order_metafields(doc.name)
+	if not result.get("ok") or not result.get("metafields"):
+		return
+
+	_fill_metafields_into_doc(doc, result["metafields"])
+
+
+@frappe.whitelist()
+def sync_shopify_order_metafields(sales_order_name):
+	"""Manually fetch Shopify order metafields and fill the child table. For existing orders.
+	Returns { "ok": True, "message": "..." } or { "ok": False, "message": "..." }.
+	"""
+	try:
+		doc = frappe.get_doc("Sales Order", sales_order_name)
+	except frappe.DoesNotExistError:
+		return {"ok": False, "message": _("Sales Order not found.")}
+
+	if not doc.get(ORDER_ID_FIELD):
+		return {"ok": False, "message": _("This Sales Order is not linked to Shopify.")}
+
+	if not hasattr(doc, "custom_shopify_order_metafield"):
+		return {"ok": False, "message": _("Child table Shopify Order Metafield not found.")}
+
+	result = get_order_metafields(sales_order_name)
+	if not result.get("ok"):
+		return {"ok": False, "message": result.get("message") or _("Could not fetch metafields.")}
+
+	metafields = result.get("metafields") or []
+	_fill_metafields_into_doc(doc, metafields)
+	doc.flags.ignore_validate_update_after_submit = True
+	doc.save(ignore_permissions=True)
+	frappe.db.commit()
+	return {"ok": True, "message": _("Shopify metafields synced to table.")}

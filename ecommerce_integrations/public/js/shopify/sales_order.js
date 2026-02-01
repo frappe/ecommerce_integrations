@@ -33,6 +33,43 @@ frappe.ui.form.on("Sales Order", {
 				},
 				__("Shopify")
 			);
+			frm.add_custom_button(
+				__("Sync Metafields to Table"),
+				function () {
+					frappe.call({
+						method: "ecommerce_integrations.shopify.order.sync_shopify_order_metafields",
+						args: { sales_order_name: frm.doc.name },
+						freeze: true,
+						freeze_message: __("Fetching and filling Shopify metafields..."),
+						callback: function (r) {
+							if (r.exc) {
+								frappe.msgprint({
+									title: __("Error"),
+									indicator: "red",
+									message: r.exc,
+								});
+								return;
+							}
+							const data = r.message;
+							if (!data.ok) {
+								frappe.msgprint({
+									title: __("Shopify Metafields"),
+									indicator: "orange",
+									message: data.message || __("Could not sync metafields."),
+								});
+								return;
+							}
+							frappe.msgprint({
+								title: __("Shopify Metafields"),
+								indicator: "green",
+								message: data.message || __("Metafields synced to table."),
+							});
+							frm.reload_doc();
+						},
+					});
+				},
+				__("Shopify")
+			);
 		}
 	},
 });
