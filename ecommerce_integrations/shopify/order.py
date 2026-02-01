@@ -9,6 +9,7 @@ from shopify.resources import Order
 
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import (
+	API_VERSION,
 	CUSTOMER_ID_FIELD,
 	EVENT_MAPPER,
 	ORDER_ID_FIELD,
@@ -667,3 +668,44 @@ def _fetch_old_orders(from_time, to_time):
 			# Using generator instead of fetching all at once is better for
 			# avoiding rate limits and reducing resource usage.
 			yield order.to_dict()
+
+
+@frappe.whitelist()
+def get_order_metafields(sales_order_name):
+	"""Fetch Shopify order metafields via REST API for a Sales Order linked to Shopify.
+	Returns { "ok": True, "metafields": [...] } or { "ok": False, "message": "..." }.
+	"""
+	try:
+		so = frappe.get_cached_doc("Sales Order", sales_order_name)
+	except frappe.DoesNotExistError:
+		return {"ok": False, "message": _("Sales Order not found.")}
+
+	shopify_order_id = so.get(ORDER_ID_FIELD)
+	if not shopify_order_id:
+		return {"ok": False, "message": _("This Sales Order is not linked to Shopify.")}
+
+	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
+	if not setting.is_enabled():
+		return {"ok": False, "message": _("Shopify integration is disabled.")}
+
+	shop_url = (setting.shopify_url or "").replace("https://", "").strip()
+	if not shop_url:
+		return {"ok": False, "message": _("Shopify URL not configured.")}
+
+	token = setting.get_password("password")
+	if not token:
+		return {"ok": False, "message": _("Shopify access token not configured.")}
+
+	url = f"https://{shop_url}/admin/api/{API_VERSION}/orders/{shopify_order_id}/metafields.json"
+	headers = {"X-Shopify-Access-Token": token}
+
+	try:
+		import requests
+
+		response = requests.get(url, headers=headers, timeout=30)
+		response.raise_for_status()
+		data = response.json()
+		metafields = data.get("metafields") or []
+		return {"ok": True, "metafields": metafields}
+	except Exception as e:
+		return {"ok": False, "message": str(e)}

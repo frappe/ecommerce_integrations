@@ -57,6 +57,7 @@ doctype_js = {
 	"Shopify Settings": "public/js/shopify/old_settings.js",
 	"Sales Order": [
 		"public/js/unicommerce/sales_order.js",
+		"public/js/shopify/sales_order.js",
 		"public/js/common/ecommerce_transactions.js",
 	],
 	"Sales Invoice": [
