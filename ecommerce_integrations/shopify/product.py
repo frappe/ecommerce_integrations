@@ -352,6 +352,9 @@ def upload_erpnext_item(doc, method=None):
 
 	# TODO: Handle if doc.custom_company is None
 	if doc.custom_company:
+		is_shopify_account_present = frappe.db.exists("Shopify Account", {"company": doc.custom_company})
+		if not is_shopify_account_present:
+			return
 		setting = get_company_shopify_account(company=doc.custom_company)
 	else:
 		setting = get_user_shopify_account()
