@@ -5,12 +5,12 @@
 import json
 import os
 import time
-import unittest
 from typing import ClassVar
 
 import frappe
 import responses
 from frappe.exceptions import ValidationError
+from frappe.tests import IntegrationTestCase
 from requests import request
 from requests.exceptions import HTTPError
 
@@ -272,7 +272,7 @@ class TestAmazonRepository(AmazonRepository):
 		return TestCatalogItems(**self.instance_params)
 
 
-class TestAmazon(unittest.TestCase):
+class TestAmazon(IntegrationTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		setup_custom_fields()

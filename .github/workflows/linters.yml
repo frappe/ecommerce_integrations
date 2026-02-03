@@ -11,10 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: 3.14
 
       - name: Install and Run Pre-commit
         uses: pre-commit/action@v3.0.0
