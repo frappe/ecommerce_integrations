@@ -1,1 +1,2 @@
-global_test_dependencies = ["User", "Company", "Item"]
+# add dependencies
+global_test_dependencies = ["User", "Company", "Item"] 
