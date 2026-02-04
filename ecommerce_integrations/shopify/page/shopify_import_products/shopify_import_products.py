@@ -8,6 +8,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME
 from ecommerce_integrations.shopify.product import ShopifyProduct
+from ecommerce_integrations.shopify.utils import get_user_company
 
 # constants
 SYNC_JOB_NAME = "shopify.job.sync.all.products"
@@ -46,7 +47,7 @@ def fetch_all_products(from_=None):
 	}
 
 
-@temp_shopify_session
+@temp_shopify_session(shopify_account=None)
 def _fetch_products_from_shopify(from_=None, limit=20):
 	if from_:
 		collection = Product.find(from_=from_)
@@ -73,7 +74,7 @@ def get_product_count():
 	}
 
 
-@temp_shopify_session
+@temp_shopify_session(shopify_account=None)
 def get_shopify_product_count():
 	return Product.count()
 
@@ -81,7 +82,7 @@ def get_shopify_product_count():
 @frappe.whitelist()
 def sync_product(product):
 	try:
-		shopify_product = ShopifyProduct(product)
+		shopify_product = ShopifyProduct(product, company=get_user_company(frappe.session.user))
 		shopify_product.sync_product()
 
 		return True
@@ -95,7 +96,7 @@ def resync_product(product):
 	return _resync_product(product)
 
 
-@temp_shopify_session
+@temp_shopify_session(shopify_account=None)
 def _resync_product(product):
 	savepoint = "shopify_resync_product"
 	try:
@@ -103,7 +104,7 @@ def _resync_product(product):
 
 		frappe.db.savepoint(savepoint)
 		for variant in item.variants:
-			shopify_product = ShopifyProduct(product, variant_id=variant.id)
+			shopify_product = ShopifyProduct(product, variant_id=variant.id, company=get_user_company(frappe.session.user))
 			shopify_product.sync_product()
 
 		return True
@@ -147,7 +148,7 @@ def queue_sync_all_products(*args, **kwargs):
 					publish(f"Product {product.id} already synced. Skipping...")
 					continue
 
-				shopify_product = ShopifyProduct(product.id)
+				shopify_product = ShopifyProduct(product.id, company=get_user_company(kwargs.get("user")))
 				shopify_product.sync_product()
 
 				publish(f"✅ Synced Product {product.id}", synced=True)

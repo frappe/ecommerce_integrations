@@ -21,7 +21,7 @@ class EcommerceCustomer:
 		else:
 			raise frappe.DoesNotExistError()
 
-	def sync_customer(self, customer_name: str, customer_group: str) -> None:
+	def sync_customer(self, customer_name: str, customer_group: str, **kwargs) -> None:
 		"""Create customer in ERPNext if one does not exist already."""
 		customer = frappe.get_doc(
 			{
@@ -34,6 +34,9 @@ class EcommerceCustomer:
 				"customer_type": _("Individual"),
 			}
 		)
+
+		if kwargs.get("company"):
+			customer.custom_company = kwargs["company"]
 
 		customer.flags.ignore_mandatory = True
 		customer.insert(ignore_permissions=True)

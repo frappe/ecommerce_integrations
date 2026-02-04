@@ -1,4 +1,4 @@
-# Copyright (c) 2021, Frappe and contributors
+# Copyright (c) 2024, Frappe and contributors
 # For license information, please see LICENSE
 
 import frappe
@@ -31,12 +31,13 @@ from ecommerce_integrations.shopify.utils import (
 )
 
 
-class ShopifySetting(SettingController):
+class ShopifyAccount(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
 	def validate(self):
-		ensure_old_connector_is_disabled()
+		# TODO: uncomment
+		# ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
 			self.shopify_url = self.shopify_url.replace("https://", "")
@@ -79,7 +80,7 @@ class ShopifySetting(SettingController):
 			self.last_inventory_sync = get_datetime("1970-01-01")
 
 	@frappe.whitelist()
-	@connection.temp_shopify_session
+	@connection.temp_shopify_session(lambda self: self.shopify_url)
 	def update_location_table(self):
 		"""Fetch locations from shopify and add it to child table so user can
 		map it with correct ERPNext warehouse."""
@@ -91,6 +92,16 @@ class ShopifySetting(SettingController):
 					"shopify_warehouse_mapping",
 					{"shopify_location_id": location.id, "shopify_location_name": location.name},
 				)
+
+	def get_shopify_locations(self):
+		"""Fetch locations from shopify and add it to child table so user can
+		map it with correct ERPNext warehouse."""
+		result = []
+		with connection.get_temp_session_context(self):
+			for locations in PaginatedIterator(Location.find()):
+				for location in locations:
+					result.append(location)
+			return result
 
 	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]

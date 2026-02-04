@@ -1,6 +1,7 @@
 {
  "actions": [],
- "creation": "2021-04-13 13:30:54.909583",
+ "autoname": "field:shopify_url",
+ "creation": "2024-01-01 00:00:00.000000",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
@@ -82,7 +83,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Shop URL",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify",
+   "unique": 1
   },
   {
    "fieldname": "column_break_3",
@@ -153,9 +155,10 @@
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Company",
-   "mandatory_depends_on": "eval:doc.enable_shopify",
-   "options": "Company"
+   "options": "Company",
+   "reqd": 1
   },
   {
    "fieldname": "cash_bank_account",
@@ -390,12 +393,13 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "issingle": 1,
+ "issingle": 0,
  "links": [],
- "modified": "2023-10-24 10:38:49.247431",
+ "modified": "2024-01-01 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "shopify",
- "name": "Shopify Setting",
+ "name": "Shopify Account",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

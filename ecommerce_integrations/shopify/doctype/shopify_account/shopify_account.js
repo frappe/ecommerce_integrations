@@ -1,9 +1,9 @@
 // Copyright (c) 2021, Frappe and contributors
 // For license information, please see LICENSE
 
-frappe.provide("ecommerce_integrations.shopify.shopify_setting");
+frappe.provide("ecommerce_integrations.shopify.shopify_account");
 
-frappe.ui.form.on("Shopify Setting", {
+frappe.ui.form.on("Shopify Account", {
 	onload: function (frm) {
 		frappe.call({
 			method: "ecommerce_integrations.utils.naming_series.get_series",

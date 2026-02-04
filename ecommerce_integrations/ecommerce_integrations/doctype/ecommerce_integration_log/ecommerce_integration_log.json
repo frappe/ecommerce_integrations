@@ -7,6 +7,7 @@
  "field_order": [
   "title",
   "integration",
+  "shopify_account",
   "status",
   "method",
   "message",
@@ -66,12 +67,21 @@
    "fieldtype": "Code",
    "label": "Response Data",
    "read_only": 1
+  },
+  {
+   "depends_on": "eval: doc.integration == \"shopify\"",
+   "fieldname": "shopify_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Shopify Account",
+   "options": "Shopify Account"
   }
  ],
  "in_create": 1,
  "links": [],
- "modified": "2021-05-28 16:06:49.008875",
- "modified_by": "Administrator",
+ "modified": "2025-10-28 16:06:18.084320",
+ "modified_by": "user@nexusdemo.com",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Integration Log",
  "owner": "Administrator",
@@ -101,7 +111,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "title_field": "title"
 }

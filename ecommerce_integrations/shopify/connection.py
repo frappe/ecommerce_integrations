@@ -12,29 +12,51 @@ from shopify.session import Session
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
 	EVENT_MAPPER,
-	SETTING_DOCTYPE,
+	ACCOUNT_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
 
 
-def temp_shopify_session(func):
-	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
+def temp_shopify_session(shopify_account=None):
+    """Decorator for functions that need a temporary Shopify session."""
+    print("temp_shopify_session called with ", shopify_account)
 
-	@functools.wraps(func)
-	def wrapper(*args, **kwargs):
-		# no auth in testing
-		if frappe.flags.in_test:
-			return func(*args, **kwargs)
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # no auth in testing
+            if frappe.flags.in_test:
+                return func(*args, **kwargs)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
-		if setting.is_enabled():
-			auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
+            # If a callable is passed, call it with self to get the account
+            if shopify_account is None:
+                # TODO: handle if get_user_shopify_account returns None
+                account = get_user_shopify_account().name
+            else:
+                account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
 
-			with Session.temp(*auth_details):
-				return func(*args, **kwargs)
+            setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+            if setting.is_enabled():
+                auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
+                with Session.temp(*auth_details):
+                    return func(*args, **kwargs)
 
-	return wrapper
+        return wrapper
+
+    return decorator
+
+
+def get_auth_details(setting) -> tuple[str, str, str]:
+    """Get authentication details for Shopify API."""
+    # setting = frappe.get_doc(ACCOUNT_DOCTYPE, setting)
+    return setting.shopify_url, API_VERSION, setting.get_password("password")
+
+
+def get_temp_session_context(setting):
+	"""Get a temporary Shopify session context manager."""
+	auth_details = get_auth_details(setting)
+	return Session.temp(*auth_details)
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -92,36 +114,37 @@ def get_callback_url() -> str:
 
 
 @frappe.whitelist(allow_guest=True)
-def store_request_data() -> None:
+def store_request_data(**kwargs) -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
+		# Get shopify account
+		shop_domain = frappe.get_request_header("X-Shopify-Shop-Domain")
+		settings = frappe.get_doc(ACCOUNT_DOCTYPE, shop_domain)
 
-		_validate_request(frappe.request, hmac_header)
+		_validate_request(frappe.request, hmac_header, secret_key=settings.shared_secret)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
-		process_request(data, event)
+		process_request(data, event, shopify_account=settings)
 
 
-def process_request(data, event):
+def process_request(data, event, shopify_account=None):
+	print("Processing webhook event: ", event, "\n", shopify_account)
 	# create log
-	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
-
-	# enqueue backround job
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account)
+	print("log created")
+	# enqueue background job
 	frappe.enqueue(
 		method=EVENT_MAPPER[event],
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": data, "request_id": log.name},
+		**{"payload": data, "request_id": log.name, "shopify_account": shopify_account},
 	)
 
 
-def _validate_request(req, hmac_header):
-	settings = frappe.get_doc(SETTING_DOCTYPE)
-	secret_key = settings.shared_secret
-
+def _validate_request(req, hmac_header, secret_key):
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):

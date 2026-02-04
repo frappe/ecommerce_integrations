@@ -30,8 +30,14 @@ shopify.ProductImporter = class {
 	}
 
 	async checkSyncStatus() {
+		// TODO: RQ Job is a virtual doctype and not persisted in the mariadb, should we get the result from redis??
+		// frappe.call({
+		// 	method: "ecommerce_integrations.shopify.utils.get_jobs"
+		// })
+		// .then(r => console.log("result", r))
+		// .catch(e => console.log("error", e))
 		const jobs = await frappe.db.get_list("RQ Job", {
-			filters: { status: ("in", ("queued", "started")) },
+			filters: { status: ["in", ["queued", "started"]] },
 		});
 		this.syncRunning =
 			jobs.find(
@@ -111,7 +117,7 @@ shopify.ProductImporter = class {
 			this.wrapper.find("#count-products-erpnext").text(erpnextCount);
 			this.wrapper.find("#count-products-synced").text(syncedCount);
 		} catch (error) {
-			frappe.throw(__("Error fetching product count."));
+			frappe.throw(__(`Error fetching product count.\n ${error}`));
 		}
 	}
 

@@ -13,6 +13,24 @@ from frappe.utils.data import cstr
 
 
 class EcommerceIntegrationLog(Document):
+	# begin: auto-generated types
+	# This code is auto-generated. Do not modify anything in this block.
+
+	from typing import TYPE_CHECKING
+
+	if TYPE_CHECKING:
+		from frappe.types import DF
+
+		integration: DF.Link | None
+		message: DF.Code | None
+		method: DF.SmallText | None
+		request_data: DF.Code | None
+		response_data: DF.Code | None
+		shopify_account: DF.Link | None
+		status: DF.Data | None
+		title: DF.Data | None
+		traceback: DF.Code | None
+	# end: auto-generated types
 	def validate(self):
 		self._set_title()
 
@@ -47,6 +65,7 @@ def create_log(
 	method=None,
 	message=None,
 	make_new=False,
+	shopify_account=None,
 ):
 	make_new = make_new or not bool(frappe.flags.request_id)
 
@@ -71,6 +90,7 @@ def create_log(
 	log.request_data = request_data or log.request_data
 	log.traceback = log.traceback or frappe.get_traceback()
 	log.status = status
+	log.shopify_account = shopify_account
 	log.save(ignore_permissions=True)
 
 	frappe.db.commit()
@@ -96,12 +116,14 @@ def _retry_job(job: str):
 	frappe.only_for("System Manager")
 
 	doc = frappe.get_doc("Ecommerce Integration Log", job)
-	if not doc.method.startswith("ecommerce_integrations.") or doc.status != "Error":
+	retry_status_list = ["Error", "Invalid"]
+	if not doc.method.startswith("ecommerce_integrations.") or doc.status not in retry_status_list:
 		return
 
 	doc.db_set("status", "Queued", update_modified=False)
 	doc.db_set("traceback", "", update_modified=False)
-
+	shopify_account = frappe.get_doc("Shopify Account", doc.shopify_account) if doc.shopify_account else None
+	
 	frappe.enqueue(
 		method=doc.method,
 		queue="short",
@@ -109,6 +131,7 @@ def _retry_job(job: str):
 		is_async=True,
 		payload=json.loads(doc.request_data),
 		request_id=doc.name,
+		shopify_account=shopify_account,
 		enqueue_after_commit=True,
 	)
 
