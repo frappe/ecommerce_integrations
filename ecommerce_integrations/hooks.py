@@ -141,7 +141,10 @@ doc_events = {
 	},
 	"Sales Order": {
 		"on_submit": "ecommerce_integrations.shopify.order.fill_shopify_order_metafields_on_submit",
-		"on_update_after_submit": "ecommerce_integrations.unicommerce.order.update_shipping_info",
+		"on_update_after_submit": [
+			"ecommerce_integrations.shopify.order.fill_shopify_order_metafields_on_update_after_submit",
+			"ecommerce_integrations.unicommerce.order.update_shipping_info",
+		],
 		"on_cancel": "ecommerce_integrations.unicommerce.status_updater.ignore_pick_list_on_sales_order_cancel",
 	},
 	"Stock Entry": {

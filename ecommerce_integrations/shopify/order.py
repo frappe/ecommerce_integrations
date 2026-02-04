@@ -751,6 +751,22 @@ def fill_shopify_order_metafields_on_submit(doc, method=None):
 	_fill_metafields_into_doc(doc, result["metafields"])
 
 
+def fill_shopify_order_metafields_on_update_after_submit(doc, method=None):
+	"""On Sales Order update after submit, re-fetch Shopify order metafields and refresh the child table.
+	Useful when metafields are updated in Shopify (e.g. kickstarter backer number) and the SO is updated in ERPNext.
+	"""
+	if not doc.get(ORDER_ID_FIELD):
+		return
+	if not hasattr(doc, "custom_shopify_order_metafield"):
+		return
+
+	result = get_order_metafields(doc.name)
+	if not result.get("ok") or not result.get("metafields"):
+		return
+
+	_fill_metafields_into_doc(doc, result["metafields"])
+
+
 @frappe.whitelist()
 def sync_shopify_order_metafields(sales_order_name):
 	"""Manually fetch Shopify order metafields and fill the child table. For existing orders.
