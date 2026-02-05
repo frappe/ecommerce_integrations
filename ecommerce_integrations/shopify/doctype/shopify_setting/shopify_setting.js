@@ -34,6 +34,9 @@ frappe.ui.form.on("Shopify Setting", {
 				integration: "Shopify",
 			});
 		});
+		frm.add_custom_button(__("Bulk Sync Order Metafields"), function () {
+			show_bulk_sync_metafields_dialog();
+		});
 		frm.trigger("setup_queries");
 	},
 
@@ -97,3 +100,73 @@ frappe.ui.form.on("Shopify Setting", {
 		frm.set_query("default_shipping_charges_account", tax_query);
 	},
 });
+
+function show_bulk_sync_metafields_dialog() {
+	const today = frappe.datetime.get_today();
+	const month_start = frappe.datetime.month_start(today);
+
+	const d = new frappe.ui.Dialog({
+		title: __("Bulk Sync Shopify Order Metafields"),
+		fields: [
+			{
+				fieldtype: "Date",
+				fieldname: "from_date",
+				label: __("From Date"),
+				default: month_start,
+				reqd: 1,
+			},
+			{
+				fieldtype: "Date",
+				fieldname: "to_date",
+				label: __("To Date"),
+				default: today,
+				reqd: 1,
+			},
+		],
+		primary_action_label: __("Sync"),
+		primary_action: function (values) {
+			d.hide();
+			frappe.call({
+				method: "ecommerce_integrations.shopify.order.bulk_sync_shopify_order_metafields",
+				args: {
+					from_date: values.from_date,
+					to_date: values.to_date,
+				},
+				freeze: true,
+				freeze_message: __("Syncing metafields for Sales Orders..."),
+				callback: function (r) {
+					if (r.exc) {
+						frappe.msgprint({
+							title: __("Error"),
+							indicator: "red",
+							message: r.exc,
+						});
+						return;
+					}
+					const data = r.message;
+					if (!data.ok && data.message) {
+						frappe.msgprint({
+							title: __("Bulk Sync"),
+							indicator: "orange",
+							message: data.message,
+						});
+						return;
+					}
+					let msg = data.message || __("Done.");
+					if (data.failed_orders && data.failed_orders.length > 0) {
+						msg += "<br><br>" + __("Failed orders:") + "<br>";
+						msg += data.failed_orders
+							.map((f) => `${f.name}: ${f.error}`)
+							.join("<br>");
+					}
+					frappe.msgprint({
+						title: __("Bulk Sync Metafields"),
+						indicator: data.failed === 0 ? "green" : "orange",
+						message: msg,
+					});
+				},
+			});
+		},
+	});
+	d.show();
+}

@@ -793,3 +793,62 @@ def sync_shopify_order_metafields(sales_order_name):
 	doc.save(ignore_permissions=True)
 	frappe.db.commit()
 	return {"ok": True, "message": _("Shopify metafields synced to table.")}
+
+
+@frappe.whitelist()
+def bulk_sync_shopify_order_metafields(from_date, to_date):
+	"""Bulk sync Shopify order metafields for Sales Orders in the given date range.
+	Returns { "ok": True, "synced": N, "failed": N, "failed_orders": [...], "message": "..." }.
+	"""
+	from frappe.utils import getdate
+
+	from_date = getdate(from_date)
+	to_date = getdate(to_date)
+	if from_date > to_date:
+		return {"ok": False, "message": _("From Date must be before or equal to To Date.")}
+
+	orders = frappe.db.get_all(
+		"Sales Order",
+		filters=[
+			[ORDER_ID_FIELD, "is", "set"],
+			["transaction_date", "between", [from_date, to_date]],
+		],
+		pluck="name",
+	)
+
+	synced = 0
+	failed = 0
+	failed_orders = []
+
+	for so_name in orders:
+		try:
+			result = get_order_metafields(so_name)
+			if not result.get("ok"):
+				failed += 1
+				failed_orders.append({"name": so_name, "error": result.get("message", "Unknown error")})
+				continue
+
+			doc = frappe.get_doc("Sales Order", so_name)
+			if not hasattr(doc, "custom_shopify_order_metafield"):
+				failed += 1
+				failed_orders.append({"name": so_name, "error": _("Child table not found")})
+				continue
+
+			metafields = result.get("metafields") or []
+			_fill_metafields_into_doc(doc, metafields)
+			doc.flags.ignore_validate_update_after_submit = True
+			doc.save(ignore_permissions=True)
+			synced += 1
+		except Exception as e:
+			failed += 1
+			failed_orders.append({"name": so_name, "error": str(e)})
+
+	frappe.db.commit()
+	msg = _("Synced {0} order(s). {1} failed.").format(synced, failed)
+	return {
+		"ok": True,
+		"synced": synced,
+		"failed": failed,
+		"failed_orders": failed_orders,
+		"message": msg,
+	}
