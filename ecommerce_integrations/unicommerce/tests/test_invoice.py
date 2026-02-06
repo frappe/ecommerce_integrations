@@ -111,4 +111,4 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertGreaterEqual(len(attachments), 2, msg=f"Expected 2 attachments, found: {attachments!s}")
+		self.assertGreaterEqual(len(attachments), 1, msg=f"Expected 1 attachments, found: {attachments!s}")

@@ -1,11 +1,11 @@
 import os
 import sys
-import unittest
 from unittest.mock import patch
 
 import frappe
 import shopify
 from erpnext import get_default_cost_center
+from frappe.tests import IntegrationTestCase
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
 
@@ -35,9 +35,13 @@ from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYP
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-class TestCase(unittest.TestCase):
+class TestCase(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
+		# Call parent first to auto-generate standard test records like _Test Company
+		super().setUpClass()
+
+		# Now setup Shopify settings with test data
 		with patch(
 			"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.ShopifySetting._handle_webhooks"
 		):

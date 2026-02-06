@@ -1,10 +1,10 @@
 import copy
 import json
 import os
-import unittest
 from typing import ClassVar
 
 import frappe
+from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.unicommerce.constants import PRODUCT_CATEGORY_FIELD, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings import (
@@ -12,7 +12,7 @@ from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce
 )
 
 
-class TestCase(unittest.TestCase):
+class TestCase(IntegrationTestCase):
 	config: ClassVar = {
 		"is_enabled": 1,
 		"enable_inventory_sync": 1,
@@ -27,6 +27,10 @@ class TestCase(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
+		# Call parent first to auto-generate standard test records
+		super().setUpClass()
+
+		# Now configure Unicommerce settings
 		settings = frappe.get_doc(SETTINGS_DOCTYPE)
 
 		# remember config

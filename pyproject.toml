@@ -9,7 +9,7 @@ readme = "./README.md"
 dynamic = ["version"]
 
 dependencies = [
-    "ShopifyAPI==12.4.0",  # update after resolving pyjwt conflict in frappe
+    "ShopifyAPI==12.7.0",
     "boto3~=1.28.10",
 ]
 
@@ -56,3 +56,9 @@ typing-modules = ["frappe.types.DF"]
 quote-style = "double"
 indent-style = "tab"
 docstring-code-format = true
+
+[tool.bench.frappe-dependencies]
+frappe = ">=17.0.0-dev,<18.0.0"
+erpnext = ">=17.0.0-dev,<18.0.0"
+
+
