@@ -40,10 +40,14 @@ def get_user_shopify_account():
 
 
 def get_company_shopify_account(company):
-    print("get_company_shopify_account called for company ", company)
-    account = frappe.get_doc("Shopify Account", {"company": company})
-    return account
-
+	try:
+		sa_exists = frappe.db.exists("Shopify Account", {"company": company})
+		if sa_exists:
+			account = frappe.get_doc("Shopify Account", sa_exists)
+			return account
+		return None
+	except Exception as e:
+		return None
 
 def create_shopify_log(**kwargs):
 	return create_log(module_def=MODULE_NAME, **kwargs)
