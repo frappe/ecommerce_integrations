@@ -35,7 +35,7 @@ shopify.ProductImporter = class {
 		});
 		this.syncRunning =
 			jobs.find(
-				(job) => job.job_name == "shopify.job.sync.all.products"
+				(job) => job.job_name == "shopify.job.sync.all.products",
 			) !== undefined;
 
 		if (this.syncRunning) {
@@ -216,7 +216,7 @@ shopify.ProductImporter = class {
 					.replaceWith(this.getProductSyncStatus(true));
 
 				_this.replaceWith(
-					`<button type="button" class="btn btn-default btn-xs btn-resync mx-2" data-product="${product}"> Re-sync </button>`
+					`<button type="button" class="btn btn-default btn-xs btn-resync mx-2" data-product="${product}"> Re-sync </button>`,
 				);
 			});
 		});
@@ -249,7 +249,7 @@ shopify.ProductImporter = class {
 
 		// pagination
 		this.wrapper.on("click", ".btn-prev,.btn-next", (e) =>
-			this.switchPage(e)
+			this.switchPage(e),
 		);
 
 		// sync all products
@@ -285,7 +285,7 @@ shopify.ProductImporter = class {
 		this.shopifyProductTable.showToastMessage("Loading...");
 
 		const newProducts = await this.fetchShopifyProducts(
-			_this.hasClass("btn-next") ? this.nextUrl : this.prevUrl
+			_this.hasClass("btn-next") ? this.nextUrl : this.prevUrl,
 		);
 
 		this.shopifyProductTable.refresh(newProducts);
@@ -335,7 +335,7 @@ shopify.ProductImporter = class {
 					this.fetchProductCount();
 					this.syncRunning = false;
 				}
-			}
+			},
 		);
 	}
 
