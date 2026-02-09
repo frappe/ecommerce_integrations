@@ -31,7 +31,7 @@ frappe.ui.form.on("Unicommerce Settings", {
 						},
 					});
 				},
-				__("Sync Now")
+				__("Sync Now"),
 			);
 		});
 	},
@@ -48,7 +48,7 @@ frappe.ui.form.on("Unicommerce Settings", {
 		});
 
 		frm.fields_dict["warehouse_mapping"].grid.get_field(
-			"erpnext_warehouse"
+			"erpnext_warehouse",
 		).get_query = function (doc) {
 			return {
 				filters: {

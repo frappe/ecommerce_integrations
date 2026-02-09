@@ -17,7 +17,7 @@ frappe.ui.form.on("Zenoti Settings", {
 						company: frm.doc.company,
 					},
 				};
-			}
+			},
 		);
 
 		frm.set_query("default_purchase_warehouse", function () {
