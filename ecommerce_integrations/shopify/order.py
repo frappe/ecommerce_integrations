@@ -102,6 +102,9 @@ def create_sales_order(shopify_order, setting, company=None):
 			return ""
 
 		taxes = get_order_taxes(shopify_order, setting, items)
+
+		transaction_date = getdate(shopify_order.get("created_at")) or nowdate()
+
 		so = frappe.get_doc(
 			{
 				"doctype": "Sales Order",
@@ -109,14 +112,22 @@ def create_sales_order(shopify_order, setting, company=None):
 				ORDER_ID_FIELD: str(shopify_order.get("id")),
 				ORDER_NUMBER_FIELD: shopify_order.get("name"),
 				"customer": customer,
-				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
-				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
+				"transaction_date": transaction_date,
+				"delivery_date": transaction_date,
 				"company": setting.company,
 				"selling_price_list": get_dummy_price_list(),
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": taxes,
 				"tax_category": get_dummy_tax_category(),
+				# Set payment schedule due date to today so synced historical
+				# orders don't immediately show as "Overdue" in ERPNext.
+				"payment_schedule": [
+					{
+						"due_date": nowdate(),
+						"invoice_portion": 100,
+					}
+				],
 			}
 		)
 
