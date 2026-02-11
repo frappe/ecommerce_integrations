@@ -105,7 +105,15 @@ def _fetch_and_sync_order(order_id):
 		request_data=order_dict,
 		make_new=True,
 	)
-	sync_sales_order(order_dict, request_id=log.name)
+
+	# sync_sales_order calls frappe.set_user("Administrator") which corrupts
+	# the current browser session when called synchronously from a whitelisted
+	# endpoint. Save and restore the original user to prevent logout.
+	current_user = frappe.session.user
+	try:
+		sync_sales_order(order_dict, request_id=log.name)
+	finally:
+		frappe.set_user(current_user)
 
 
 def is_order_synced(order_id):
