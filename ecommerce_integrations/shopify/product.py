@@ -301,6 +301,33 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 			return False
 
 
+def sync_product_from_webhook(payload, request_id=None):
+	"""Called by products/create and products/update webhook events.
+
+	Syncs a product from Shopify to ERPNext when it is created or updated in Shopify.
+	"""
+	frappe.set_user("Administrator")
+	frappe.flags.request_id = request_id
+
+	product_id = payload.get("id")
+	if not product_id:
+		create_shopify_log(status="Error", message="Product webhook payload missing product id")
+		return
+
+	try:
+		product = ShopifyProduct(product_id=str(product_id))
+
+		if product.is_synced():
+			create_shopify_log(status="Success", message=f"Product {product_id} already synced, skipped.")
+			return
+
+		product.sync_product()
+	except Exception as e:
+		create_shopify_log(status="Error", exception=e, rollback=True)
+	else:
+		create_shopify_log(status="Success")
+
+
 def create_items_if_not_exist(order):
 	"""Using shopify order, sync all items that are not already synced."""
 	for item in order.get("line_items", []):
