@@ -304,24 +304,18 @@ shopify.OrderImporter = class {
 		this.wrapper.on("click", ".btn-sync", (e) => {
 			const _this = $(e.currentTarget);
 
-			_this.prop("disabled", true).text("Syncing...");
+			_this.prop("disabled", true).text("Queuing...");
 
 			const orderId = _this.attr("data-order");
 			this.syncOrder(orderId).then((status) => {
 				if (!status) {
-					frappe.msgprint(__("Error syncing order. Check the Ecommerce Integration Log for details."));
+					frappe.msgprint(__("Error queuing order sync. Check the Ecommerce Integration Log for details."));
 					_this.prop("disabled", false).text("Sync");
 					return;
 				}
 
-				_this
-					.parents(".dt-row")
-					.find(".indicator-pill")
-					.last()
-					.replaceWith(this.getOrderSyncStatus(true));
-
-				_this.replaceWith(`<span class="text-muted text-small">Synced</span>`);
-				this.fetchOrderCount();
+				_this.replaceWith(`<span class="indicator-pill blue">Queued</span>`);
+				frappe.show_alert({message: __("Order sync queued. Refresh page to see updated status."), indicator: "blue"});
 			});
 		});
 

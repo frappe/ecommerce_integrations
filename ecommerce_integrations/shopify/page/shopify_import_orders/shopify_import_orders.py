@@ -86,8 +86,30 @@ def get_shopify_order_count():
 
 @frappe.whitelist()
 def sync_order(order_id):
+	"""Fetch order from Shopify and enqueue sync as a background job.
+
+	sync_sales_order must run in a background job because it calls
+	frappe.set_user("Administrator") and create_log calls frappe.db.commit(),
+	which together corrupt the browser session when run synchronously.
+	"""
 	try:
-		_fetch_and_sync_order(order_id)
+		order_dict = _fetch_order_from_shopify(order_id)
+
+		log = create_shopify_log(
+			status="Queued",
+			method="ecommerce_integrations.shopify.order.sync_sales_order",
+			request_data=order_dict,
+			make_new=True,
+		)
+
+		frappe.enqueue(
+			method="ecommerce_integrations.shopify.order.sync_sales_order",
+			queue="short",
+			timeout=300,
+			is_async=True,
+			payload=order_dict,
+			request_id=log.name,
+		)
 		return True
 	except Exception:
 		frappe.db.rollback()
@@ -95,25 +117,9 @@ def sync_order(order_id):
 
 
 @temp_shopify_session
-def _fetch_and_sync_order(order_id):
+def _fetch_order_from_shopify(order_id):
 	order = Order.find(order_id)
-	order_dict = order.to_dict()
-
-	log = create_shopify_log(
-		status="Queued",
-		method="ecommerce_integrations.shopify.order.sync_sales_order",
-		request_data=order_dict,
-		make_new=True,
-	)
-
-	# sync_sales_order calls frappe.set_user("Administrator") which corrupts
-	# the current browser session when called synchronously from a whitelisted
-	# endpoint. Save and restore the original user to prevent logout.
-	current_user = frappe.session.user
-	try:
-		sync_sales_order(order_dict, request_id=log.name)
-	finally:
-		frappe.set_user(current_user)
+	return order.to_dict()
 
 
 def is_order_synced(order_id):
