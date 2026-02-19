@@ -405,7 +405,17 @@ class AmazonRepository:
 			customer_name = create_customer(order)
 			create_address(order, customer_name)
 
-			delivery_date = dateutil.parser.parse(order.get("LatestShipDate")).strftime("%Y-%m-%d")
+			def add_year_to_iso_string(ship_date_iso,purchase_date_iso):
+			    year = int(ship_date_iso[:4])
+			    if year < 2000:
+					year = int(purchase_date_iso[:4])
+			        new_year = str(year + 1)
+			        return new_year + purchase_date_iso[4:]
+			    return ship_date_iso
+
+			
+
+			delivery_date = dateutil.parser.parse(add_year_to_iso_string(order.get("LatestShipDate"),order.get("PurchaseDate"))).strftime("%Y-%m-%d")
 			transaction_date = dateutil.parser.parse(order.get("PurchaseDate")).strftime("%Y-%m-%d")
 
 			so = frappe.new_doc("Sales Order")
