@@ -135,7 +135,6 @@ def create_sales_order(shopify_order, setting, company=None):
 
 	return so
 
-
 def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 	items = []
 	all_product_exists = True
@@ -151,6 +150,9 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
+			erp_item = frappe.get_doc('Item', item_code)
+			suppliers = erp_item.get("supplier_items")
+			drop_shipped = erp_item.get("delivered_by_supplier") and len(suppliers) > 0
 			items.append(
 				{
 					"item_code": item_code,
@@ -160,6 +162,8 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
 					"warehouse": setting.warehouse,
+					"delivered_by_supplier": 1 if drop_shipped else 0,
+					"supplier": suppliers[0].supplier if drop_shipped else "",
 					ORDER_ITEM_DISCOUNT_FIELD: (
 						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 					),
@@ -169,7 +173,6 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 			items = []
 
 	return items
-
 
 def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 	price = flt(line_item.get("price"))
