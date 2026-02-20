@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import frappe
 from frappe import _
-from frappe.utils import cint, cstr, flt, get_datetime, getdate, nowdate
+from frappe.utils import cint, cstr, flt, get_datetime, get_link_to_form, getdate, nowdate
 from shopify.collection import PaginatedIterator
 from shopify.resources import Order
 
@@ -78,6 +78,12 @@ def create_sales_order(shopify_order, setting, company=None):
 	if shopify_order.get("customer", {}):
 		if customer_id := shopify_order.get("customer", {}).get("id"):
 			customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
+
+	if not customer:
+		create_shopify_log(
+			status=_("Error"),
+			message=_("Please set defualt customer in {0}").format(get_link_to_form("Shopify Settings")),
+		)
 
 	so = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: shopify_order.get("id")}, "name")
 
