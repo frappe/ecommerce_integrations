@@ -51,8 +51,8 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	status = "COMPLETE" if settings.only_sync_completed_orders else None
 
 	new_orders = _get_new_orders(client, status=status)
-
-	if new_orders is None:
+ 
+	if not new_orders:
 		return
 
 	for order in new_orders:
@@ -61,19 +61,45 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 		if settings.only_sync_completed_orders:
 			_create_sales_invoices(order, sales_order, client)
 
-
 def _get_new_orders(client: UnicommerceAPIClient, status: str | None) -> Iterator[UnicommerceOrder] | None:
+	"""This is called from a scheduled job and syncs all orders within the specified date range."""
+	settings = frappe.get_doc(SETTINGS_DOCTYPE)
+	
 	"""Search new sales order from unicommerce."""
+	from_date = None #datetime
+	to_date = None #datetime
+	updated_since = None #minutes
+ 
+	if settings.sync_old_orders:
+		from_date = settings.from_date
+		to_date = settings.to_date
+	else:
+		updated_since = 24 * 60
 
-	updated_since = 24 * 60  # minutes
-	uni_orders = client.search_sales_order(updated_since=updated_since, status=status)
+	uni_orders = client.search_sales_order(
+		updated_since=updated_since,
+		status=status,
+		from_date=from_date,
+		to_date=to_date
+	)
+
+
 	configured_channels = {
 		c.channel_id
 		for c in frappe.get_all("Unicommerce Channel", filters={"enabled": 1}, fields="channel_id")
 	}
-	if uni_orders is None:
+ 
+	if not uni_orders:
 		return
 
+	if settings.sync_old_orders:
+		settings.update({
+			"sync_old_orders": 0,
+			"from_date": "",
+			"to_date": ""
+		})
+		settings.save()
+ 
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
