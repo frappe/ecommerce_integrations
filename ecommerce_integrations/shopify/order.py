@@ -985,6 +985,18 @@ Amount details:
 		log_data["change_details"] = changes
 		
 		log_store2("UPDATE-11", f"Change detection complete. Found {len(changes)} change(s)", store_name)
+
+		# =========================================================================
+		# SKIP LOGGING IF NO CHANGES DETECTED
+		# Only create log entry if there are actual changes to avoid spam
+		# =========================================================================
+		if not changes:
+			log_store2(
+				"UPDATE-NO-CHANGES",
+				f"No changes detected for order {order_number}, skipping log creation",
+				store_name,
+			)
+			return
 		
 		# ========== STORE LINE ITEMS DETAILS ==========
 		log_store2("UPDATE-12", "Storing line items details...", store_name)
@@ -1175,6 +1187,46 @@ Changes: {len(changes)}
 Store: {store_name}
 ========================================
 """, store_name)
+
+		# =========================================================================
+		# TRIGGER UPDATE DETECTION ON ALL LINKED DOCUMENTS
+		# Calls the "Get Shopify Order Updates" Server Script which compares
+		# Shopify data with ERPNext data across the full intercompany chain
+		# (FAM SO -> CCP PO -> CCP SO -> Work Orders) and sets notification
+		# flags (custom_has_shopify_update) and stores change details
+		# (custom_shopify_update_data) on each linked document.
+		# This powers the orange update banners on form pages.
+		# =========================================================================
+		if sales_order_name:
+			try:
+				old_form_dict = dict(frappe.form_dict)
+				frappe.form_dict["doctype"] = "Sales Order"
+				frappe.form_dict["docname"] = sales_order_name
+
+				script_doc = frappe.get_doc("Server Script", "Get Shopify Order Updates")
+				script_doc.execute_method()
+
+				detection_result = frappe.response.get("message") or {}
+				detection_has_changes = detection_result.get("has_changes", False)
+
+				frappe.form_dict = old_form_dict
+
+				if detection_has_changes:
+					frappe.logger().info(
+						"Shopify update detection: Changes flagged on all linked docs for SO {}".format(
+							sales_order_name
+						)
+					)
+			except Exception as detection_error:
+				frappe.logger().error(
+					"Shopify update detection failed for SO {}: {}".format(
+						sales_order_name, str(detection_error)
+					)
+				)
+				frappe.form_dict = old_form_dict if "old_form_dict" in dir() else frappe.form_dict
+		# =========================================================================
+		# END OF UPDATE DETECTION TRIGGER
+		# =========================================================================
 		
 	except Exception as e:
 		log_data["status"] = "error"
