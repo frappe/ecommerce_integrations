@@ -28,7 +28,6 @@ def migrate_from_old_connector(payload=None, request_id=None):
 			status="Queued",
 			method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
 		)
-
 	frappe.enqueue(
 		method=_migrate_items_to_ecommerce_item,
 		queue="long",
@@ -51,12 +50,6 @@ def ensure_old_connector_is_disabled():
 
 
 def _migrate_items_to_ecommerce_item(log):
-	shopify_fields = ["shopify_product_id", "shopify_variant_id"]
-
-	for field in shopify_fields:
-		if not frappe.db.exists({"doctype": "Custom Field", "fieldname": field}):
-			return
-
 	items = _get_items_to_migrate()
 
 	try:
@@ -76,10 +69,13 @@ def _get_items_to_migrate() -> list[_dict]:
 	"""get all list of items that have shopify fields but do not have associated ecommerce item."""
 
 	old_data = frappe.db.sql(
-		"""SELECT item.name as erpnext_item_code, shopify_product_id, shopify_variant_id, item.variant_of, item.has_variants
-			FROM tabItem item
-			LEFT JOIN `tabEcommerce Item` ei on ei.erpnext_item_code = item.name
-			WHERE ei.erpnext_item_code IS NULL AND shopify_product_id IS NOT NULL""",
+		"""
+    SELECT item.name AS erpnext_item_code
+    FROM tabItem item
+    WHERE item.name NOT IN (
+        SELECT ei.erpnext_item_code FROM `tabEcommerce Item` ei
+    )
+    """,
 		as_dict=True,
 	)
 
@@ -87,19 +83,12 @@ def _get_items_to_migrate() -> list[_dict]:
 
 
 def _create_ecommerce_items(items: list[_dict]) -> None:
+	from ecommerce_integrations.shopify.product import upload_erpnext_item
+
 	for item in items:
-		if not all((item.erpnext_item_code, item.shopify_product_id, item.shopify_variant_id)):
+		if not item.erpnext_item_code:
 			continue
 
-		ecommerce_item = frappe.get_doc(
-			{
-				"doctype": "Ecommerce Item",
-				"integration": MODULE_NAME,
-				"erpnext_item_code": item.erpnext_item_code,
-				"integration_item_code": item.shopify_product_id,
-				"variant_id": item.shopify_variant_id,
-				"variant_of": item.variant_of,
-				"has_variants": item.has_variants,
-			}
-		)
-		ecommerce_item.save()
+		doc = frappe.get_doc("Item", item.erpnext_item_code)
+
+		upload_erpnext_item(doc)
