@@ -655,9 +655,9 @@ def cancel_order(payload, request_id=None, store_name=None):
 
 
 def update_sales_order(payload, request_id=None, store_name=None):
-	"""Handle order updates from Shopify with comprehensive logging.
+	"""Handle order updates from Shopify.
 	
-	Logs all order references, change details, amount details, and primary keys.
+	Tracks essential changes: amounts, items, status, customer.
 	Supports both Store 1 and Store 2.
 	"""
 	order = payload
@@ -667,195 +667,31 @@ def update_sales_order(payload, request_id=None, store_name=None):
 	# Set store context for Store 2
 	if store_name:
 		frappe.local.shopify_store_name = store_name
-		log_store2("UPDATE-1", f"""
-========================================
-ORDER UPDATE WEBHOOK RECEIVED
-========================================
-Store: {store_name}
-Order ID: {order.get('id')}
-Order Number: {order.get('name')}
-request_id: {request_id}
-""", store_name)
-
-	# Initialize comprehensive log data structure
-	log_data = {
-		"order_references": {},
-		"change_details": {},
-		"amount_details": {},
-		"primary_keys": {},
-		"line_items_details": [],
-		"status": "processing",
-		"store_name": store_name or "Store 1"
-	}
 	
 	try:
-		# ========== EXTRACT ALL PRIMARY KEYS ==========
 		order_id = cstr(order.get("id"))
 		order_number = order.get("name", "")
 		customer_id = order.get("customer", {}).get("id") if order.get("customer") else None
 		
-		log_store2("UPDATE-2", f"Extracting primary keys for order {order_id}...", store_name)
-		
-		log_data["primary_keys"] = {
-			"shopify_order_id": order_id,
-			"shopify_order_number": order_number,
-			"shopify_customer_id": customer_id,
-			"shopify_order_name": order.get("name", ""),
-			"shopify_order_token": order.get("token", ""),
-			"shopify_checkout_id": order.get("checkout_id"),
-			"shopify_checkout_token": order.get("checkout_token"),
-		}
-		
-		# Extract line item IDs
-		line_item_ids = []
-		for item in order.get("line_items", []):
-			line_item_ids.append({
-				"shopify_line_item_id": item.get("id"),
-				"shopify_product_id": item.get("product_id"),
-				"shopify_variant_id": item.get("variant_id"),
-				"shopify_sku": item.get("sku", ""),
-			})
-		log_data["primary_keys"]["line_items"] = line_item_ids
-		
-		# Extract fulfillment IDs
-		fulfillment_ids = []
-		for fulfillment in order.get("fulfillments", []):
-			fulfillment_ids.append({
-				"shopify_fulfillment_id": fulfillment.get("id"),
-				"shopify_tracking_number": fulfillment.get("tracking_number"),
-			})
-		log_data["primary_keys"]["fulfillments"] = fulfillment_ids
-		
-		# Extract discount code IDs
-		discount_codes = []
-		for discount in order.get("discount_codes", []):
-			discount_codes.append({
-				"shopify_discount_code": discount.get("code"),
-				"shopify_discount_type": discount.get("type"),
-			})
-		log_data["primary_keys"]["discount_codes"] = discount_codes
-		
-		log_store2("UPDATE-3", f"Primary keys extracted: {len(line_item_ids)} line items, {len(fulfillment_ids)} fulfillments", store_name)
-		
-		# ========== EXTRACT ALL ORDER REFERENCES ==========
-		log_store2("UPDATE-4", "Extracting order references...", store_name)
-		
+		# Check if Sales Order exists
 		sales_order_name = frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: order_id})
-		customer_name = None
-		if customer_id:
-			customer_name = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
-		
-		# Get related documents
-		sales_invoice = frappe.db.get_value("Sales Invoice", filters={ORDER_ID_FIELD: order_id})
-		delivery_notes = frappe.db.get_list("Delivery Note", filters={ORDER_ID_FIELD: order_id}, pluck="name")
-		
-		log_data["order_references"] = {
-			"shopify_order_id": order_id,
-			"shopify_order_number": order_number,
-			"erpnext_sales_order": sales_order_name,
-			"erpnext_customer": customer_name or order.get("customer", {}).get("email", ""),
-			"erpnext_sales_invoice": sales_invoice,
-			"erpnext_delivery_notes": delivery_notes,
-			"shopify_customer_email": order.get("customer", {}).get("email", "") if order.get("customer") else "",
-			"shopify_customer_phone": order.get("customer", {}).get("phone", "") if order.get("customer") else "",
-		}
-		
-		log_store2("UPDATE-5", f"""
-Order references:
-  Sales Order: {sales_order_name or 'Not found'}
-  Customer: {customer_name or 'Not found'}
-  Sales Invoice: {sales_invoice or 'Not found'}
-  Delivery Notes: {len(delivery_notes) if delivery_notes else 0}
-""", store_name)
-		
-		# ========== EXTRACT AMOUNT DETAILS ==========
-		log_store2("UPDATE-6", "Extracting amount details...", store_name)
-		
-		log_data["amount_details"] = {
-			"shopify_subtotal_price": flt(order.get("subtotal_price", 0)),
-			"shopify_total_tax": flt(order.get("total_tax", 0)),
-			"shopify_total_discounts": flt(order.get("total_discounts", 0)),
-			"shopify_total_shipping_price": flt(order.get("total_shipping_price_set", {}).get("shop_money", {}).get("amount", 0)) if order.get("total_shipping_price_set") else 0,
-			"shopify_total_price": flt(order.get("total_price", 0)),
-			"shopify_total_price_usd": flt(order.get("total_price_usd", 0)),
-			"shopify_currency": order.get("currency", ""),
-			"shopify_current_total_price": flt(order.get("current_total_price", 0)),
-			"shopify_current_subtotal_price": flt(order.get("current_subtotal_price", 0)),
-			"shopify_current_total_tax": flt(order.get("current_total_tax", 0)),
-			"shopify_current_total_discounts": flt(order.get("current_total_discounts", 0)),
-		}
-		
-		# Line item amounts
-		line_item_amounts = []
-		for item in order.get("line_items", []):
-			line_item_amounts.append({
-				"shopify_line_item_id": item.get("id"),
-				"quantity": cint(item.get("quantity", 0)),
-				"price": flt(item.get("price", 0)),
-				"total_discount": flt(_get_total_discount(item)),
-				"subtotal": flt(item.get("price", 0)) * cint(item.get("quantity", 0)),
-				"total_after_discount": (flt(item.get("price", 0)) * cint(item.get("quantity", 0))) - flt(_get_total_discount(item)),
-			})
-		log_data["amount_details"]["line_items"] = line_item_amounts
-		
-		# Tax line amounts
-		tax_line_amounts = []
-		for tax_line in order.get("tax_lines", []):
-			tax_line_amounts.append({
-				"title": tax_line.get("title", ""),
-				"price": flt(tax_line.get("price", 0)),
-				"rate": flt(tax_line.get("rate", 0)),
-			})
-		log_data["amount_details"]["tax_lines"] = tax_line_amounts
-		
-		# Shipping line amounts
-		shipping_line_amounts = []
-		for shipping_line in order.get("shipping_lines", []):
-			shipping_line_amounts.append({
-				"title": shipping_line.get("title", ""),
-				"price": flt(shipping_line.get("price", 0)),
-				"code": shipping_line.get("code", ""),
-			})
-		log_data["amount_details"]["shipping_lines"] = shipping_line_amounts
-		
-		log_store2("UPDATE-7", f"""
-Amount details:
-  Total Price: {log_data['amount_details']['shopify_total_price']}
-  Subtotal: {log_data['amount_details']['shopify_subtotal_price']}
-  Tax: {log_data['amount_details']['shopify_total_tax']}
-  Discounts: {log_data['amount_details']['shopify_total_discounts']}
-  Line Items: {len(line_item_amounts)}
-""", store_name)
-		
-		# ========== DETECT CHANGES ==========
-		log_store2("UPDATE-8", "Detecting changes...", store_name)
 		
 		if not sales_order_name:
 			# Order doesn't exist, create it
-			log_data["change_details"] = {
-				"action": "create_new_order",
-				"reason": "Order not found in ERPNext",
-			}
-			log_data["status"] = "creating"
-			
-			log_store2("UPDATE-9", f"Order {order_number} not found, creating new order", store_name)
-			
 			create_shopify_log(
 				status="Info",
 				message=f"Order {order_number} not found, creating new order",
 				request_data=order,
-				response_data=log_data
+				response_data={"action": "create_new_order"}
 			)
 			sync_sales_order(payload, request_id, store_name=store_name)
 			return
 		
-		# Order exists, compare and detect changes
+		# Order exists, detect changes
 		sales_order = frappe.get_doc("Sales Order", sales_order_name)
 		changes = {}
 		
-		log_store2("UPDATE-10", f"Sales Order found: {sales_order_name}, comparing changes...", store_name)
-		
-		# Compare amounts
+		# Compare grand total
 		old_total = flt(sales_order.grand_total)
 		new_total = flt(order.get("total_price", 0))
 		if old_total != new_total:
@@ -864,8 +700,8 @@ Amount details:
 				"new": new_total,
 				"difference": new_total - old_total
 			}
-			log_store2("UPDATE-10a", f"Grand total changed: {old_total} → {new_total}", store_name)
 		
+		# Compare subtotal
 		old_subtotal = flt(sales_order.total)
 		new_subtotal = flt(order.get("subtotal_price", 0))
 		if old_subtotal != new_subtotal:
@@ -874,9 +710,8 @@ Amount details:
 				"new": new_subtotal,
 				"difference": new_subtotal - old_subtotal
 			}
-			log_store2("UPDATE-10b", f"Subtotal changed: {old_subtotal} → {new_subtotal}", store_name)
 		
-		# Compare order status
+		# Compare financial status
 		old_status = sales_order.get(ORDER_STATUS_FIELD) or ""
 		new_status = order.get("financial_status", "")
 		if old_status != new_status:
@@ -884,35 +719,13 @@ Amount details:
 				"old": old_status,
 				"new": new_status
 			}
-			log_store2("UPDATE-10c", f"Financial status changed: {old_status} → {new_status}", store_name)
-		
-		old_fulfillment_status = order.get("fulfillment_status")  # This might not be stored
-		new_fulfillment_status = order.get("fulfillment_status", "")
-		if old_fulfillment_status != new_fulfillment_status:
-			changes["fulfillment_status"] = {
-				"old": old_fulfillment_status or "unfulfilled",
-				"new": new_fulfillment_status or "unfulfilled"
-			}
-			log_store2("UPDATE-10d", f"Fulfillment status changed: {old_fulfillment_status} → {new_fulfillment_status}", store_name)
 		
 		# Compare line items
-		old_items_count = len(sales_order.items)
-		new_items_count = len(order.get("line_items", []))
-		if old_items_count != new_items_count:
-			changes["line_items_count"] = {
-				"old": old_items_count,
-				"new": new_items_count
-			}
-			log_store2("UPDATE-10e", f"Line items count changed: {old_items_count} → {new_items_count}", store_name)
-		
-		# Compare line items in detail
 		line_item_changes = []
 		shopify_items_map = {str(item.get("id")): item for item in order.get("line_items", [])}
-		
-		# Get existing line item IDs from Sales Order
 		existing_shopify_ids = set()
+		
 		for so_item in sales_order.items:
-			# Try to get shopify_line_item_id from custom field if it exists
 			shopify_item_id = str(so_item.get("shopify_line_item_id", ""))
 			if shopify_item_id and shopify_item_id in shopify_items_map:
 				shopify_item = shopify_items_map[shopify_item_id]
@@ -927,13 +740,12 @@ Amount details:
 				# Compare rate
 				old_rate = flt(so_item.rate)
 				new_rate = flt(_get_item_price(shopify_item, order.get("taxes_included", False)))
-				if abs(old_rate - new_rate) > 0.01:  # Allow small floating point differences
+				if abs(old_rate - new_rate) > 0.01:
 					item_changes["rate"] = {"old": old_rate, "new": new_rate}
 				
 				if item_changes:
 					line_item_changes.append({
 						"item_code": so_item.item_code,
-						"shopify_line_item_id": shopify_item_id,
 						"changes": item_changes
 					})
 				
@@ -943,16 +755,12 @@ Amount details:
 		for shopify_item in order.get("line_items", []):
 			if str(shopify_item.get("id")) not in existing_shopify_ids:
 				line_item_changes.append({
-					"shopify_line_item_id": str(shopify_item.get("id")),
-					"shopify_product_id": shopify_item.get("product_id"),
-					"shopify_variant_id": shopify_item.get("variant_id"),
 					"title": shopify_item.get("title"),
 					"action": "added"
 				})
 		
 		if line_item_changes:
 			changes["line_items"] = line_item_changes
-			log_store2("UPDATE-10f", f"Line item changes detected: {len(line_item_changes)} items", store_name)
 		
 		# Compare customer
 		old_customer = sales_order.customer
@@ -963,17 +771,8 @@ Amount details:
 					"old": old_customer,
 					"new": new_customer
 				}
-				log_store2("UPDATE-10g", f"Customer changed: {old_customer} → {new_customer}", store_name)
 		
-		# Compare order note
-		new_note = order.get("note", "")
-		if new_note:
-			changes["note"] = {
-				"old": "",
-				"new": new_note
-			}
-		
-		# Compare dates
+		# Compare transaction date
 		old_date = str(sales_order.transaction_date) if sales_order.transaction_date else ""
 		new_date = str(getdate(order.get("created_at"))) if order.get("created_at") else ""
 		if old_date != new_date:
@@ -982,59 +781,18 @@ Amount details:
 				"new": new_date
 			}
 		
-		log_data["change_details"] = changes
-		
-		log_store2("UPDATE-11", f"Change detection complete. Found {len(changes)} change(s)", store_name)
-
-		# =========================================================================
-		# SKIP LOGGING IF NO CHANGES DETECTED
-		# Only create log entry if there are actual changes to avoid spam
-		# =========================================================================
+		# Skip logging if no changes detected
 		if not changes:
-			log_store2(
-				"UPDATE-NO-CHANGES",
-				f"No changes detected for order {order_number}, skipping log creation",
-				store_name,
-			)
 			return
 		
-		# ========== STORE LINE ITEMS DETAILS ==========
-		log_store2("UPDATE-12", "Storing line items details...", store_name)
-		
-		for item in order.get("line_items", []):
-			item_code = get_item_code(item) if item.get("product_exists") else None
-			log_data["line_items_details"].append({
-				"shopify_line_item_id": item.get("id"),
-				"shopify_product_id": item.get("product_id"),
-				"shopify_variant_id": item.get("variant_id"),
-				"shopify_sku": item.get("sku", ""),
-				"erpnext_item_code": item_code,
-				"title": item.get("title", ""),
-				"name": item.get("name", ""),
-				"quantity": cint(item.get("quantity", 0)),
-				"price": flt(item.get("price", 0)),
-				"total_discount": flt(_get_total_discount(item)),
-				"requires_shipping": item.get("requires_shipping", False),
-				"fulfillable_quantity": cint(item.get("fulfillable_quantity", 0)),
-			})
-		
-		# ========== PROCESS THE UPDATE ==========
-		log_store2("UPDATE-13", f"Processing update. Sales Order status: {sales_order.docstatus}", store_name)
-		
+		# Process the update
 		if sales_order.docstatus == 2:  # Cancelled
-			log_data["status"] = "cancelled_order"
-			log_data["change_details"]["action"] = "status_update_only"
-			log_data["change_details"]["reason"] = "Sales Order is cancelled, only status updated"
-			
-			log_store2("UPDATE-14", "Sales Order is cancelled, only updating status", store_name)
-			
 			frappe.db.set_value("Sales Order", sales_order_name, ORDER_STATUS_FIELD, order.get("financial_status"))
-			
 			create_shopify_log(
 				status="Invalid",
 				message=f"Cannot update cancelled Sales Order {sales_order_name}. Order {order_number} status updated.",
 				request_data=order,
-				response_data=log_data
+				response_data={"change_details": changes}
 			)
 			return
 		
@@ -1046,14 +804,11 @@ Amount details:
 		if customer_id:
 			customer = ShopifyCustomer(customer_id=customer_id)
 			if not customer.is_synced():
-				log_store2("UPDATE-15", f"Syncing customer {customer_id}...", store_name)
 				customer.sync_customer(customer=shopify_customer)
 			else:
-				log_store2("UPDATE-15", f"Updating addresses for customer {customer_id}...", store_name)
 				customer.update_existing_addresses(shopify_customer)
 		
 		# Ensure items exist
-		log_store2("UPDATE-16", "Ensuring items exist...", store_name)
 		create_items_if_not_exist(order)
 		
 		# Get updated items and taxes
@@ -1067,68 +822,38 @@ Amount details:
 		)
 		
 		if not items:
-			log_data["status"] = "error"
-			log_data["change_details"]["error"] = "Items not found in product master"
-			
-			log_store2("UPDATE-17-ERROR", "Items not found in product master!", store_name)
-			
 			create_shopify_log(
 				status="Error",
 				message="Cannot update order: items not found in product master",
 				request_data=order,
-				response_data=log_data,
+				response_data={"change_details": changes},
 				rollback=True
 			)
 			return
 		
-		log_store2("UPDATE-17", f"Got {len(items)} items, calculating taxes...", store_name)
 		taxes = get_order_taxes(order, setting, items)
 		
-		# Update customer if changed
+		# Update customer name
 		customer_name = setting.default_customer
 		if shopify_customer.get("id"):
 			customer_name = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name") or setting.default_customer
 		
 		# Update the order
 		if sales_order.docstatus == 1:  # Submitted
-			log_data["status"] = "submitted_order_limited_update"
-			log_data["change_details"]["action"] = "limited_update"
-			log_data["change_details"]["reason"] = "Order is submitted, only status and notes updated"
-			
-			log_store2("UPDATE-18", "Sales Order is submitted, only updating status and notes", store_name)
-			
 			# For submitted orders, only update status and notes
 			frappe.db.set_value("Sales Order", sales_order_name, ORDER_STATUS_FIELD, order.get("financial_status"))
 			
 			if order.get("note"):
 				sales_order.add_comment(text=f"Order Note Updated: {order.get('note')}")
 			
-			# Update ERPNext amounts in log for comparison
-			log_data["amount_details"]["erpnext_grand_total"] = flt(sales_order.grand_total)
-			log_data["amount_details"]["erpnext_total"] = flt(sales_order.total)
-			log_data["amount_details"]["erpnext_total_taxes_and_charges"] = flt(sales_order.total_taxes_and_charges)
-			
 			create_shopify_log(
 				status="Success",
 				message=f"Order {order_number} updated (status and notes only). Items/taxes require manual update.",
 				request_data=order,
-				response_data=log_data
+				response_data={"change_details": changes}
 			)
-			
-			log_store2("UPDATE-19-SUCCESS", f"Order {order_number} updated successfully (limited)", store_name)
 		else:
 			# Draft order - can update fully
-			log_data["status"] = "draft_order_full_update"
-			log_data["change_details"]["action"] = "full_update"
-			
-			log_store2("UPDATE-18", "Sales Order is draft, performing full update...", store_name)
-			
-			old_amounts = {
-				"grand_total": flt(sales_order.grand_total),
-				"total": flt(sales_order.total),
-				"total_taxes_and_charges": flt(sales_order.total_taxes_and_charges),
-			}
-			
 			sales_order.update({
 				"customer": customer_name,
 				"transaction_date": getdate(order.get("created_at")) or sales_order.transaction_date,
@@ -1142,30 +867,7 @@ Amount details:
 			
 			sales_order.flags.ignore_mandatory = True
 			sales_order.flags.shopiy_order_json = json.dumps(order)
-			
-			log_store2("UPDATE-19", "Saving Sales Order...", store_name)
 			sales_order.save(ignore_permissions=True)
-			
-			# Reload to get updated amounts
-			sales_order.reload()
-			
-			new_amounts = {
-				"grand_total": flt(sales_order.grand_total),
-				"total": flt(sales_order.total),
-				"total_taxes_and_charges": flt(sales_order.total_taxes_and_charges),
-			}
-			
-			# Add ERPNext amounts to log
-			log_data["amount_details"]["erpnext_grand_total"] = new_amounts["grand_total"]
-			log_data["amount_details"]["erpnext_total"] = new_amounts["total"]
-			log_data["amount_details"]["erpnext_total_taxes_and_charges"] = new_amounts["total_taxes_and_charges"]
-			
-			# Add amount changes
-			if old_amounts["grand_total"] != new_amounts["grand_total"]:
-				if "grand_total" not in log_data["change_details"]:
-					log_data["change_details"]["grand_total"] = {}
-				log_data["change_details"]["grand_total"]["erpnext_old"] = old_amounts["grand_total"]
-				log_data["change_details"]["grand_total"]["erpnext_new"] = new_amounts["grand_total"]
 			
 			if order.get("note"):
 				sales_order.add_comment(text=f"Order Note: {order.get('note')}")
@@ -1174,85 +876,46 @@ Amount details:
 				status="Success",
 				message=f"Order {order_number} updated successfully with {len(changes)} change(s) detected",
 				request_data=order,
-				response_data=log_data
+				response_data={"change_details": changes}
 			)
-			
-			log_store2("UPDATE-20-SUCCESS", f"""
-========================================
-ORDER UPDATE COMPLETED SUCCESSFULLY!
-========================================
-Order: {order_number}
-Sales Order: {sales_order_name}
-Changes: {len(changes)}
-Store: {store_name}
-========================================
-""", store_name)
 
-		# =========================================================================
-		# TRIGGER UPDATE DETECTION ON ALL LINKED DOCUMENTS
-		# Calls the "Get Shopify Order Updates" Server Script which compares
-		# Shopify data with ERPNext data across the full intercompany chain
-		# (FAM SO -> CCP PO -> CCP SO -> Work Orders) and sets notification
-		# flags (custom_has_shopify_update) and stores change details
-		# (custom_shopify_update_data) on each linked document.
-		# This powers the orange update banners on form pages.
-		# =========================================================================
+		# Trigger update detection on all linked documents
 		if sales_order_name:
 			try:
 				old_form_dict = dict(frappe.form_dict)
 				frappe.form_dict["doctype"] = "Sales Order"
 				frappe.form_dict["docname"] = sales_order_name
 
-				script_doc = frappe.get_doc("Server Script", "Get Shopify Order Updates")
-				script_doc.execute_method()
+				if frappe.db.exists("Server Script", "Get Shopify Order Updates"):
+					script_doc = frappe.get_doc("Server Script", "Get Shopify Order Updates")
+					script_doc.execute_method()
 
-				detection_result = frappe.response.get("message") or {}
-				detection_has_changes = detection_result.get("has_changes", False)
+					detection_result = frappe.response.get("message") or {}
+					detection_has_changes = detection_result.get("has_changes", False)
+
+					if detection_has_changes:
+						frappe.logger().info(
+							"Shopify update detection: Changes flagged on all linked docs for SO {}".format(
+								sales_order_name
+							)
+						)
 
 				frappe.form_dict = old_form_dict
-
-				if detection_has_changes:
-					frappe.logger().info(
-						"Shopify update detection: Changes flagged on all linked docs for SO {}".format(
-							sales_order_name
-						)
-					)
 			except Exception as detection_error:
 				frappe.logger().error(
 					"Shopify update detection failed for SO {}: {}".format(
 						sales_order_name, str(detection_error)
 					)
 				)
-				frappe.form_dict = old_form_dict if "old_form_dict" in dir() else frappe.form_dict
-		# =========================================================================
-		# END OF UPDATE DETECTION TRIGGER
-		# =========================================================================
+				frappe.form_dict = old_form_dict if "old_form_dict" in locals() else frappe.form_dict
 		
 	except Exception as e:
-		log_data["status"] = "error"
-		log_data["change_details"]["error"] = str(e)
-		log_data["change_details"]["traceback"] = frappe.get_traceback()
-		
-		log_store2("UPDATE-ERROR", f"""
-========================================
-ORDER UPDATE FAILED!
-========================================
-Error: {str(e)}
-Type: {type(e).__name__}
-Order: {order.get('name', 'Unknown')}
-Store: {store_name}
-
-Traceback:
-{traceback.format_exc()}
-========================================
-""", store_name)
-		
 		create_shopify_log(
 			status="Error",
 			exception=e,
 			message=f"Failed to update order {order.get('name', 'Unknown')}: {str(e)}",
 			request_data=order,
-			response_data=log_data,
+			response_data={"error": str(e)},
 			rollback=True
 		)
 
