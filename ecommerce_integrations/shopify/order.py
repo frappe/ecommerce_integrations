@@ -691,20 +691,20 @@ def update_sales_order(payload, request_id=None, store_name=None):
 		sales_order = frappe.get_doc("Sales Order", sales_order_name)
 		changes = {}
 		
-		# Compare grand total
+		# Compare grand total (with tolerance for floating point)
 		old_total = flt(sales_order.grand_total)
 		new_total = flt(order.get("total_price", 0))
-		if old_total != new_total:
+		if abs(old_total - new_total) > 0.01:  # Only if difference > 1 cent
 			changes["grand_total"] = {
 				"old": old_total,
 				"new": new_total,
 				"difference": new_total - old_total
 			}
 		
-		# Compare subtotal
+		# Compare subtotal (with tolerance)
 		old_subtotal = flt(sales_order.total)
 		new_subtotal = flt(order.get("subtotal_price", 0))
-		if old_subtotal != new_subtotal:
+		if abs(old_subtotal - new_subtotal) > 0.01:  # Only if difference > 1 cent
 			changes["subtotal"] = {
 				"old": old_subtotal,
 				"new": new_subtotal,
@@ -720,44 +720,50 @@ def update_sales_order(payload, request_id=None, store_name=None):
 				"new": new_status
 			}
 		
-		# Compare line items
+		# Compare line items - only if shopify_line_item_id is available
+		# If not available, skip line item comparison to avoid false positives
 		line_item_changes = []
 		shopify_items_map = {str(item.get("id")): item for item in order.get("line_items", [])}
 		existing_shopify_ids = set()
+		has_shopify_item_ids = False
 		
 		for so_item in sales_order.items:
 			shopify_item_id = str(so_item.get("shopify_line_item_id", ""))
-			if shopify_item_id and shopify_item_id in shopify_items_map:
-				shopify_item = shopify_items_map[shopify_item_id]
-				item_changes = {}
-				
-				# Compare quantity
-				old_qty = cint(so_item.qty)
-				new_qty = cint(shopify_item.get("quantity", 0))
-				if old_qty != new_qty:
-					item_changes["quantity"] = {"old": old_qty, "new": new_qty}
-				
-				# Compare rate
-				old_rate = flt(so_item.rate)
-				new_rate = flt(_get_item_price(shopify_item, order.get("taxes_included", False)))
-				if abs(old_rate - new_rate) > 0.01:
-					item_changes["rate"] = {"old": old_rate, "new": new_rate}
-				
-				if item_changes:
-					line_item_changes.append({
-						"item_code": so_item.item_code,
-						"changes": item_changes
-					})
-				
-				existing_shopify_ids.add(shopify_item_id)
+			if shopify_item_id:
+				has_shopify_item_ids = True
+				if shopify_item_id in shopify_items_map:
+					shopify_item = shopify_items_map[shopify_item_id]
+					item_changes = {}
+					
+					# Compare quantity
+					old_qty = cint(so_item.qty)
+					new_qty = cint(shopify_item.get("quantity", 0))
+					if old_qty != new_qty:
+						item_changes["quantity"] = {"old": old_qty, "new": new_qty}
+					
+					# Compare rate (with tolerance)
+					old_rate = flt(so_item.rate)
+					new_rate = flt(_get_item_price(shopify_item, order.get("taxes_included", False)))
+					if abs(old_rate - new_rate) > 0.01:
+						item_changes["rate"] = {"old": old_rate, "new": new_rate}
+					
+					if item_changes:
+						line_item_changes.append({
+							"item_code": so_item.item_code,
+							"changes": item_changes
+						})
+					
+					existing_shopify_ids.add(shopify_item_id)
 		
-		# Check for new items
-		for shopify_item in order.get("line_items", []):
-			if str(shopify_item.get("id")) not in existing_shopify_ids:
-				line_item_changes.append({
-					"title": shopify_item.get("title"),
-					"action": "added"
-				})
+		# Only check for new items if we have shopify_line_item_id stored
+		# Otherwise, skip to avoid false positives
+		if has_shopify_item_ids:
+			for shopify_item in order.get("line_items", []):
+				if str(shopify_item.get("id")) not in existing_shopify_ids:
+					line_item_changes.append({
+						"title": shopify_item.get("title"),
+						"action": "added"
+					})
 		
 		if line_item_changes:
 			changes["line_items"] = line_item_changes
@@ -772,14 +778,8 @@ def update_sales_order(payload, request_id=None, store_name=None):
 					"new": new_customer
 				}
 		
-		# Compare transaction date
-		old_date = str(sales_order.transaction_date) if sales_order.transaction_date else ""
-		new_date = str(getdate(order.get("created_at"))) if order.get("created_at") else ""
-		if old_date != new_date:
-			changes["transaction_date"] = {
-				"old": old_date,
-				"new": new_date
-			}
+		# REMOVED: Transaction date comparison - created_at never changes, causes false positives
+		# Shopify sends updated_at changes which trigger webhooks but don't affect business data
 		
 		# Skip logging if no changes detected
 		if not changes:
@@ -838,20 +838,30 @@ def update_sales_order(payload, request_id=None, store_name=None):
 		if shopify_customer.get("id"):
 			customer_name = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name") or setting.default_customer
 		
+		# Determine if we have real business changes (not just metadata)
+		has_real_changes = any(
+			key in changes for key in ["grand_total", "subtotal", "financial_status", "line_items", "customer"]
+		)
+		
 		# Update the order
 		if sales_order.docstatus == 1:  # Submitted
-			# For submitted orders, only update status and notes
-			frappe.db.set_value("Sales Order", sales_order_name, ORDER_STATUS_FIELD, order.get("financial_status"))
-			
-			if order.get("note"):
-				sales_order.add_comment(text=f"Order Note Updated: {order.get('note')}")
-			
-			create_shopify_log(
-				status="Success",
-				message=f"Order {order_number} updated (status and notes only). Items/taxes require manual update.",
-				request_data=order,
-				response_data={"change_details": changes}
-			)
+			# For submitted orders, only update status and notes if there are REAL changes
+			# Don't log if only metadata changed (fulfillment status, tracking, updated_at, etc.)
+			if has_real_changes:
+				frappe.db.set_value("Sales Order", sales_order_name, ORDER_STATUS_FIELD, order.get("financial_status"))
+				
+				if order.get("note"):
+					sales_order.add_comment(text=f"Order Note Updated: {order.get('note')}")
+				
+				create_shopify_log(
+					status="Success",
+					message=f"Order {order_number} updated (status and notes only). Items/taxes require manual update.",
+					request_data=order,
+					response_data={"change_details": changes}
+				)
+			else:
+				# If no real changes, silently return (metadata-only update)
+				return
 		else:
 			# Draft order - can update fully
 			sales_order.update({
@@ -879,8 +889,8 @@ def update_sales_order(payload, request_id=None, store_name=None):
 				response_data={"change_details": changes}
 			)
 
-		# Trigger update detection on all linked documents
-		if sales_order_name:
+		# Trigger update detection on all linked documents (only if real changes detected)
+		if sales_order_name and has_real_changes:
 			try:
 				old_form_dict = dict(frappe.form_dict)
 				frappe.form_dict["doctype"] = "Sales Order"
