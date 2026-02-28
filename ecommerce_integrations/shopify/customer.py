@@ -28,8 +28,19 @@ class ShopifyCustomer(EcommerceCustomer):
 		customer_group = self.setting.customer_group
 		super().sync_customer(customer_name, customer_group)
 
-		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
+		# Handle billing address: only use shipping if billing is explicitly null/empty
+		# (Shopify indicates "same as shipping" by having billing_address as null)
+		billing_address = customer.get("billing_address")
 		shipping_address = customer.get("shipping_address", {})
+		
+		# Check if billing is explicitly null/empty (Shopify "same as shipping" case)
+		if billing_address is None or (isinstance(billing_address, dict) and not any(billing_address.values())):
+			# Billing is same as shipping - use shipping address
+			if shipping_address:
+				billing_address = shipping_address
+			# Fallback to customer default address only if no shipping
+			elif not billing_address:
+				billing_address = customer.get("default_address", {})
 
 		if billing_address:
 			self.create_customer_address(
@@ -54,8 +65,19 @@ class ShopifyCustomer(EcommerceCustomer):
 		super().create_customer_address(address_fields)
 
 	def update_existing_addresses(self, customer):
-		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
+		# Handle billing address: only use shipping if billing is explicitly null/empty
+		# (Shopify indicates "same as shipping" by having billing_address as null)
+		billing_address = customer.get("billing_address")
 		shipping_address = customer.get("shipping_address", {})
+		
+		# Check if billing is explicitly null/empty (Shopify "same as shipping" case)
+		if billing_address is None or (isinstance(billing_address, dict) and not any(billing_address.values())):
+			# Billing is same as shipping - use shipping address
+			if shipping_address:
+				billing_address = shipping_address
+			# Fallback to customer default address only if no shipping
+			elif not billing_address:
+				billing_address = customer.get("default_address", {})
 
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		email = customer.get("email")

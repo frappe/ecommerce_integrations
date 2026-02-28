@@ -654,10 +654,51 @@ def cancel_order(payload, request_id=None, store_name=None):
         create_shopify_log(status="Success")
 
 
+def _normalize_address_for_comparison(addr_dict):
+	"""Normalize address fields for comparison (trim, lowercase, handle None)."""
+	return {
+		"address_line1": (addr_dict.get("address_line1") or "").strip().lower(),
+		"address_line2": (addr_dict.get("address_line2") or "").strip().lower(),
+		"city": (addr_dict.get("city") or "").strip().lower(),
+		"state": (addr_dict.get("state") or "").strip().lower(),
+		"pincode": (addr_dict.get("pincode") or "").strip().lower(),
+		"country": (addr_dict.get("country") or "").strip().lower(),
+		"phone": (addr_dict.get("phone") or "").strip().lower(),
+	}
+
+def _get_customer_address_by_type(customer_name, address_type):
+	"""Get customer address of the specified type.
+	
+	Returns the address of the specified type for the customer.
+	If no address found, returns None.
+	"""
+	if not customer_name:
+		return None
+	
+	# Get address of the specified type
+	address = frappe.db.get_value(
+		"Address",
+		filters={
+			"link_doctype": "Customer",
+			"link_name": customer_name,
+			"address_type": address_type
+		},
+		fieldname=["name", "address_line1", "address_line2", "city", "state", "pincode", "country", "phone"],
+		as_dict=True
+	)
+	
+	return address
+
 def update_sales_order(payload, request_id=None, store_name=None):
 	"""Handle order updates from Shopify.
 	
-	Tracks essential changes: amounts, items, status, customer.
+	Tracks ONLY necessary business changes:
+	- Line item changes (quantity, price, new items) with full details
+	- Price changes (grand_total, subtotal)
+	- Contact details (email, phone)
+	- Address changes (shipping, billing)
+	- Customer name changes
+	
 	Supports both Store 1 and Store 2.
 	"""
 	order = payload
@@ -671,10 +712,14 @@ def update_sales_order(payload, request_id=None, store_name=None):
 	try:
 		order_id = cstr(order.get("id"))
 		order_number = order.get("name", "")
-		customer_id = order.get("customer", {}).get("id") if order.get("customer") else None
+		shopify_customer = order.get("customer", {}) if order.get("customer") else {}
+		customer_id = shopify_customer.get("id")
 		
 		# Check if Sales Order exists
 		sales_order_name = frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: order_id})
+		
+		# Early exit: If order doesn't exist, create it and return
+		# (This prevents checking for metadata-only updates on non-existent orders)
 		
 		if not sales_order_name:
 			# Order doesn't exist, create it
@@ -691,6 +736,11 @@ def update_sales_order(payload, request_id=None, store_name=None):
 		sales_order = frappe.get_doc("Sales Order", sales_order_name)
 		changes = {}
 		
+		# FIRST: Quick check for critical business changes (amounts, items)
+		# If these haven't changed, this is likely just a metadata/timeline update
+		# Skip expensive address/contact checks for metadata-only updates
+		has_critical_changes = False
+		
 		# Compare grand total (with tolerance for floating point)
 		old_total = flt(sales_order.grand_total)
 		new_total = flt(order.get("total_price", 0))
@@ -700,6 +750,7 @@ def update_sales_order(payload, request_id=None, store_name=None):
 				"new": new_total,
 				"difference": new_total - old_total
 			}
+			has_critical_changes = True
 		
 		# Compare subtotal (with tolerance)
 		old_subtotal = flt(sales_order.total)
@@ -710,76 +761,318 @@ def update_sales_order(payload, request_id=None, store_name=None):
 				"new": new_subtotal,
 				"difference": new_subtotal - old_subtotal
 			}
+			has_critical_changes = True
 		
-		# Compare financial status
-		old_status = sales_order.get(ORDER_STATUS_FIELD) or ""
-		new_status = order.get("financial_status", "")
-		if old_status != new_status:
-			changes["financial_status"] = {
-				"old": old_status,
-				"new": new_status
-			}
-		
-		# Compare line items - only if shopify_line_item_id is available
-		# If not available, skip line item comparison to avoid false positives
+		# Compare line items with improved matching and full details
 		line_item_changes = []
-		shopify_items_map = {str(item.get("id")): item for item in order.get("line_items", [])}
-		existing_shopify_ids = set()
-		has_shopify_item_ids = False
+		shopify_items_by_id = {str(item.get("id", "")): item for item in order.get("line_items", [])}
+		shopify_items_by_sku = {}  # Group by SKU for fallback matching
 		
-		for so_item in sales_order.items:
+		for item in order.get("line_items", []):
+			sku = item.get("sku", "")
+			if sku:
+				if sku not in shopify_items_by_sku:
+					shopify_items_by_sku[sku] = []
+				shopify_items_by_sku[sku].append(item)
+		
+		matched_shopify_ids = set()
+		matched_so_items = set()  # Track which SO items we've matched
+		
+		# Match existing Sales Order items with Shopify items
+		for idx, so_item in enumerate(sales_order.items):
+			item_code = so_item.item_code
 			shopify_item_id = str(so_item.get("shopify_line_item_id", ""))
-			if shopify_item_id:
-				has_shopify_item_ids = True
-				if shopify_item_id in shopify_items_map:
-					shopify_item = shopify_items_map[shopify_item_id]
-					item_changes = {}
-					
-					# Compare quantity
-					old_qty = cint(so_item.qty)
-					new_qty = cint(shopify_item.get("quantity", 0))
-					if old_qty != new_qty:
-						item_changes["quantity"] = {"old": old_qty, "new": new_qty}
-					
-					# Compare rate (with tolerance)
-					old_rate = flt(so_item.rate)
-					new_rate = flt(_get_item_price(shopify_item, order.get("taxes_included", False)))
-					if abs(old_rate - new_rate) > 0.01:
-						item_changes["rate"] = {"old": old_rate, "new": new_rate}
-					
-					if item_changes:
-						line_item_changes.append({
-							"item_code": so_item.item_code,
-							"changes": item_changes
-						})
-					
-					existing_shopify_ids.add(shopify_item_id)
-		
-		# Only check for new items if we have shopify_line_item_id stored
-		# Otherwise, skip to avoid false positives
-		if has_shopify_item_ids:
-			for shopify_item in order.get("line_items", []):
-				if str(shopify_item.get("id")) not in existing_shopify_ids:
+			matched_item = None
+			item_changes = {}
+			
+			# Try matching by shopify_line_item_id first (most reliable)
+			if shopify_item_id and shopify_item_id in shopify_items_by_id:
+				matched_item = shopify_items_by_id[shopify_item_id]
+				matched_shopify_ids.add(shopify_item_id)
+				matched_so_items.add(idx)
+			else:
+				# Fallback: match by item_code/SKU + quantity + rate
+				so_sku = item_code
+				old_qty = cint(so_item.qty)
+				old_rate = flt(so_item.rate)
+				
+				if so_sku in shopify_items_by_sku:
+					for shopify_item in shopify_items_by_sku[so_sku]:
+						shopify_item_id_str = str(shopify_item.get("id", ""))
+						if shopify_item_id_str in matched_shopify_ids:
+							continue
+						
+						new_qty = cint(shopify_item.get("quantity", 0))
+						new_rate = flt(_get_item_price(shopify_item, order.get("taxes_included", False)))
+						
+						# Match if quantity and rate are close (within tolerance)
+						if old_qty == new_qty and abs(old_rate - new_rate) <= 0.01:
+							matched_item = shopify_item
+							matched_shopify_ids.add(shopify_item_id_str)
+							matched_so_items.add(idx)
+							break
+			
+			# If matched, compare details
+			if matched_item:
+				# Compare quantity
+				old_qty = cint(so_item.qty)
+				new_qty = cint(matched_item.get("quantity", 0))
+				if old_qty != new_qty:
+					item_changes["quantity"] = {"old": old_qty, "new": new_qty}
+				
+				# Compare rate (with tolerance)
+				old_rate = flt(so_item.rate)
+				new_rate = flt(_get_item_price(matched_item, order.get("taxes_included", False)))
+				if abs(old_rate - new_rate) > 0.01:
+					item_changes["rate"] = {"old": old_rate, "new": new_rate}
+				
+				# Compare item title/name (in case product name changed)
+				old_title = so_item.item_name or ""
+				new_title = matched_item.get("title", "") or matched_item.get("name", "")
+				if old_title != new_title:
+					item_changes["title"] = {"old": old_title, "new": new_title}
+				
+				if item_changes:
 					line_item_changes.append({
-						"title": shopify_item.get("title"),
-						"action": "added"
+						"item_code": item_code,
+						"sku": matched_item.get("sku", ""),
+						"title": matched_item.get("title", ""),
+						"shopify_line_item_id": str(matched_item.get("id", "")),
+						"changes": item_changes
 					})
+		
+		# Check for new items (items in Shopify that don't exist in Sales Order)
+		for shopify_item in order.get("line_items", []):
+			shopify_item_id_str = str(shopify_item.get("id", ""))
+			if shopify_item_id_str not in matched_shopify_ids:
+				# This is a genuinely new item
+				line_item_changes.append({
+					"action": "added",
+					"title": shopify_item.get("title", ""),
+					"sku": shopify_item.get("sku", ""),
+					"quantity": cint(shopify_item.get("quantity", 0)),
+					"rate": flt(_get_item_price(shopify_item, order.get("taxes_included", False))),
+					"shopify_line_item_id": shopify_item_id_str,
+					"product_id": shopify_item.get("product_id"),
+					"variant_id": shopify_item.get("variant_id"),
+				})
 		
 		if line_item_changes:
 			changes["line_items"] = line_item_changes
+			has_critical_changes = True
 		
-		# Compare customer
-		old_customer = sales_order.customer
-		if customer_id:
-			new_customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
-			if old_customer != new_customer and new_customer:
-				changes["customer"] = {
-					"old": old_customer,
-					"new": new_customer
+		# Track notes (but don't trigger logs for notes alone)
+		old_note = sales_order.get("note", "") or ""
+		new_note = order.get("note", "") or ""
+		if old_note.strip() != new_note.strip():
+			changes["note"] = {
+				"old": old_note,
+				"new": new_note
+			}
+			# Note: NOT setting has_critical_changes - notes won't trigger logs alone
+		
+		# Track fulfillment status (but don't trigger logs for fulfillment status alone)
+		# Fulfillment status: unfulfilled, partial, fulfilled
+		old_fulfillment_status = ""
+		# Get from order fulfillments
+		if order.get("fulfillments"):
+			# Check if all items are fulfilled
+			total_quantity = sum(item.get("quantity", 0) for item in order.get("line_items", []))
+			fulfilled_quantity = sum(
+				sum(f_item.get("quantity", 0) for f_item in fulfillment.get("line_items", []))
+				for fulfillment in order.get("fulfillments", [])
+			)
+			if fulfilled_quantity == 0:
+				new_fulfillment_status = "unfulfilled"
+			elif fulfilled_quantity >= total_quantity:
+				new_fulfillment_status = "fulfilled"
+			else:
+				new_fulfillment_status = "partial"
+		else:
+			new_fulfillment_status = "unfulfilled"
+		
+		# Track fulfillment status change
+		if new_fulfillment_status:
+			changes["fulfillment_status"] = {
+				"old": old_fulfillment_status or "unfulfilled",
+				"new": new_fulfillment_status
+			}
+			# Note: NOT setting has_critical_changes - fulfillment status won't trigger logs alone
+		
+		# Track tags (but don't trigger logs for tags alone)
+		new_tags = order.get("tags", "") or ""  # Tags are stored as comma-separated string in Shopify
+		if new_tags:
+			changes["tags"] = {
+				"new": new_tags
+			}
+			# Note: NOT setting has_critical_changes - tags won't trigger logs alone
+		
+		# Track updated_at (but don't trigger logs for updated_at alone)
+		# updated_at is just a timestamp that changes on every update
+		updated_at = order.get("updated_at", "")
+		if updated_at:
+			changes["updated_at"] = {
+				"new": updated_at
+			}
+			# Note: NOT setting has_critical_changes - updated_at won't trigger logs alone
+		
+		# Early exit: If no critical changes (amounts, items, notes, fulfillment), skip address/contact checks
+		# This filters out metadata-only updates (timeline events, emails, ParcelWILL, Katana, etc.)
+		# BUT: updated_at changes are NOT tracked - it's just a timestamp that changes on every update
+		if not has_critical_changes:
+			# Still check customer name change (important business change)
+			old_customer = sales_order.customer
+			if customer_id:
+				new_customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
+				if old_customer != new_customer and new_customer:
+					changes["customer"] = {
+						"old": old_customer,
+						"new": new_customer
+					}
+					has_critical_changes = True
+			
+			# If still no critical changes, this is a metadata-only update - skip it entirely
+			# (ParcelWILL emails, Katana updates, timeline events, etc. don't change business data)
+			# Note: updated_at is NOT tracked - it's just a timestamp that changes on every update
+			if not has_critical_changes:
+				return
+		
+		# Compare customer name (if we haven't already checked it above)
+		if "customer" not in changes:
+			old_customer = sales_order.customer
+			if customer_id:
+				new_customer = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name")
+				if old_customer != new_customer and new_customer:
+					changes["customer"] = {
+						"old": old_customer,
+						"new": new_customer
+					}
+		
+		# Compare customer email
+		shopify_email = shopify_customer.get("email", "")
+		if shopify_email and sales_order.customer:
+			# Get customer email from ERPNext Contact
+			contact = frappe.db.get_value(
+				"Contact",
+				{"link_doctype": "Customer", "link_name": sales_order.customer},
+				["email_id"],
+				as_dict=True
+			)
+			old_email = contact.get("email_id", "") if contact else ""
+			if old_email != shopify_email:
+				changes["customer_email"] = {
+					"old": old_email,
+					"new": shopify_email
 				}
 		
-		# REMOVED: Transaction date comparison - created_at never changes, causes false positives
-		# Shopify sends updated_at changes which trigger webhooks but don't affect business data
+		# Compare customer phone
+		shopify_phone = shopify_customer.get("phone", "") or shopify_customer.get("default_address", {}).get("phone", "")
+		if shopify_phone and sales_order.customer:
+			# Get customer phone from ERPNext Contact
+			contact = frappe.db.get_value(
+				"Contact",
+				{"link_doctype": "Customer", "link_name": sales_order.customer},
+				["phone", "mobile_no"],
+				as_dict=True
+			)
+			if contact:
+				old_phone = contact.get("phone", "") or contact.get("mobile_no", "")
+				if old_phone != shopify_phone:
+					changes["customer_phone"] = {
+						"old": old_phone,
+						"new": shopify_phone
+					}
+		
+		# Compare shipping address
+		shipping_address = order.get("shipping_address", {})
+		if shipping_address and sales_order.customer:
+			# Get shipping address from Customer
+			shipping_addr_doc = _get_customer_address_by_type(
+				sales_order.customer, "Shipping"
+			)
+			
+			if shipping_addr_doc:
+				old_addr = {
+					"address_line1": shipping_addr_doc.get("address_line1", ""),
+					"address_line2": shipping_addr_doc.get("address_line2", ""),
+					"city": shipping_addr_doc.get("city", ""),
+					"state": shipping_addr_doc.get("state", ""),
+					"pincode": shipping_addr_doc.get("pincode", ""),
+					"country": shipping_addr_doc.get("country", ""),
+					"phone": shipping_addr_doc.get("phone", ""),
+				}
+				new_addr = {
+					"address_line1": shipping_address.get("address1", ""),
+					"address_line2": shipping_address.get("address2", ""),
+					"city": shipping_address.get("city", ""),
+					"state": shipping_address.get("province", ""),
+					"pincode": shipping_address.get("zip", ""),
+					"country": shipping_address.get("country", ""),
+					"phone": shipping_address.get("phone", ""),
+				}
+				
+				# Compare normalized addresses
+				old_normalized = _normalize_address_for_comparison(old_addr)
+				new_normalized = _normalize_address_for_comparison(new_addr)
+				
+				if old_normalized != new_normalized:
+					changes["shipping_address"] = {
+						"old": old_addr,
+						"new": new_addr
+					}
+		
+		# Compare billing address
+		# IMPORTANT: Only use shipping address if billing_address is explicitly null/empty
+		# (Shopify indicates "same as shipping" by having billing_address as null)
+		billing_address = order.get("billing_address")
+		billing_is_same_as_shipping = False
+		
+		# Check if billing is explicitly null/empty (Shopify "same as shipping" case)
+		if billing_address is None or (isinstance(billing_address, dict) and not any(billing_address.values())):
+			# Billing is same as shipping - use shipping address
+			if shipping_address:
+				billing_address = shipping_address
+				billing_is_same_as_shipping = True
+			# Fallback to customer default address only if no shipping
+			elif not billing_address:
+				billing_address = shopify_customer.get("default_address", {})
+		
+		if billing_address and sales_order.customer:
+			# Get billing address from Customer
+			billing_addr_doc = _get_customer_address_by_type(
+				sales_order.customer, "Billing"
+			)
+			
+			if billing_addr_doc:
+				old_addr = {
+					"address_line1": billing_addr_doc.get("address_line1", ""),
+					"address_line2": billing_addr_doc.get("address_line2", ""),
+					"city": billing_addr_doc.get("city", ""),
+					"state": billing_addr_doc.get("state", ""),
+					"pincode": billing_addr_doc.get("pincode", ""),
+					"country": billing_addr_doc.get("country", ""),
+					"phone": billing_addr_doc.get("phone", ""),
+				}
+				new_addr = {
+					"address_line1": billing_address.get("address1", ""),
+					"address_line2": billing_address.get("address2", ""),
+					"city": billing_address.get("city", ""),
+					"state": billing_address.get("province", ""),
+					"pincode": billing_address.get("zip", ""),
+					"country": billing_address.get("country", ""),
+					"phone": billing_address.get("phone", ""),
+				}
+				
+				# Compare normalized addresses
+				old_normalized = _normalize_address_for_comparison(old_addr)
+				new_normalized = _normalize_address_for_comparison(new_addr)
+				
+				if old_normalized != new_normalized:
+					changes["billing_address"] = {
+						"old": old_addr,
+						"new": new_addr,
+						"is_same_as_shipping": billing_is_same_as_shipping
+					}
 		
 		# Skip logging if no changes detected
 		if not changes:
@@ -796,10 +1089,23 @@ def update_sales_order(payload, request_id=None, store_name=None):
 			)
 			return
 		
-		# Update customer if changed
+		# Update customer if changed - handle billing address properly
 		shopify_customer = order.get("customer") if order.get("customer") is not None else {}
-		shopify_customer["billing_address"] = order.get("billing_address", "")
-		shopify_customer["shipping_address"] = order.get("shipping_address", "")
+		shipping_address = order.get("shipping_address", {})
+		billing_address = order.get("billing_address")
+		
+		# IMPORTANT: Only use shipping address if billing_address is explicitly null/empty
+		# (Shopify indicates "same as shipping" by having billing_address as null)
+		if billing_address is None or (isinstance(billing_address, dict) and not any(billing_address.values())):
+			# Billing is same as shipping - use shipping address
+			if shipping_address:
+				billing_address = shipping_address
+			# Fallback to customer default address only if no shipping
+			elif not billing_address:
+				billing_address = shopify_customer.get("default_address", {})
+		
+		shopify_customer["billing_address"] = billing_address
+		shopify_customer["shipping_address"] = shipping_address
 		
 		if customer_id:
 			customer = ShopifyCustomer(customer_id=customer_id)
@@ -839,8 +1145,14 @@ def update_sales_order(payload, request_id=None, store_name=None):
 			customer_name = frappe.db.get_value("Customer", {CUSTOMER_ID_FIELD: customer_id}, "name") or setting.default_customer
 		
 		# Determine if we have real business changes (not just metadata)
+		# Track: prices, line items, contact details, addresses, customer name
+		# Note: tags, notes, fulfillment_status, updated_at are tracked but DON'T trigger logs alone
 		has_real_changes = any(
-			key in changes for key in ["grand_total", "subtotal", "financial_status", "line_items", "customer"]
+			key in changes for key in [
+				"grand_total", "subtotal", "line_items", 
+				"customer", "customer_email", "customer_phone",
+				"shipping_address", "billing_address"
+			]
 		)
 		
 		# Update the order
