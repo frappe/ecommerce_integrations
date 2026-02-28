@@ -383,7 +383,7 @@ class Orders(SPAPI):
 class CatalogItems(SPAPI):
 	"""Amazon Catalog Items API"""
 
-	BASE_URI = "/catalog/v0"
+	BASE_URI = "/catalog/2022-04-01"
 
 	def get_catalog_item(
 		self,
@@ -395,7 +395,10 @@ class CatalogItems(SPAPI):
 			marketplace_id = self.marketplace_id
 
 		append_to_base_uri = f"/items/{asin}"
-		data = dict(MarketplaceId=marketplace_id)
+		data = dict(
+			marketplaceIds=[marketplace_id],
+			includedData="attributes,productTypes"
+		)
 
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
