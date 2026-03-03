@@ -469,45 +469,127 @@ Store: {store_name}
 Order ID: {data.get('id')}
 Method to call: {EVENT_MAPPER[event]}
 """, store_name)
-    
-    # =========================================================================
-    # STEP 12: Create Shopify log
-    # =========================================================================
-    log_store2("12", "Creating Shopify log entry...", store_name)
-    
-    try:
-        log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
-        log_store2("12-OK", f"Log created: {log.name}", store_name)
-    except Exception as e:
-        log_store2("12-EXCEPTION", f"""
+	
+	# =========================================================================
+	# STEP 11.5: Early filter for noisy `orders/updated` webhooks
+	# =========================================================================
+	# NOTE: Per business requirements, this fingerprint ONLY tracks:
+	# - Shipping address
+	# - Billing address
+	# - Order notes
+	#
+	# Line items are handled via the dedicated `orders/edited` webhook, so they
+	# are *not* part of this fingerprint. This means:
+	# - Old/timeline/metadata-only updates on untouched orders are dropped here.
+	# - Only REAL address / note changes for existing Sales Orders will proceed.
+	if event == "orders/updated":
+		try:
+			from ecommerce_integrations.shopify.constants import ORDER_ID_FIELD
+			
+			order_id = str(data.get("id") or "")
+			so_name = None
+			if order_id:
+				so_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
+			
+			# If we have a matching Sales Order, compare fingerprints
+			if so_name:
+				new_fingerprint = _build_order_fingerprint(data)
+				
+				try:
+					old_fingerprint = frappe.db.get_value(
+						"Sales Order", so_name, "custom_shopify_fingerprint"
+					) or ""
+				except Exception:
+					# If the field doesn't exist yet or any error occurs, skip fingerprint filter
+					log_store2(
+						"11.5-SKIP",
+						f"Fingerprint field missing or error while reading for SO {so_name}. "
+						f"Proceeding without early-exit filter.",
+						store_name,
+					)
+					old_fingerprint = ""
+				
+				# If fingerprint unchanged, drop this webhook before logging / enqueue
+				if old_fingerprint and new_fingerprint == old_fingerprint:
+					log_store2(
+						"11.5-SKIP",
+						f"orders/updated fingerprint UNCHANGED for order_id={order_id}, so_name={so_name}. "
+						f"Skipping log + enqueue to avoid noise.",
+						store_name,
+					)
+					return
+				
+				# Fingerprint changed or first time: update it so future metadata-only
+				# webhooks on the same order can be skipped.
+				try:
+					frappe.db.set_value(
+						"Sales Order",
+						so_name,
+						"custom_shopify_fingerprint",
+						new_fingerprint,
+						update_modified=False,
+					)
+					frappe.db.commit()
+					log_store2(
+						"11.5-SET",
+						f"Updated fingerprint for SO {so_name}. "
+						f"Old: {old_fingerprint or 'EMPTY'} | New: {new_fingerprint}",
+						store_name,
+					)
+				except Exception as e:
+					log_store2(
+						"11.5-SET-ERROR",
+						f"Failed to update fingerprint for SO {so_name}. Error: {str(e)}",
+						store_name,
+					)
+		except Exception as e:
+			# Fail open: if anything goes wrong in fingerprint logic, we still
+			# want the webhook to be processed normally.
+			log_store2(
+				"11.5-EXCEPTION",
+				f"Exception in orders/updated fingerprint filter: {str(e)}\n"
+				f"Traceback:\n{traceback.format_exc()}",
+				store_name,
+			)
+	
+	# =========================================================================
+	# STEP 12: Create Shopify log
+	# =========================================================================
+	log_store2("12", "Creating Shopify log entry...", store_name)
+	
+	try:
+		log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
+		log_store2("12-OK", f"Log created: {log.name}", store_name)
+	except Exception as e:
+		log_store2("12-EXCEPTION", f"""
 Failed to create Shopify log!
 Error: {str(e)}
 
 Traceback:
 {traceback.format_exc()}
 """, store_name)
-        raise
-    
-    # =========================================================================
-    # STEP 13: Enqueue background job
-    # =========================================================================
-    log_store2("13", f"""
+		raise
+	
+	# =========================================================================
+	# STEP 13: Enqueue background job
+	# =========================================================================
+	log_store2("13", f"""
 About to enqueue background job...
 Method: {EVENT_MAPPER[event]}
 Queue: short
 Timeout: 300
 Kwargs: payload (order data), request_id={log.name}, store_name={store_name}
 """, store_name)
-    
-    try:
-        frappe.enqueue(
-            method=EVENT_MAPPER[event],
-            queue="short",
-            timeout=300,
-            is_async=True,
-            **{"payload": data, "request_id": log.name, "store_name": store_name},
-        )
-        log_store2("13-OK", f"""
+	
+	try:
+		frappe.enqueue(
+			method=EVENT_MAPPER[event],
+			queue="short",
+			timeout=300,
+			is_async=True,
+			**{"payload": data, "request_id": log.name, "store_name": store_name},
+		)
+		log_store2("13-OK", f"""
 Job enqueued successfully!
 Method: {EVENT_MAPPER[event]}
 Log ID: {log.name}
@@ -517,15 +599,57 @@ The webhook handler has completed.
 The background worker should now pick up the job.
 Check RQ Job doctype for the job status.
 """, store_name)
-    except Exception as e:
-        log_store2("13-EXCEPTION", f"""
+	except Exception as e:
+		log_store2("13-EXCEPTION", f"""
 Failed to enqueue job!
 Error: {str(e)}
 
 Traceback:
 {traceback.format_exc()}
 """, store_name)
-        raise
+		raise
+
+
+def _build_order_fingerprint(data):
+	"""Build a fingerprint of ONLY the fields we care about for `orders/updated`.
+	
+	Per the current requirement, this fingerprint includes:
+	- Order note
+	- Billing address (core fields)
+	- Shipping address (core fields)
+	
+	Line items and other metadata are intentionally NOT included here. Line-item
+	changes are handled via the dedicated `orders/edited` webhook instead.
+	"""
+	import hashlib
+	import json
+	
+	fingerprint_data = {
+		"note": data.get("note") or "",
+		"billing_address": _address_hash(data.get("billing_address")),
+		"shipping_address": _address_hash(data.get("shipping_address")),
+	}
+	
+	raw = json.dumps(fingerprint_data, sort_keys=True)
+	return hashlib.md5(raw.encode()).hexdigest()
+
+
+def _address_hash(address):
+	"""Return a stable string representing the address fields we care about."""
+	if not address:
+		return ""
+	
+	return "|".join(
+		[
+			str(address.get("address1") or "").strip(),
+			str(address.get("address2") or "").strip(),
+			str(address.get("city") or "").strip(),
+			str(address.get("province") or "").strip(),
+			str(address.get("zip") or "").strip(),
+			str(address.get("country") or "").strip(),
+			str(address.get("phone") or "").strip(),
+		]
+	)
 
 
 def _validate_request(req, hmac_header, shared_secret):

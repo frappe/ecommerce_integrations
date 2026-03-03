@@ -44,6 +44,24 @@ def log_store2(step, message, store_name=None):
         )
 
 
+def handle_order_edited(payload, request_id=None, store_name=None):
+	"""Handle Shopify `orders/edited` webhook.
+	
+	This topic is a CLEAN signal from Shopify that only fires when an order
+	is edited (line items added/removed/changed via the order edit flow).
+	
+	We simply route it into the existing `update_sales_order` logic, which
+	already has robust line-item comparison and change tracking.
+	"""
+	log_store2(
+		"BG-ORDER-EDITED",
+		f"orders/edited webhook received. request_id={request_id}, store_name={store_name}, "
+		f"order_id={payload.get('id')}, order_number={payload.get('name')}",
+		store_name,
+	)
+	return update_sales_order(payload, request_id=request_id, store_name=store_name)
+
+
 def sync_sales_order(payload, request_id=None, store_name=None):
     """Sync Shopify order to ERPNext Sales Order.
     

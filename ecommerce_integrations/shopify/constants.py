@@ -14,7 +14,8 @@ WEBHOOK_EVENTS = [
 	"orders/fulfilled",
 	"orders/cancelled",
 	"orders/partially_fulfilled",
-	"orders/updated",
+	"orders/edited",  # Clean signal for line item edits
+	"orders/updated",  # Kept only for address / notes changes (filtered via fingerprint)
 ]
 
 EVENT_MAPPER = {
@@ -23,6 +24,7 @@ EVENT_MAPPER = {
 	"orders/fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
 	"orders/cancelled": "ecommerce_integrations.shopify.order.cancel_order",
 	"orders/partially_fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
+	"orders/edited": "ecommerce_integrations.shopify.order.handle_order_edited",
 	"orders/updated": "ecommerce_integrations.shopify.order.update_sales_order",
 }
 

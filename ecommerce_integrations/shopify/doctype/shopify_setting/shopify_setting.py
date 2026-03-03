@@ -222,6 +222,18 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+			# Fingerprint used to filter noisy `orders/updated` webhooks.
+			# Hidden technical field – do not show in UI.
+			dict(
+				fieldname="custom_shopify_fingerprint",
+				label="Shopify Fingerprint",
+				fieldtype="Small Text",
+				insert_after=ORDER_STATUS_FIELD,
+				read_only=1,
+				print_hide=1,
+				hidden=1,
+				no_copy=1,
+			),
 		],
 		"Sales Order Item": [
 			dict(
