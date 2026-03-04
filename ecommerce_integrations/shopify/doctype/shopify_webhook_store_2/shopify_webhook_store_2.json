@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "creation": "2025-01-02 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "webhook_id",
+  "method"
+ ],
+ "fields": [
+  {
+   "fieldname": "webhook_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Webhook ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "method",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Method",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Shopify",
+ "name": "Shopify Webhook Store 2",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
+
