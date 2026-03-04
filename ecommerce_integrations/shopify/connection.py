@@ -469,92 +469,92 @@ Store: {store_name}
 Order ID: {data.get('id')}
 Method to call: {EVENT_MAPPER[event]}
 """, store_name)
-	
-	# =========================================================================
-	# STEP 11.5: Early filter for noisy `orders/updated` webhooks
-	# =========================================================================
-	# NOTE: Per business requirements, this fingerprint ONLY tracks:
-	# - Shipping address
-	# - Billing address
-	# - Order notes
-	#
-	# Line items are handled via the dedicated `orders/edited` webhook, so they
-	# are *not* part of this fingerprint. This means:
-	# - Old/timeline/metadata-only updates on untouched orders are dropped here.
-	# - Only REAL address / note changes for existing Sales Orders will proceed.
-	if event == "orders/updated":
-		try:
-			from ecommerce_integrations.shopify.constants import ORDER_ID_FIELD
-			
-			order_id = str(data.get("id") or "")
-			so_name = None
-			if order_id:
-				so_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
-			
-			# If we have a matching Sales Order, compare fingerprints
-			if so_name:
-				new_fingerprint = _build_order_fingerprint(data)
-				
-				try:
-					old_fingerprint = frappe.db.get_value(
-						"Sales Order", so_name, "custom_shopify_fingerprint"
-					) or ""
-				except Exception:
-					# If the field doesn't exist yet or any error occurs, skip fingerprint filter
-					log_store2(
-						"11.5-SKIP",
-						f"Fingerprint field missing or error while reading for SO {so_name}. "
-						f"Proceeding without early-exit filter.",
-						store_name,
-					)
-					old_fingerprint = ""
-				
-				# If fingerprint unchanged, drop this webhook before logging / enqueue
-				if old_fingerprint and new_fingerprint == old_fingerprint:
-					log_store2(
-						"11.5-SKIP",
-						f"orders/updated fingerprint UNCHANGED for order_id={order_id}, so_name={so_name}. "
-						f"Skipping log + enqueue to avoid noise.",
-						store_name,
-					)
-					return
-				
-				# Fingerprint changed or first time: update it so future metadata-only
-				# webhooks on the same order can be skipped.
-				try:
-					frappe.db.set_value(
-						"Sales Order",
-						so_name,
-						"custom_shopify_fingerprint",
-						new_fingerprint,
-						update_modified=False,
-					)
-					frappe.db.commit()
-					log_store2(
-						"11.5-SET",
-						f"Updated fingerprint for SO {so_name}. "
-						f"Old: {old_fingerprint or 'EMPTY'} | New: {new_fingerprint}",
-						store_name,
-					)
-				except Exception as e:
-					log_store2(
-						"11.5-SET-ERROR",
-						f"Failed to update fingerprint for SO {so_name}. Error: {str(e)}",
-						store_name,
-					)
-		except Exception as e:
-			# Fail open: if anything goes wrong in fingerprint logic, we still
-			# want the webhook to be processed normally.
-			log_store2(
-				"11.5-EXCEPTION",
-				f"Exception in orders/updated fingerprint filter: {str(e)}\n"
-				f"Traceback:\n{traceback.format_exc()}",
-				store_name,
-			)
-	
-	# =========================================================================
-	# STEP 12: Create Shopify log
-	# =========================================================================
+    
+    # =========================================================================
+    # STEP 11.5: Early filter for noisy `orders/updated` webhooks
+    # =========================================================================
+    # NOTE: Per business requirements, this fingerprint ONLY tracks:
+    # - Shipping address
+    # - Billing address
+    # - Order notes
+    #
+    # Line items are handled via the dedicated `orders/edited` webhook, so they
+    # are *not* part of this fingerprint. This means:
+    # - Old/timeline/metadata-only updates on untouched orders are dropped here.
+    # - Only REAL address / note changes for existing Sales Orders will proceed.
+    if event == "orders/updated":
+        try:
+            from ecommerce_integrations.shopify.constants import ORDER_ID_FIELD
+            
+            order_id = str(data.get("id") or "")
+            so_name = None
+            if order_id:
+                so_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id}, "name")
+            
+            # If we have a matching Sales Order, compare fingerprints
+            if so_name:
+                new_fingerprint = _build_order_fingerprint(data)
+                
+                try:
+                    old_fingerprint = frappe.db.get_value(
+                        "Sales Order", so_name, "custom_shopify_fingerprint"
+                    ) or ""
+                except Exception:
+                    # If the field doesn't exist yet or any error occurs, skip fingerprint filter
+                    log_store2(
+                        "11.5-SKIP",
+                        f"Fingerprint field missing or error while reading for SO {so_name}. "
+                        f"Proceeding without early-exit filter.",
+                        store_name,
+                    )
+                    old_fingerprint = ""
+                
+                # If fingerprint unchanged, drop this webhook before logging / enqueue
+                if old_fingerprint and new_fingerprint == old_fingerprint:
+                    log_store2(
+                        "11.5-SKIP",
+                        f"orders/updated fingerprint UNCHANGED for order_id={order_id}, so_name={so_name}. "
+                        f"Skipping log + enqueue to avoid noise.",
+                        store_name,
+                    )
+                    return
+                
+                # Fingerprint changed or first time: update it so future metadata-only
+                # webhooks on the same order can be skipped.
+                try:
+                    frappe.db.set_value(
+                        "Sales Order",
+                        so_name,
+                        "custom_shopify_fingerprint",
+                        new_fingerprint,
+                        update_modified=False,
+                    )
+                    frappe.db.commit()
+                    log_store2(
+                        "11.5-SET",
+                        f"Updated fingerprint for SO {so_name}. "
+                        f"Old: {old_fingerprint or 'EMPTY'} | New: {new_fingerprint}",
+                        store_name,
+                    )
+                except Exception as e:
+                    log_store2(
+                        "11.5-SET-ERROR",
+                        f"Failed to update fingerprint for SO {so_name}. Error: {str(e)}",
+                        store_name,
+                    )
+        except Exception as e:
+            # Fail open: if anything goes wrong in fingerprint logic, we still
+            # want the webhook to be processed normally.
+            log_store2(
+                "11.5-EXCEPTION",
+                f"Exception in orders/updated fingerprint filter: {str(e)}\n"
+                f"Traceback:\n{traceback.format_exc()}",
+                store_name,
+            )
+    
+    # =========================================================================
+    # STEP 12: Create Shopify log
+    # =========================================================================
 	log_store2("12", "Creating Shopify log entry...", store_name)
 	
 	try:
