@@ -854,27 +854,31 @@ def _normalize_address_for_comparison(addr_dict):
 	}
 
 def _get_customer_address_by_type(customer_name, address_type):
-	"""Get customer address of the specified type.
-	
-	Returns the address of the specified type for the customer.
-	If no address found, returns None.
-	"""
-	if not customer_name:
-		return None
-	
-	# Get address of the specified type
-	address = frappe.db.get_value(
-		"Address",
-		filters={
-			"link_doctype": "Customer",
-			"link_name": customer_name,
-			"address_type": address_type
-		},
-		fieldname=["name", "address_line1", "address_line2", "city", "state", "pincode", "country", "phone"],
-		as_dict=True
-	)
-	
-	return address
+    if not customer_name:
+        return None
+
+    addresses = frappe.get_list(
+        "Address",
+        filters=[
+            ["Dynamic Link", "link_doctype", "=", "Customer"],
+            ["Dynamic Link", "link_name", "=", customer_name],
+            ["Dynamic Link", "parenttype", "=", "Address"],
+            ["Address", "address_type", "=", address_type],
+        ],
+        fields=[
+            "name",
+            "address_line1",
+            "address_line2",
+            "city",
+            "state",
+            "pincode",
+            "country",
+            "phone",
+        ],
+        limit=1,
+    )
+
+    return addresses[0] if addresses else None
 
 def update_sales_order(payload, request_id=None, store_name=None):
 	"""Handle order updates from Shopify.
