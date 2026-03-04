@@ -555,41 +555,41 @@ Method to call: {EVENT_MAPPER[event]}
     # =========================================================================
     # STEP 12: Create Shopify log
     # =========================================================================
-	log_store2("12", "Creating Shopify log entry...", store_name)
-	
-	try:
-		log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
-		log_store2("12-OK", f"Log created: {log.name}", store_name)
-	except Exception as e:
-		log_store2("12-EXCEPTION", f"""
+    log_store2("12", "Creating Shopify log entry...", store_name)
+    
+    try:
+        log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
+        log_store2("12-OK", f"Log created: {log.name}", store_name)
+    except Exception as e:
+        log_store2("12-EXCEPTION", f"""
 Failed to create Shopify log!
 Error: {str(e)}
 
 Traceback:
 {traceback.format_exc()}
 """, store_name)
-		raise
-	
-	# =========================================================================
-	# STEP 13: Enqueue background job
-	# =========================================================================
-	log_store2("13", f"""
+        raise
+    
+    # =========================================================================
+    # STEP 13: Enqueue background job
+    # =========================================================================
+    log_store2("13", f"""
 About to enqueue background job...
 Method: {EVENT_MAPPER[event]}
 Queue: short
 Timeout: 300
 Kwargs: payload (order data), request_id={log.name}, store_name={store_name}
 """, store_name)
-	
-	try:
-		frappe.enqueue(
-			method=EVENT_MAPPER[event],
-			queue="short",
-			timeout=300,
-			is_async=True,
-			**{"payload": data, "request_id": log.name, "store_name": store_name},
-		)
-		log_store2("13-OK", f"""
+    
+    try:
+        frappe.enqueue(
+            method=EVENT_MAPPER[event],
+            queue="short",
+            timeout=300,
+            is_async=True,
+            **{"payload": data, "request_id": log.name, "store_name": store_name},
+        )
+        log_store2("13-OK", f"""
 Job enqueued successfully!
 Method: {EVENT_MAPPER[event]}
 Log ID: {log.name}
@@ -599,57 +599,57 @@ The webhook handler has completed.
 The background worker should now pick up the job.
 Check RQ Job doctype for the job status.
 """, store_name)
-	except Exception as e:
-		log_store2("13-EXCEPTION", f"""
+    except Exception as e:
+        log_store2("13-EXCEPTION", f"""
 Failed to enqueue job!
 Error: {str(e)}
 
 Traceback:
 {traceback.format_exc()}
 """, store_name)
-		raise
+        raise
 
 
 def _build_order_fingerprint(data):
-	"""Build a fingerprint of ONLY the fields we care about for `orders/updated`.
-	
-	Per the current requirement, this fingerprint includes:
-	- Order note
-	- Billing address (core fields)
-	- Shipping address (core fields)
-	
-	Line items and other metadata are intentionally NOT included here. Line-item
-	changes are handled via the dedicated `orders/edited` webhook instead.
-	"""
-	import hashlib
-	import json
-	
-	fingerprint_data = {
-		"note": data.get("note") or "",
-		"billing_address": _address_hash(data.get("billing_address")),
-		"shipping_address": _address_hash(data.get("shipping_address")),
-	}
-	
-	raw = json.dumps(fingerprint_data, sort_keys=True)
-	return hashlib.md5(raw.encode()).hexdigest()
+    """Build a fingerprint of ONLY the fields we care about for `orders/updated`.
+    
+    Per the current requirement, this fingerprint includes:
+    - Order note
+    - Billing address (core fields)
+    - Shipping address (core fields)
+    
+    Line items and other metadata are intentionally NOT included here. Line-item
+    changes are handled via the dedicated `orders/edited` webhook instead.
+    """
+    import hashlib
+    import json
+    
+    fingerprint_data = {
+        "note": data.get("note") or "",
+        "billing_address": _address_hash(data.get("billing_address")),
+        "shipping_address": _address_hash(data.get("shipping_address")),
+    }
+    
+    raw = json.dumps(fingerprint_data, sort_keys=True)
+    return hashlib.md5(raw.encode()).hexdigest()
 
 
 def _address_hash(address):
-	"""Return a stable string representing the address fields we care about."""
-	if not address:
-		return ""
-	
-	return "|".join(
-		[
-			str(address.get("address1") or "").strip(),
-			str(address.get("address2") or "").strip(),
-			str(address.get("city") or "").strip(),
-			str(address.get("province") or "").strip(),
-			str(address.get("zip") or "").strip(),
-			str(address.get("country") or "").strip(),
-			str(address.get("phone") or "").strip(),
-		]
-	)
+    """Return a stable string representing the address fields we care about."""
+    if not address:
+        return ""
+    
+    return "|".join(
+        [
+            str(address.get("address1") or "").strip(),
+            str(address.get("address2") or "").strip(),
+            str(address.get("city") or "").strip(),
+            str(address.get("province") or "").strip(),
+            str(address.get("zip") or "").strip(),
+            str(address.get("country") or "").strip(),
+            str(address.get("phone") or "").strip(),
+        ]
+    )
 
 
 def _validate_request(req, hmac_header, shared_secret):
