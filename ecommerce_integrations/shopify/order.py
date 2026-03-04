@@ -204,8 +204,11 @@ def handle_order_updated(payload, request_id=None, store_name=None):
                     customer.update_existing_addresses(shopify_customer)
         
         # Update note if changed
-        if "note" in changes:
-            frappe.db.set_value("Sales Order", sales_order_name, "note", new_note)
+        # ERPNext's standard Sales Order does not have a direct "note" field;
+        # the original integration stored Shopify notes as comments.
+        if "note" in changes and new_note:
+            sales_order_doc = frappe.get_doc("Sales Order", sales_order_name)
+            sales_order_doc.add_comment(text=f"Order Note: {new_note}")
         
         # Log the changes
         create_shopify_log(
