@@ -45,21 +45,190 @@ def log_store2(step, message, store_name=None):
 
 
 def handle_order_edited(payload, request_id=None, store_name=None):
-	"""Handle Shopify `orders/edited` webhook.
-	
-	This topic is a CLEAN signal from Shopify that only fires when an order
-	is edited (line items added/removed/changed via the order edit flow).
-	
-	We simply route it into the existing `update_sales_order` logic, which
-	already has robust line-item comparison and change tracking.
-	"""
-	log_store2(
-		"BG-ORDER-EDITED",
-		f"orders/edited webhook received. request_id={request_id}, store_name={store_name}, "
-		f"order_id={payload.get('id')}, order_number={payload.get('name')}",
-		store_name,
-	)
-	return update_sales_order(payload, request_id=request_id, store_name=store_name)
+    """Handle Shopify `orders/edited` webhook.
+    
+    This topic is a CLEAN signal from Shopify that only fires when an order
+    is edited (line items added/removed/changed via the order edit flow).
+    
+    We simply route it into the existing `update_sales_order` logic, which
+    already has robust line-item comparison and change tracking.
+    """
+    log_store2(
+        "BG-ORDER-EDITED",
+        f"orders/edited webhook received. request_id={request_id}, store_name={store_name}, "
+        f"order_id={payload.get('id')}, order_number={payload.get('name')}",
+        store_name,
+    )
+    return update_sales_order(payload, request_id=request_id, store_name=store_name)
+
+
+def handle_order_updated(payload, request_id=None, store_name=None):
+    """Handle Shopify `orders/updated` webhook.
+    
+    This handler ONLY processes:
+    - Order notes
+    - Customer address changes (shipping, billing)
+    
+    All other changes (line items, prices, etc.) are ignored here.
+    Line item changes are handled via the dedicated `orders/edited` webhook.
+    """
+    order = payload
+    frappe.set_user("Administrator")
+    frappe.flags.request_id = request_id
+    
+    # Set store context for Store 2
+    if store_name:
+        frappe.local.shopify_store_name = store_name
+    
+    try:
+        order_id = cstr(order.get("id"))
+        order_number = order.get("name", "")
+        shopify_customer = order.get("customer", {}) if order.get("customer") else {}
+        customer_id = shopify_customer.get("id")
+        
+        # Check if Sales Order exists
+        sales_order_name = frappe.db.get_value("Sales Order", filters={ORDER_ID_FIELD: order_id})
+        
+        if not sales_order_name:
+            # Order doesn't exist - this shouldn't happen for orders/updated, but handle gracefully
+            create_shopify_log(
+                status="Info",
+                message=f"Order {order_number} not found in ERPNext for orders/updated webhook",
+                request_data=order,
+            )
+            return
+        
+        sales_order = frappe.get_doc("Sales Order", sales_order_name)
+        changes = {}
+        
+        # ONLY check notes
+        old_note = sales_order.get("note", "") or ""
+        new_note = order.get("note", "") or ""
+        if old_note.strip() != new_note.strip():
+            changes["note"] = {
+                "old": old_note,
+                "new": new_note
+            }
+        
+        # ONLY check addresses (shipping and billing)
+        shipping_address = order.get("shipping_address", {})
+        if shipping_address and sales_order.customer:
+            shipping_addr_doc = _get_customer_address_by_type(sales_order.customer, "Shipping")
+            
+            if shipping_addr_doc:
+                old_addr = {
+                    "address_line1": shipping_addr_doc.get("address_line1", ""),
+                    "address_line2": shipping_addr_doc.get("address_line2", ""),
+                    "city": shipping_addr_doc.get("city", ""),
+                    "state": shipping_addr_doc.get("state", ""),
+                    "pincode": shipping_addr_doc.get("pincode", ""),
+                    "country": shipping_addr_doc.get("country", ""),
+                    "phone": shipping_addr_doc.get("phone", ""),
+                }
+                new_addr = {
+                    "address_line1": shipping_address.get("address1", ""),
+                    "address_line2": shipping_address.get("address2", ""),
+                    "city": shipping_address.get("city", ""),
+                    "state": shipping_address.get("province", ""),
+                    "pincode": shipping_address.get("zip", ""),
+                    "country": shipping_address.get("country", ""),
+                    "phone": shipping_address.get("phone", ""),
+                }
+                
+                old_normalized = _normalize_address_for_comparison(old_addr)
+                new_normalized = _normalize_address_for_comparison(new_addr)
+                
+                if old_normalized != new_normalized:
+                    changes["shipping_address"] = {
+                        "old": old_addr,
+                        "new": new_addr
+                    }
+        
+        # Compare billing address
+        billing_address = order.get("billing_address")
+        billing_is_same_as_shipping = False
+        
+        # Check if billing is explicitly null/empty (Shopify "same as shipping" case)
+        if billing_address is None or (isinstance(billing_address, dict) and not any(billing_address.values())):
+            if shipping_address:
+                billing_address = shipping_address
+                billing_is_same_as_shipping = True
+            elif not billing_address:
+                billing_address = shopify_customer.get("default_address", {})
+        
+        if billing_address and sales_order.customer:
+            billing_addr_doc = _get_customer_address_by_type(sales_order.customer, "Billing")
+            
+            if billing_addr_doc:
+                old_addr = {
+                    "address_line1": billing_addr_doc.get("address_line1", ""),
+                    "address_line2": billing_addr_doc.get("address_line2", ""),
+                    "city": billing_addr_doc.get("city", ""),
+                    "state": billing_addr_doc.get("state", ""),
+                    "pincode": billing_addr_doc.get("pincode", ""),
+                    "country": billing_addr_doc.get("country", ""),
+                    "phone": billing_addr_doc.get("phone", ""),
+                }
+                new_addr = {
+                    "address_line1": billing_address.get("address1", ""),
+                    "address_line2": billing_address.get("address2", ""),
+                    "city": billing_address.get("city", ""),
+                    "state": billing_address.get("province", ""),
+                    "pincode": billing_address.get("zip", ""),
+                    "country": billing_address.get("country", ""),
+                    "phone": billing_address.get("phone", ""),
+                }
+                
+                old_normalized = _normalize_address_for_comparison(old_addr)
+                new_normalized = _normalize_address_for_comparison(new_addr)
+                
+                if old_normalized != new_normalized:
+                    changes["billing_address"] = {
+                        "old": old_addr,
+                        "new": new_addr,
+                        "is_same_as_shipping": billing_is_same_as_shipping
+                    }
+        
+        # Skip if no changes detected
+        if not changes:
+            return
+        
+        # Update addresses if changed
+        if "shipping_address" in changes or "billing_address" in changes:
+            shopify_customer["billing_address"] = billing_address
+            shopify_customer["shipping_address"] = shipping_address
+            
+            if customer_id:
+                customer = ShopifyCustomer(customer_id=customer_id)
+                if customer.is_synced():
+                    customer.update_existing_addresses(shopify_customer)
+        
+        # Update note if changed
+        if "note" in changes:
+            frappe.db.set_value("Sales Order", sales_order_name, "note", new_note)
+        
+        # Log the changes
+        create_shopify_log(
+            status="Success",
+            message=f"Order {order_number} updated: {', '.join(changes.keys())}",
+            request_data=order,
+            response_data={"change_details": changes}
+        )
+        
+        frappe.db.commit()
+        
+    except Exception as e:
+        frappe.log_error(
+            title=f"Failed to update order {order_number}",
+            message=f"Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        )
+        create_shopify_log(
+            status="Error",
+            message=f"Failed to update order {order_number}: {str(e)}",
+            request_data=order,
+            exception=e,
+        )
+        raise
 
 
 def sync_sales_order(payload, request_id=None, store_name=None):
@@ -969,14 +1138,14 @@ def update_sales_order(payload, request_id=None, store_name=None):
 		# Compare customer email
 		shopify_email = shopify_customer.get("email", "")
 		if shopify_email and sales_order.customer:
-			# Get customer email from ERPNext Contact
-			contact = frappe.db.get_value(
-				"Contact",
-				{"link_doctype": "Customer", "link_name": sales_order.customer},
-				["email_id"],
-				as_dict=True
-			)
-			old_email = contact.get("email_id", "") if contact else ""
+			# Get customer email from ERPNext Contact (using Dynamic Link)
+			contact_filters = [
+				["Dynamic Link", "link_doctype", "=", "Customer"],
+				["Dynamic Link", "link_name", "=", sales_order.customer],
+				["Dynamic Link", "parenttype", "=", "Contact"],
+			]
+			contacts = frappe.get_all("Contact", filters=contact_filters, fields=["email_id"], limit=1)
+			old_email = contacts[0].get("email_id", "") if contacts else ""
 			if old_email != shopify_email:
 				changes["customer_email"] = {
 					"old": old_email,
@@ -986,13 +1155,14 @@ def update_sales_order(payload, request_id=None, store_name=None):
 		# Compare customer phone
 		shopify_phone = shopify_customer.get("phone", "") or shopify_customer.get("default_address", {}).get("phone", "")
 		if shopify_phone and sales_order.customer:
-			# Get customer phone from ERPNext Contact
-			contact = frappe.db.get_value(
-				"Contact",
-				{"link_doctype": "Customer", "link_name": sales_order.customer},
-				["phone", "mobile_no"],
-				as_dict=True
-			)
+			# Get customer phone from ERPNext Contact (using Dynamic Link)
+			contact_filters = [
+				["Dynamic Link", "link_doctype", "=", "Customer"],
+				["Dynamic Link", "link_name", "=", sales_order.customer],
+				["Dynamic Link", "parenttype", "=", "Contact"],
+			]
+			contacts = frappe.get_all("Contact", filters=contact_filters, fields=["phone", "mobile_no"], limit=1)
+			contact = contacts[0] if contacts else None
 			if contact:
 				old_phone = contact.get("phone", "") or contact.get("mobile_no", "")
 				if old_phone != shopify_phone:

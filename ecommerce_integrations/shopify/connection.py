@@ -621,9 +621,6 @@ def _build_order_fingerprint(data):
     Line items and other metadata are intentionally NOT included here. Line-item
     changes are handled via the dedicated `orders/edited` webhook instead.
     """
-    import hashlib
-    import json
-    
     fingerprint_data = {
         "note": data.get("note") or "",
         "billing_address": _address_hash(data.get("billing_address")),

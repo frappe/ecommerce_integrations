@@ -25,7 +25,7 @@ EVENT_MAPPER = {
 	"orders/cancelled": "ecommerce_integrations.shopify.order.cancel_order",
 	"orders/partially_fulfilled": "ecommerce_integrations.shopify.fulfillment.prepare_delivery_note",
 	"orders/edited": "ecommerce_integrations.shopify.order.handle_order_edited",
-	"orders/updated": "ecommerce_integrations.shopify.order.update_sales_order",
+	"orders/updated": "ecommerce_integrations.shopify.order.handle_order_updated",
 }
 
 SHOPIFY_VARIANTS_ATTR_LIST = ["option1", "option2", "option3"]
