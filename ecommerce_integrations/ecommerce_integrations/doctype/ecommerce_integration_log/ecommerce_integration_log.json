@@ -28,7 +28,8 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Integration",
-   "options": "Module Def"
+   "options": "Module Def",
+   "read_only": 1
   },
   {
    "default": "Queued",
