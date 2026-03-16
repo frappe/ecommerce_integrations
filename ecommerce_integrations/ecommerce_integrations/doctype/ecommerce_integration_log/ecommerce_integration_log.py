@@ -47,6 +47,9 @@ def create_log(
 	method=None,
 	message=None,
 	make_new=False,
+	payment_status=None,
+	reference_doctype=None,
+	reference_docname=None,
 ):
 	make_new = make_new or not bool(frappe.flags.request_id)
 
@@ -64,6 +67,13 @@ def create_log(
 
 	if request_data and not isinstance(request_data, str):
 		request_data = json.dumps(request_data, sort_keys=True, indent=4)
+
+	if payment_status:
+		log.payment_status = payment_status
+	if reference_doctype:
+		log.reference_doctype = reference_doctype
+	if reference_docname:
+		log.reference_docname = reference_docname
 
 	log.message = message or _get_message(exception)
 	log.method = log.method or method
