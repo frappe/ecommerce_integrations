@@ -1,11 +1,11 @@
 import base64
+from datetime import timezone
 from typing import Any
 
 import frappe
 import requests
 from frappe import _
 from frappe.utils import cint, cstr, get_datetime
-from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
@@ -460,7 +460,7 @@ class UnicommerceAPIClient:
 
 def _utc_timeformat(datetime) -> str:
 	"""Get datetime in UTC/GMT as required by Unicommerce"""
-	return get_datetime(datetime).astimezone(timezone("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+	return get_datetime(datetime).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _safe_open_csv(csv_name):
