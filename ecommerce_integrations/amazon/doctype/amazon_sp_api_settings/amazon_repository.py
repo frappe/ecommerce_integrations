@@ -96,58 +96,58 @@ class AmazonRepository:
 		)
 
 		charges_and_fees = {"charges": [], "fees": []}
+		if financial_events_payload:
+			while True:
+				shipment_event_list = financial_events_payload.get("FinancialEvents", {}).get(
+					"ShipmentEventList", []
+				)
+				next_token = financial_events_payload.get("NextToken")
 
-		while True:
-			shipment_event_list = financial_events_payload.get("FinancialEvents", {}).get(
-				"ShipmentEventList", []
-			)
-			next_token = financial_events_payload.get("NextToken")
+				for shipment_event in shipment_event_list:
+					if shipment_event:
+						for shipment_item in shipment_event.get("ShipmentItemList", []):
+							charges = shipment_item.get("ItemChargeList", [])
+							fees = shipment_item.get("ItemFeeList", [])
+							seller_sku = shipment_item.get("SellerSKU")
 
-			for shipment_event in shipment_event_list:
-				if shipment_event:
-					for shipment_item in shipment_event.get("ShipmentItemList", []):
-						charges = shipment_item.get("ItemChargeList", [])
-						fees = shipment_item.get("ItemFeeList", [])
-						seller_sku = shipment_item.get("SellerSKU")
+							for charge in charges:
+								charge_type = charge.get("ChargeType")
+								amount = charge.get("ChargeAmount", {}).get("CurrencyAmount", 0)
 
-						for charge in charges:
-							charge_type = charge.get("ChargeType")
-							amount = charge.get("ChargeAmount", {}).get("CurrencyAmount", 0)
+								if charge_type != "Principal" and float(amount) != 0:
+									charge_account = self.get_account(charge_type)
+									charges_and_fees.get("charges").append(
+										{
+											"charge_type": "Actual",
+											"account_head": charge_account,
+											"tax_amount": amount,
+											"description": charge_type + " for " + seller_sku,
+										}
+									)
 
-							if charge_type != "Principal" and float(amount) != 0:
-								charge_account = self.get_account(charge_type)
-								charges_and_fees.get("charges").append(
-									{
-										"charge_type": "Actual",
-										"account_head": charge_account,
-										"tax_amount": amount,
-										"description": charge_type + " for " + seller_sku,
-									}
-								)
+							for fee in fees:
+								fee_type = fee.get("FeeType")
+								amount = fee.get("FeeAmount", {}).get("CurrencyAmount", 0)
 
-						for fee in fees:
-							fee_type = fee.get("FeeType")
-							amount = fee.get("FeeAmount", {}).get("CurrencyAmount", 0)
+								if float(amount) != 0:
+									fee_account = self.get_account(fee_type)
+									charges_and_fees.get("fees").append(
+										{
+											"charge_type": "Actual",
+											"account_head": fee_account,
+											"tax_amount": amount,
+											"description": fee_type + " for " + seller_sku,
+										}
+									)
 
-							if float(amount) != 0:
-								fee_account = self.get_account(fee_type)
-								charges_and_fees.get("fees").append(
-									{
-										"charge_type": "Actual",
-										"account_head": fee_account,
-										"tax_amount": amount,
-										"description": fee_type + " for " + seller_sku,
-									}
-								)
+				if not next_token:
+					break
 
-			if not next_token:
-				break
-
-			financial_events_payload = self.call_sp_api_method(
-				sp_api_method=finances.list_financial_events_by_order_id,
-				order_id=order_id,
-				next_token=next_token,
-			)
+				financial_events_payload = self.call_sp_api_method(
+					sp_api_method=finances.list_financial_events_by_order_id,
+					order_id=order_id,
+					next_token=next_token,
+				)
 
 		return charges_and_fees
 
@@ -393,6 +393,7 @@ class AmazonRepository:
 
 		order_id = order.get("AmazonOrderId")
 		so = frappe.db.get_value("Sales Order", filters={"amazon_order_id": order_id}, fieldname="name")
+		si = frappe.db.get_value("Sales Invoice", filters={"amazon_order_id": order_id}, fieldname="name")
 
 		if so:
 			return so
@@ -408,32 +409,64 @@ class AmazonRepository:
 			delivery_date = dateutil.parser.parse(order.get("LatestShipDate")).strftime("%Y-%m-%d")
 			transaction_date = dateutil.parser.parse(order.get("PurchaseDate")).strftime("%Y-%m-%d")
 
-			so = frappe.new_doc("Sales Order")
-			so.amazon_order_id = order_id
-			so.marketplace_id = order.get("MarketplaceId")
-			so.customer = customer_name
-			so.delivery_date = delivery_date
-			so.transaction_date = transaction_date
-			so.company = self.amz_setting.company
+			if order.get("IsReplacementOrder") == "true":
+				if si:
+					return
+				si = frappe.new_doc("Sales Invoice")
+				si.amazon_order_id = order_id
+				si.customer = customer_name
+				si.posting_date = transaction_date
+				si.company = self.amz_setting.company
+				si.is_return = 1
 
-			for item in items:
-				so.append("items", item)
+				for item in items:
+					item["qty"] = -abs(item["qty"])
+					si.append("items", item)
+				taxes_and_charges = self.amz_setting.taxes_charges
 
-			taxes_and_charges = self.amz_setting.taxes_charges
+				if taxes_and_charges:
+					charges_and_fees = self.get_charges_and_fees(order_id)
+					if charges_and_fees:
+						for charge in charges_and_fees.get("charges"):
+							si.append("taxes", charge)
 
-			if taxes_and_charges:
-				charges_and_fees = self.get_charges_and_fees(order_id)
+						for fee in charges_and_fees.get("fees"):
+							si.append("taxes", fee)
 
-				for charge in charges_and_fees.get("charges"):
-					so.append("taxes", charge)
+				si.insert(ignore_permissions=True)
+				if self.amz_setting.submit_credit_note:
+					si.submit()
+				else:
+					si.save()
+				return
 
-				for fee in charges_and_fees.get("fees"):
-					so.append("taxes", fee)
+			else:
+				so = frappe.new_doc("Sales Order")
+				so.amazon_order_id = order_id
+				so.marketplace_id = order.get("MarketplaceId")
+				so.customer = customer_name
+				so.delivery_date = delivery_date
+				so.transaction_date = transaction_date
+				so.company = self.amz_setting.company
 
-			so.insert(ignore_permissions=True)
-			so.submit()
+				for item in items:
+					so.append("items", item)
 
-			return so.name
+				taxes_and_charges = self.amz_setting.taxes_charges
+
+				if taxes_and_charges:
+					charges_and_fees = self.get_charges_and_fees(order_id)
+					if charges_and_fees:
+						for charge in charges_and_fees.get("charges"):
+							so.append("taxes", charge)
+
+						for fee in charges_and_fees.get("fees"):
+							so.append("taxes", fee)
+
+				so.insert(ignore_permissions=True)
+				so.submit()
+
+				return so.name
 
 	def get_orders(self, created_after) -> list:
 		orders = self.get_orders_instance()
