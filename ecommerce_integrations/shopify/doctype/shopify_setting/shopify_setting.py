@@ -1,12 +1,10 @@
-# Copyright (c) 2021, Frappe and contributors
-# For license information, please see LICENSE
+import json
 
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import get_datetime
-from shopify.collection import PaginatedIterator
-from shopify.resources import Location
+from shopify import GraphQL
 
 from ecommerce_integrations.controllers.setting import (
 	ERPNextWarehouse,
@@ -23,7 +21,12 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
+	SHOPIFY_LINE_ITEM_ID_FIELD,
+	SHOPIFY_RETURN_ID_FIELD,
 	SUPPLIER_ID_FIELD,
+)
+from ecommerce_integrations.shopify.order import (
+	sync_old_orders as sync_old_shopify_orders,
 )
 from ecommerce_integrations.shopify.utils import (
 	ensure_old_connector_is_disabled,
@@ -52,7 +55,7 @@ class ShopifySetting(SettingController):
 			migrate_from_old_connector()
 
 	def _handle_webhooks(self):
-		if self.is_enabled() and not self.webhooks:
+		if self.is_enabled():
 			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
 
 			if not new_webhooks:
@@ -62,7 +65,10 @@ class ShopifySetting(SettingController):
 				frappe.throw(msg)
 
 			for webhook in new_webhooks:
-				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
+				self.append(
+					"webhooks",
+					{"webhook_id": webhook.get("id").split("/")[-1], "method": webhook.get("topic")},
+				)
 
 		elif not self.is_enabled():
 			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
@@ -81,26 +87,79 @@ class ShopifySetting(SettingController):
 	@frappe.whitelist()
 	@connection.temp_shopify_session
 	def update_location_table(self):
-		"""Fetch locations from shopify and add it to child table so user can
-		map it with correct ERPNext warehouse."""
+		"""Fetch locations from Shopify using GraphQL and add it to child table
+		so user can map it with correct ERPNext warehouse."""
 
 		self.shopify_warehouse_mapping = []
-		for locations in PaginatedIterator(Location.find()):
-			for location in locations:
+
+		# GraphQL query to fetch locations
+		query = """
+        query($cursor: String) {
+        locations(first: 50, includeLegacy: true, after: $cursor) {
+            edges {
+            node {
+                id
+                name
+                legacyResourceId
+                isActive
+                isFulfillmentService
+            }
+            }
+            pageInfo {
+            hasNextPage
+            endCursor
+            }
+        }
+        }
+        """
+
+		has_next_page = True
+		cursor = None
+
+		while has_next_page:
+			# Execute GraphQL query
+			variables = {"cursor": cursor} if cursor else {}
+			response = GraphQL().execute(query, variables=variables)
+			result = json.loads(response)
+
+			# Process locations
+			locations_data = result.get("data", {}).get("locations", {})
+
+			for edge in locations_data.get("edges", []):
+				location = edge.get("node", {})
+
+				location_id = location.get("legacyResourceId") or location.get("id").split("/")[-1]
+
 				self.append(
 					"shopify_warehouse_mapping",
-					{"shopify_location_id": location.id, "shopify_location_name": location.name},
+					{
+						"shopify_location_id": location_id,
+						"shopify_location_name": location.get("name"),
+					},
 				)
+
+			# Check if there are more pages
+			page_info = locations_data.get("pageInfo", {})
+			has_next_page = page_info.get("hasNextPage", False)
+			cursor = page_info.get("endCursor")
+
+	@frappe.whitelist()
+	def sync_old_orders_in_shopify(self):
+		sync_old_shopify_orders()
 
 	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]
 
-	def get_erpnext_to_integration_wh_mapping(self) -> dict[ERPNextWarehouse, IntegrationWarehouse]:
+	def get_erpnext_to_integration_wh_mapping(
+		self,
+	) -> dict[ERPNextWarehouse, IntegrationWarehouse]:
 		return {
 			wh_map.erpnext_warehouse: wh_map.shopify_location_id for wh_map in self.shopify_warehouse_mapping
 		}
 
-	def get_integration_to_erpnext_wh_mapping(self) -> dict[IntegrationWarehouse, ERPNextWarehouse]:
+	def get_integration_to_erpnext_wh_mapping(
+		self,
+	) -> dict[IntegrationWarehouse, ERPNextWarehouse]:
 		return {
 			wh_map.shopify_location_id: wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping
 		}
@@ -180,6 +239,14 @@ def setup_custom_fields():
 				insert_after="discount_and_margin",
 				read_only=1,
 			),
+			dict(
+				fieldname=SHOPIFY_LINE_ITEM_ID_FIELD,
+				label="Shopify Line Item Id",
+				fieldtype="Data",
+				insert_after=ORDER_ITEM_DISCOUNT_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Delivery Note": [
 			dict(
@@ -214,6 +281,22 @@ def setup_custom_fields():
 				read_only=1,
 				print_hide=1,
 			),
+			dict(
+				fieldname=SHOPIFY_LINE_ITEM_ID_FIELD,
+				label="Shopify Return Id",
+				fieldtype="Small Text",
+				insert_after=FULLFILLMENT_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname=SHOPIFY_RETURN_ID_FIELD,
+				label="Shopify Return Id",
+				fieldtype="Small Text",
+				insert_after=ORDER_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
 		],
 		"Sales Invoice": [
 			dict(
@@ -235,6 +318,14 @@ def setup_custom_fields():
 			dict(
 				fieldname=ORDER_STATUS_FIELD,
 				label="Shopify Order Status",
+				fieldtype="Small Text",
+				insert_after=ORDER_ID_FIELD,
+				read_only=1,
+				print_hide=1,
+			),
+			dict(
+				fieldname=SHOPIFY_RETURN_ID_FIELD,
+				label="Shopify Return Id",
 				fieldtype="Small Text",
 				insert_after=ORDER_ID_FIELD,
 				read_only=1,

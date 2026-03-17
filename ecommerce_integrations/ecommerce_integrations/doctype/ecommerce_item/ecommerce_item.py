@@ -7,6 +7,8 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_datetime, now
 
+from ecommerce_integrations.shopify.connection import temp_shopify_session
+
 
 class EcommerceItem(Document):
 	erpnext_item_code: str  # item_code in ERPNext
@@ -22,6 +24,46 @@ class EcommerceItem(Document):
 
 	def before_insert(self):
 		self.check_unique_constraints()
+
+	# handles deletion of item both from shopify and erpnext
+	@temp_shopify_session
+	def on_trash(self):
+		from ecommerce_integrations.shopify.product import delete_from_shopify
+
+		frappe.logger().info(
+			f"[EcommerceItem:on_trash] Triggered for {self.name} | Integration: {self.integration}"
+		)
+
+		sales_order = frappe.db.exists("Sales Order Item", {"item_code": self.erpnext_item_code})
+		sales_invoice = frappe.db.exists("Sales Invoice Item", {"item_code": self.erpnext_item_code})
+
+		if not (sales_order or sales_invoice):
+			if self.integration and self.integration.lower() == "shopify" and self.integration_item_code:
+				frappe.logger().info(
+					f"[Shopify] Preparing to delete. has_variants={self.has_variants}, "
+					f"variant_id={self.variant_id}, integration_item_code={self.integration_item_code}"
+				)
+
+				product_gid = f"gid://shopify/Product/{self.integration_item_code}"
+				result = delete_from_shopify(product_id=product_gid)
+
+				if self.erpnext_item_code and frappe.db.exists("Item", self.erpnext_item_code):
+					item_doc = frappe.get_doc("Item", self.erpnext_item_code)
+					if not item_doc.disabled:
+						item_doc.db_set("disabled", 1)
+						frappe.logger().info(
+							f"[ERPNext] Item '{self.erpnext_item_code}' disabled (instead of deleted)."
+						)
+					else:
+						frappe.logger().info(f"[ERPNext] Item '{self.erpnext_item_code}' already disabled.")
+
+				frappe.logger().info(f"[Shopify] Deleted Product {product_gid} | Response: {result}")
+			else:
+				frappe.logger().info(
+					f"[Shopify] Skipped — no integration or integration_item_code for {self.name}"
+				)
+		else:
+			frappe.throw(_("Item Cannot be Deleted — linked with Sales Order or Invoice."))
 
 	def check_unique_constraints(self) -> None:
 		filters = []
@@ -64,7 +106,10 @@ def is_synced(
 	        integration: shopify,
 	        integration_item_code: TSHIRT
 	"""
-	filter = {"integration": integration, "integration_item_code": integration_item_code}
+	filter = {
+		"integration": integration,
+		"integration_item_code": integration_item_code,
+	}
 
 	if variant_id:
 		filter.update({"variant_id": variant_id})
@@ -87,7 +132,10 @@ def get_erpnext_item_code(
 	variant_id: str | None = None,
 	has_variants: int | None = 0,
 ) -> str | None:
-	filters = {"integration": integration, "integration_item_code": integration_item_code}
+	filters = {
+		"integration": integration,
+		"integration_item_code": integration_item_code,
+	}
 	if variant_id:
 		filters.update({"variant_id": variant_id})
 	elif has_variants:
@@ -111,11 +159,16 @@ def get_erpnext_item(
 	item_code = None
 	if sku:
 		item_code = frappe.db.get_value(
-			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
+			"Ecommerce Item",
+			{"sku": sku, "integration": integration},
+			fieldname="erpnext_item_code",
 		)
 	if not item_code:
 		item_code = get_erpnext_item_code(
-			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
+			integration,
+			integration_item_code,
+			variant_id=variant_id,
+			has_variants=has_variants,
 		)
 
 	if item_code:
