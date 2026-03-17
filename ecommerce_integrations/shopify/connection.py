@@ -6,8 +6,7 @@ import json
 
 import frappe
 from frappe import _
-from shopify.resources import Webhook
-from shopify.session import Session
+from shopify import GraphQL, Session
 
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
@@ -29,7 +28,11 @@ def temp_shopify_session(func):
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)
 		if setting.is_enabled():
-			auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
+			auth_details = (
+				setting.shopify_url,
+				API_VERSION,
+				setting.get_password("password"),
+			)
 
 			with Session.temp(*auth_details):
 				return func(*args, **kwargs)
@@ -37,44 +40,166 @@ def temp_shopify_session(func):
 	return wrapper
 
 
-def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
-	"""Register required webhooks with shopify and return registered webhooks."""
+def register_webhooks(shopify_url: str, password: str) -> list[dict]:
+	"""Register required webhooks using Shopify GraphQL API."""
+
 	new_webhooks = []
 
-	# clear all stale webhooks matching current site url before registering new ones
+	# Remove old webhooks
 	unregister_webhooks(shopify_url, password)
+
+	mutation = """
+    mutation webhookSubscriptionCreate($topic: WebhookSubscriptionTopic!, $callbackUrl: URL!) {
+      webhookSubscriptionCreate(
+        topic: $topic
+        webhookSubscription: { format: JSON, callbackUrl: $callbackUrl }
+      ) {
+        webhookSubscription {
+          id
+          topic
+          endpoint {
+            __typename
+            ... on WebhookHttpEndpoint {
+              callbackUrl
+            }
+          }
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
 
 	with Session.temp(shopify_url, API_VERSION, password):
 		for topic in WEBHOOK_EVENTS:
-			webhook = Webhook.create({"topic": topic, "address": get_callback_url(), "format": "json"})
+			# Ensure JSON object result
+			raw = GraphQL().execute(
+				mutation,
+				{
+					"topic": topic,
+					"callbackUrl": get_callback_url(),
+				},
+			)
 
-			if webhook.is_valid():
-				new_webhooks.append(webhook)
-			else:
+			try:
+				result = json.loads(raw) if isinstance(raw, str) else raw
+			except Exception:
+				create_shopify_log(status="Error", message="Invalid GraphQL response", response_data=raw)
+				continue
+
+			# Core nodes
+			root = result.get("data")
+			errors = result.get("errors")
+
+			# If `data` is None => fatal GraphQL error
+			if root is None:
+				msg = errors[0].get("message") if errors else "Unknown Shopify GraphQL error"
 				create_shopify_log(
 					status="Error",
-					response_data=webhook.to_dict(),
-					exception=webhook.errors.full_messages(),
+					message=msg,
+					response_data=result,
+					exception=errors,
 				)
+				continue
 
+			create_node = root.get("webhookSubscriptionCreate")
+
+			if not create_node:
+				create_shopify_log(
+					status="Error",
+					message="Missing webhookSubscriptionCreate",
+					response_data=result,
+				)
+				continue
+
+			# User errors
+			user_errors = create_node.get("userErrors") or []
+			if user_errors:
+				msg = user_errors[0].get("message")
+				create_shopify_log(
+					status="Error",
+					message=msg,
+					response_data=result,
+					exception=user_errors,
+				)
+				continue
+
+			webhook = create_node.get("webhookSubscription")
+			if webhook:
+				new_webhooks.append(webhook)
+			query = """
+                    query {
+                webhookSubscriptionsCount {
+                    count
+                    precision
+                }
+                }
+            """
+			response = GraphQL().execute(query)
+			create_shopify_log(
+				status="Success", message="Webhooks added to current url", response_data=response
+			)
 	return new_webhooks
 
 
 def unregister_webhooks(shopify_url: str, password: str) -> None:
-	"""Unregister all webhooks from shopify that correspond to current site url."""
-	url = get_current_domain_name()
+	"""Unregister all GraphQL webhooks for the current site URL."""
+
+	query = """
+    {
+      webhookSubscriptions(first: 250) {
+        edges {
+          node {
+            id
+            endpoint {
+              __typename
+              ... on WebhookHttpEndpoint {
+                callbackUrl
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+
+	delete_mutation = """
+    mutation webhookSubscriptionDelete($id: ID!) {
+      webhookSubscriptionDelete(id: $id) {
+        deletedWebhookSubscriptionId
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    """
 
 	with Session.temp(shopify_url, API_VERSION, password):
-		for webhook in Webhook.find():
-			if url in webhook.address:
-				webhook.destroy()
+		result_raw = GraphQL().execute(query)
+
+	try:
+		result = json.loads(result_raw) if isinstance(result_raw, str) else result_raw
+	except Exception:
+		frappe.log_error(f"Invalid GraphQL response: {result_raw}", "Shopify Unregister Webhooks")
+		return
+
+	edges = result.get("data", {}).get("webhookSubscriptions", {}).get("edges", [])
+
+	for edge in edges:
+		node = edge.get("node", {})
+		webhook_id = node.get("id")
+		if webhook_id:
+			with Session.temp(shopify_url, API_VERSION, password):
+				response = GraphQL().execute(delete_mutation, {"id": webhook_id})
+				create_shopify_log(
+					status="Success", message="Webhook deleted for the current url", response_data=response
+				)
 
 
 def get_current_domain_name() -> str:
-	"""Get current site domain name. E.g. test.erpnext.com
-
-	If developer_mode is enabled and localtunnel_url is set in site config then domain  is set to localtunnel_url.
-	"""
 	if frappe.conf.developer_mode and frappe.conf.localtunnel_url:
 		return frappe.conf.localtunnel_url
 	else:
@@ -99,16 +224,15 @@ def store_request_data() -> None:
 		_validate_request(frappe.request, hmac_header)
 
 		data = json.loads(frappe.request.data)
+
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
 		process_request(data, event)
 
 
 def process_request(data, event):
-	# create log
 	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
 
-	# enqueue backround job
 	frappe.enqueue(
 		method=EVENT_MAPPER[event],
 		queue="short",
@@ -121,9 +245,11 @@ def process_request(data, event):
 def _validate_request(req, hmac_header):
 	settings = frappe.get_doc(SETTING_DOCTYPE)
 	secret_key = settings.shared_secret
+	raw_body = req.get_data()
 
-	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
+	computed_hmac = base64.b64encode(
+		hmac.new(secret_key.encode("utf-8"), raw_body, hashlib.sha256).digest()
+	).decode()
 
-	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(status="Error", request_data=req.data)
+	if not hmac.compare_digest(computed_hmac, hmac_header):
 		frappe.throw(_("Unverified Webhook Data"))

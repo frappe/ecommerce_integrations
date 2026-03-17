@@ -1,6 +1,3 @@
-// Copyright (c) 2021, Frappe and contributors
-// For license information, please see LICENSE
-
 frappe.provide("ecommerce_integrations.shopify.shopify_setting");
 
 frappe.ui.form.on("Shopify Setting", {
@@ -15,6 +12,24 @@ frappe.ui.form.on("Shopify Setting", {
 		});
 	},
 
+	sync_old_orders: function (frm) {
+		if (frm.doc.sync_old_orders) {
+			frm.set_value("sync_old_orders", 1);
+			frm.save().then(() => {
+				frappe.call({
+					doc: frm.doc,
+					method: "sync_old_orders_in_shopify",
+					freeze: true,
+					freeze_message: __("Syncing old orders from Shopify..."),
+					callback: function (r) {
+						if (!r.exc) {
+							frappe.msgprint(__("Synced Orders"));
+						}
+					},
+				});
+			});
+		}
+	},
 	fetch_shopify_locations: function (frm) {
 		frappe.call({
 			doc: frm.doc,

@@ -20,24 +20,27 @@ class ShopifyCustomer(EcommerceCustomer):
 
 	def sync_customer(self, customer: dict[str, Any]) -> None:
 		"""Create Customer in ERPNext using shopify's Customer dict."""
-
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		if len(customer_name.strip()) == 0:
 			customer_name = customer.get("email")
-
 		customer_group = self.setting.customer_group
 		super().sync_customer(customer_name, customer_group)
-
-		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
+		billing_address = customer.get("billing_address", {}) or customer.get("defaultAddress")
 		shipping_address = customer.get("shipping_address", {})
 
 		if billing_address:
 			self.create_customer_address(
-				customer_name, billing_address, address_type="Billing", email=customer.get("email")
+				customer_name,
+				billing_address,
+				address_type="Billing",
+				email=customer.get("email"),
 			)
 		if shipping_address:
 			self.create_customer_address(
-				customer_name, shipping_address, address_type="Shipping", email=customer.get("email")
+				customer_name,
+				shipping_address,
+				address_type="Shipping",
+				email=customer.get("email"),
 			)
 
 		self.create_customer_contact(customer)
@@ -54,12 +57,10 @@ class ShopifyCustomer(EcommerceCustomer):
 		super().create_customer_address(address_fields)
 
 	def update_existing_addresses(self, customer):
-		billing_address = customer.get("billing_address", {}) or customer.get("default_address")
+		billing_address = customer.get("billing_address", {}) or customer.get("defaultAddress")
 		shipping_address = customer.get("shipping_address", {})
-
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		email = customer.get("email")
-
 		if billing_address:
 			self._update_existing_address(customer_name, billing_address, "Billing", email)
 		if shipping_address:
@@ -76,12 +77,14 @@ class ShopifyCustomer(EcommerceCustomer):
 
 		if not old_address:
 			self.create_customer_address(customer_name, shopify_address, address_type, email)
+
 		else:
 			exclude_in_update = ["address_title", "address_type"]
 			new_values = _map_address_fields(shopify_address, customer_name, address_type, email)
 
 			old_address.update({k: v for k, v in new_values.items() if k not in exclude_in_update})
 			old_address.flags.ignore_mandatory = True
+
 			old_address.save()
 
 	def create_customer_contact(self, shopify_customer: dict[str, Any]) -> None:

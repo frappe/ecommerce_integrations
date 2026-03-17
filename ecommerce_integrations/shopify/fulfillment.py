@@ -9,6 +9,7 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
 	SETTING_DOCTYPE,
+	SHOPIFY_LINE_ITEM_ID_FIELD,
 )
 from ecommerce_integrations.shopify.order import get_sales_order
 from ecommerce_integrations.shopify.utils import create_shopify_log
@@ -18,7 +19,6 @@ def prepare_delivery_note(payload, request_id=None):
 	frappe.set_user("Administrator")
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
-
 	order = payload
 
 	try:
@@ -27,7 +27,10 @@ def prepare_delivery_note(payload, request_id=None):
 			create_delivery_note(order, setting, sales_order)
 			create_shopify_log(status="Success")
 		else:
-			create_shopify_log(status="Invalid", message="Sales Order not found for syncing delivery note.")
+			create_shopify_log(
+				status="Invalid",
+				message="Sales Order not found for syncing delivery note.",
+			)
 	except Exception as e:
 		create_shopify_log(status="Error", exception=e, rollback=True)
 
@@ -60,7 +63,6 @@ def create_delivery_note(shopify_order, setting, so):
 
 
 def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
-	# local import to avoid circular imports
 	from ecommerce_integrations.shopify.product import get_item_code
 
 	fulfillment_items = deepcopy(fulfillment_items)
@@ -72,7 +74,7 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 	final_items = []
 
 	def find_matching_fullfilement_item(dn_item):
-		nonlocal fulfillment_items
+		fulfillment_items
 
 		for item in fulfillment_items:
 			if get_item_code(item) == dn_item.item_code:
@@ -81,6 +83,13 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 
 	for dn_item in dn_items:
 		if shopify_item := find_matching_fullfilement_item(dn_item):
-			final_items.append(dn_item.update({"qty": shopify_item.get("quantity"), "warehouse": warehouse}))
+			dn_item.qty = shopify_item.get("quantity")
+			dn_item.warehouse = warehouse
+			setattr(
+				dn_item,
+				SHOPIFY_LINE_ITEM_ID_FIELD,
+				str(shopify_item.get("id")),
+			)
+			final_items.append(dn_item)
 
 	return final_items
