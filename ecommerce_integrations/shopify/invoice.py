@@ -1,6 +1,6 @@
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
-from frappe.utils import cint, cstr, getdate, nowdate
+from frappe.utils import cint, cstr, flt, getdate, nowdate
 
 from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
@@ -47,6 +47,7 @@ def create_sales_invoice(shopify_order, setting, so):
 		sales_invoice.due_date = posting_date
 		sales_invoice.naming_series = setting.sales_invoice_series or "SI-Shopify-"
 		sales_invoice.flags.ignore_mandatory = True
+		_align_invoice_currency(sales_invoice)
 		set_cost_center(sales_invoice.items, setting.cost_center)
 		sales_invoice.insert(ignore_mandatory=True)
 		sales_invoice.submit()
@@ -55,6 +56,25 @@ def create_sales_invoice(shopify_order, setting, so):
 
 		if shopify_order.get("note"):
 			sales_invoice.add_comment(text=f"Order Note: {shopify_order.get('note')}")
+
+
+def _align_invoice_currency(sales_invoice):
+	"""Ensure the invoice currency matches the debit_to account currency.
+
+	When a Shopify customer is created with a foreign currency (e.g. USD),
+	make_sales_invoice picks up that currency from the customer record.
+	However, the debit_to (receivable) account may be in the company's
+	default currency (e.g. CAD), causing a validation error.
+	"""
+	if not sales_invoice.debit_to:
+		return
+
+	debit_to_currency = frappe.get_cached_value(
+		"Account", sales_invoice.debit_to, "account_currency"
+	)
+	if debit_to_currency and sales_invoice.currency != debit_to_currency:
+		sales_invoice.currency = debit_to_currency
+		sales_invoice.conversion_rate = 1
 
 
 def set_cost_center(items, cost_center):
