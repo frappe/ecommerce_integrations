@@ -380,17 +380,35 @@ def cancel_order(payload, request_id=None):
 			create_shopify_log(status="Invalid", message="Sales Order does not exist")
 			return
 
-		sales_invoice = frappe.db.get_value("Sales Invoice", filters={ORDER_ID_FIELD: order_id})
-		delivery_notes = frappe.db.get_list("Delivery Note", filters={ORDER_ID_FIELD: order_id})
+		# Cancel Sales Invoices
+		sales_invoices = frappe.db.get_all("Sales Invoice", filters={ORDER_ID_FIELD: order_id}, pluck="name")
+		for si_name in sales_invoices:
+			try:
+				si = frappe.get_doc("Sales Invoice", si_name)
+				if si.docstatus == 1:
+					si.cancel()
+				elif si.docstatus == 0:
+					si.delete()
+			except Exception:
+				frappe.log_error(message=frappe.get_traceback(), title="Failed to cancel SI on Shopify order cancellation")
 
-		if sales_invoice:
-			frappe.db.set_value("Sales Invoice", sales_invoice, ORDER_STATUS_FIELD, order_status)
+		# Cancel Delivery Notes
+		delivery_notes = frappe.db.get_all("Delivery Note", filters={ORDER_ID_FIELD: order_id}, pluck="name")
+		for dn_name in delivery_notes:
+			try:
+				dn = frappe.get_doc("Delivery Note", dn_name)
+				if dn.docstatus == 1:
+					dn.cancel()
+				elif dn.docstatus == 0:
+					dn.delete()
+			except Exception:
+				frappe.log_error(message=frappe.get_traceback(), title="Failed to cancel DN on Shopify order cancellation")
 
-		for dn in delivery_notes:
-			frappe.db.set_value("Delivery Note", dn.name, ORDER_STATUS_FIELD, order_status)
-
-		if not sales_invoice and not delivery_notes and sales_order.docstatus == 1:
+		sales_order.reload()
+		if sales_order.docstatus == 1:
 			sales_order.cancel()
+		elif sales_order.docstatus == 0:
+			sales_order.delete()
 		else:
 			frappe.db.set_value("Sales Order", sales_order.name, ORDER_STATUS_FIELD, order_status)
 
