@@ -17,7 +17,7 @@ frappe.ui.form.on("Stock Entry", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 	},

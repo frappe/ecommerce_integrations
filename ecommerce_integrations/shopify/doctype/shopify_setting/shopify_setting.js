@@ -51,7 +51,7 @@ frappe.ui.form.on("Shopify Setting", {
 		frm.set_query(
 			"erpnext_warehouse",
 			"shopify_warehouse_mapping",
-			warehouse_query
+			warehouse_query,
 		);
 
 		frm.set_query("price_list", () => {
