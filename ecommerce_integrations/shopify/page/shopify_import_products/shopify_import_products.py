@@ -1,8 +1,9 @@
 from time import process_time
 
+from shopify.resources import Product
+
 import frappe
 from frappe.exceptions import UniqueValidationError
-from shopify.resources import Product
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
@@ -119,7 +120,10 @@ def is_synced(product):
 @frappe.whitelist()
 def import_all_products():
 	frappe.enqueue(
-		queue_sync_all_products, queue="long", job_name=SYNC_JOB_NAME, key=REALTIME_KEY,
+		queue_sync_all_products,
+		queue="long",
+		job_name=SYNC_JOB_NAME,
+		key=REALTIME_KEY,
 	)
 
 

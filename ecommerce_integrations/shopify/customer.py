@@ -85,7 +85,6 @@ class ShopifyCustomer(EcommerceCustomer):
 			old_address.save()
 
 	def create_customer_contact(self, shopify_customer: Dict[str, Any]) -> None:
-
 		if not (shopify_customer.get("first_name") and shopify_customer.get("email")):
 			return
 
@@ -99,9 +98,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		if shopify_customer.get("email"):
 			contact_fields["email_ids"] = [{"email_id": shopify_customer.get("email"), "is_primary": True}]
 
-		phone_no = shopify_customer.get("phone") or shopify_customer.get("default_address", {}).get(
-			"phone"
-		)
+		phone_no = shopify_customer.get("phone") or shopify_customer.get("default_address", {}).get("phone")
 
 		if validate_phone_number(phone_no, throw=False):
 			contact_fields["phone_nos"] = [{"phone": phone_no, "is_primary_phone": True}]
@@ -110,7 +107,7 @@ class ShopifyCustomer(EcommerceCustomer):
 
 
 def _map_address_fields(shopify_address, customer_name, address_type, email):
-	""" returns dict with shopify address fields mapped to equivalent ERPNext fields"""
+	"""returns dict with shopify address fields mapped to equivalent ERPNext fields"""
 	address_fields = {
 		"address_title": customer_name,
 		"address_type": address_type,

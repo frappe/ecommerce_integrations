@@ -1,7 +1,9 @@
 from unittest.mock import patch
 
-import frappe
 import responses
+
+import frappe
+
 from erpnext.stock.doctype.item.test_item import make_item
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 from erpnext.stock.utils import get_stock_balance
@@ -93,7 +95,6 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 
 def make_ecommerce_item(item_code):
-
 	if ecommerce_item.is_synced(MODULE_NAME, item_code):
 		return
 

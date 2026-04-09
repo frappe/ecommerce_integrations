@@ -24,9 +24,7 @@ def prepare_delivery_note():
 		)
 
 		for facility in enabled_facilities:
-			updated_packages = client.search_shipping_packages(
-				updated_since=minutes, facility_code=facility
-			)
+			updated_packages = client.search_shipping_packages(updated_since=minutes, facility_code=facility)
 			valid_packages = [p for p in updated_packages if p.get("channel") in enabled_channels]
 			if not valid_packages:
 				continue

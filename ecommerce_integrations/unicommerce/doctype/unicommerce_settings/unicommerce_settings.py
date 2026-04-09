@@ -3,8 +3,9 @@
 
 from typing import Dict, List, Optional, Tuple
 
-import frappe
 import requests
+
+import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.utils import add_to_date, get_datetime, now_datetime
@@ -148,9 +149,7 @@ class UnicommerceSettings(SettingController):
 
 		all_wh flag ignores enabled status.
 		"""
-		return [
-			wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled or all_wh
-		]
+		return [wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping if wh_map.enabled or all_wh]
 
 	def get_erpnext_to_integration_wh_mapping(
 		self, all_wh=False
@@ -175,7 +174,7 @@ class UnicommerceSettings(SettingController):
 		return {v: k for k, v in reverse_map.items()}
 
 	def get_company_addresses(self, facility_code: str) -> Tuple[Optional[str], Optional[str]]:
-		""" Get mapped company billing and shipping addresses."""
+		"""Get mapped company billing and shipping addresses."""
 		for wh_map in self.warehouse_mapping:
 			if wh_map.unicommerce_facility_code == facility_code:
 				return wh_map.company_address, wh_map.dispatch_address
@@ -183,7 +182,6 @@ class UnicommerceSettings(SettingController):
 
 
 def setup_custom_fields(update=True):
-
 	custom_sections = {
 		"Sales Order": [
 			dict(

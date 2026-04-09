@@ -93,7 +93,6 @@ def _create_customer_addresses(addresses: List[Dict[str, Any]], customer) -> Non
 
 
 def _create_customer_address(uni_address, address_type, customer, also_shipping=False):
-
 	country_code = uni_address.get("country")
 	country = UNICOMMERCE_COUNTRY_MAPPING.get(country_code)
 

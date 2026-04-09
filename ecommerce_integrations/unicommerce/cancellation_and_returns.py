@@ -4,9 +4,10 @@ from datetime import date, datetime
 from typing import List
 
 import frappe
+from frappe.utils import now_datetime
+
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from erpnext.controllers.accounts_controller import update_child_qty_rate
-from frappe.utils import now_datetime
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
@@ -90,9 +91,7 @@ def update_erpnext_order_items(so_data, so=None):
 
 
 def _delete_cancelled_items(erpnext_items, cancelled_items):
-	items = [
-		d.as_dict() for d in erpnext_items if d.get(ORDER_ITEM_CODE_FIELD) not in cancelled_items
-	]
+	items = [d.as_dict() for d in erpnext_items if d.get(ORDER_ITEM_CODE_FIELD) not in cancelled_items]
 
 	# add `docname` same as name, required for Update Items functionality
 	for item in items:
@@ -177,7 +176,6 @@ def check_and_update_customer_initiated_returns(orders, client: UnicommerceAPICl
 
 
 def sync_customer_initiated_returns(so_data):
-
 	customer_returns = [r for r in so_data.get("returns", []) if r["type"] == "Customer Returned"]
 	if not customer_returns:
 		return
@@ -194,9 +192,7 @@ def create_cir_credit_note(so_data, return_data):
 	# Get items from SO which are returned, map SO item -> SI item with linked rows.
 	so_item_code_map = {item.get(ORDER_ITEM_CODE_FIELD): item.name for item in so.items}
 
-	invoice_name = frappe.db.get_value(
-		"Sales Invoice", {ORDER_CODE_FIELD: so_data["code"], "is_return": 0}
-	)
+	invoice_name = frappe.db.get_value("Sales Invoice", {ORDER_CODE_FIELD: so_data["code"], "is_return": 0})
 	si = frappe.get_doc("Sales Invoice", invoice_name)
 	so_si_item_map = {item.so_detail: item.name for item in si.items}
 
@@ -223,9 +219,7 @@ def _handle_partial_returns(credit_note, returned_items: List[str]) -> None:
 		item_code_to_qty_map[item.item_code] += item.qty
 
 	# remove non-returned items
-	credit_note.items = [
-		item for item in credit_note.items if item.sales_invoice_item in returned_items
-	]
+	credit_note.items = [item for item in credit_note.items if item.sales_invoice_item in returned_items]
 
 	returned_qty_map = defaultdict(float)
 	for item in credit_note.items:

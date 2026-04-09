@@ -1,8 +1,9 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
-import frappe
 import requests
+
+import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
 from frappe.model.document import Document

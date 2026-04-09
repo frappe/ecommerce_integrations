@@ -29,7 +29,6 @@ class TestShopifySetting(unittest.TestCase):
 		)
 
 	def test_custom_field_creation(self):
-
 		setup_custom_fields()
 
 		created_fields = frappe.get_all(

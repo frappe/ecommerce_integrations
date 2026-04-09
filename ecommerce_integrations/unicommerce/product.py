@@ -1,10 +1,11 @@
 from typing import List, NewType
 
+from stdnum.ean import is_valid as validate_barcode
+
 import frappe
 from frappe import _
 from frappe.utils import get_url, now, to_markdown
 from frappe.utils.nestedset import get_root_of
-from stdnum.ean import is_valid as validate_barcode
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
@@ -91,7 +92,6 @@ def _create_item_dict(uni_item):
 	_validate_create_brand(uni_item.get("brand"))
 
 	for uni_field, erpnext_field in UNI_TO_ERPNEXT_ITEM_MAPPING.items():
-
 		value = uni_item.get(uni_field)
 		if not _validate_field(erpnext_field, value):
 			continue
@@ -284,9 +284,7 @@ def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
 		elif barcode.barcode_type == "UPC-A":
 			item_json["upc"] = barcode.barcode
 
-	item_json["categoryCode"] = frappe.db.get_value(
-		"Item Group", item.item_group, PRODUCT_CATEGORY_FIELD
-	)
+	item_json["categoryCode"] = frappe.db.get_value("Item Group", item.item_group, PRODUCT_CATEGORY_FIELD)
 	# append site prefix to image url
 	item_json["imageUrl"] = get_url(item.image)
 	item_json["maxRetailPrice"] = item.standard_rate
@@ -338,6 +336,4 @@ def validate_item(doc, method=None):
 
 	item_group = frappe.get_cached_doc("Item Group", item.item_group)
 	if not item_group.get(PRODUCT_CATEGORY_FIELD):
-		frappe.throw(
-			_("Unicommerce Product category required in Item Group: {}").format(item_group.name)
-		)
+		frappe.throw(_("Unicommerce Product category required in Item Group: {}").format(item_group.name))

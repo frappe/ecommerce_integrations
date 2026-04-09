@@ -1,6 +1,7 @@
 import frappe
-from erpnext.setup.utils import enable_all_roles_and_domains
 from frappe.utils import now_datetime
+
+from erpnext.setup.utils import enable_all_roles_and_domains
 
 
 def before_tests():

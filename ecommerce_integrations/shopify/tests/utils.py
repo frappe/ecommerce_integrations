@@ -3,11 +3,13 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import frappe
 import shopify
-from erpnext import get_default_cost_center
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
+
+import frappe
+
+from erpnext import get_default_cost_center
 
 from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
 

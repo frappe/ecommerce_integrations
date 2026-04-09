@@ -225,7 +225,7 @@ class TestAmazonSettings:
 		self.warehouse = get_warehouse()
 		self.parent_item_group = get_item_group()
 		self.price_list = "Standard Selling"
-		self.customer_group = "_Testing Customer Group"
+		self.customer_group = "Individual"
 		self.territory = "All Territories"
 		self.customer_type = "Individual"
 		self.market_place_account_group = "Accounts Receivable - ATC"

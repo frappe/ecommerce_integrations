@@ -32,9 +32,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		return
 
 	# check if need to run based on configured sync frequency
-	if not force and not need_to_run(
-		SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"
-	):
+	if not force and not need_to_run(SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
 		return
 
 	# get configured warehouses

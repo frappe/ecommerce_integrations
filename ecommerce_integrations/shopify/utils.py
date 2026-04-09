@@ -26,11 +26,15 @@ def migrate_from_old_connector(payload=None, request_id=None):
 		log = frappe.get_doc("Ecommerce Integration Log", request_id)
 	else:
 		log = create_shopify_log(
-			status="Queued", method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
+			status="Queued",
+			method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
 		)
 
 	frappe.enqueue(
-		method=_migrate_items_to_ecommerce_item, queue="long", is_async=True, log=log,
+		method=_migrate_items_to_ecommerce_item,
+		queue="long",
+		is_async=True,
+		log=log,
 	)
 
 
@@ -48,7 +52,6 @@ def ensure_old_connector_is_disabled():
 
 
 def _migrate_items_to_ecommerce_item(log):
-
 	shopify_fields = ["shopify_product_id", "shopify_variant_id"]
 
 	for field in shopify_fields:

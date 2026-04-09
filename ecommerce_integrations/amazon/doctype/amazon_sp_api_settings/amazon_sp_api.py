@@ -156,9 +156,7 @@ class AWSSigV4(AuthBase):
 				map(lambda H: H.lower(), request.headers.keys()),
 			)
 		)
-		canonical_headers = "".join(
-			map(lambda h: ":".join((h, request.headers[h])) + "\n", headers_to_sign)
-		)
+		canonical_headers = "".join(map(lambda h: ":".join((h, request.headers[h])) + "\n", headers_to_sign))
 		signed_headers = ";".join(headers_to_sign)
 
 		# Combine elements to create canonical request.
@@ -208,7 +206,7 @@ class SPAPIError(Exception):
 
 
 class SPAPI(object):
-	""" Base Amazon SP-API class """
+	"""Base Amazon SP-API class"""
 
 	# https://github.com/amzn/selling-partner-api-docs/blob/main/guides/en-US/developer-guide/SellingPartnerApiDeveloperGuide.md#connecting-to-the-selling-partner-api
 	AUTH_URL = "https://api.amazon.com/auth/o2/token"
@@ -246,9 +244,7 @@ class SPAPI(object):
 		result = response.json()
 		if response.status_code == 200:
 			return result.get("access_token")
-		exception = SPAPIError(
-			error=result.get("error"), error_description=result.get("error_description")
-		)
+		exception = SPAPIError(error=result.get("error"), error_description=result.get("error_description"))
 		raise exception
 
 	def get_auth(self) -> AWSSigV4:
@@ -281,7 +277,11 @@ class SPAPI(object):
 		return {"x-amz-access-token": self.get_access_token()}
 
 	def make_request(
-		self, method: str = "GET", append_to_base_uri: str = "", params: dict = None, data: dict = None,
+		self,
+		method: str = "GET",
+		append_to_base_uri: str = "",
+		params: dict = None,
+		data: dict = None,
 	) -> dict:
 		if isinstance(params, dict):
 			params = Util.remove_empty(params)
@@ -307,21 +307,21 @@ class SPAPI(object):
 
 
 class Finances(SPAPI):
-	""" Amazon Finances API """
+	"""Amazon Finances API"""
 
 	BASE_URI = "/finances/v0/"
 
 	def list_financial_events_by_order_id(
 		self, order_id: str, max_results: int = None, next_token: str = None
 	) -> dict:
-		""" Returns all financial events for the specified order. """
+		"""Returns all financial events for the specified order."""
 		append_to_base_uri = f"orders/{order_id}/financialEvents"
 		data = dict(MaxResultsPerPage=max_results, NextToken=next_token)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 
 class Orders(SPAPI):
-	""" Amazon Orders API """
+	"""Amazon Orders API"""
 
 	BASE_URI = "/orders/v0/orders"
 
@@ -345,7 +345,7 @@ class Orders(SPAPI):
 		is_ispu: bool = False,
 		store_chain_store_id: str = None,
 	) -> dict:
-		""" Returns orders created or updated during the time frame indicated by the specified parameters. You can also apply a range of filtering criteria to narrow the list of orders returned. If NextToken is present, that will be used to retrieve the orders instead of other criteria. """
+		"""Returns orders created or updated during the time frame indicated by the specified parameters. You can also apply a range of filtering criteria to narrow the list of orders returned. If NextToken is present, that will be used to retrieve the orders instead of other criteria."""
 		data = dict(
 			CreatedAfter=created_after,
 			CreatedBefore=created_before,
@@ -374,19 +374,23 @@ class Orders(SPAPI):
 		return self.make_request(params=data)
 
 	def get_order_items(self, order_id: str, next_token: str = None) -> dict:
-		""" Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items. """
+		"""Returns detailed order item information for the order indicated by the specified order ID. If NextToken is provided, it's used to retrieve the next page of order items."""
 		append_to_base_uri = f"/{order_id}/orderItems"
 		data = dict(NextToken=next_token)
 		return self.make_request(append_to_base_uri=append_to_base_uri, params=data)
 
 
 class CatalogItems(SPAPI):
-	""" Amazon Catalog Items API """
+	"""Amazon Catalog Items API"""
 
 	BASE_URI = "/catalog/v0"
 
-	def get_catalog_item(self, asin: str, marketplace_id: str = None,) -> dict:
-		""" Returns a specified item and its attributes. """
+	def get_catalog_item(
+		self,
+		asin: str,
+		marketplace_id: str = None,
+	) -> dict:
+		"""Returns a specified item and its attributes."""
 		if not marketplace_id:
 			marketplace_id = self.marketplace_id
 

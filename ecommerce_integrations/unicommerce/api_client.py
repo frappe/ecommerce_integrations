@@ -1,11 +1,12 @@
 import base64
 from typing import Any, Dict, List, Optional, Tuple
 
-import frappe
 import requests
+from pytz import timezone
+
+import frappe
 from frappe import _
 from frappe.utils import cint, cstr, get_datetime
-from pytz import timezone
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
@@ -20,7 +21,9 @@ class UnicommerceAPIClient:
 	"""
 
 	def __init__(
-		self, url: Optional[str] = None, access_token: Optional[str] = None,
+		self,
+		url: Optional[str] = None,
+		access_token: Optional[str] = None,
 	):
 		self.settings = frappe.get_doc(SETTINGS_DOCTYPE)
 		self.base_url = url or f"https://{self.settings.unicommerce_site}"
@@ -45,7 +48,6 @@ class UnicommerceAPIClient:
 		files: Optional[JsonDict] = None,
 		log_error=True,
 	) -> Tuple[JsonDict, bool]:
-
 		if headers is None:
 			headers = {}
 
@@ -143,9 +145,7 @@ class UnicommerceAPIClient:
 		# remove None values.
 		body = {k: v for k, v in body.items() if v is not None}
 
-		search_results, status = self.request(
-			endpoint="/services/rest/v1/oms/saleOrder/search", body=body
-		)
+		search_results, status = self.request(endpoint="/services/rest/v1/oms/saleOrder/search", body=body)
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
@@ -163,7 +163,9 @@ class UnicommerceAPIClient:
 		body = {"itemTypeSKUs": sku_codes, "updatedSinceInMinutes": updated_since}
 
 		response, status = self.request(
-			endpoint="/services/rest/v1/inventory/inventorySnapshot/get", headers=extra_headers, body=body,
+			endpoint="/services/rest/v1/inventory/inventorySnapshot/get",
+			headers=extra_headers,
+			body=body,
 		)
 
 		if status:
@@ -329,7 +331,9 @@ class UnicommerceAPIClient:
 
 		extra_headers = {"Facility": facility_code}
 		return self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/edit", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingPackage/edit",
+			body=body,
+			headers=extra_headers,
 		)
 
 	def get_invoice_label(self, shipping_package_code: str, facility_code: str) -> Optional[str]:
@@ -371,7 +375,9 @@ class UnicommerceAPIClient:
 		}
 
 		response, status = self.request(
-			endpoint="/services/rest/v1/oms/shippingManifest/createclose", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingManifest/createclose",
+			body=body,
+			headers=extra_headers,
 		)
 
 		if status:
@@ -408,14 +414,20 @@ class UnicommerceAPIClient:
 		body = {k: v for k, v in body.items() if v is not None}
 
 		search_results, statuses = self.request(
-			endpoint="/services/rest/v1/oms/shippingPackage/search", body=body, headers=extra_headers,
+			endpoint="/services/rest/v1/oms/shippingPackage/search",
+			body=body,
+			headers=extra_headers,
 		)
 
 		if statuses and "elements" in search_results:
 			return search_results["elements"]
 
 	def create_import_job(
-		self, job_name: str, csv_filename: str, facility_code: str, job_type: str = "CREATE_NEW",
+		self,
+		job_name: str,
+		csv_filename: str,
+		facility_code: str,
+		job_type: str = "CREATE_NEW",
 	):
 		"""Create import job by specifying job name and CSV file
 
@@ -448,7 +460,7 @@ class UnicommerceAPIClient:
 
 
 def _utc_timeformat(datetime) -> str:
-	""" Get datetime in UTC/GMT as required by Unicommerce"""
+	"""Get datetime in UTC/GMT as required by Unicommerce"""
 	return get_datetime(datetime).astimezone(timezone("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

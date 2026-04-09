@@ -3,12 +3,14 @@ import json
 from collections import defaultdict
 from typing import Any, Dict, List, NewType, Optional
 
-import frappe
 import requests
-from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+
+import frappe
 from frappe import _
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
+
+from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
@@ -153,7 +155,6 @@ def bulk_generate_invoices(
 
 
 def _log_invoice_generation(sales_orders, failed_orders):
-
 	failed_orders = set(failed_orders)
 	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
 	successful_orders = list(set(sales_orders) - set(failed_orders))
@@ -236,9 +237,7 @@ def _validate_wh_allocation(warehouse_allocation: WHAllocation):
 				frappe.throw(msg)
 
 
-def _generate_invoice(
-	client: UnicommerceAPIClient, erpnext_order, channel_config, warehouse_allocation=None
-):
+def _generate_invoice(client: UnicommerceAPIClient, erpnext_order, channel_config, warehouse_allocation=None):
 	unicommerce_so_code = erpnext_order.get(ORDER_CODE_FIELD)
 
 	so_data = client.get_sales_order(unicommerce_so_code)
@@ -286,16 +285,12 @@ def _fetch_and_sync_invoice(
 	"""
 
 	so_data = client.get_sales_order(unicommerce_so_code)
-	shipping_packages = [
-		d["code"] for d in so_data["shippingPackages"] if d["status"] in INVOICED_STATE
-	]
+	shipping_packages = [d["code"] for d in so_data["shippingPackages"] if d["status"] in INVOICED_STATE]
 
 	for package in shipping_packages:
 		invoice_response = invoice_responses.get(package) or {}
 		invoice_data = client.get_sales_invoice(package, facility_code)["invoice"]
-		label_pdf = fetch_label_pdf(
-			package, invoice_response, client=client, facility_code=facility_code
-		)
+		label_pdf = fetch_label_pdf(package, invoice_response, client=client, facility_code=facility_code)
 		create_sales_invoice(
 			invoice_data,
 			erpnext_so_code,
@@ -351,9 +346,7 @@ def create_sales_invoice(
 	shipping_package_code = si_data.get("shippingPackageCode")
 	shipping_package_info = _get_shipping_package(so_data, shipping_package_code) or {}
 
-	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get(
-		"trackingNumber"
-	)
+	tracking_no = invoice_response.get("trackingNumber") or shipping_package_info.get("trackingNumber")
 	shipping_provider_code = (
 		invoice_response.get("shippingProviderCode")
 		or shipping_package_info.get("shippingProvider")
@@ -454,7 +447,7 @@ def _get_line_items(
 	cost_center: str,
 	warehouse_allocations: Optional[WHAllocation] = None,
 ) -> List[Dict[str, Any]]:
-	""" Invoice items can be different and are consolidated, hence recomputing is required """
+	"""Invoice items can be different and are consolidated, hence recomputing is required"""
 
 	si_items = []
 	for item in line_items:
@@ -482,14 +475,11 @@ def _get_line_items(
 
 
 def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], so_code: str):
-
 	so_items = frappe.get_doc("Sales Order", so_code).items
 	so_item_price_map = {d.name: d.rate for d in so_items}
 
 	# remove cancelled items
-	warehouse_allocation = [
-		d for d in warehouse_allocation if d["sales_order_row"] in so_item_price_map
-	]
+	warehouse_allocation = [d for d in warehouse_allocation if d["sales_order_row"] in so_item_price_map]
 
 	# update price
 	for item in warehouse_allocation:
@@ -510,7 +500,7 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 
 
 def _verify_total(si, si_data) -> None:
-	""" Leave a comment if grand total does not match unicommerce total"""
+	"""Leave a comment if grand total does not match unicommerce total"""
 	if abs(si.grand_total - flt(si_data["total"])) > 0.5:
 		si.add_comment(text=f"Invoice totals mismatch: Unicommerce reported total of {si_data['total']}")
 
@@ -541,7 +531,6 @@ def make_payment_entry(invoice, channel_config, invoice_posting_date=None):
 
 
 def fetch_label_pdf(package, invoicing_response, client, facility_code):
-
 	if invoicing_response and invoicing_response.get("shippingLabelLink"):
 		link = invoicing_response.get("shippingLabelLink")
 		return fetch_pdf_as_base64(link)

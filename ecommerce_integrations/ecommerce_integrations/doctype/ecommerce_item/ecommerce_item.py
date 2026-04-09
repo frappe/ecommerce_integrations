@@ -4,10 +4,11 @@
 from typing import Dict, Optional
 
 import frappe
-from erpnext import get_default_company
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr, get_datetime, now
+
+from erpnext import get_default_company
 
 
 class EcommerceItem(Document):
