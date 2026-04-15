@@ -113,7 +113,7 @@ class AWSSigV4(AuthBase):
 		uri = parsed_url.path
 
 		if len(parsed_url.query) > 0:
-			query_string = dict(map(lambda i: i.split("="), parsed_url.query.split("&")))
+			query_string = dict(i.split("=") for i in parsed_url.query.split("&"))
 		else:
 			query_string = dict()
 
@@ -132,8 +132,7 @@ class AWSSigV4(AuthBase):
 		# http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
 
 		# Query string values must be URL-encoded (space=%20) and be sorted by name.
-		canonical_query_string = "&".join(map(lambda p: "=".join(p), sorted(query_string.items())))
-
+		canonical_query_string = "&".join("=".join(p) for p in sorted(query_string.items()))
 		# Create payload hash (hash of the request body content).
 		if request.method == "GET":
 			payload_hash = hashlib.sha256(b"").hexdigest()
@@ -150,13 +149,14 @@ class AWSSigV4(AuthBase):
 		# Create the canonical headers and signed headers. Header names
 		# must be trimmed and lowercase, and sorted in code point order from
 		# low to high. Note that there is a trailing \n.
-		headers_to_sign = sorted(
-			filter(
-				lambda h: h.startswith("x-amz-") or h == "host",
-				map(lambda H: H.lower(), request.headers.keys()),
-			)
-		)
-		canonical_headers = "".join(map(lambda h: ":".join((h, request.headers[h])) + "\n", headers_to_sign))
+		headers_to_sign = []
+		for header in request.headers.keys():
+			header = header.lower()
+			if header.startswith("x-amz-") or header == "host":
+				headers_to_sign.append(header)
+		headers_to_sign.sort()
+
+		canonical_headers = "".join(f"{h}:{request.headers[h]}\n" for h in headers_to_sign)
 		signed_headers = ";".join(headers_to_sign)
 
 		# Combine elements to create canonical request.

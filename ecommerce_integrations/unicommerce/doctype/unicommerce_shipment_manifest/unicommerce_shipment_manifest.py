@@ -183,9 +183,11 @@ def search_packages(search_term: str, channel: str | None = None, shipper: str |
 
 
 @frappe.whitelist()
-def get_shipping_package_list(source_name, target_doc=None):
+def get_shipping_package_list(source_name: str, target_doc: dict | str | None = None) -> dict:
 	if target_doc and isinstance(target_doc, str):
-		target_doc = json.loads(target_doc)
+		target_doc = frappe._dict(json.loads(target_doc))
+	elif target_doc is None:
+		target_doc = frappe._dict()
 
 	target_doc.setdefault("manifest_items", []).append({"sales_invoice": source_name})
 
