@@ -276,7 +276,7 @@ def get_state(country_id, state_id):
 	if list_of_states_of_the_country:
 		for states in list_of_states_of_the_country["states"]:
 			if states["id"] == state_id:
-				state == states
+				state = states
 	return state
 
 

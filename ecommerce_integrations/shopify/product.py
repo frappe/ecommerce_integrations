@@ -1,5 +1,3 @@
-from typing import Optional
-
 from shopify.resources import Product, Variant
 
 import frappe
@@ -24,9 +22,9 @@ class ShopifyProduct:
 	def __init__(
 		self,
 		product_id: str,
-		variant_id: Optional[str] = None,
-		sku: Optional[str] = None,
-		has_variants: Optional[int] = 0,
+		variant_id: str | None = None,
+		sku: str | None = None,
+		has_variants: int | None = 0,
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
@@ -530,8 +528,8 @@ def get_shopify_weight_uom(erpnext_weight_uom: str) -> str:
 def update_default_variant_properties(
 	shopify_product: Product,
 	is_stock_item: bool,
-	sku: Optional[str] = None,
-	price: Optional[float] = None,
+	sku: str | None = None,
+	price: float | None = None,
 ):
 	"""Shopify creates default variant upon saving the product.
 

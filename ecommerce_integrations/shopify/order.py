@@ -1,5 +1,5 @@
 import json
-from typing import Literal, Optional
+from typing import Literal
 
 from shopify.collection import PaginatedIterator
 from shopify.resources import Order
@@ -260,7 +260,7 @@ def consolidate_order_taxes(taxes):
 	return tax_account_wise_data.values()
 
 
-def get_tax_account_head(tax, charge_type: Optional[Literal["shipping", "sales_tax"]] = None):
+def get_tax_account_head(tax, charge_type: Literal["shipping", "sales_tax"] | None = None):
 	tax_title = str(tax.get("title"))
 
 	tax_account = frappe.db.get_value(

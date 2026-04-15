@@ -154,12 +154,12 @@ def queue_sync_all_products(*args, **kwargs):
 				publish(f"✅ Synced Product {product.id}", synced=True)
 
 			except UniqueValidationError as e:
-				publish(f"❌ Error Syncing Product {product.id} : {str(e)}", error=True)
+				publish(f"❌ Error Syncing Product {product.id} : {e!s}", error=True)
 				frappe.db.rollback(save_point=savepoint)
 				continue
 
 			except Exception as e:
-				publish(f"❌ Error Syncing Product {product.id} : {str(e)}", error=True)
+				publish(f"❌ Error Syncing Product {product.id} : {e!s}", error=True)
 				frappe.db.rollback(save_point=savepoint)
 				continue
 

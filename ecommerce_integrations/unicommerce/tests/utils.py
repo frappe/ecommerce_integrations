@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import typing
 import unittest
 
 import frappe
@@ -12,7 +13,7 @@ from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce
 
 
 class TestCase(unittest.TestCase):
-	config = {
+	config: typing.ClassVar[dict] = {
 		"is_enabled": 1,
 		"enable_inventory_sync": 1,
 		"use_stock_entry_for_grn": 1,

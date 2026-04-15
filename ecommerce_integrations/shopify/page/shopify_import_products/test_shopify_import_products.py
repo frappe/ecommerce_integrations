@@ -17,7 +17,7 @@ class TestShopifyImportProducts(TestCase):
 			products_json = json.loads(f.read())
 			self._products = products_json["products"]
 
-		super(TestShopifyImportProducts, self).__init__(obj)
+		super().__init__(obj)
 
 	def test_import_all_products(self):
 		required_products = {
@@ -97,7 +97,7 @@ class TestShopifyImportProducts(TestCase):
 			self.assertEqual(sorted(required_variants), sorted(created_ecom_variants))
 
 	def fake_single_product_from_bulk(self, product):
-		item = [p for p in self._products if str(p["id"]) == product][0]
+		item = next(p for p in self._products if str(p["id"]) == product)
 
 		product_json = json.dumps({"product": item})
 

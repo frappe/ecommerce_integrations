@@ -30,7 +30,7 @@ def process_stock_reconciliation(center, error_logs, date=None):
 
 
 def retrieve_stock_quantities_of_products(center, date):
-	url = api_url + "inventory/stock?center_id={0}&inventory_date={1}".format(center, date)
+	url = api_url + f"inventory/stock?center_id={center}&inventory_date={date}"
 	stock_quantities_of_products = make_api_call(url)
 	return stock_quantities_of_products
 

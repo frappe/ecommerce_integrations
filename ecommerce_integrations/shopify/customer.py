@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 import frappe
 from frappe import _
@@ -18,7 +18,7 @@ class ShopifyCustomer(EcommerceCustomer):
 		self.setting = frappe.get_doc(SETTING_DOCTYPE)
 		super().__init__(customer_id, CUSTOMER_ID_FIELD, MODULE_NAME)
 
-	def sync_customer(self, customer: Dict[str, Any]) -> None:
+	def sync_customer(self, customer: dict[str, Any]) -> None:
 		"""Create Customer in ERPNext using shopify's Customer dict."""
 
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
@@ -45,9 +45,9 @@ class ShopifyCustomer(EcommerceCustomer):
 	def create_customer_address(
 		self,
 		customer_name,
-		shopify_address: Dict[str, Any],
+		shopify_address: dict[str, Any],
 		address_type: str = "Billing",
-		email: Optional[str] = None,
+		email: str | None = None,
 	) -> None:
 		"""Create customer address(es) using Customer dict provided by shopify."""
 		address_fields = _map_address_fields(shopify_address, customer_name, address_type, email)
@@ -68,9 +68,9 @@ class ShopifyCustomer(EcommerceCustomer):
 	def _update_existing_address(
 		self,
 		customer_name,
-		shopify_address: Dict[str, Any],
+		shopify_address: dict[str, Any],
 		address_type: str = "Billing",
-		email: Optional[str] = None,
+		email: str | None = None,
 	) -> None:
 		old_address = self.get_customer_address_doc(address_type)
 
@@ -84,7 +84,7 @@ class ShopifyCustomer(EcommerceCustomer):
 			old_address.flags.ignore_mandatory = True
 			old_address.save()
 
-	def create_customer_contact(self, shopify_customer: Dict[str, Any]) -> None:
+	def create_customer_contact(self, shopify_customer: dict[str, Any]) -> None:
 		if not (shopify_customer.get("first_name") and shopify_customer.get("email")):
 			return
 

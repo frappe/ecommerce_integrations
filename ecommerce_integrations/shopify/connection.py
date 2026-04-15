@@ -3,7 +3,6 @@ import functools
 import hashlib
 import hmac
 import json
-from typing import List
 
 from shopify.resources import Webhook
 from shopify.session import Session
@@ -39,7 +38,7 @@ def temp_shopify_session(func):
 	return wrapper
 
 
-def register_webhooks(shopify_url: str, password: str) -> List[Webhook]:
+def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
 	"""Register required webhooks with shopify and return registered webhooks."""
 	new_webhooks = []
 

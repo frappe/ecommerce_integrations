@@ -48,7 +48,7 @@ class AmazonRepository:
 		errors = {}
 		max_retries = self.amz_setting.max_retry_limit
 
-		for x in range(max_retries):
+		for _x in range(max_retries):
 			try:
 				result = sp_api_method(**kwargs)
 				return result.get("payload")
@@ -78,11 +78,11 @@ class AmazonRepository:
 		return Finances(**self.instance_params)
 
 	def get_account(self, name) -> str:
-		account_name = frappe.db.get_value("Account", {"account_name": "Amazon {0}".format(name)})
+		account_name = frappe.db.get_value("Account", {"account_name": f"Amazon {name}"})
 
 		if not account_name:
 			new_account = frappe.new_doc("Account")
-			new_account.account_name = "Amazon {0}".format(name)
+			new_account.account_name = f"Amazon {name}"
 			new_account.company = self.amz_setting.company
 			new_account.parent_account = self.amz_setting.market_place_account_group
 			new_account.insert(ignore_permissions=True)

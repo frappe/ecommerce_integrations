@@ -1,12 +1,12 @@
 import base64
 import json
 from collections import defaultdict
-from typing import Any, Dict, List, NewType, Optional
+from typing import Any, NewType
 
 import requests
 
 import frappe
-from frappe import _
+from frappe import _, _dict
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
 
@@ -36,7 +36,6 @@ from ecommerce_integrations.unicommerce.utils import (
 	remove_non_alphanumeric_chars,
 )
 
-JsonDict = Dict[str, Any]
 SOCode = NewType("SOCode", str)
 
 # TypedDict
@@ -44,17 +43,17 @@ SOCode = NewType("SOCode", str)
 # 	item_code: str
 # 	warehouse: str
 # 	batch_no: str
-ItemWHAlloc = Dict[str, str]
+ItemWHAlloc = dict[str, str]
 
 
-WHAllocation = Dict[SOCode, List[ItemWHAlloc]]
+WHAllocation = dict[SOCode, list[ItemWHAlloc]]
 
 INVOICED_STATE = ["PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPED", "DELIVERED"]
 
 
 @frappe.whitelist()
 def generate_unicommerce_invoices(
-	sales_orders: List[SOCode], warehouse_allocation: Optional[WHAllocation] = None
+	sales_orders: list[SOCode], warehouse_allocation: WHAllocation | None = None
 ):
 	"""Request generation of invoice to Unicommerce and sync that invoice.
 
@@ -128,8 +127,8 @@ def generate_unicommerce_invoices(
 
 
 def bulk_generate_invoices(
-	sales_orders: List[SOCode],
-	warehouse_allocation: Optional[WHAllocation] = None,
+	sales_orders: list[SOCode],
+	warehouse_allocation: WHAllocation | None = None,
 	request_id=None,
 	client=None,
 ):
@@ -188,7 +187,7 @@ def _get_orders_with_missing_invoice(sales_orders):
 	return missing_invoices
 
 
-def update_invoicing_status(sales_orders: List[str], status: str) -> None:
+def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
 
@@ -303,14 +302,14 @@ def _fetch_and_sync_invoice(
 
 
 def create_sales_invoice(
-	si_data: JsonDict,
+	si_data: _dict,
 	so_code: str,
 	update_stock=0,
 	submit=True,
 	shipping_label=None,
 	warehouse_allocations=None,
 	invoice_response=None,
-	so_data: Optional[JsonDict] = None,
+	so_data: _dict | None = None,
 ):
 	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
 
@@ -405,10 +404,10 @@ def create_sales_invoice(
 
 def attach_unicommerce_docs(
 	sales_invoice: str,
-	invoice: Optional[str],
-	label: Optional[str],
-	invoice_code: Optional[str],
-	package_code: Optional[str],
+	invoice: str | None,
+	label: str | None,
+	invoice_code: str | None,
+	package_code: str | None,
 ) -> None:
 	"""Attach invoice and label to specified sales invoice.
 
@@ -445,8 +444,8 @@ def _get_line_items(
 	warehouse: str,
 	so_code: str,
 	cost_center: str,
-	warehouse_allocations: Optional[WHAllocation] = None,
-) -> List[Dict[str, Any]]:
+	warehouse_allocations: WHAllocation | None = None,
+) -> list[dict[str, Any]]:
 	"""Invoice items can be different and are consolidated, hence recomputing is required"""
 
 	si_items = []
@@ -474,7 +473,7 @@ def _get_line_items(
 	return si_items
 
 
-def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], so_code: str):
+def _assign_wh_and_so_row(line_items, warehouse_allocation: list[ItemWHAlloc], so_code: str):
 	so_items = frappe.get_doc("Sales Order", so_code).items
 	so_item_price_map = {d.name: d.rate for d in so_items}
 
@@ -491,7 +490,7 @@ def _assign_wh_and_so_row(line_items, warehouse_allocation: List[ItemWHAlloc], s
 	line_items.sort(key=sort_key)
 
 	# update references
-	for item, wh_alloc in zip(line_items, warehouse_allocation):
+	for item, wh_alloc in zip(line_items, warehouse_allocation, strict=True):
 		item["so_detail"] = wh_alloc["sales_order_row"]
 		item["warehouse"] = wh_alloc["warehouse"]
 		item["batch_no"] = wh_alloc.get("batch_no")

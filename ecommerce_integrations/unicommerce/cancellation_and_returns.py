@@ -1,7 +1,6 @@
 import json
 from collections import defaultdict
 from datetime import date, datetime
-from typing import List
 
 import frappe
 from frappe.utils import now_datetime
@@ -23,7 +22,7 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 
 
-def fully_cancel_orders(unicommerce_order_codes: List[str]) -> None:
+def fully_cancel_orders(unicommerce_order_codes: list[str]) -> None:
 	"""Perform "cancel" action on ERPNext sales orders which are fully cancelled in Unicommerce."""
 
 	current_orders_status = frappe.db.get_values(
@@ -103,7 +102,7 @@ def _serialize_items(trans_items) -> str:
 	# serialie date/datetime objects to string
 	for item in trans_items:
 		for k, v in item.items():
-			if isinstance(v, (datetime, date)):
+			if isinstance(v, datetime | date):
 				item[k] = str(v)
 
 	return json.dumps(trans_items)
@@ -156,7 +155,7 @@ def create_credit_note(invoice_name):
 
 	for tax in credit_note.taxes:
 		tax.item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
-		for item, tax_distribution in tax.item_wise_tax_detail.items():
+		for _, tax_distribution in tax.item_wise_tax_detail.items():
 			tax_distribution[1] *= -1
 		tax.item_wise_tax_detail = json.dumps(tax.item_wise_tax_detail)
 
@@ -211,7 +210,7 @@ def create_cir_credit_note(so_data, return_data):
 	credit_note.save()
 
 
-def _handle_partial_returns(credit_note, returned_items: List[str]) -> None:
+def _handle_partial_returns(credit_note, returned_items: list[str]) -> None:
 	"""Remove non-returned item from credit note and update taxes"""
 
 	item_code_to_qty_map = defaultdict(float)

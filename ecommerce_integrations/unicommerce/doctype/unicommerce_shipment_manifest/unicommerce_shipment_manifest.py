@@ -2,7 +2,6 @@
 # For license information, please see LICENSE
 
 import json
-from typing import Optional
 
 import frappe
 from frappe import _
@@ -80,7 +79,7 @@ class UnicommerceShipmentManifest(Document):
 					",".join(facility_codes)
 				)
 			)
-		return list(facility_codes)[0]
+		return next(iter(facility_codes))
 
 	def create_and_close_manifest_on_unicommerce(self):
 		shipping_packages = [d.shipping_package_code for d in self.manifest_items]
@@ -161,7 +160,7 @@ def get_sales_invoice_details(sales_invoice):
 
 
 @frappe.whitelist()
-def search_packages(search_term: str, channel: Optional[str] = None, shipper: Optional[str] = None):
+def search_packages(search_term: str, channel: str | None = None, shipper: str | None = None):
 	filters = {
 		CHANNEL_ID_FIELD: channel,
 		SHIPPING_PROVIDER_CODE: shipper,

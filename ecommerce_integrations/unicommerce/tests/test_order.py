@@ -34,7 +34,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 			{"MC-100", "TITANIUM_WATCH"},
 		]
 
-		for order_file, items in zip(order_files, items_list):
+		for order_file, items in zip(order_files, items_list, strict=True):
 			order = self.load_fixture(order_file)["saleOrderDTO"]
 			self.assertEqual(items, _sync_order_items(order, client=self.client))
 

@@ -1,4 +1,4 @@
-from typing import List, NewType
+from typing import Any, NewType
 
 from stdnum.ean import is_valid as validate_barcode
 
@@ -8,7 +8,7 @@ from frappe.utils import get_url, now, to_markdown
 from frappe.utils.nestedset import get_root_of
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
-from ecommerce_integrations.unicommerce.api_client import JsonDict, UnicommerceAPIClient
+from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	DEFAULT_WEIGHT_UOM,
 	ITEM_BATCH_GROUP_FIELD,
@@ -218,7 +218,7 @@ def upload_new_items(force=False) -> None:
 	log.save()
 
 
-def _get_new_items() -> List[ItemCode]:
+def _get_new_items() -> list[ItemCode]:
 	new_items = frappe.db.sql(
 		f"""
 			SELECT item.item_code
@@ -234,8 +234,8 @@ def _get_new_items() -> List[ItemCode]:
 
 
 def upload_items_to_unicommerce(
-	item_codes: List[ItemCode], client: UnicommerceAPIClient = None
-) -> List[ItemCode]:
+	item_codes: list[ItemCode], client: UnicommerceAPIClient = None
+) -> list[ItemCode]:
 	"""Upload multiple items to Unicommerce.
 
 	Return Successfully synced item codes.
@@ -259,7 +259,7 @@ def upload_items_to_unicommerce(
 	return synced_items
 
 
-def _build_unicommerce_item(item_code: ItemCode) -> JsonDict:
+def _build_unicommerce_item(item_code: ItemCode) -> dict[str, Any]:
 	"""Build Unicommerce item JSON using an ERPNext item"""
 	item = frappe.get_doc("Item", item_code)
 
