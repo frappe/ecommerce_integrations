@@ -71,9 +71,8 @@ class TestCase(unittest.TestCase):
 		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 0)
 
 	def load_fixture(self, name):
-		with open(os.path.dirname(__file__) + f"/fixtures/{name}.json", "rb") as f:
-			data = f.read()
-		return json.loads(data)
+		fixture_path = os.path.join(os.path.dirname(__file__), "fixtures", f"{name}.json")
+		return frappe.get_file_json(fixture_path)
 
 
 def _setup_test_item_categories():
