@@ -30,6 +30,8 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      WITH_COVERAGE: ${{ github.event_name != 'pull_request' }}
 
     strategy:
       fail-fast: false
@@ -104,13 +106,31 @@ jobs:
 
 
       - name: Run Tests
-        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations --coverage
+        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations ${{ env.WITH_COVERAGE == 'true' && '--coverage' || '' }}
         env:
           TYPE: server
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: coverage
+          path: /home/runner/frappe-bench/sites/coverage.xml
+
+  coverage:
+    name: Coverage Wrap Up
+    needs: tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
 
       - name: Upload coverage data
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
-          files: /home/runner/frappe-bench/sites/coverage.xml
           verbose: true
