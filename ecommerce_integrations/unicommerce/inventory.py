@@ -1,16 +1,21 @@
+# ecommerce_integrations/unicommerce/inventory.py
+
 from collections import defaultdict
 
 import frappe
 from frappe.utils import cint, now
 
 from ecommerce_integrations.controllers.inventory import (
-	get_inventory_levels,
-	get_inventory_levels_of_group_warehouse,
-	update_inventory_sync_status,
+    get_inventory_levels,
+    get_inventory_levels_of_group_warehouse,
+    update_inventory_sync_status,
 )
 from ecommerce_integrations.controllers.scheduling import need_to_run
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME, SETTINGS_DOCTYPE
+from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration_log.ecommerce_integration_log import (
+    create_integration_log,
+)
 
 # Note: Undocumented but currently handles ~1000 inventory changes in one request.
 # Remaining to be done in next interval.
@@ -18,68 +23,189 @@ MAX_INVENTORY_UPDATE_IN_REQUEST = 1000
 
 
 def update_inventory_on_unicommerce(client=None, force=False):
-	"""Update ERPnext warehouse wise inventory to Unicommerce.
+    """Update ERPNext warehouse wise inventory to Unicommerce.
 
-	This function gets called by scheduler every minute. The function
-	decides whether to run or not based on configured sync frequency.
+    This function gets called by scheduler every minute. The function
+    decides whether to run or not based on configured sync frequency.
+    force=True ignores the set frequency.
+    """
+    log = None
+    
+    try:
+        settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+        
+        # Create integration log for debugging
+        try:
+            log = create_integration_log(
+                {
+                    "integration": MODULE_NAME,
+                    "method": "ecommerce_integrations.unicommerce.inventory.update_inventory_on_unicommerce",
+                    "request_data": frappe.as_json({"force": force}),
+                }
+            )
+        except Exception as e:
+            frappe.log_error(title="Failed to create inventory sync log", message=frappe.get_traceback())
+            # Create dummy log to avoid crashes
+            log = frappe._dict({"add_error": lambda x: None, "add_comment": lambda x: None})
 
-	force=True ignores the set frequency.
-	"""
-	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+        if not settings.is_enabled():
+            log.add_error("Unicommerce integration is disabled")
+            return
+            
+        if not settings.enable_inventory_sync:
+            log.add_error("Inventory sync is disabled (enable_inventory_sync checkbox)")
+            return
 
-	if not settings.is_enabled() or not settings.enable_inventory_sync:
-		return
+        # Check if need to run based on configured sync frequency
+        if not force and not need_to_run(
+            SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"
+        ):
+            log.add_comment(f"Skipped: sync frequency not met (use force=True to override)")
+            return
 
-	# check if need to run based on configured sync frequency
-	if not force and not need_to_run(SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
-		return
+        # Get configured warehouses
+        warehouses = settings.get_erpnext_warehouses()
+        if not warehouses:
+            log.add_error("No warehouses configured in Unicommerce Settings")
+            return
+            
+        wh_to_facility_map = settings.get_erpnext_to_integration_wh_mapping()
 
-	# get configured warehouses
-	warehouses = settings.get_erpnext_warehouses()
-	wh_to_facility_map = settings.get_erpnext_to_integration_wh_mapping()
+        if client is None:
+            client = UnicommerceAPIClient()
 
-	if client is None:
-		client = UnicommerceAPIClient()
+        # Track which ecommerce item was updated successfully
+        success_map: dict[str, bool] = defaultdict(lambda: True)
+        inventory_synced_on = now()
+        
+        total_items_processed = 0
+        total_items_synced = 0
+        warehouses_processed = 0
+        warehouses_failed = 0
 
-	# track which ecommerce item was updated successfully
-	success_map: dict[str, bool] = defaultdict(lambda: True)
-	inventory_synced_on = now()
+        log.add_comment(f"Starting sync for {len(warehouses)} warehouse(s)")
 
-	for warehouse in warehouses:
-		is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
+        for warehouse in warehouses:
+            try:
+                is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
 
-		if is_group_warehouse:
-			erpnext_inventory = get_inventory_levels_of_group_warehouse(
-				warehouse=warehouse, integration=MODULE_NAME
-			)
-		else:
-			erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
+                if is_group_warehouse:
+                    erpnext_inventory = get_inventory_levels_of_group_warehouse(
+                        warehouse=warehouse, integration=MODULE_NAME
+                    )
+                else:
+                    erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
 
-		if not erpnext_inventory:
-			continue
+                if not erpnext_inventory:
+                    log.add_comment(f"Warehouse '{warehouse}': No items to sync")
+                    continue
 
-		erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
+                original_count = len(erpnext_inventory)
+                erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
+                
+                if original_count > MAX_INVENTORY_UPDATE_IN_REQUEST:
+                    log.add_comment(
+                        f"Warehouse '{warehouse}': Limited to {MAX_INVENTORY_UPDATE_IN_REQUEST} items "
+                        f"(total: {original_count})"
+                    )
 
-		# TODO: consider reserved qty on both platforms.
-		inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
-		facility_code = wh_to_facility_map[warehouse]
+                total_items_processed += len(erpnext_inventory)
 
-		response, status = client.bulk_inventory_update(
-			facility_code=facility_code, inventory_map=inventory_map
-		)
+                # TODO: consider reserved qty on both platforms.
+                inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
+                facility_code = wh_to_facility_map.get(warehouse)
+                
+                if not facility_code:
+                    log.add_error(f"Warehouse '{warehouse}': No facility code mapped")
+                    warehouses_failed += 1
+                    continue
 
-		if status:
-			# update success_map
-			sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
-			for sku, status in response.items():
-				ecom_item = sku_to_ecom_item_map[sku]
-				# Any one warehouse sync failure should be considered failure
-				success_map[ecom_item] = success_map[ecom_item] and status
+                response, status = client.bulk_inventory_update(
+                    facility_code=facility_code, inventory_map=inventory_map
+                )
 
-	_update_inventory_sync_status(success_map, inventory_synced_on)
+                if status:
+                    # Update success_map
+                    sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
+                    warehouse_success_count = 0
+                    
+                    for sku, status_val in response.items():
+                        ecom_item = sku_to_ecom_item_map.get(sku)
+                        if ecom_item:
+                            # Any one warehouse sync failure should be considered failure
+                            success_map[ecom_item] = success_map[ecom_item] and status_val
+                            if status_val:
+                                warehouse_success_count += 1
+                    
+                    total_items_synced += warehouse_success_count
+                    warehouses_processed += 1
+                    
+                    log.add_comment(
+                        f"Warehouse '{warehouse}' → Facility '{facility_code}': "
+                        f"{warehouse_success_count}/{len(erpnext_inventory)} items synced"
+                    )
+                else:
+                    log.add_error(f"Warehouse '{warehouse}': API returned failure status")
+                    warehouses_failed += 1
+                    
+            except Exception as e:
+                warehouses_failed += 1
+                error_msg = f"Warehouse '{warehouse}': {str(e)}"
+                log.add_error(error_msg)
+                frappe.log_error(
+                    title=f"Inventory Sync Failed for Warehouse: {warehouse}",
+                    message=frappe.get_traceback()
+                )
+                # Continue with next warehouse
+                continue
+
+        # Update inventory sync status for all items
+        _update_inventory_sync_status(success_map, inventory_synced_on)
+        
+        # Update last sync time in settings
+        try:
+            frappe.db.set_value(SETTINGS_DOCTYPE, settings.name, "last_inventory_sync", now())
+        except Exception as e:
+            frappe.log_error(title="Failed to update last_inventory_sync", message=frappe.get_traceback())
+        
+        # Final summary
+        summary = (
+            f"\n{'='*50}\n"
+            f"SUMMARY\n"
+            f"{'='*50}\n"
+            f"Warehouses: {warehouses_processed} succeeded, {warehouses_failed} failed\n"
+            f"Items: {total_items_synced}/{total_items_processed} synced\n"
+            f"{'='*50}"
+        )
+        
+        if warehouses_failed > 0:
+            log.add_error(f"{summary}\n⚠ Completed with errors")
+        else:
+            log.add_comment(f"{summary}\n✓ All warehouses synced")
+        
+        frappe.db.commit()
+        
+    except Exception as e:
+        if log:
+            log.add_error(error=frappe.get_traceback())
+        
+        frappe.log_error(
+            title="Unicommerce Inventory Sync - Critical Failure",
+            message=frappe.get_traceback()
+        )
+        raise
 
 
 def _update_inventory_sync_status(ecom_item_success_map: dict[str, bool], timestamp: str) -> None:
-	for ecom_item, status in ecom_item_success_map.items():
-		if status:
-			update_inventory_sync_status(ecom_item, timestamp)
+    """Update inventory sync status with error handling for individual items."""
+    for ecom_item, status in ecom_item_success_map.items():
+        try:
+            if status:
+                update_inventory_sync_status(ecom_item, timestamp)
+        except Exception as e:
+            frappe.log_error(
+                title=f"Failed to update inventory sync status: {ecom_item}",
+                message=frappe.get_traceback()
+            )
+            # Continue with other items
+            continue
