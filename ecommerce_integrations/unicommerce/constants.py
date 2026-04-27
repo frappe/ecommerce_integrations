@@ -41,16 +41,17 @@ GRN_STOCK_ENTRY_TYPE = "GRN on Unicommerce"
 
 # Tax -> Unicommerce tax amount field mapping
 TAX_FIELDS_MAPPING = {
-	"igst": "integratedGst",
-	"cgst": "centralGst",
-	"sgst": "stateGst",
-	"ugst": "unionTerritoryGst",
+	"igst": "totalIntegratedGst",
+	"cgst": "totalCentralGst",
+	"sgst": "totalStateGst",
+	"ugst": "totalUnionTerritoryGst",
 	"tcs": "tcsAmount",
 	"cash_on_delivery_charges": "cashOnDeliveryCharges",
 	"gift_wrap_charges": "giftWrapCharges",
 	"shipping_charges": "shippingCharges",
 	"shipping_method_charges": "shippingMethodCharges",
 }
+
 
 # Tax -> Unicommerce tax "rate" field mapping
 TAX_RATE_FIELDS_MAPPING = {

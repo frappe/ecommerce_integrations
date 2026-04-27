@@ -34,6 +34,32 @@ frappe.ui.form.on("Unicommerce Settings", {
 				__("Sync Now"),
 			);
 		});
+
+		frm.add_custom_button(__("Test sync_new_orders"), () => {
+			frappe.call({
+				method: "ecommerce_integrations.unicommerce.order.sync_new_orders",
+				args: { force: true },
+				freeze: true,
+				freeze_message: "Running sync_new_orders...",
+				callback: (r) => {
+					frappe.msgprint("Done! Check VS Code debugger.");
+					console.log(r);
+				},
+			});
+		}, __("Debug"));
+
+		frm.add_custom_button(__("Test prepare_delivery_note"), () => {
+			frappe.call({
+				method: "ecommerce_integrations.unicommerce.delivery_note.prepare_delivery_note",
+				args: { force: 1 },
+				freeze: true,
+				freeze_message: "Running prepare_delivery_note...",
+				callback: (r) => {
+					frappe.msgprint("Done! Check logs.");
+					console.log(r);
+				},
+			});
+		}, __("Debug"));
 	},
 
 	onload: function (frm) {

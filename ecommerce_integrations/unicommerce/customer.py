@@ -99,6 +99,10 @@ def _create_customer_address(uni_address, address_type, customer, also_shipping=
 	state = uni_address.get("state")
 	if country_code == "IN" and state in UNICOMMERCE_INDIAN_STATES_MAPPING:
 		state = UNICOMMERCE_INDIAN_STATES_MAPPING.get(state)
+	
+	email_id=uni_address.get("email")
+	if not frappe.utils.validate_email_address(email_id, throw=False):
+		email_id = ""
 
 	frappe.get_doc(
 		{
@@ -109,7 +113,7 @@ def _create_customer_address(uni_address, address_type, customer, also_shipping=
 			"country": country,
 			"county": uni_address.get("district"),
 			"doctype": "Address",
-			"email_id": uni_address.get("email"),
+			"email_id": email_id,
 			"phone": uni_address.get("phone"),
 			"pincode": uni_address.get("pincode"),
 			"state": state,
