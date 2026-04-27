@@ -276,7 +276,7 @@ def upload_items_to_unicommerce(
 
     total_items = len(item_codes)
     if log:
-        log.add_comment(f"Processing {total_items} item(s)")
+        log.add_comment("Comment", f"Processing {total_items} item(s)")
 
     for idx, item_code in enumerate(item_codes, 1):
         try:
@@ -290,16 +290,16 @@ def upload_items_to_unicommerce(
                 _handle_ecommerce_item(item_code)
                 synced_items.append(item_code)
                 if log:
-                    log.add_comment(f"[{idx}/{total_items}] ✓ {item_code}")
+                    log.add_comment("Comment", f"[{idx}/{total_items}] ✓ {item_code}")
             else:
                 failed_items.append(item_code)
                 if log:
-                    log.add_error(f"[{idx}/{total_items}] ✗ {item_code}: API returned failure")
+                    log.add_comment("Comment", f"[{idx}/{total_items}] ✗ {item_code}: API returned failure")
 
         except Exception as e:
             failed_items.append(item_code)
             if log:
-                log.add_error(f"[{idx}/{total_items}] ✗ {item_code}: {str(e)}")
+                log.add_comment("Comment", f"[{idx}/{total_items}] ✗ {item_code}: {str(e)}")
 
             frappe.log_error(
                 title=f"Item Sync Failed: {item_code}",
@@ -309,7 +309,7 @@ def upload_items_to_unicommerce(
             continue
 
     if log:
-        log.add_comment(f"\nSummary: {len(synced_items)}/{total_items} synced, {len(failed_items)} failed")
+        log.add_comment("Comment", f"\nSummary: {len(synced_items)}/{total_items} synced, {len(failed_items)} failed")
 
     return synced_items
 
