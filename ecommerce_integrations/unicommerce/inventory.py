@@ -18,23 +18,23 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 )
 
 # Note: Undocumented but currently handles ~1000 inventory changes in one request.
-# Remaining to be done in next interval.
 MAX_INVENTORY_UPDATE_IN_REQUEST = 1000
 
 
 def update_inventory_on_unicommerce(client=None, force=False):
     """Update ERPNext warehouse wise inventory to Unicommerce.
-
-    This function gets called by scheduler every minute. The function
-    decides whether to run or not based on configured sync frequency.
-    force=True ignores the set frequency.
+    
+    LOGIC:
+    1. Get all configured ERPNext warehouses
+    2. For each warehouse, get current stock levels
+    3. Map warehouse to Unicommerce facility
+    4. Send stock updates to Unicommerce API
+    5. Update sync status on success
     """
     log = None
     
     try:
-        settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
-        
-        # Create integration log for debugging
+        # CREATE LOG FIRST - ALWAYS
         try:
             log = create_integration_log(
                 {
@@ -43,108 +43,125 @@ def update_inventory_on_unicommerce(client=None, force=False):
                     "request_data": frappe.as_json({"force": force}),
                 }
             )
+            log.add_comment("Comment", f"📦 Inventory sync started (force={force})")
         except Exception as e:
-            frappe.log_error(title="Failed to create inventory sync log", message=frappe.get_traceback())
-            # Create dummy log to avoid crashes
+            frappe.log_error(
+                title="Inventory Sync - Log Creation Failed",
+                message=f"{str(e)}\n\n{frappe.get_traceback()}"
+            )
+            # Dummy log that writes to Error Log
             log = frappe._dict({
-                "add_comment": lambda comment_type, text: None,
+                "add_comment": lambda t, m: frappe.log_error(title="Inventory Sync", message=m),
                 "save": lambda: None
             })
-
+            log.add_comment("Comment", "Using fallback logging")
+        
+        # Get settings
+        settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
+        
+        # Check 1: Is integration enabled?
         if not settings.is_enabled():
-            if log:
-                log.add_comment("Comment", "Unicommerce integration is disabled")
+            log.add_comment("Comment", "❌ EXIT: Integration disabled in settings")
+            if log and hasattr(log, 'save'):
+                log.save()
             return
-            
+        
+        # Check 2: Is inventory sync enabled?
         if not settings.enable_inventory_sync:
-            if log:
-                log.add_comment("Comment", "Inventory sync is disabled (enable_inventory_sync checkbox)")
+            log.add_comment("Comment", "❌ EXIT: enable_inventory_sync checkbox is OFF")
+            if log and hasattr(log, 'save'):
+                log.save()
             return
-
-        # Check if need to run based on configured sync frequency
-        if not force and not need_to_run(
-            SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"
-        ):
-            if log:
-                log.add_comment("Comment", "Skipped: sync frequency not met (use force=True to override)")
+        
+        # Check 3: Should we run now? (based on frequency)
+        if not force and not need_to_run(SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
+            log.add_comment("Comment", "⏭ EXIT: Sync frequency not met (use force=True to override)")
+            if log and hasattr(log, 'save'):
+                log.save()
             return
-
-        # Get configured warehouses
+        
+        # Check 4: Get warehouses
         warehouses = settings.get_erpnext_warehouses()
         if not warehouses:
-            if log:
-                log.add_comment("Comment", "No warehouses configured in Unicommerce Settings")
+            log.add_comment("Comment", "❌ EXIT: No warehouses configured in settings")
+            if log and hasattr(log, 'save'):
+                log.save()
             return
-            
+        
+        # Get warehouse to facility mapping
         wh_to_facility_map = settings.get_erpnext_to_integration_wh_mapping()
-
+        
+        log.add_comment("Comment", f"✓ Found {len(warehouses)} warehouse(s) to sync")
+        
+        # Initialize API client
         if client is None:
             client = UnicommerceAPIClient()
-
-        # Track which ecommerce item was updated successfully
-        success_map: dict[str, bool] = defaultdict(lambda: True)
-        inventory_synced_on = now()
         
+        # Tracking variables
+        success_map = defaultdict(lambda: True)
+        inventory_synced_on = now()
         total_items_processed = 0
         total_items_synced = 0
         warehouses_processed = 0
         warehouses_failed = 0
-
-        if log:
-            log.add_comment("Comment", f"Starting sync for {len(warehouses)} warehouse(s)")
-
-        for warehouse in warehouses:
+        
+        # Process each warehouse
+        for idx, warehouse in enumerate(warehouses, 1):
             try:
+                log.add_comment("Comment", f"[{idx}/{len(warehouses)}] Processing warehouse: {warehouse}")
+                
+                # Get inventory levels
                 is_group_warehouse = cint(frappe.db.get_value("Warehouse", warehouse, "is_group"))
-
+                
                 if is_group_warehouse:
                     erpnext_inventory = get_inventory_levels_of_group_warehouse(
                         warehouse=warehouse, integration=MODULE_NAME
                     )
                 else:
-                    erpnext_inventory = get_inventory_levels(warehouses=(warehouse,), integration=MODULE_NAME)
-
+                    erpnext_inventory = get_inventory_levels(
+                        warehouses=(warehouse,), integration=MODULE_NAME
+                    )
+                
                 if not erpnext_inventory:
-                    if log:
-                        log.add_comment("Comment", f"Warehouse '{warehouse}': No items to sync")
+                    log.add_comment("Comment", f"  → No items with stock in '{warehouse}'")
                     continue
-
+                
                 original_count = len(erpnext_inventory)
                 erpnext_inventory = erpnext_inventory[:MAX_INVENTORY_UPDATE_IN_REQUEST]
                 
                 if original_count > MAX_INVENTORY_UPDATE_IN_REQUEST:
-                    if log:
-                        log.add_comment(
-                            "Comment",
-                            f"Warehouse '{warehouse}': Limited to {MAX_INVENTORY_UPDATE_IN_REQUEST} items "
-                            f"(total: {original_count})"
-                        )
-
-                total_items_processed += len(erpnext_inventory)
-
-                # TODO: consider reserved qty on both platforms.
-                inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
-                facility_code = wh_to_facility_map.get(warehouse)
+                    log.add_comment(
+                        "Comment",
+                        f"  → Limited to {MAX_INVENTORY_UPDATE_IN_REQUEST} items (total: {original_count})"
+                    )
                 
+                total_items_processed += len(erpnext_inventory)
+                
+                # Build inventory map: {SKU: quantity}
+                inventory_map = {d.integration_item_code: cint(d.actual_qty) for d in erpnext_inventory}
+                
+                # Get Unicommerce facility code
+                facility_code = wh_to_facility_map.get(warehouse)
                 if not facility_code:
-                    if log:
-                        log.add_comment("Comment", f"Warehouse '{warehouse}': No facility code mapped")
+                    log.add_comment("Comment", f"  → ❌ No facility code mapped for '{warehouse}'")
                     warehouses_failed += 1
                     continue
-
+                
+                log.add_comment("Comment", f"  → Syncing {len(inventory_map)} items to facility '{facility_code}'")
+                
+                # Send to Unicommerce
                 response, status = client.bulk_inventory_update(
                     facility_code=facility_code, inventory_map=inventory_map
                 )
-
+                
                 if status:
-                    # Update success_map
+                    # Update success map
                     sku_to_ecom_item_map = {d.integration_item_code: d.ecom_item for d in erpnext_inventory}
                     warehouse_success_count = 0
                     
                     for sku, status_val in response.items():
                         ecom_item = sku_to_ecom_item_map.get(sku)
                         if ecom_item:
-                            # Any one warehouse sync failure should be considered failure
                             success_map[ecom_item] = success_map[ecom_item] and status_val
                             if status_val:
                                 warehouse_success_count += 1
@@ -152,33 +169,27 @@ def update_inventory_on_unicommerce(client=None, force=False):
                     total_items_synced += warehouse_success_count
                     warehouses_processed += 1
                     
-                    if log:
-                        log.add_comment(
-                            "Comment",
-                            f"Warehouse '{warehouse}' → Facility '{facility_code}': "
-                            f"{warehouse_success_count}/{len(erpnext_inventory)} items synced"
-                        )
+                    log.add_comment(
+                        "Comment",
+                        f"  → ✓ Synced {warehouse_success_count}/{len(erpnext_inventory)} items"
+                    )
                 else:
-                    if log:
-                        log.add_comment("Comment", f"Warehouse '{warehouse}': API returned failure status")
+                    log.add_comment("Comment", f"  → ❌ API returned failure")
                     warehouses_failed += 1
-                    
+            
             except Exception as e:
                 warehouses_failed += 1
-                error_msg = f"Warehouse '{warehouse}': {str(e)}"
-                if log:
-                    log.add_comment("Comment", error_msg)
+                log.add_comment("Comment", f"  → ❌ ERROR: {str(e)}")
                 frappe.log_error(
-                    title=f"Inventory Sync Failed for Warehouse: {warehouse}",
+                    title=f"Inventory Sync Failed: {warehouse}",
                     message=frappe.get_traceback()
                 )
-                # Continue with next warehouse
                 continue
-
-        # Update inventory sync status for all items
+        
+        # Update sync status
         _update_inventory_sync_status(success_map, inventory_synced_on)
         
-        # Update last sync time in settings
+        # Update last sync time
         try:
             frappe.db.set_value(SETTINGS_DOCTYPE, settings.name, "last_inventory_sync", now())
         except Exception as e:
@@ -186,43 +197,48 @@ def update_inventory_on_unicommerce(client=None, force=False):
         
         # Final summary
         summary = (
-            f"\n{'='*50}\n"
-            f"SUMMARY\n"
-            f"{'='*50}\n"
-            f"Warehouses: {warehouses_processed} succeeded, {warehouses_failed} failed\n"
+            f"\n{'='*60}\n"
+            f"INVENTORY SYNC COMPLETE\n"
+            f"{'='*60}\n"
+            f"Warehouses: {warehouses_processed} ✓ / {warehouses_failed} ✗\n"
             f"Items: {total_items_synced}/{total_items_processed} synced\n"
-            f"{'='*50}"
+            f"{'='*60}"
         )
         
-        if log:
-            if warehouses_failed > 0:
-                log.add_comment("Comment", f"{summary}\n⚠ Completed with errors")
-            else:
-                log.add_comment("Comment", f"{summary}\n✓ All warehouses synced")
+        if warehouses_failed > 0:
+            log.add_comment("Comment", f"{summary}\n⚠ Completed with errors")
+        else:
+            log.add_comment("Comment", f"{summary}\n✓ Success")
+        
+        if log and hasattr(log, 'save'):
+            log.save()
         
         frappe.db.commit()
-        
+    
     except Exception as e:
+        error_trace = frappe.get_traceback()
+        
         if log:
-            log.add_comment("Comment", frappe.get_traceback())
+            log.add_comment("Comment", f"💥 CRITICAL ERROR:\n{error_trace}")
+            if hasattr(log, 'save'):
+                log.save()
         
         frappe.log_error(
             title="Unicommerce Inventory Sync - Critical Failure",
-            message=frappe.get_traceback()
+            message=error_trace
         )
         raise
 
 
-def _update_inventory_sync_status(ecom_item_success_map: dict[str, bool], timestamp: str) -> None:
-    """Update inventory sync status with error handling for individual items."""
+def _update_inventory_sync_status(ecom_item_success_map, timestamp):
+    """Update inventory sync status with per-item error handling."""
     for ecom_item, status in ecom_item_success_map.items():
         try:
             if status:
                 update_inventory_sync_status(ecom_item, timestamp)
         except Exception as e:
             frappe.log_error(
-                title=f"Failed to update inventory sync status: {ecom_item}",
+                title=f"Failed to update sync status: {ecom_item}",
                 message=frappe.get_traceback()
             )
-            # Continue with other items
             continue
