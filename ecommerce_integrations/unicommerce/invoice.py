@@ -414,11 +414,28 @@ def create_sales_invoice(
 	si.flags.raw_data = si_data
 
 	# --- GST FIX START ---
-	if not si.taxes_and_charges:
-		tax_template = _get_gst_tax_template(si)
-		if tax_template:
-			si.taxes_and_charges = tax_template
-			si.set_taxes()
+	# india_compliance throws ValidationError if taxable items have no GST charged.
+	# We check what Unicommerce actually sent for GST amounts:
+	#   - If GST > 0: apply the correct In-state / Out-of-state tax template
+	#   - If GST = 0: mark all items as Exempted so validation passes
+	unicommerce_gst = (
+		flt(si_data.get("centralGst", 0))
+		+ flt(si_data.get("stateGst", 0))
+		+ flt(si_data.get("integratedGst", 0))
+	)
+
+	if unicommerce_gst > 0:
+		# GST is being charged — apply the correct tax template
+		if not si.taxes_and_charges:
+			tax_template = _get_gst_tax_template(si)
+			if tax_template:
+				si.taxes_and_charges = tax_template
+				si.set_taxes()
+	else:
+		# Zero GST from Unicommerce — mark all items Exempted
+		# to satisfy india_compliance validation
+		for item in si.items:
+			item.gst_treatment = "Exempted"
 
 	si.set_missing_values()
 	si.calculate_taxes_and_totals()
