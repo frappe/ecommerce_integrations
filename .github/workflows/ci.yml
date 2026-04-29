@@ -23,7 +23,7 @@ env:
   ECOMMERCE_BRANCH: ${{ github.base_ref || github.ref_name }}
 
 concurrency:
-  group: develop-${{ github.event.number }}
+  group: ci-${{ github.event.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
