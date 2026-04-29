@@ -34,7 +34,7 @@ UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
-	"""This is called from a scheduled job and syncs all new orders from last synced time."""
+	"""Called from a scheduled job and syncs all new orders from last synced time."""
 	settings = frappe.get_cached_doc(SETTINGS_DOCTYPE)
 
 	if not settings.is_enabled():
@@ -53,72 +53,142 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	new_orders = _get_new_orders(client, status=status)
 
 	if new_orders is None:
+		create_unicommerce_log(
+			status="Info",
+			method="sync_new_orders",
+			message=f"No orders returned from Unicommerce (status={status})",
+		)
 		return
 
+	order_count = 0
 	for order in new_orders:
+		order_count += 1
 		sales_order = create_order(order, client=client)
 
-		if settings.only_sync_completed_orders:
+		if settings.only_sync_completed_orders and sales_order:
 			_create_sales_invoices(order, sales_order, client)
+
+	create_unicommerce_log(
+		status="Info",
+		method="sync_new_orders",
+		message=f"Processed {order_count} Unicommerce orders (status={status})",
+	)
 
 
 def _get_new_orders(client: UnicommerceAPIClient, status: str | None) -> Iterator[UnicommerceOrder] | None:
-	"""Search new sales order from unicommerce."""
+	"""Search new sales orders from Unicommerce."""
 
 	updated_since = 24 * 60  # minutes
 	uni_orders = client.search_sales_order(updated_since=updated_since, status=status)
+	if uni_orders is None:
+		return
+
 	configured_channels = {
 		c.channel_id
 		for c in frappe.get_all("Unicommerce Channel", filters={"enabled": 1}, fields="channel_id")
 	}
-	if uni_orders is None:
+	if not configured_channels:
+		create_unicommerce_log(
+			status="Info",
+			method="_get_new_orders",
+			message="No enabled Unicommerce channels configured",
+		)
 		return
 
 	for order in uni_orders:
 		if order["channel"] not in configured_channels:
 			continue
 
-		# In case a sales invoice is not generated for some reason and is skipped, we need to create it manually. Therefore, I have commented out this line of code.
+		# Always get full order details from Unicommerce
 		order = client.get_sales_order(order_code=order["code"])
 		if order:
 			yield order
 
 
 def _create_sales_invoices(unicommerce_order, sales_order, client: UnicommerceAPIClient):
-	"""Create sales invoice from sales orders, used when integration is only
-	syncing finshed orders from Unicommerce."""
+	"""Create Sales Invoices from Sales Orders, used when integration is only
+	syncing finished orders from Unicommerce."""
 	from ecommerce_integrations.unicommerce.invoice import create_sales_invoice
 
 	facility_code = sales_order.get(FACILITY_CODE_FIELD)
-	shipping_packages = unicommerce_order["shippingPackages"]
+	shipping_packages = unicommerce_order.get("shippingPackages") or []
+
+	if not shipping_packages:
+		create_unicommerce_log(
+			status="Info",
+			method="_create_sales_invoices",
+			message=f"No shipping packages found for SO {sales_order.name} (Uni order {unicommerce_order.get('code')})",
+		)
+		return
+
 	for package in shipping_packages:
+		invoice_data = None
 		try:
-			# This code was added because the log statement below was being executed every time.
+			package_code = package.get("code")
+			create_unicommerce_log(
+				status="Info",
+				method="_create_sales_invoices",
+				message=f"Fetching invoice for package {package_code} (SO {sales_order.name})",
+			)
+
 			invoice_data = client.get_sales_invoice(
-				shipping_package_code=package["code"], facility_code=facility_code
+				shipping_package_code=package_code, facility_code=facility_code
 			)
-			existing_si = frappe.db.get_value(
-				"Sales Invoice", {INVOICE_CODE_FIELD: invoice_data["invoice"]["code"]}
-			)
-			if existing_si:
+
+			invoice = (invoice_data or {}).get("invoice") or {}
+			invoice_code = invoice.get("code")
+
+			if not invoice_code:
+				create_unicommerce_log(
+					status="Error",
+					method="_create_sales_invoices",
+					message=f"No invoice code returned for package {package_code} (SO {sales_order.name})",
+					request_data=invoice_data,
+				)
 				continue
 
-			log = create_unicommerce_log(method="create_sales_invoice", make_new=True)
+			existing_si = frappe.db.get_value("Sales Invoice", {INVOICE_CODE_FIELD: invoice_code})
+			if existing_si:
+				create_unicommerce_log(
+					status="Info",
+					method="_create_sales_invoices",
+					message=f"Sales Invoice {existing_si} already exists for Uni invoice {invoice_code}, skipping",
+					request_data={"invoice_code": invoice_code},
+				)
+				continue
+
+			log = create_unicommerce_log(
+				method="create_sales_invoice",
+				make_new=True,
+				request_data={"invoice_code": invoice_code, "sales_order": sales_order.name},
+			)
 			frappe.flags.request_id = log.name
 
 			warehouse_allocations = _get_warehouse_allocations(sales_order)
+
 			create_sales_invoice(
-				invoice_data["invoice"],
+				invoice,
 				sales_order.name,
 				update_stock=1,
 				so_data=unicommerce_order,
 				warehouse_allocations=warehouse_allocations,
 			)
+
 		except Exception as e:
-			create_unicommerce_log(status="Error", exception=e, rollback=True, request_data=invoice_data)
+			create_unicommerce_log(
+				status="Error",
+				method="_create_sales_invoices",
+				exception=e,
+				rollback=True,
+				request_data=invoice_data or {"package": package, "sales_order": sales_order.name},
+			)
 			frappe.flags.request_id = None
 		else:
-			create_unicommerce_log(status="Success", request_data=invoice_data)
+			create_unicommerce_log(
+				status="Success",
+				method="_create_sales_invoices",
+				request_data={"invoice_code": invoice_code, "sales_order": sales_order.name},
+			)
 			frappe.flags.request_id = None
 
 
@@ -128,12 +198,18 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
 	if existing_so:
 		so = frappe.get_doc("Sales Order", existing_so)
+		create_unicommerce_log(
+			status="Info",
+			method="create_order",
+			message=f"Sales Order {existing_so} already exists for Uni order {order['code']}",
+		)
 		return so
 
 	# If a sales order already exists, then every time it's executed
 	if request_id is None:
 		log = create_unicommerce_log(
-			method="ecommerce_integrations.unicommerce.order.create_order", request_data=payload
+			method="ecommerce_integrations.unicommerce.order.create_order",
+			request_data={"order_code": order["code"]},
 		)
 		request_id = log.name
 
@@ -147,10 +223,20 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 		customer = sync_customer(order)
 		order = _create_order(order, customer)
 	except Exception as e:
-		create_unicommerce_log(status="Error", exception=e, rollback=True)
+		create_unicommerce_log(
+			status="Error",
+			method="create_order",
+			exception=e,
+			rollback=True,
+			request_data={"order_code": payload.get("code")},
+		)
 		frappe.flags.request_id = None
 	else:
-		create_unicommerce_log(status="Success")
+		create_unicommerce_log(
+			status="Success",
+			method="create_order",
+			request_data={"order_code": payload.get("code"), "sales_order": order.name},
+		)
 		frappe.flags.request_id = None
 		return order
 
@@ -350,23 +436,8 @@ def _update_package_info_on_unicommerce(so_code):
 
 
 def _get_batch_no(so_line_item) -> str | None:
-	"""If specified vendor batch code is valid batch number in ERPNext then get batch no.
+	"""If specified vendor batch code is valid batch number in ERPNext then get batch no."""
 
-	SO line items contain batch no detail like this:
-
-	"batchDTO": {
-	        "batchCode": "BA000002",
-	        "batchFieldsDTO": {
-	                "mrp": null,
-	                "cost": null,
-	                "vendorCode": null,
-	                "expiryDate": 1682793000000,
-	                "mfd": 1619807400000,
-	                "vendorBatchNumber": "1122",
-	                "status": "ACTIVE"
-	        }
-	},
-	"""
 	batch_no = ((so_line_item.get("batchDTO") or {}).get("batchFieldsDTO") or {}).get("vendorBatchNumber")
 	if batch_no and frappe.db.exists("Batch", batch_no):
 		return batch_no
