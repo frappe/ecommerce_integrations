@@ -1,9 +1,10 @@
 from collections import Counter
 
-import frappe
-from frappe.utils import cint, create_batch, now
 from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import InventoryLevel, Variant
+
+import frappe
+from frappe.utils import cint, create_batch, now
 
 from ecommerce_integrations.controllers.inventory import (
 	get_inventory_levels,

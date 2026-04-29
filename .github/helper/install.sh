@@ -6,11 +6,11 @@ cd ~ || exit
 
 sudo apt-get update
 sudo apt-get -y remove mysql-server mysql-client
-sudo apt-get -y install redis-server libcups2-dev mariadb-client-10.6 -qq
+sudo apt-get -y install redis-server libcups2-dev mariadb-client -qq
 
 pip install frappe-bench
 
-git clone https://github.com/frappe/frappe --branch develop --depth 1
+git clone https://github.com/frappe/frappe --branch version-15 --depth 1
 bench init --skip-assets --frappe-path ~/frappe --python "$(which python)" frappe-bench
 
 mkdir ~/frappe-bench/sites/test_site
@@ -33,11 +33,9 @@ sed -i 's/socketio:/# socketio:/g' Procfile
 sed -i 's/redis_socketio:/# redis_socketio:/g' Procfile
 
 bench get-app payments --branch develop
-bench get-app erpnext --branch develop
+bench get-app erpnext --branch version-15
+bench get-app ecommerce_integrations "${GITHUB_WORKSPACE}"
 
 bench start &
 bench --site test_site reinstall --yes
-
-bench get-app ecommerce_integrations "${GITHUB_WORKSPACE}"
-bench --site test_site install-app ecommerce_integrations
 bench setup requirements --dev

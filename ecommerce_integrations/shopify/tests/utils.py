@@ -3,11 +3,13 @@ import sys
 import unittest
 from unittest.mock import patch
 
-import frappe
 import shopify
-from erpnext import get_default_cost_center
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
+
+import frappe
+
+from erpnext import get_default_cost_center
 
 from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
 
@@ -95,7 +97,7 @@ class TestCase(unittest.TestCase):
 		self.http.site = "https://frappetest.myshopify.com"
 
 	def load_fixture(self, name, format="json"):
-		with open(os.path.dirname(__file__) + "/data/%s.%s" % (name, format), "rb") as f:
+		with open(os.path.dirname(__file__) + f"/data/{name}.{format}", "rb") as f:
 			return f.read()
 
 	def fake(self, endpoint, **kwargs):
@@ -106,9 +108,9 @@ class TestCase(unittest.TestCase):
 		if "extension" in kwargs and not kwargs["extension"]:
 			extension = ""
 		else:
-			extension = ".%s" % (kwargs.pop("extension", "json"))
+			extension = f".{kwargs.pop('extension', 'json')}"
 
-		url = "https://frappetest.myshopify.com%s/%s%s" % (prefix, endpoint, extension)
+		url = f"https://frappetest.myshopify.com{prefix}/{endpoint}{extension}"
 		try:
 			url = kwargs["url"]
 		except KeyError:
@@ -116,7 +118,7 @@ class TestCase(unittest.TestCase):
 
 		headers = {}
 		if kwargs.pop("has_user_agent", True):
-			userAgent = "ShopifyPythonAPI/%s Python/%s" % (shopify.VERSION, sys.version.split(" ", 1)[0])
+			userAgent = f"ShopifyPythonAPI/{shopify.VERSION} Python/{sys.version.split(' ', 1)[0]}"
 			headers["User-agent"] = userAgent
 
 		try:

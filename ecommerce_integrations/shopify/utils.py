@@ -1,6 +1,5 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
-from typing import List
 
 import frappe
 from frappe import _, _dict
@@ -26,11 +25,15 @@ def migrate_from_old_connector(payload=None, request_id=None):
 		log = frappe.get_doc("Ecommerce Integration Log", request_id)
 	else:
 		log = create_shopify_log(
-			status="Queued", method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
+			status="Queued",
+			method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
 		)
 
 	frappe.enqueue(
-		method=_migrate_items_to_ecommerce_item, queue="long", is_async=True, log=log,
+		method=_migrate_items_to_ecommerce_item,
+		queue="long",
+		is_async=True,
+		log=log,
 	)
 
 
@@ -48,7 +51,6 @@ def ensure_old_connector_is_disabled():
 
 
 def _migrate_items_to_ecommerce_item(log):
-
 	shopify_fields = ["shopify_product_id", "shopify_variant_id"]
 
 	for field in shopify_fields:
@@ -70,7 +72,7 @@ def _migrate_items_to_ecommerce_item(log):
 	log.save()
 
 
-def _get_items_to_migrate() -> List[_dict]:
+def _get_items_to_migrate() -> list[_dict]:
 	"""get all list of items that have shopify fields but do not have associated ecommerce item."""
 
 	old_data = frappe.db.sql(
@@ -84,7 +86,7 @@ def _get_items_to_migrate() -> List[_dict]:
 	return old_data or []
 
 
-def _create_ecommerce_items(items: List[_dict]) -> None:
+def _create_ecommerce_items(items: list[_dict]) -> None:
 	for item in items:
 		if not all((item.erpnext_item_code, item.shopify_product_id, item.shopify_variant_id)):
 			continue

@@ -1,31 +1,31 @@
 name: Linters
 
 on:
-  pull_request: { }
+  pull_request:
+    branches:
+      - main
+      - version-15
 
 jobs:
-
   linters:
     name: linters
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: '3.10'
+          cache: pip
 
       - name: Install and Run Pre-commit
-        uses: pre-commit/action@v2.0.3
+        uses: pre-commit/action@v3.0.0
 
       - name: Download Semgrep rules
         run: git clone --depth 1 https://github.com/frappe/semgrep-rules.git frappe-semgrep-rules
 
-      - uses: returntocorp/semgrep-action@v1
-        env:
-            SEMGREP_TIMEOUT: 120
-        with:
-            config: >-
-              r/python.lang.correctness
-              ./frappe-semgrep-rules/rules
+      - name: Run Semgrep rules
+        run: |
+          pip install semgrep==1.90.0
+          semgrep ci --config ./frappe-semgrep-rules/rules --config r/python.lang.correctness

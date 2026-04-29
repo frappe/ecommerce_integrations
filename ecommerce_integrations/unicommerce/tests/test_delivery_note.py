@@ -1,8 +1,10 @@
 import base64
 import unittest
 
-import frappe
 import responses
+
+import frappe
+
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
 
 from ecommerce_integrations.unicommerce.constants import (

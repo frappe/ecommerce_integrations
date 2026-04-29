@@ -3,20 +3,35 @@ name: CI
 on:
   push:
     branches:
-      - develop
+      - main
+      - version-15
   pull_request:
     branches:
-      - develop
       - main
+      - version-15
+    paths-ignore:
+      - "**.css"
+      - "**.js"
+      - "**.md"
+      - "**.html"
+      - "**.csv"
+  schedule:
+    # Run everyday at midnight UTC / 5:30 IST
+    - cron: "0 0 * * *"
+
+env:
+  ECOMMERCE_BRANCH: ${{ github.base_ref || github.ref_name }}
 
 concurrency:
-  group: develop-${{ github.event.number }}
+  group: ci-${{ github.event.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      WITH_COVERAGE: ${{ github.event_name != 'pull_request' }}
 
     strategy:
       fail-fast: false
@@ -30,14 +45,14 @@ jobs:
           MARIADB_ROOT_PASSWORD: 'root'
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+        options: --health-cmd="mariadb-admin ping" --health-interval=5s --health-timeout=2s --health-retries=3
 
     steps:
       - name: Clone
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
@@ -51,15 +66,16 @@ jobs:
         run: echo "127.0.0.1 test_site" | sudo tee -a /etc/hosts
 
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
+
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         env:
           cache-name: cache-node-modules
         with:
@@ -74,7 +90,7 @@ jobs:
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
 
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         id: yarn-cache
         with:
           path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
@@ -85,16 +101,36 @@ jobs:
       - name: Install
         run: |
           bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+        env:
+          BRANCH_TO_CLONE: ${{ env.ECOMMERCE_BRANCH }}
 
 
       - name: Run Tests
-        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations --coverage
+        run: cd ~/frappe-bench/ && bench --site test_site run-tests --app ecommerce_integrations ${{ env.WITH_COVERAGE == 'true' && '--coverage' || '' }}
         env:
           TYPE: server
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        with:
+          name: coverage
+          path: /home/runner/frappe-bench/sites/coverage.xml
+
+  coverage:
+    name: Coverage Wrap Up
+    needs: tests
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
 
       - name: Upload coverage data
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
-          files: /home/runner/frappe-bench/sites/coverage.xml
           verbose: true

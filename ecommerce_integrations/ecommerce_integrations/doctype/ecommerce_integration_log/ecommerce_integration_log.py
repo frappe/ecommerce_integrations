@@ -33,7 +33,7 @@ class EcommerceIntegrationLog(Document):
 	def clear_old_logs(days=90):
 		table = frappe.qb.DocType("Ecommerce Integration Log")
 		frappe.db.delete(
-			table, filters=((table.modified < (Now() - Interval(days=days)))) & (table.status == "Success")
+			table, filters=(table.modified < (Now() - Interval(days=days))) & (table.status == "Success")
 		)
 
 

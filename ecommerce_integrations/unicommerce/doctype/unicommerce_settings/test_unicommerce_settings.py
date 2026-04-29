@@ -1,8 +1,9 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See LICENSE
 
-import frappe
 import responses
+
+import frappe
 from frappe.utils import now, now_datetime
 
 from ecommerce_integrations.unicommerce.constants import SETTINGS_DOCTYPE
@@ -44,9 +45,7 @@ class TestUnicommerceSettings(TestCase):
 		"""requirement: When improper credentials are provided, system throws error."""
 
 		# failure case
-		responses.add(
-			responses.GET, "https://demostaging.unicommerce.com/oauth/token", json={}, status=401
-		)
+		responses.add(responses.GET, "https://demostaging.unicommerce.com/oauth/token", json={}, status=401)
 		self.assertRaises(frappe.ValidationError, self.settings.update_tokens)
 
 	@responses.activate
