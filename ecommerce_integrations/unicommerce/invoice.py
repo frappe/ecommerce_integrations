@@ -307,9 +307,11 @@ def _get_gst_tax_template(si):
 	Wrapped in try/except so it never blocks invoice creation.
 	"""
 	try:
+		# Get company GSTIN and state code
 		company_gstin = frappe.db.get_value("Company", si.company, "gstin")
 		company_state_code = company_gstin[:2] if company_gstin else None
 
+		# Get customer state code either from GSTIN or Address.gst_state_number
 		customer_state_code = None
 		customer_gstin = frappe.db.get_value("Customer", si.customer, "gstin")
 		if customer_gstin:
@@ -321,18 +323,21 @@ def _get_gst_tax_template(si):
 					"Address", shipping_address, "gst_state_number"
 				)
 
+		# Decide template based on state match
 		if company_state_code and customer_state_code:
 			if str(company_state_code) == str(customer_state_code):
 				template_name = "Output GST In-state - BLP"
 			else:
 				template_name = "Output GST Out-state - BLP"
 		else:
-			template_name = "Output GST In-state - BLP"  # safe fallback
+			# Fallback when we can't determine customer state
+			template_name = "Output GST In-state - BLP"
 
 		if frappe.db.exists("Sales Taxes and Charges Template", template_name):
 			return template_name
 
 	except Exception:
+		# Don't block invoice creation because of lookup errors here.
 		pass
 
 	return None
@@ -347,17 +352,19 @@ def create_sales_invoice(
 	invoice_response=None,
 	so_data: JsonDict | None = None,
 ):
-	"""Create ERPNext Sales Invoice using Unicommerce sales invoice data and related Sales order.
+	"""Create ERPNext Sales Invoice using Unicommerce sales invoice data and related Sales Order.
 
-	Sales Order is required to fetch missing order in the Sales Invoice.
+	Sales Order is required to fetch missing order data in the Sales Invoice.
 	"""
 	if not invoice_response:
 		invoice_response = {}
 	if not so_data:
 		so_data = {}
 
+	# Base Sales Order
 	so = frappe.get_doc("Sales Order", so_code)
 
+	# Handle cancellation from Unicommerce
 	if so_data:
 		fully_cancelled = update_cancellation_status(so_data, so)
 		if fully_cancelled:
@@ -367,6 +374,7 @@ def create_sales_invoice(
 	channel = so.get(CHANNEL_ID_FIELD)
 	facility_code = so.get(FACILITY_CODE_FIELD)
 
+	# Avoid duplicate invoices for same Unicommerce invoice code
 	existing_si = frappe.db.get_value("Sales Invoice", {INVOICE_CODE_FIELD: si_data["code"]})
 	if existing_si:
 		si = frappe.get_doc("Sales Invoice", existing_si)
@@ -390,17 +398,40 @@ def create_sales_invoice(
 	)
 	shipping_package_status = shipping_package_info.get("status")
 
+	# Start from standard ERPNext make_sales_invoice to get company/customer/addresses
 	si = make_sales_invoice(so.name)
+
+	# ----- ITEMS: from Unicommerce, mapped to ERPNext items -----
 	si_line_items = _get_line_items(
 		uni_line_items, warehouse, so.name, channel_config.cost_center, warehouse_allocations
 	)
 	si.set("items", si_line_items)
-	si.set("taxes", get_taxes(uni_line_items, channel_config))
+
+	# ----- GST: Let ERPNext + India Compliance compute taxes -----
+	tax_template = _get_gst_tax_template(si)
+	if tax_template:
+		si.taxes_and_charges = tax_template
+		# Clear any existing taxes and recalculate from template
+		si.set("taxes", [])
+		si.set_taxes()
+	else:
+		# If we can't pick a GST template, log and stop; better than creating a non-compliant invoice
+		create_unicommerce_log(
+			status="Failure",
+			message=(
+				f"No GST Sales Taxes and Charges Template found for Sales Invoice derived from "
+				f"{so.name}. Company/customer GSTIN or GST templates may be misconfigured."
+			),
+		)
+		return
+	# ------------------------------------------------------------
+
+	# Map Unicommerce meta fields
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, shipping_package_code)
 	si.set(SHIPPING_PROVIDER_CODE, shipping_provider_code)
 	si.set(TRACKING_CODE_FIELD, tracking_no)
-	si.set(IS_COD_CHECKBOX, so_data["cod"])
+	si.set(IS_COD_CHECKBOX, so_data.get("cod"))
 	si.set(SHIPPING_METHOD_FIELD, shipping_package_info.get("shippingMethod"))
 	si.set(SHIPPING_PACKAGE_STATUS_FIELD, shipping_package_status)
 	si.set(CHANNEL_ID_FIELD, channel)
@@ -413,21 +444,13 @@ def create_sales_invoice(
 	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
 
-	# --- GST FIX ---
-	# india_compliance's before_save hook (update_gst_details) re-derives
-	# gst_treatment from the item's HSN code, overriding any Python-level
-	# field changes. Setting frappe.flags.in_patch = True is the official
-	# india_compliance mechanism to skip ALL GST validations — the same
-	# flag their own migration patches use. try/finally ensures it always resets.
-	frappe.flags.in_patch = True
-	try:
-		si.insert()
-	finally:
-		frappe.flags.in_patch = False
-	# --- END GST FIX ---
+	# Let India Compliance run its hooks/validations
+	si.insert()
 
+	# Compare totals with Unicommerce; leave a comment if mismatch
 	_verify_total(si, si_data)
 
+	# Attach Uniware invoice + label PDFs
 	attach_unicommerce_docs(
 		sales_invoice=si.name,
 		invoice=si_data.get("encodedInvoice"),
@@ -436,12 +459,14 @@ def create_sales_invoice(
 		package_code=si_data.get("shippingPackageCode"),
 	)
 
+	# Prevent stock-keeping with group warehouses
 	item_warehouses = {d.warehouse for d in si.items}
 	for wh in item_warehouses:
 		if update_stock and cint(frappe.db.get_value("Warehouse", wh, "is_group")):
 			# can't submit stock transaction where warehouse is group
 			return si
 
+	# Submit and create payment entry if configured
 	if submit:
 		si.submit()
 
