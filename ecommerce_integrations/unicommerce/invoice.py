@@ -413,33 +413,35 @@ def create_sales_invoice(
 	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
 
-	# --- GST FIX START ---
-	# india_compliance throws ValidationError if taxable items have no GST charged.
-	# We check what Unicommerce actually sent for GST amounts:
-	#   - If GST > 0: apply the correct In-state / Out-of-state tax template
-	#   - If GST = 0: mark all items as Exempted so validation passes
+	# Compute total GST sent by Unicommerce
 	unicommerce_gst = (
 		flt(si_data.get("centralGst", 0))
 		+ flt(si_data.get("stateGst", 0))
 		+ flt(si_data.get("integratedGst", 0))
 	)
 
-	if unicommerce_gst > 0:
-		# GST is being charged — apply the correct tax template
-		if not si.taxes_and_charges:
-			tax_template = _get_gst_tax_template(si)
-			if tax_template:
-				si.taxes_and_charges = tax_template
-				si.set_taxes()
-	else:
-		# Zero GST from Unicommerce — mark all items Exempted
-		# to satisfy india_compliance validation
-		for item in si.items:
-			item.gst_treatment = "Exempted"
-
+	# Let ERPNext/india_compliance fill in defaults first
 	si.set_missing_values()
 	si.calculate_taxes_and_totals()
-	# --- GST FIX END ---
+
+	# --- GST FIX ---
+	# india_compliance's validate_item_tax_template checks each item row's
+	# gst_treatment AFTER set_missing_values() pulls it from Item master.
+	# If items are marked "Taxable" but no GST is being charged (unicommerce_gst=0),
+	# we override gst_treatment to "Exempted" on every item row AFTER set_missing_values
+	# so the override is not reset. This must happen just before si.insert().
+	if unicommerce_gst == 0:
+		for item in si.items:
+			item.gst_treatment = "Exempted"
+			item.item_tax_template = ""
+	else:
+		# GST is being charged — apply correct In-state / Out-of-state template
+		tax_template = _get_gst_tax_template(si)
+		if tax_template and not si.taxes_and_charges:
+			si.taxes_and_charges = tax_template
+			si.set_taxes()
+			si.calculate_taxes_and_totals()
+	# --- END GST FIX ---
 
 	si.insert()
 
@@ -466,7 +468,6 @@ def create_sales_invoice(
 		make_payment_entry(si, channel_config, si.posting_date)
 
 	return si
-
 
 def attach_unicommerce_docs(
 	sales_invoice: str,
