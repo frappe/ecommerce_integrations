@@ -300,6 +300,43 @@ def _fetch_and_sync_invoice(
 		)
 
 
+def _get_gst_tax_template(si):
+	"""
+	Returns the correct GST Sales Taxes and Charges Template name
+	based on whether the sale is in-state (CGST+SGST) or out-of-state (IGST).
+	Wrapped in try/except so it never blocks invoice creation.
+	"""
+	try:
+		company_gstin = frappe.db.get_value("Company", si.company, "gstin")
+		company_state_code = company_gstin[:2] if company_gstin else None
+
+		customer_state_code = None
+		customer_gstin = frappe.db.get_value("Customer", si.customer, "gstin")
+		if customer_gstin:
+			customer_state_code = customer_gstin[:2]
+		else:
+			shipping_address = si.shipping_address_name or si.customer_address
+			if shipping_address:
+				customer_state_code = frappe.db.get_value(
+					"Address", shipping_address, "gst_state_number"
+				)
+
+		if company_state_code and customer_state_code:
+			if str(company_state_code) == str(customer_state_code):
+				template_name = "Output GST In-state - BLP"
+			else:
+				template_name = "Output GST Out-state - BLP"
+		else:
+			template_name = "Output GST In-state - BLP"  # safe fallback
+
+		if frappe.db.exists("Sales Taxes and Charges Template", template_name):
+			return template_name
+
+	except Exception:
+		pass
+
+	return None
+
 def create_sales_invoice(
 	si_data: JsonDict,
 	so_code: str,
@@ -310,7 +347,7 @@ def create_sales_invoice(
 	invoice_response=None,
 	so_data: JsonDict | None = None,
 ):
-	"""Create ERPNext Sales Invcoice using Unicommerce sales invoice data and related Sales order.
+	"""Create ERPNext Sales Invoice using Unicommerce sales invoice data and related Sales order.
 
 	Sales Order is required to fetch missing order in the Sales Invoice.
 	"""
@@ -318,6 +355,7 @@ def create_sales_invoice(
 		invoice_response = {}
 	if not so_data:
 		so_data = {}
+
 	so = frappe.get_doc("Sales Order", so_code)
 
 	if so_data:
@@ -374,6 +412,18 @@ def create_sales_invoice(
 	si.ignore_pricing_rule = 1
 	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
+
+	# --- GST FIX START ---
+	if not si.taxes_and_charges:
+		tax_template = _get_gst_tax_template(si)
+		if tax_template:
+			si.taxes_and_charges = tax_template
+			si.set_taxes()
+
+	si.set_missing_values()
+	si.calculate_taxes_and_totals()
+	# --- GST FIX END ---
+
 	si.insert()
 
 	_verify_total(si, si_data)
