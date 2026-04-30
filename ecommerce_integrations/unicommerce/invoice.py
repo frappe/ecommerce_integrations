@@ -444,6 +444,14 @@ def create_sales_invoice(
 	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
 
+
+	create_unicommerce_log(
+		status="Info",
+		method="invoices.create_sales_invoice",
+		message=f"Manish wanted this log {so.name} for Uni order {order.get('code')}",
+		request_data={"sales_invoice": si},
+	)
+	
 	# Let India Compliance run its hooks/validations
 	si.insert()
 
