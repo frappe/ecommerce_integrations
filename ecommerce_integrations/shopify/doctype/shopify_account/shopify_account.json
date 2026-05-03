@@ -9,10 +9,15 @@
   "enable_shopify",
   "column_break_4",
   "section_break_2",
+  "authentication_method",
   "shopify_url",
   "column_break_3",
   "password",
   "shared_secret",
+  "client_id",
+  "client_secret",
+  "oauth_access_token",
+  "token_expires_at",
   "section_break_4",
   "webhooks",
   "customer_settings_section",
@@ -91,16 +96,58 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "Static Token",
+   "description": "Select Static Token for existing apps or OAuth 2.0 for apps created after Jan 1, 2026",
+   "fieldname": "authentication_method",
+   "fieldtype": "Select",
+   "label": "Authentication Method",
+   "options": "Static Token\nOAuth 2.0 Client Credentials"
+  },
+  {
+   "depends_on": "eval:doc.authentication_method=='Static Token'",
    "fieldname": "password",
    "fieldtype": "Password",
    "label": "Password / Access Token",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='Static Token'"
   },
   {
+   "depends_on": "eval:doc.authentication_method=='Static Token'",
    "fieldname": "shared_secret",
    "fieldtype": "Data",
    "label": "Shared secret / API Secret",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='Static Token'"
+  },
+  {
+   "depends_on": "eval:doc.authentication_method=='OAuth 2.0 Client Credentials'",
+   "description": "Client ID from Shopify Partner Dashboard",
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='OAuth 2.0 Client Credentials'"
+  },
+  {
+   "depends_on": "eval:doc.authentication_method=='OAuth 2.0 Client Credentials'",
+   "description": "Client Secret from Shopify Partner Dashboard",
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "label": "Client Secret",
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='OAuth 2.0 Client Credentials'"
+  },
+  {
+   "description": "Auto-generated OAuth access token",
+   "fieldname": "oauth_access_token",
+   "fieldtype": "Password",
+   "hidden": 1,
+   "label": "OAuth Access Token",
+   "read_only": 1
+  },
+  {
+   "description": "OAuth token expiry time",
+   "fieldname": "token_expires_at",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Token Expires At",
+   "read_only": 1
   },
   {
    "collapsible": 1,

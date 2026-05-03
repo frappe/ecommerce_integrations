@@ -18,39 +18,62 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import create_shopify_log, get_user_shopify_account
 
 
+def _get_access_token(setting) -> str:
+	"""Return a valid access token for the given Shopify Account, branching on auth method."""
+	if getattr(setting, "authentication_method", None) == "OAuth 2.0 Client Credentials":
+		from ecommerce_integrations.shopify.oauth import get_valid_access_token
+
+		try:
+			return get_valid_access_token(setting)
+		except Exception as e:
+			create_shopify_log(
+				status="Error",
+				method="ecommerce_integrations.shopify.connection._get_access_token",
+				message=_("Failed to get valid OAuth access token"),
+				exception=str(e),
+			)
+			frappe.throw(
+				_("Failed to authenticate with Shopify using OAuth 2.0: {0}").format(str(e)),
+				title=_("Authentication Error"),
+			)
+
+	return setting.get_password("password")
+
+
 def temp_shopify_session(shopify_account=None):
-    """Decorator for functions that need a temporary Shopify session."""
-    print("temp_shopify_session called with ", shopify_account)
+	"""Decorator for functions that need a temporary Shopify session.
 
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # no auth in testing
-            if frappe.flags.in_test:
-                return func(*args, **kwargs)
+	Supports both Static Token and OAuth 2.0 Client Credentials per Shopify Account.
+	"""
 
-            # If a callable is passed, call it with self to get the account
-            if shopify_account is None:
-                # TODO: handle if get_user_shopify_account returns None
-                account = get_user_shopify_account().name
-            else:
-                account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
+	def decorator(func):
+		@functools.wraps(func)
+		def wrapper(*args, **kwargs):
+			# no auth in testing
+			if frappe.flags.in_test:
+				return func(*args, **kwargs)
 
-            setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
-            if setting.is_enabled():
-                auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
-                with Session.temp(*auth_details):
-                    return func(*args, **kwargs)
+			# If a callable is passed, call it with self to get the account
+			if shopify_account is None:
+				# TODO: handle if get_user_shopify_account returns None
+				account = get_user_shopify_account().name
+			else:
+				account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
 
-        return wrapper
+			setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+			if setting.is_enabled():
+				auth_details = (setting.shopify_url, API_VERSION, _get_access_token(setting))
+				with Session.temp(*auth_details):
+					return func(*args, **kwargs)
 
-    return decorator
+		return wrapper
+
+	return decorator
 
 
 def get_auth_details(setting) -> tuple[str, str, str]:
-    """Get authentication details for Shopify API."""
-    # setting = frappe.get_doc(ACCOUNT_DOCTYPE, setting)
-    return setting.shopify_url, API_VERSION, setting.get_password("password")
+	"""Get authentication details for Shopify API."""
+	return setting.shopify_url, API_VERSION, _get_access_token(setting)
 
 
 def get_temp_session_context(setting):
@@ -117,11 +140,24 @@ def get_callback_url() -> str:
 def store_request_data(**kwargs) -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
-		# Get shopify account
 		shop_domain = frappe.get_request_header("X-Shopify-Shop-Domain")
 		settings = frappe.get_doc(ACCOUNT_DOCTYPE, shop_domain)
 
-		_validate_request(frappe.request, hmac_header, secret_key=settings.shared_secret)
+		# OAuth apps sign webhooks with client_secret; static-token apps use shared_secret.
+		if settings.authentication_method == "OAuth 2.0 Client Credentials":
+			secret_key = settings.get_password("client_secret")
+		else:
+			secret_key = settings.shared_secret
+
+		if not secret_key:
+			create_shopify_log(
+				status="Error",
+				request_data=frappe.request.data,
+				exception="Webhook secret key not configured",
+			)
+			frappe.throw(_("Webhook validation failed: Secret key not configured"))
+
+		_validate_request(frappe.request, hmac_header, secret_key=secret_key)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
@@ -130,11 +166,7 @@ def store_request_data(**kwargs) -> None:
 
 
 def process_request(data, event, shopify_account=None):
-	print("Processing webhook event: ", event, "\n", shopify_account)
-	# create log
 	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account)
-	print("log created")
-	# enqueue background job
 	frappe.enqueue(
 		method=EVENT_MAPPER[event],
 		queue="short",

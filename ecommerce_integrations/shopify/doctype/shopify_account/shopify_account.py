@@ -25,6 +25,7 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_STATUS_FIELD,
 	SUPPLIER_ID_FIELD,
 )
+from ecommerce_integrations.shopify.oauth import validate_oauth_credentials
 from ecommerce_integrations.shopify.utils import (
 	ensure_old_connector_is_disabled,
 	migrate_from_old_connector,
@@ -35,12 +36,26 @@ class ShopifyAccount(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
+	def _get_password_safe(self, fieldname: str) -> str:
+		"""Get a password field without raising on new/unsaved docs."""
+		try:
+			if not self.name or self.is_new():
+				return ""
+			password = self.get_password(fieldname, raise_exception=False)
+			return password if password else ""
+		except Exception:
+			return ""
+
 	def validate(self):
 		# TODO: uncomment
 		# ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = self.shopify_url.replace("https://", "")
+			self.shopify_url = self.shopify_url.replace("https://", "").replace("http://", "")
+
+		self._set_default_authentication_method()
+		self._validate_authentication_fields()
+		self._validate_oauth_credentials_if_needed()
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -52,9 +67,86 @@ class ShopifyAccount(SettingController):
 		if self.is_enabled() and not self.is_old_data_migrated:
 			migrate_from_old_connector()
 
+	def before_save(self):
+		"""Pre-generate the OAuth token on credential changes for better UX. Falls back to on-demand."""
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method == "OAuth 2.0 Client Credentials":
+			current_token = self._get_password_safe("oauth_access_token")
+			if (
+				self.has_value_changed("client_id")
+				or self.has_value_changed("client_secret")
+				or not current_token
+			):
+				try:
+					self._get_or_generate_oauth_token()
+				except Exception:
+					pass
+
+	def _set_default_authentication_method(self):
+		if not self.authentication_method:
+			self.authentication_method = "Static Token"
+
+	def _validate_authentication_fields(self):
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method == "Static Token":
+			if not self._get_password_safe("password"):
+				frappe.throw(_("Password / Access Token is required for Static Token authentication"))
+			if not self.shared_secret:
+				frappe.throw(_("Shared secret / API Secret is required for Static Token authentication"))
+
+		elif self.authentication_method == "OAuth 2.0 Client Credentials":
+			if not self.client_id:
+				frappe.throw(_("Client ID is required for OAuth 2.0 authentication"))
+			if not self._get_password_safe("client_secret"):
+				frappe.throw(_("Client Secret is required for OAuth 2.0 authentication"))
+
+	def _validate_oauth_credentials_if_needed(self):
+		if not self.is_enabled():
+			return
+		if self.authentication_method != "OAuth 2.0 Client Credentials":
+			return
+
+		if self.has_value_changed("client_id") or self.has_value_changed("client_secret"):
+			client_secret = self._get_password_safe("client_secret")
+			if not client_secret:
+				return  # caught by _validate_authentication_fields
+
+			validate_oauth_credentials(self.shopify_url, self.client_id, client_secret)
+			frappe.msgprint(
+				_("OAuth credentials validated successfully. Token will be auto-generated on save."),
+				indicator="green",
+				alert=True,
+			)
+
+	def _get_or_generate_oauth_token(self) -> str:
+		"""Return a valid OAuth token, refreshing if missing/expired."""
+		from ecommerce_integrations.shopify.oauth import is_token_valid, refresh_oauth_token
+
+		current_token = self._get_password_safe("oauth_access_token")
+		if current_token and is_token_valid(self.token_expires_at):
+			return current_token
+
+		try:
+			return refresh_oauth_token(self)
+		except Exception as e:
+			frappe.throw(
+				_("Failed to generate OAuth token: {0}").format(str(e)),
+				title=_("OAuth Authentication Error"),
+			)
+
+	def _get_webhook_password(self) -> str:
+		"""Return the access token to use when calling Shopify for webhook ops."""
+		if self.authentication_method == "OAuth 2.0 Client Credentials":
+			return self._get_or_generate_oauth_token()
+		return self.get_password("password")
+
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
+			new_webhooks = connection.register_webhooks(self.shopify_url, self._get_webhook_password())
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
@@ -66,7 +158,14 @@ class ShopifyAccount(SettingController):
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
 
 		elif not self.is_enabled():
-			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
+			# Use whichever token we still have; for OAuth use the cached one (don't refresh on disable)
+			if self.authentication_method == "OAuth 2.0 Client Credentials":
+				password = self._get_password_safe("oauth_access_token")
+			else:
+				password = self._get_password_safe("password")
+
+			if password:
+				connection.unregister_webhooks(self.shopify_url, password)
 
 			self.webhooks = list()  # remove all webhooks
 
