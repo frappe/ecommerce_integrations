@@ -8,3 +8,4 @@ ecommerce_integrations/docs/current
 .aider*
 .helix
 .claude/settings.json
+.playwright-mcp/

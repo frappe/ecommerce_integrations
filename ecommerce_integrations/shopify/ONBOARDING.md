@@ -113,24 +113,42 @@ You can mix methods across accounts — one client on Static Token, another on O
 
 ### 3.2 Create the Shopify custom app
 
-#### 3.2.1 Static Token path
+> **As of late 2025, Shopify has retired the legacy "Develop apps" page** under Shopify Admin →
+> Settings. That URL now just redirects to the **Dev Dashboard** (`dev.shopify.com/dashboard`).
+> Both Static Token and OAuth apps are managed there.
 
-1. In Shopify Admin → **Settings** → **Apps and sales channels** → **Develop apps** → **Create an app**.
-2. Configure Admin API scopes (list in §2.2).
-3. **Install** the app.
-4. From **API credentials**, copy:
-   - **Admin API access token** → goes into the Shopify Account `Password / Access Token` field.
-   - **API secret key** → goes into the `Shared secret / API Secret` field.
+#### 3.2.1 Static Token path (legacy custom apps)
 
-#### 3.2.2 OAuth 2.0 Client Credentials path
+If you have a Static Token already (`shpat_…`) from an app created before the Dev Dashboard
+migration, those tokens still work indefinitely — you don't need to migrate. New apps issue
+OAuth credentials only.
 
-1. In the **Shopify Dev Dashboard** (`partners.shopify.com`), create an app or open the existing one.
-2. Under app settings, enable **Client Credentials grant**.
-3. Configure Admin API scopes.
-4. Install the app on the merchant store.
-5. Copy:
+You'll be asked for:
+- **Admin API access token** → goes into the Shopify Account `Password / Access Token` field.
+- **API secret key** → goes into the `Shared secret / API Secret` field.
+
+#### 3.2.2 OAuth 2.0 Client Credentials path (recommended for all new apps)
+
+1. Go to the **Shopify Dev Dashboard**: `https://dev.shopify.com/dashboard/<org-id>/apps`.
+2. Click **Create app** (or open an existing one).
+3. Configure scopes (list in §2.2). Required for fulfillment work:
+   - `write_fulfillments`, `read_fulfillments`
+   - `write_assigned_fulfillment_orders`, `read_assigned_fulfillment_orders`
+   - `write_merchant_managed_fulfillment_orders`, `read_merchant_managed_fulfillment_orders`
+4. **Release** a version of the app (Dev Dashboard versions configurations).
+5. Click **Install app** (top-right of the app overview) → choose your dev/test/prod store →
+   approve the data-access prompt.
+6. From the app overview, copy:
    - **Client ID** → goes into the Shopify Account `Client ID` field.
-   - **Client Secret** → goes into the `Client Secret` field.
+   - **Client Secret** → reveal once and copy → goes into the `Client Secret` field.
+7. Whenever you change scopes later: create a new version, release it, click **Install app**
+   again on the same store; Shopify will prompt the merchant to approve the new permissions.
+   You don't need to copy new credentials — Client ID / Client Secret stay the same. To force
+   a fresh OAuth token after a scope change, clear the cached one:
+
+   ```sql
+   UPDATE `tabShopify Account` SET token_expires_at=NULL WHERE name='<your-shop>.myshopify.com';
+   ```
 
 > **Webhook signing:** under OAuth 2.0, Shopify signs webhooks with the **Client Secret**, not a separate shared secret. The integration handles this automatically — you never set `shared_secret` on an OAuth account.
 
@@ -246,21 +264,32 @@ If you skip mapping a location, orders fulfilled from that location will fall ba
 
 ### 4.3 Tax mappings
 
-Shopify sends tax line items by **title** (e.g. *"VAT 15%"*, *"GST"*). Each title needs an ERPNext tax account.
+Shopify sends tax line items by **title** (e.g. *"VAT 15%"*, *"GST"*). The integration uses
+two fallback accounts for unmapped titles, **and** lets you override per-title via a table.
 
-In the **Map Shopify Taxes / Shipping Charges to ERPNext Account** table:
+#### Always set these two (they are not enforced at save time, but the first incoming order with a tax line will fail without them):
+
+- **Default Sales Tax Account** — fallback for any unmapped tax title (e.g. `Output Tax - Company`)
+- **Default Shipping Charges Account** — fallback for unmapped shipping titles (e.g. `Shipping Charges - Company`)
+
+#### Optionally fill the per-title table
+
+Use the **Map Shopify Taxes / Shipping Charges to ERPNext Account** table only when you need
+**different** Shopify tax titles to post to **different** ERPNext accounts. Most stores leave
+this empty and let the two defaults above handle everything.
 
 | Shopify Tax/Shipping Title | ERPNext Account | Description |
 |---|---|---|
 | `VAT 15%` | `VAT Payable - Company` | Saudi VAT |
 | `Standard Shipping` | `Shipping Charges - Company` | Shipping line |
 
-For unmapped titles, the integration uses:
+The **Shopify Tax/Shipping Title** must match exactly what Shopify sends in the order JSON
+(case-sensitive). Don't guess — leave the table empty until you've placed a real test order
+and inspected the `tax_lines[*].title` and `shipping_lines[*].title` values.
 
-- **Default Sales Tax Account** — fallback for any unmapped tax title
-- **Default Shipping Charges Account** — fallback for unmapped shipping titles
-
-Both are required when sync is enabled.
+> **Note:** earlier versions of this doctype required the table to have at least one row
+> when `Enable Shopify` was on. That requirement was removed; the table is now genuinely
+> optional.
 
 ### 4.4 Document series
 

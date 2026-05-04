@@ -221,7 +221,7 @@ class ShopifyProduct:
 			}
 		)
 		if self.company:
-			item_group["custom_company"] = self.company
+			item_group.custom_company = self.company
 		item_group = item_group.insert()
 		return item_group.name
 

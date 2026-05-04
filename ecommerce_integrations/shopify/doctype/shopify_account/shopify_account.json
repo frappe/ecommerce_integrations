@@ -279,7 +279,6 @@
    "fieldname": "taxes",
    "fieldtype": "Table",
    "label": "Shopify Tax Account",
-   "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Shopify Tax Account"
   },
   {
