@@ -1,0 +1,215 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"shopify_onboarding\",\"type\":\"onboarding\",\"data\":{\"onboarding_name\":\"Shopify\",\"col\":12}},{\"id\":\"shopify_quick_access_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Quick Access</b></span>\",\"col\":12}},{\"id\":\"sc_shopify_account\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shopify Account\",\"col\":3}},{\"id\":\"sc_shopify_orders\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shopify Sales Orders\",\"col\":3}},{\"id\":\"sc_import_products\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Shopify Import Products\",\"col\":3}},{\"id\":\"sc_integration_log\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Integration Log Errors\",\"col\":3}},{\"id\":\"shopify_spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"shopify_masters_header\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Masters &amp; Operations</b></span>\",\"col\":12}},{\"id\":\"card_setup\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup\",\"col\":4}},{\"id\":\"card_documents\",\"type\":\"card\",\"data\":{\"card_name\":\"Documents\",\"col\":4}},{\"id\":\"card_monitoring\",\"type\":\"card\",\"data\":{\"card_name\":\"Monitoring\",\"col\":4}}]",
+ "creation": "2026-05-04 21:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "shopping-cart",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Shopify",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Setup",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shopify Account",
+   "link_count": 0,
+   "link_to": "Shopify Account",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ecommerce Item",
+   "link_count": 0,
+   "link_to": "Ecommerce Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Item",
+   "link_count": 0,
+   "link_to": "Item",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Customer",
+   "link_count": 0,
+   "link_to": "Customer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Documents",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Order",
+   "link_count": 0,
+   "link_to": "Sales Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Delivery Note",
+   "link_count": 0,
+   "link_to": "Delivery Note",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "Shopify Account",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Stock Reconciliation",
+   "link_count": 0,
+   "link_to": "Stock Reconciliation",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Monitoring",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ecommerce Integration Log",
+   "link_count": 0,
+   "link_to": "Ecommerce Integration Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scheduled Job Type",
+   "link_count": 0,
+   "link_to": "Scheduled Job Type",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Server Script",
+   "link_count": 0,
+   "link_to": "Server Script",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-05-04 22:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "shopify",
+ "name": "Shopify",
+ "owner": "Administrator",
+ "parent_page": "",
+ "pin_to_bottom": 0,
+ "pin_to_top": 0,
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Sales Manager"
+  }
+ ],
+ "sequence_id": 50.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Shopify Account",
+   "link_to": "Shopify Account",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "Shopify Sales Orders",
+   "link_to": "Sales Order",
+   "stats_filter": "{\"shopify_order_id\":[\"is\",\"set\"]}",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "label": "Shopify Import Products",
+   "link_to": "shopify-import-products",
+   "type": "Page"
+  },
+  {
+   "color": "Yellow",
+   "doc_view": "List",
+   "format": "{}",
+   "label": "Integration Log Errors",
+   "link_to": "Ecommerce Integration Log",
+   "stats_filter": "{\"status\":\"Error\"}",
+   "type": "DocType"
+  }
+ ],
+ "title": "Shopify"
+}

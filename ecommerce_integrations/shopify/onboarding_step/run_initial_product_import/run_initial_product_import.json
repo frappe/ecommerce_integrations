@@ -1,0 +1,21 @@
+{
+ "action": "Go to Page",
+ "action_label": "Open Shopify Import Products",
+ "creation": "2026-05-04 21:00:00.000000",
+ "description": "# Run initial product import\n\nFor onboarding an existing store with an existing catalog, run a one-time import.\n\nClick the action to open the **Shopify Import Products** page. It paginates through all products on the store. For each product, it:\n\n1. Creates an Nexus Item (skips if the SKU already exists).\n2. Creates the variant Items.\n3. Sets `shopify_selling_rate` from Shopify's `variant.price`.\n4. Creates the corresponding **Ecommerce Item** linkage.\n\nRun this once during onboarding. After this, ongoing changes flow via webhooks (Shopify → Nexus) or scheduled jobs (Nexus → Shopify) depending on your toggles.\n\n> If your Shopify store is empty and you'll be uploading items from Nexus instead, you can skip this step.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "idx": 0,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Run Initial Product Import",
+ "owner": "Administrator",
+ "path": "shopify-import-products",
+ "show_form_tour": 0,
+ "show_full_form": 0,
+ "title": "Run initial product import",
+ "validate_action": 0
+}

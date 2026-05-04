@@ -1,0 +1,23 @@
+{
+ "action": "Update Settings",
+ "action_label": "Set tax & shipping defaults",
+ "creation": "2026-05-04 21:00:00.000000",
+ "description": "# Set tax & shipping defaults\n\nThese two fields are not enforced at save time, but the **first incoming order with a tax line will fail** without them.\n\nOn the Shopify Account form, scroll to **Tax Account Details** and set:\n\n- **Default Sales Tax Account** — fallback for any unmapped tax title (e.g. `Output Tax - Company`).\n- **Default Shipping Charges Account** — fallback for unmapped shipping titles (e.g. `Shipping Charges - Company`).\n\nThe **Map Shopify Taxes / Shipping Charges to Nexus Account** table is **optional** — most stores leave it empty and let the two defaults above handle everything.\n\nThis step auto-completes once **Default Sales Tax Account** is set.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "field": "default_sales_tax_account",
+ "idx": 0,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Configure Tax and Shipping Defaults",
+ "owner": "Administrator",
+ "reference_document": "Shopify Account",
+ "show_form_tour": 0,
+ "show_full_form": 1,
+ "title": "Configure tax & shipping defaults",
+ "validate_action": 1,
+ "value_to_validate": "%"
+}

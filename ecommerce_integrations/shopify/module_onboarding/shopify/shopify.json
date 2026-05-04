@@ -1,0 +1,44 @@
+{
+ "allow_roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Sales Manager"
+  }
+ ],
+ "creation": "2026-05-04 21:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Module Onboarding",
+ "documentation_url": "https://github.com/frappe/ecommerce_integrations/blob/develop/ecommerce_integrations/shopify/ONBOARDING.md",
+ "idx": 0,
+ "is_complete": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "shopify",
+ "name": "Shopify",
+ "owner": "Administrator",
+ "steps": [
+  {
+   "step": "Create Shopify Account"
+  },
+  {
+   "step": "Connect and Enable Shopify"
+  },
+  {
+   "step": "Map Shopify Locations"
+  },
+  {
+   "step": "Configure Tax and Shipping Defaults"
+  },
+  {
+   "step": "Configure Sync Settings"
+  },
+  {
+   "step": "Run Initial Product Import"
+  }
+ ],
+ "subtitle": "Connect a Shopify store to Nexus.",
+ "success_message": "Your Shopify store is connected. Watch the Ecommerce Integration Log for the first orders to flow through.",
+ "title": "Set up the Shopify integration"
+}

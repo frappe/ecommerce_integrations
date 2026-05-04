@@ -1,0 +1,23 @@
+{
+ "action": "Update Settings",
+ "action_label": "Configure sync settings",
+ "creation": "2026-05-04 21:00:00.000000",
+ "description": "# Configure sync direction & document series\n\nDecide what flows where, and what naming series to use.\n\n**Order Sync (always on, Shopify → Nexus):**\n\n- **Sales Order Series** — required (e.g. `SO-SHOP-` or `SO-EG-.YYYY.-`).\n- **Import Sales Invoice from Shopify if Payment is marked** — recommended ON. Requires **Sales Invoice Series**, **Cash/Bank Account**, **Cost Center**.\n- **Import Delivery Notes from Shopify on Shipment** — recommended ON. Requires **Delivery Note Series**.\n\n**Outbound Sync (opt-in, Nexus → Shopify):**\n\n- **Update Nexus stock levels to Shopify** — periodic stock push (5/10/15/30/60 min cadence).\n- **Upload new Nexus Items to Shopify** — auto-create Shopify products on Item save.\n- **Update Shopify Item after updating Nexus item** — push price/name/description changes.\n\nThis step auto-completes once **Sales Order Series** is set.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "field": "sales_order_series",
+ "idx": 0,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Configure Sync Settings",
+ "owner": "Administrator",
+ "reference_document": "Shopify Account",
+ "show_form_tour": 0,
+ "show_full_form": 1,
+ "title": "Configure sync direction & series",
+ "validate_action": 1,
+ "value_to_validate": "%"
+}

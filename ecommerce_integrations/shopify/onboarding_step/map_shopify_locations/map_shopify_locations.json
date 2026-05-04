@@ -1,0 +1,21 @@
+{
+ "action": "Update Settings",
+ "action_label": "Map Shopify locations",
+ "creation": "2026-05-04 21:00:00.000000",
+ "description": "# Map Shopify locations to Nexus warehouses\n\nShopify exposes locations (warehouses, retail floor, etc.). Each must map to a real Nexus warehouse **in the same company** as this account.\n\nOn the Shopify Account form:\n\n1. Click **Fetch Shopify Locations**.\n2. The **Shopify Warehouse Mapping** child table populates with each Shopify location.\n3. For each row, set **Nexus Warehouse** (filtered to this account's company).\n4. Save.\n\nThe first row's warehouse acts as the **Default Warehouse** for that account if not separately set.\n\n> Note: this step auto-completes when you click the action button. Make sure you've actually filled the mapping table — sync will fail later if rows are blank.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "idx": 0,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Map Shopify Locations",
+ "owner": "Administrator",
+ "reference_document": "Shopify Account",
+ "show_form_tour": 0,
+ "show_full_form": 1,
+ "title": "Map Shopify locations to warehouses",
+ "validate_action": 0
+}

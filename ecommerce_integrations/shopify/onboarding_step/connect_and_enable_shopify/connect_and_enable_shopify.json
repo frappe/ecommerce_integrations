@@ -1,0 +1,23 @@
+{
+ "action": "Update Settings",
+ "action_label": "Connect and enable",
+ "creation": "2026-05-04 21:00:00.000000",
+ "description": "# Connect and enable Shopify\n\nOpen your Shopify Account record and:\n\n1. Confirm your **Authentication Method** (Static Token or OAuth 2.0).\n2. Fill the credentials.\n3. Tick **Enable Shopify** at the top of the form.\n4. **Save**.\n\nOn save, the integration validates your credentials and registers the required webhooks (`orders/create`, `orders/paid`, `orders/fulfilled`, `orders/cancelled`, `orders/partially_fulfilled`).\n\nIf webhook registration fails, your bench may not be reachable from the public internet — see `ONBOARDING.md` §8.4.",
+ "docstatus": 0,
+ "doctype": "Onboarding Step",
+ "field": "enable_shopify",
+ "idx": 0,
+ "is_complete": 0,
+ "is_single": 0,
+ "is_skipped": 0,
+ "modified": "2026-05-04 21:00:00.000000",
+ "modified_by": "Administrator",
+ "name": "Connect and Enable Shopify",
+ "owner": "Administrator",
+ "reference_document": "Shopify Account",
+ "show_form_tour": 0,
+ "show_full_form": 1,
+ "title": "Connect and enable Shopify",
+ "validate_action": 1,
+ "value_to_validate": "1"
+}
