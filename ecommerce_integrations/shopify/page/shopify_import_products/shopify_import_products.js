@@ -17,6 +17,7 @@ shopify.ProductImporter = class {
 		this.page = wrapper.page;
 		this.init();
 		this.syncRunning = false;
+		this.jobMonitor = null;
 	}
 
 	init() {
@@ -300,17 +301,21 @@ shopify.ProductImporter = class {
 		this.shopifyProductTable.clearToastMessage();
 	}
 
-	syncAll() {
-		this.checkSyncStatus();
-		this.toggleSyncAllButton();
+	async syncAll() {
+		await this.checkSyncStatus();
 
 		if (this.syncRunning) {
-			frappe.msgprint(__("Sync already in progress"));
-		} else {
-			frappe.call({
-				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_products",
-			});
+			// frappe.msgprint(__("Sync already in progress"));
+			this.logSync();
+			return;
 		}
+
+		this.syncRunning = true;
+		this.toggleSyncAllButton(true);
+
+		await frappe.call({
+			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_products",
+		});
 
 		// sync progress
 		this.logSync();
@@ -324,6 +329,7 @@ shopify.ProductImporter = class {
 		// define counters here to prevent calling jquery every time
 		const _syncedCounter = $("#count-products-synced");
 		const _erpnextCounter = $("#count-products-erpnext");
+		this.startJobFailureMonitor(_log);
 
 		frappe.realtime.on(
 			"shopify.key.sync.all.products",
@@ -337,12 +343,82 @@ shopify.ProductImporter = class {
 
 				if (done) {
 					frappe.realtime.off("shopify.key.sync.all.products");
+					this.stopJobFailureMonitor();
 					this.toggleSyncAllButton(false);
 					this.fetchProductCount();
+					this.refreshTableData();
 					this.syncRunning = false;
 				}
 			}
 		);
+	}
+
+	async refreshTableData() {
+		if (!this.shopifyProductTable) return;
+		const rows = await this.fetchShopifyProducts();
+		this.shopifyProductTable.refresh(rows);
+	}
+
+	startJobFailureMonitor(logElement) {
+		this.stopJobFailureMonitor();
+
+		this.jobMonitor = setInterval(async () => {
+			try {
+				const jobs = await frappe.db.get_list("RQ Job", {
+					filters: { job_name: "shopify.job.sync.all.products" },
+					fields: ["name", "status", "exc_info"],
+					order_by: "creation desc",
+					limit: 1,
+				});
+
+				if (!jobs.length) return;
+
+				const job = jobs[0];
+				if (job.status === "failed") {
+					const exception = (job.exc_info || "").trim();
+					const message = exception
+						? __("Sync failed: {0}", [frappe.utils.escape_html(exception)])
+						: __("Sync failed. Check background job logs for details.");
+
+					logElement.append(`<pre class="mb-0 text-danger">${message}</pre>`);
+					logElement.scrollTop(logElement[0].scrollHeight);
+
+					frappe.realtime.off("shopify.key.sync.all.products");
+					this.stopJobFailureMonitor();
+					this.toggleSyncAllButton(false);
+					this.syncRunning = false;
+					frappe.msgprint(__("Product sync failed and has been stopped."));
+					return;
+				}
+
+				// Realtime events can be missed (for example, page reconnects).
+				// Polling job status ensures the UI exits "Syncing..." state.
+				if (["finished", "stopped", "deferred"].includes(job.status)) {
+					logElement.append(
+						`<pre class="mb-0 text-muted">${__(
+							"Sync job ended. Review synced/errors counts in this panel."
+						)}</pre>`
+					);
+					logElement.scrollTop(logElement[0].scrollHeight);
+
+					frappe.realtime.off("shopify.key.sync.all.products");
+					this.stopJobFailureMonitor();
+					this.toggleSyncAllButton(false);
+					this.fetchProductCount();
+					this.refreshTableData();
+					this.syncRunning = false;
+				}
+			} catch (e) {
+				// ignore transient errors while polling job state
+			}
+		}, 2000);
+	}
+
+	stopJobFailureMonitor() {
+		if (this.jobMonitor) {
+			clearInterval(this.jobMonitor);
+			this.jobMonitor = null;
+		}
 	}
 
 	toggleSyncAllButton(disable = true) {
