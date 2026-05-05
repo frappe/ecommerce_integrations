@@ -55,8 +55,15 @@ def temp_shopify_session(shopify_account=None):
 
 			# If a callable is passed, call it with self to get the account
 			if shopify_account is None:
-				# TODO: handle if get_user_shopify_account returns None
-				account = get_user_shopify_account().name
+				shopify_account_doc = get_user_shopify_account()
+				if not shopify_account_doc:
+					frappe.throw(
+						_(
+							"No Shopify account is linked to your user/company. Please configure Shopify Account and User Permissions before importing products."
+						),
+						title=_("Shopify Account Not Configured"),
+					)
+				account = shopify_account_doc.name
 			else:
 				account = shopify_account(args[0]) if callable(shopify_account) else shopify_account
 
