@@ -8,7 +8,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME
 from ecommerce_integrations.shopify.product import ShopifyProduct
-from ecommerce_integrations.shopify.utils import get_user_company
+from ecommerce_integrations.shopify.utils import get_user_company, get_user_shopify_account
 
 # constants
 SYNC_JOB_NAME = "shopify.job.sync.all.products"
@@ -58,14 +58,14 @@ def _fetch_products_from_shopify(from_=None, limit=20):
 
 
 @frappe.whitelist()
-def get_product_count():
+def get_product_count(shopify_account=None):
 	items = frappe.db.get_list("Item", {"variant_of": ["is", "not set"]})
 	erpnext_count = len(items)
 
 	sync_items = frappe.db.get_list("Ecommerce Item", {"variant_of": ["is", "not set"]})
 	synced_count = len(sync_items)
 
-	shopify_count = get_shopify_product_count()
+	shopify_count = get_shopify_product_count(shopify_account=shopify_account)
 
 	return {
 		"shopifyCount": shopify_count,
@@ -119,25 +119,37 @@ def is_synced(product):
 
 @frappe.whitelist()
 def import_all_products():
+	shopify_account = get_user_shopify_account()
+	if not shopify_account:
+		frappe.throw(
+			"No Shopify account is linked to your user/company. Please configure Shopify Account and User Permissions before importing products."
+		)
+
 	frappe.enqueue(
 		queue_sync_all_products,
 		queue="long",
 		job_name=SYNC_JOB_NAME,
 		key=REALTIME_KEY,
+		user=frappe.session.user,
+		shopify_account=shopify_account.name,
 	)
 
 
 def queue_sync_all_products(*args, **kwargs):
 	start_time = process_time()
+	shopify_account = kwargs.get("shopify_account")
+	synced_count = 0
+	failed_count = 0
+	failed_products = []
 
-	counts = get_product_count()
+	counts = get_product_count(shopify_account=shopify_account)
 	publish("Syncing all products...")
 
 	if counts["shopifyCount"] < counts["syncedCount"]:
 		publish("⚠ Shopify has less products than ERPNext.")
 
 	_sync = True
-	collection = _fetch_products_from_shopify(limit=100)
+	collection = _fetch_products_from_shopify(limit=100, shopify_account=shopify_account)
 	savepoint = "shopify_product_sync"
 	while _sync:
 		for product in collection:
@@ -150,27 +162,47 @@ def queue_sync_all_products(*args, **kwargs):
 
 				shopify_product = ShopifyProduct(product.id, company=get_user_company(kwargs.get("user")))
 				shopify_product.sync_product()
+				synced_count += 1
 
 				publish(f"✅ Synced Product {product.id}", synced=True)
 
 			except UniqueValidationError as e:
+				failed_count += 1
+				failed_products.append(str(product.id))
 				publish(f"❌ Error Syncing Product {product.id} : {e!s}", error=True)
 				frappe.db.rollback(save_point=savepoint)
 				continue
 
 			except Exception as e:
+				failed_count += 1
+				failed_products.append(str(product.id))
 				publish(f"❌ Error Syncing Product {product.id} : {e!s}", error=True)
 				frappe.db.rollback(save_point=savepoint)
 				continue
 
 		if collection.has_next_page():
 			frappe.db.commit()  # prevents too many write request error
-			collection = _fetch_products_from_shopify(from_=collection.next_page_url)
+			collection = _fetch_products_from_shopify(
+				from_=collection.next_page_url, shopify_account=shopify_account
+			)
 		else:
 			_sync = False
 
 	end_time = process_time()
-	publish(f"🎉 Done in {end_time - start_time}s", done=True)
+	if failed_count and not synced_count:
+		publish(
+			f"⚠ Sync finished with errors. Synced: {synced_count}, Failed: {failed_count}.",
+			error=True,
+			done=True,
+		)
+	elif failed_count:
+		publish(
+			f"⚠ Sync completed with partial errors. Synced: {synced_count}, Failed: {failed_count}.",
+			error=True,
+			done=True,
+		)
+	else:
+		publish(f"🎉 Done in {end_time - start_time}s. Synced: {synced_count}", done=True)
 	return True
 
 
