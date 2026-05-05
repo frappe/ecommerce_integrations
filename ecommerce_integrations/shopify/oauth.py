@@ -101,32 +101,45 @@ def refresh_oauth_token(setting) -> str:
 			title=_("Invalid Authentication Method"),
 		)
 
-	setting.reload()
+	# Never reload the passed document here. This function is used during doc.save()
+	# and reload() would silently wipe unsaved field changes (e.g. enable_shopify).
+	#
+	# Use a persisted copy only for secret retrieval when available.
+	persisted_setting = None
+	if setting.name and not setting.is_new() and frappe.db.exists(ACCOUNT_DOCTYPE, setting.name):
+		persisted_setting = frappe.get_doc(ACCOUNT_DOCTYPE, setting.name)
 
+	client_secret = (
+		persisted_setting.get_password("client_secret")
+		if persisted_setting
+		else setting.get_password("client_secret")
+	)
 	token_data = generate_oauth_token(
 		setting.shopify_url,
 		setting.client_id,
-		setting.get_password("client_secret"),
+		client_secret,
 	)
 
 	expires_at = calculate_token_expiry(token_data.get("expires_in", 86399))
 
-	set_encrypted_password(
-		ACCOUNT_DOCTYPE,
-		setting.name,
-		token_data["access_token"],
-		fieldname="oauth_access_token",
-	)
+	if persisted_setting:
+		set_encrypted_password(
+			ACCOUNT_DOCTYPE,
+			setting.name,
+			token_data["access_token"],
+			fieldname="oauth_access_token",
+		)
 
-	frappe.db.set_value(
-		ACCOUNT_DOCTYPE,
-		setting.name,
-		"token_expires_at",
-		get_datetime_str(expires_at),
-		update_modified=False,
-	)
+		frappe.db.set_value(
+			ACCOUNT_DOCTYPE,
+			setting.name,
+			"token_expires_at",
+			get_datetime_str(expires_at),
+			update_modified=False,
+		)
 
-	setting.reload()
+	# Keep caller doc in sync without forcing a reload.
+	setting.token_expires_at = get_datetime_str(expires_at)
 	return token_data["access_token"]
 
 
