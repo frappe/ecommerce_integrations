@@ -68,12 +68,6 @@ def _get_party_state_code(si) -> str | None:
 
 
 def _get_gst_tax_template(si) -> str | None:
-	"""
-	Use ERPNext tax-template model properly:
-	- company active Sales Taxes and Charges Template
-	- interstate template => is_inter_state = 1
-	- intrastate/default template => is_default = 1 preferred, otherwise non-interstate fallback
-	"""
 	company = si.company
 	company_state_code = _get_company_state_code(company)
 	party_state_code = _get_party_state_code(si)
@@ -94,7 +88,6 @@ def _get_gst_tax_template(si) -> str | None:
 		)
 		if template:
 			return template
-
 	else:
 		template = frappe.db.get_value(
 			"Sales Taxes and Charges Template",
@@ -124,10 +117,6 @@ def _get_gst_tax_template(si) -> str | None:
 
 
 def _apply_item_tax_templates(si) -> list[dict[str, Any]]:
-	"""
-	Explicitly fetch item_tax_template from Item master and apply on each invoice row.
-	Returns diagnostic info for logging.
-	"""
 	applied = []
 
 	for row in si.items:
@@ -182,10 +171,6 @@ def _get_line_items(
 	from ecommerce_integrations.unicommerce.order import ORDER_ITEM_CODE_FIELD
 
 	warehouse_allocations = warehouse_allocations or []
-	alloc_map = {
-		(row.get("item_code"), row.get("batch_no"), row.get("warehouse")): row
-		for row in warehouse_allocations
-	}
 
 	items = []
 	for line in uni_line_items:
@@ -252,6 +237,7 @@ def attach_unicommerce_docs(
 				f"Failed attaching file {file_name} to Sales Invoice {sales_invoice}",
 			)
 
+
 	if invoice:
 		_attach_file(invoice, f"{invoice_code or sales_invoice}-invoice.pdf")
 	if label:
@@ -276,10 +262,6 @@ def make_payment_entry(si, channel_config, posting_date):
 
 
 def update_cancellation_status(so_data, so):
-	"""
-	Placeholder-safe helper.
-	If your original file/module has a richer cancellation handler, keep that.
-	"""
 	status = (so_data or {}).get("status")
 	if status == "CANCELLED" and so.docstatus == 1:
 		return True
@@ -371,19 +353,11 @@ def create_sales_invoice(
 			request_data={"item_tax_templates": item_tax_template_result, **request_data},
 		)
 
-		missing_item_templates = [d for d in item_tax_template_result if d.get("status") == "missing"]
-		if missing_item_templates:
-			_log_info(
-				f"Some items do not have Item Tax Template configured for invoice {si_data.get('code')}",
-				request_data={"missing_item_templates": missing_item_templates, **request_data},
-			)
-
 		tax_template = _get_gst_tax_template(si)
 		if not tax_template:
 			message = (
 				f"Could not determine Sales Taxes and Charges Template for company {si.company} "
-				f"while creating invoice for SO {so.name}. Check company GSTIN, customer/shipping "
-				f"state, default tax template, and interstate tax template configuration."
+				f"while creating invoice for SO {so.name}."
 			)
 			_log_failure(message, request_data=request_data)
 			return
@@ -391,11 +365,6 @@ def create_sales_invoice(
 		si.taxes_and_charges = tax_template
 		si.set("taxes", [])
 		si.set_taxes()
-
-		_log_info(
-			f"Resolved invoice tax template {tax_template} for invoice {si_data.get('code')}",
-			request_data={**request_data, "tax_template": tax_template},
-		)
 
 		si.set(INVOICE_CODE_FIELD, si_data["code"])
 		si.set(SHIPPING_PACKAGE_CODE_FIELD, shipping_package_code)
@@ -414,11 +383,6 @@ def create_sales_invoice(
 		si.update_stock = False if settings.delivery_note else update_stock
 		si.flags.raw_data = si_data
 
-		_log_info(
-			f"About to insert Sales Invoice for SO {so.name}, invoice {si_data.get('code')}",
-			request_data={**request_data, "tax_template": tax_template},
-		)
-
 		si.insert()
 
 		_verify_total(si, si_data)
@@ -430,15 +394,6 @@ def create_sales_invoice(
 			invoice_code=si_data.get("code"),
 			package_code=shipping_package_code,
 		)
-
-		item_warehouses = {d.warehouse for d in si.items}
-		for wh in item_warehouses:
-			if update_stock and cint(frappe.db.get_value("Warehouse", wh, "is_group")):
-				_log_info(
-					f"Sales Invoice {si.name} created but not submitted due to group warehouse {wh}",
-					request_data={**request_data, "sales_invoice": si.name},
-				)
-				return si
 
 		if submit:
 			si.submit()
@@ -465,5 +420,20 @@ def create_sales_invoice(
 		raise
 
 
-# Imports intentionally placed below helpers where they are used in log wrappers / main flow.
+def on_submit(doc, method=None):
+	_log_info(
+		f"Sales Invoice submit hook executed for {doc.name}",
+		request_data={"sales_invoice": doc.name, "doctype": doc.doctype},
+	)
+	return
+
+
+def on_cancel(doc, method=None):
+	_log_info(
+		f"Sales Invoice cancel hook executed for {doc.name}",
+		request_data={"sales_invoice": doc.name, "doctype": doc.doctype},
+	)
+	return
+
+
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
