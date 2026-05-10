@@ -351,7 +351,7 @@ def upload_erpnext_item(doc, method=None):
 		return
 
 	# TODO: Handle if doc.custom_company is None
-	if doc.hasattr("custom_company"):
+	if doc.get("custom_company", None):
 		setting = get_company_shopify_account(company=doc.custom_company)
 	else:
 		setting = get_user_shopify_account()
