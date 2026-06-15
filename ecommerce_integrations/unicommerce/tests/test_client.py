@@ -1,79 +1,75 @@
 import base64
 import json
-from unittest.mock import patch
 
 import frappe
 import responses
-from responses.matchers import query_param_matcher
+from responses.matchers import json_params_matcher, query_param_matcher
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
-from ecommerce_integrations.unicommerce.tests.utils import TestCase
+from ecommerce_integrations.unicommerce.tests.utils import UnicommerceTestSuite
+
+BASE_URL = "https://demostaging.unicommerce.com"
 
 
-class TestCaseApiClient(TestCase):
+def api_url(endpoint: str) -> str:
+	return f"{BASE_URL}/services/rest/v1/{endpoint}"
+
+
+class UnicommerceClientTestSuite(UnicommerceTestSuite):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
-		cls.client = UnicommerceAPIClient("https://demostaging.unicommerce.com", "AUTH_TOKEN")
+		cls.client = UnicommerceAPIClient(BASE_URL, "AUTH_TOKEN")
 
 	def setUp(self):
 		self.responses = responses.RequestsMock()
 		self.responses.start()
 
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
+		self.fake(
+			"catalog/itemType/get",
+			request_body={"skuCode": "TITANIUM_WATCH"},
 			json=self.load_fixture("simple_item"),
-			match=[responses.json_params_matcher({"skuCode": "TITANIUM_WATCH"})],
 		)
+		self.fake(
+			"catalog/itemType/get",
+			request_body={"skuCode": "MC-100"},
+			json=self.load_fixture("product-MC-100"),
+		)
+		self.fake("oms/saleOrder/search", json=self.load_fixture("so_search_results"))
 
 		def sales_order_mock(request):
 			payload = json.loads(request.body)
-			resp_body = self.load_fixture(f"order-{payload['code']}")
-			headers = {}
-			return (200, headers, json.dumps(resp_body))
+			response_body = self.load_fixture(f"order-{payload['code']}")
+			return (200, {}, json.dumps(response_body))
 
 		self.responses.add_callback(
 			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleorder/get",
+			api_url("oms/saleorder/get"),
 			callback=sales_order_mock,
 			content_type="application/json",
-		)
-
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/saleOrder/search",
-			status=200,
-			json=self.load_fixture("so_search_results"),
-		)
-
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
-			json=self.load_fixture("product-MC-100"),
-			match=[responses.json_params_matcher({"skuCode": "MC-100"})],
 		)
 
 		self.addCleanup(self.responses.stop)
 		self.addCleanup(self.responses.reset)
 
+	def fake(self, endpoint, method=responses.POST, request_body=None, **kwargs):
+		"""Register a fake response for a Unicommerce API endpoint.
+
+		`request_body` if provided is matched against the request's JSON payload."""
+		if request_body is not None:
+			kwargs.setdefault("match", [json_params_matcher(request_body)])
+
+		self.responses.add(method, api_url(endpoint), **kwargs)
+
 	def assert_last_request_headers(self, header, value):
-		req_headers = self.responses.calls[0].request.headers
-		self.assertEqual(req_headers[header], value)
+		request_headers = self.responses.calls[0].request.headers
+		self.assertEqual(request_headers[header], value)
 
 
-class TestUnicommerceClient(TestCaseApiClient):
+class TestUnicommerceClient(UnicommerceClientTestSuite):
 	def test_authorization_headers(self):
 		"""requirement: client inserts bearer token in headers"""
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
-			json={"status": "fail"},
-			match=[responses.json_params_matcher({"skuCode": "sku"})],
-		)
+		self.fake("catalog/itemType/get", request_body={"skuCode": "sku"}, json={"status": "fail"})
 
 		ret, _ = self.client.request(
 			endpoint="/services/rest/v1/catalog/itemType/get", body={"skuCode": "sku"}
@@ -97,19 +93,17 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 	def test_get_missing_item(self):
 		"""requirement: When querying missing item, `None` is returned and error log is crated"""
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/get",
-			status=200,
+		self.fake(
+			"catalog/itemType/get",
+			request_body={"skuCode": "MISSING"},
 			json=self.load_fixture("missing_item"),
-			match=[responses.json_params_matcher({"skuCode": "MISSING"})],
 		)
 
 		item_data = self.client.get_unicommerce_item("MISSING")
 		self.assertIsNone(item_data)
 
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
-		self.assertTrue("MISSING" in log.response_data, "Logging for missing item not working")
+		self.assertIn("MISSING", log.response_data, "Logging for missing item not working")
 
 	def test_get_sales_order(self):
 		order_data = self.client.get_sales_order("SO5841")
@@ -119,12 +113,10 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 	def test_create_update_item(self):
 		item_dict = {"test_dict": True}
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/catalog/itemType/createOrEdit",
-			status=200,
+		self.fake(
+			"catalog/itemType/createOrEdit",
+			request_body={"itemType": item_dict},
 			json={"successful": True},
-			match=[responses.json_params_matcher({"itemType": item_dict})],
 		)
 
 		response, _ = self.client.create_update_item(item_dict)
@@ -151,12 +143,10 @@ class TestUnicommerceClient(TestCaseApiClient):
 				},
 			]
 		}
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/inventory/adjust/bulk",
-			status=200,
+		self.fake(
+			"inventory/adjust/bulk",
+			request_body=expected_body,
 			json=self.load_fixture("bulk_inventory_response"),
-			match=[responses.json_params_matcher(expected_body)],
 		)
 
 		inventory_map = {"A": 1, "B": 2}
@@ -168,16 +158,10 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assertDictEqual(response, {k: True for k in inventory_map})
 
 	def test_create_sales_invoice(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/invoice/createInvoiceBySaleOrderCode",
-			status=200,
+		self.fake(
+			"invoice/createInvoiceBySaleOrderCode",
+			request_body={"saleOrderCode": "SO_CODE", "saleOrderItemCodes": ["1", "2", "3"]},
 			json={"successful": True},
-			match=[
-				responses.json_params_matcher(
-					{"saleOrderCode": "SO_CODE", "saleOrderItemCodes": ["1", "2", "3"]}
-				)
-			],
 		)
 
 		self.client.create_sales_invoice("SO_CODE", ["1", "2", "3"], "TEST")
@@ -185,12 +169,10 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_create_sales_invoice_with_shipping_package(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoice",
-			status=200,
+		self.fake(
+			"oms/shippingPackage/createInvoice",
+			request_body={"shippingPackageCode": "SP_CODE"},
 			json={"successful": True},
-			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
 		)
 
 		self.client.create_invoice_by_shipping_code("SP_CODE", "TEST")
@@ -198,27 +180,19 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_create_invoice_and_label_with_shipping_package(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndGenerateLabel",
-			status=200,
+		self.fake(
+			"oms/shippingPackage/createInvoiceAndGenerateLabel",
+			request_body={"shippingPackageCode": "SP_CODE", "generateUniwareShippingLabel": True},
 			json={"successful": True},
-			match=[
-				responses.json_params_matcher(
-					{"shippingPackageCode": "SP_CODE", "generateUniwareShippingLabel": True}
-				)
-			],
 		)
 
 		self.client.create_invoice_and_label_by_shipping_code("SP_CODE", "TEST")
 
 	def test_create_invoice_and_assign_shipper(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
-			status=200,
+		self.fake(
+			"oms/shippingPackage/createInvoiceAndAllocateShippingProvider",
+			request_body={"shippingPackageCode": "SP_CODE"},
 			json={"successful": True},
-			match=[responses.json_params_matcher({"shippingPackageCode": "SP_CODE"})],
 		)
 
 		self.client.create_invoice_and_assign_shipper("SP_CODE", "TEST")
@@ -226,43 +200,30 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_sales_invoice(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/invoice/details/get",
-			status=200,
+		self.fake(
+			"invoice/details/get",
+			request_body={"shippingPackageCode": "PACKAGE_ID", "return": False},
 			json={"successful": True, "return": False},
-			match=[responses.json_params_matcher({"shippingPackageCode": "PACKAGE_ID", "return": False})],
 		)
-
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/invoice/details/get",
-			status=200,
+		self.fake(
+			"invoice/details/get",
+			request_body={"shippingPackageCode": "PACKAGE_ID_RETURN", "return": True},
 			json={"successful": True, "return": True},
-			match=[
-				responses.json_params_matcher({"shippingPackageCode": "PACKAGE_ID_RETURN", "return": True})
-			],
 		)
 
-		res = self.client.get_sales_invoice("PACKAGE_ID", "TEST")
-		self.assertFalse(res["return"])
+		response = self.client.get_sales_invoice("PACKAGE_ID", "TEST")
+		self.assertFalse(response["return"])
 
-		res = self.client.get_sales_invoice("PACKAGE_ID_RETURN", "TEST", is_return=True)
-		self.assertTrue(res["return"])
+		response = self.client.get_sales_invoice("PACKAGE_ID_RETURN", "TEST", is_return=True)
+		self.assertTrue(response["return"])
 
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_inventory_snapshot(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/inventory/inventorySnapshot/get",
-			status=200,
+		self.fake(
+			"inventory/inventorySnapshot/get",
+			request_body={"itemTypeSKUs": ["BOOK", "KINDLE"], "updatedSinceInMinutes": 120},
 			json={"successful": True},
-			match=[
-				responses.json_params_matcher(
-					{"itemTypeSKUs": ["BOOK", "KINDLE"], "updatedSinceInMinutes": 120}
-				)
-			],
 		)
 
 		self.client.get_inventory_snapshot(
@@ -272,30 +233,23 @@ class TestUnicommerceClient(TestCaseApiClient):
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_update_shipping_package(self):
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shippingPackage/edit",
-			status=200,
+		self.fake(
+			"oms/shippingPackage/edit",
+			request_body={
+				"shippingPackageCode": "SP_CODE",
+				"shippingPackageTypeCode": "DEFAULT",
+				"shippingBox": {"length": 100, "width": 200, "height": 300},
+			},
 			json={"successful": True},
-			match=[
-				responses.json_params_matcher(
-					{
-						"shippingPackageCode": "SP_CODE",
-						"shippingPackageTypeCode": "DEFAULT",
-						"shippingBox": {"length": 100, "width": 200, "height": 300},
-					}
-				)
-			],
 		)
 
 		self.client.update_shipping_package("SP_CODE", "TEST", "DEFAULT", length=100, width=200, height=300)
 		self.assert_last_request_headers("Facility", "TEST")
 
 	def test_get_invoice_label(self):
-		self.responses.add(
-			responses.GET,
-			"https://demostaging.unicommerce.com/services/rest/v1/oms/shipment/show?shippingPackageCodes=SP_CODE",
-			status=200,
+		self.fake(
+			"oms/shipment/show?shippingPackageCodes=SP_CODE",
+			method=responses.GET,
 			body="pdf",
 		)
 
@@ -316,17 +270,13 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		save_file(fname=csv_filename, content=csv_file, dt=item.doctype, dn=item.name)
 
-		self.responses.add(
-			responses.POST,
-			"https://demostaging.unicommerce.com/services/rest/v1/data/import/job/create",
-			status=200,
-			match=[
-				query_param_matcher({"name": "Auto GRN Items", "importOption": "CREATE_NEW"}),
-			],
+		self.fake(
+			"data/import/job/create",
+			match=[query_param_matcher({"name": "Auto GRN Items", "importOption": "CREATE_NEW"})],
 			json={"successful": True},
 		)
 
-		resp = create_auto_grn_import(csv_filename, "TEST", client=self.client)
+		response = create_auto_grn_import(csv_filename, "TEST", client=self.client)
 
-		self.assertEqual(resp.successful, True)
+		self.assertEqual(response.successful, True)
 		self.assert_last_request_headers("Facility", "TEST")

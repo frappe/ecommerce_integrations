@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import date, datetime
 
 import frappe
-from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
+from erpnext.accounts.doctype.sales_invoice.mapper import make_sales_return
 from erpnext.controllers.accounts_controller import update_child_qty_rate
 from frappe.utils import now_datetime
 

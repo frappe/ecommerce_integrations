@@ -10,7 +10,7 @@ dynamic = ["version"]
 
 dependencies = [
     "ShopifyAPI==12.7.0",
-    "boto3~=1.28.10",
+    "boto3>=1.35.0",
 ]
 
 [project.license]
@@ -61,4 +61,5 @@ docstring-code-format = true
 frappe = ">=16.0.0-dev,<=17.0.0-dev"
 erpnext = ">=16.0.0-dev,<=17.0.0-dev"
 
-
+[tool.bench.dev-dependencies]
+responses = "==0.23.1"

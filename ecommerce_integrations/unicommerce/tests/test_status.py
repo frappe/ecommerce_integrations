@@ -1,3 +1,5 @@
+import json
+
 import frappe
 
 from ecommerce_integrations.unicommerce.cancellation_and_returns import (
@@ -5,21 +7,24 @@ from ecommerce_integrations.unicommerce.cancellation_and_returns import (
 	_serialize_items,
 )
 from ecommerce_integrations.unicommerce.constants import ORDER_ITEM_CODE_FIELD
-from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.utils import UnicommerceTestSuite
 
 
-class TestUnicommerceStatusUpdates(TestCaseApiClient):
+class TestUnicommerceStatusUpdates(UnicommerceTestSuite):
 	def test_serialization(self):
-		si_item = frappe.new_doc("Sales Order Item")
-		si_item._set_defaults()
-		_serialize_items([si_item.as_dict()])
+		so_item = frappe.new_doc("Sales Order Item")
+		so_item._set_defaults()
+
+		serialized_items = _serialize_items([so_item.as_dict()])
+
+		self.assertIsInstance(serialized_items, str)
+		self.assertEqual(len(json.loads(serialized_items)), 1)
 
 	def test_delete_cancelled_items(self):
-		item1 = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "cancelled"})
-		item2 = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "not cancelled"})
+		cancelled_item = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "cancelled"})
+		active_item = frappe.new_doc("Sales Order Item").update({ORDER_ITEM_CODE_FIELD: "not cancelled"})
 
-		cancelled_items = ["cancelled"]
+		items = _delete_cancelled_items([cancelled_item, active_item], cancelled_items=["cancelled"])
 
-		items = _delete_cancelled_items([item1, item2], cancelled_items)
 		self.assertEqual(len(items), 1)
-		self.assertEqual("not cancelled", items[0].get(ORDER_ITEM_CODE_FIELD))
+		self.assertEqual(items[0].get(ORDER_ITEM_CODE_FIELD), "not cancelled")
