@@ -165,11 +165,6 @@ scheduler_events = {
 # bootinfo - hide old doctypes
 extend_bootinfo = "ecommerce_integrations.boot.boot_session"
 
-# Testing
-# -------
-
-before_tests = "ecommerce_integrations.utils.before_test.before_tests"
-
 # Overriding Methods
 # ------------------------------
 #

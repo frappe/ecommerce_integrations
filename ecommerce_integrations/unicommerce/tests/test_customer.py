@@ -1,15 +1,15 @@
 import frappe
-from frappe.test_runner import make_test_records
+from frappe.tests.utils import make_test_records
 
 from ecommerce_integrations.unicommerce.customer import (
 	_create_customer_addresses,
 	_create_new_customer,
 	sync_customer,
 )
-from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.test_client import UnicommerceClientTestSuite
 
 
-class TestUnicommerceProduct(TestCaseApiClient):
+class TestUnicommerceCustomer(UnicommerceClientTestSuite):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
@@ -27,18 +27,22 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 		_create_customer_addresses(order.get("addresses", []), customer)
 
-		new_addresses = frappe.get_all("Address", filters={"link_name": customer.name}, fields=["*"])
+		new_addresses = frappe.get_all(
+			"Address", filters={"link_name": customer.name}, fields=["address_type", "state"]
+		)
 
 		self.assertEqual(len(new_addresses), 2)
-		addr_types = {d.address_type for d in new_addresses}
-		self.assertEqual(addr_types, {"Shipping", "Billing"})
 
-		states = {d.state for d in new_addresses}
+		address_types = {address.address_type for address in new_addresses}
+		self.assertEqual(address_types, {"Shipping", "Billing"})
+
+		states = {address.state for address in new_addresses}
 		self.assertEqual(states, {"Maharashtra"})
 
 	def test_deduplication(self):
 		"""requirement: Literally same order should not create duplicates."""
 		order = self.load_fixture("order-SO5841")["saleOrderDTO"]
+
 		customer = sync_customer(order)
 		same_customer = sync_customer(order)
 

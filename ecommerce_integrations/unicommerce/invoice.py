@@ -5,7 +5,7 @@ from typing import Any, NewType
 
 import frappe
 import requests
-from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from erpnext.selling.doctype.sales_order.mapper import make_sales_invoice
 from frappe import _
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
@@ -190,12 +190,10 @@ def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
 
-	frappe.db.sql(
-		f"""update `tabSales Order`
-			set {ORDER_INVOICE_STATUS_FIELD} = %s
-			where name in %s""",
-		(status, sales_orders),
-	)
+	so = frappe.qb.DocType("Sales Order")
+	frappe.qb.update(so).set(so[ORDER_INVOICE_STATUS_FIELD], status).where(
+		so.name.isin(list(sales_orders))
+	).run()
 
 
 def _validate_wh_allocation(warehouse_allocation: WHAllocation):
