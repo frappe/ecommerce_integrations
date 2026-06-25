@@ -61,26 +61,33 @@ def upload_inventory_data_to_medusa(inventory_levels, warehouse_map) -> None:
 			d.medusa_location_id = warehouse_map[d.warehouse]
 			d.failure_reason = None
 
+			# resolve the variant's Medusa inventory item first; a lookup failure (including
+			# a transient 404) must NOT advance the watermark, so the row retries next cycle.
 			try:
 				inventory_item_id = _resolve_inventory_item_id(client, d, inventory_item_cache)
+			except Exception as e:
+				d.status = "Failed"
+				d.failure_reason = f"SKU lookup failed: {e}"
+				frappe.db.commit()
+				continue
 
-				if not inventory_item_id:
-					# No Medusa inventory item for this SKU; may be a transient empty
-					# lookup, so do NOT advance the watermark - let it retry next cycle.
-					d.status = "Not Found"
-					d.failure_reason = "No Medusa inventory item found for SKU"
-					frappe.db.commit()
-					continue
+			if not inventory_item_id:
+				# resolved to no inventory item (deleted variant or transient empty result);
+				# don't advance the watermark so it retries next cycle.
+				d.status = "Not Found"
+				d.failure_reason = "No Medusa inventory item found for SKU"
+				frappe.db.commit()
+				continue
 
+			try:
 				# Medusa does not support fractional stock quantities.
 				stocked_quantity = cint(d.actual_qty) - cint(d.reserved_qty)
 				client.update_inventory_level(inventory_item_id, d.medusa_location_id, stocked_quantity)
-
 				update_inventory_sync_status(d.ecom_item, time=synced_on)
 				d.status = "Success"
 			except Exception as e:
-				# A 404 on the location-level endpoint means the variant or location
-				# no longer exists on Medusa — treat like the deleted-variant case.
+				# a 404 here means the item/location was resolved but is gone on Medusa ->
+				# mark synced; any other error retries next cycle.
 				if _is_not_found(e):
 					update_inventory_sync_status(d.ecom_item, time=synced_on)
 					d.status = "Not Found"
