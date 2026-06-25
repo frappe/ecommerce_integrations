@@ -159,19 +159,23 @@ def get_order_items(order, setting) -> list[dict]:
 		item_code = get_item_code(line)
 		qty = cint(line.get("quantity")) or 1
 
-		# Medusa carries discount as a line total; ERPNext field is per-unit.
-		discount_total = to_amount(line.get("discount_total"))  # Verified against @medusajs/types 2.4.0.
+		# Medusa's unit_price is pre-discount and discount_total is the line discount; net
+		# the per-unit discount into the rate so ERPNext totals reflect it (a read-only
+		# custom field keeps the discount for reference). Verified against @medusajs/types 2.4.0.
+		unit_price = to_amount(line.get("unit_price"))
+		discount_total = to_amount(line.get("discount_total"))
+		discount_per_unit = discount_total / qty if qty else discount_total
 
 		items.append(
 			{
 				"item_code": item_code,
 				"item_name": line.get("title") or line.get("product_title"),
-				"rate": to_amount(line.get("unit_price")),
+				"rate": unit_price - discount_per_unit,
 				"qty": qty,
 				"stock_uom": "Nos",
 				"delivery_date": delivery_date,
 				"warehouse": warehouse,
-				ORDER_ITEM_DISCOUNT_FIELD: discount_total / qty if qty else discount_total,
+				ORDER_ITEM_DISCOUNT_FIELD: discount_per_unit,
 				ORDER_LINE_ID_FIELD: cstr(line.get("id")),
 			}
 		)
@@ -402,5 +406,39 @@ def sync_old_orders():
 			make_new=True,
 		)
 		sync_sales_order(order, request_id=log.name)
+		frappe.db.commit()  # persist the SO first so a replay failure can't roll it back
+		# replay downstream state that won't arrive as live webhooks for historical orders
+		_replay_order_state(order)
 
 	frappe.db.set_value(SETTING_DOCTYPE, None, "sync_old_orders", 0)
+
+
+def _replay_order_state(order):
+	"""Replay a backfilled order's paid / fulfilled / canceled state.
+
+	Live orders get their Sales Invoice, Payment Entry and Delivery Note from webhook
+	events; historical orders pulled by the backfill won't, so drive those handlers
+	directly here. Each is gated by its Setting toggle and dedups, so this is safe and
+	idempotent.
+	"""
+	status = (order.get("status") or "").lower()
+	if status in ("canceled", "cancelled"):
+		cancel_order(order)
+		return
+
+	captured = any(
+		pc.get("status") in ("captured", "completed")
+		or any(p.get("captured_at") for p in (pc.get("payments") or []))
+		for pc in (order.get("payment_collections") or [])
+	)
+	if captured:
+		from ecommerce_integrations.medusa.invoice import prepare_sales_invoice
+
+		prepare_sales_invoice(order)
+		frappe.db.commit()
+
+	if order.get("fulfillments"):
+		from ecommerce_integrations.medusa.fulfillment import prepare_delivery_note
+
+		prepare_delivery_note(order)
+		frappe.db.commit()
