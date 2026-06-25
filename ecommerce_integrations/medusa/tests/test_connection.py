@@ -27,3 +27,10 @@ class TestConnection(TestCase):
 			)
 		finally:
 			frappe.db.set_single_value(SETTING_DOCTYPE, "enable_medusa", 1)
+
+	def test_fetch_locations_does_not_require_warehouse(self):
+		# fetching stock locations appends rows that have no ERPNext warehouse yet; it must
+		# not save (validate would reject them) before the operator maps them.
+		setting = frappe.get_doc(SETTING_DOCTYPE)
+		setting.fetch_medusa_locations()
+		self.assertTrue(any(r.medusa_location_id for r in setting.medusa_warehouse_mapping))
