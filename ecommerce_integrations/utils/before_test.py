@@ -39,6 +39,10 @@ def create_tax_account():
 	company = "Wind Power LLC"
 	account_name = "Output Tax GST"
 
+	# Newer ERPNext auto-creates GST accounts during company setup; don't duplicate.
+	if frappe.db.exists("Account", {"account_name": account_name, "company": company}):
+		return
+
 	parent = (
 		frappe.db.get_value("Account", {"company": company, "account_type": "Tax", "is_group": 1})
 		or "Duties and Taxes - WP"
