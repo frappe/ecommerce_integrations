@@ -152,6 +152,13 @@ def store_request_data() -> None:
 
 
 def process_request(data, event):
+	# don't run document-mutating handlers when the integration is disabled, even if a
+	# stale subscriber still holds the secret and sends correctly-signed events.
+	setting = frappe.get_doc(SETTING_DOCTYPE)
+	if not setting.is_enabled():
+		create_medusa_log(status="Invalid", message="Medusa integration is disabled.", request_data=data)
+		return
+
 	if event not in EVENT_MAPPER:
 		create_medusa_log(status="Invalid", message=f"Unhandled Medusa topic: {event}", request_data=data)
 		return
