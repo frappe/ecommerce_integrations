@@ -88,7 +88,8 @@ class MedusaSetting(SettingController):
 				"medusa_warehouse_mapping",
 				{"medusa_location_id": location.get("id"), "medusa_location_name": location.get("name")},
 			)
-		self.save()
+		# do NOT save here: validate() rejects mapping rows without an ERPNext warehouse.
+		# The client refreshes the child table; the operator maps + saves the form.
 
 	# -- SettingController warehouse-mapping interface ----------------------------
 
