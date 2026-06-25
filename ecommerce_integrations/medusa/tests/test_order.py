@@ -35,7 +35,7 @@ class TestOrder(TestCase):
 		# two line items: mug (qty 2 @ 19.99) and tee variant (qty 1 @ 24.99)
 		self.assertEqual(len(so.items), 2)
 		by_qty = {item.qty: item.rate for item in so.items}
-		self.assertEqual(flt(by_qty[2], 2), 19.99)
+		self.assertEqual(flt(by_qty[2], 2), 17.99)  # net of the per-unit discount (19.99 - 2.00)
 		self.assertEqual(flt(by_qty[1], 2), 24.99)
 
 		# the order's customer was synced and attached (not the default customer)
@@ -61,6 +61,10 @@ class TestOrder(TestCase):
 		mug_line = next(item for item in so.items if item.qty == 2)
 		self.assertEqual(flt(mug_line.get("medusa_item_discount"), 2), 2.00)
 
+		# the discount reduces the order total (Medusa order.total = 73.67) rather than
+		# being left as an informational field that would overstate the customer balance
+		self.assertEqual(flt(so.grand_total, 2), 73.67)
+
 	def test_sync_is_idempotent(self):
 		self._sync()
 		first = self._get_so()
@@ -72,3 +76,25 @@ class TestOrder(TestCase):
 
 		second = self._get_so()
 		self.assertEqual(first.name, second.name)
+
+	def test_backfill_replays_paid_and_fulfilled_state(self):
+		from ecommerce_integrations.medusa.order import sync_old_orders
+
+		setting = frappe.get_doc("Medusa Setting")
+		setting.db_set("sync_old_orders", 1)
+		setting.db_set("old_orders_from", "2024-01-01 00:00:00")
+		setting.db_set("old_orders_to", "2024-12-31 00:00:00")
+
+		sync_old_orders()
+
+		# the historical order is paid + fulfilled, so backfill must replay SO + SI + DN
+		# rather than leaving a bare open Sales Order
+		self.assertIsNotNone(self._get_so())
+		self.assertTrue(
+			frappe.db.exists(
+				"Sales Invoice", {ORDER_ID_FIELD: "order_01HORDER00000000000000001", "is_return": 0}
+			)
+		)
+		self.assertTrue(
+			frappe.db.exists("Delivery Note", {ORDER_ID_FIELD: "order_01HORDER00000000000000001"})
+		)

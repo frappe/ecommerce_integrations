@@ -151,6 +151,8 @@ class TestCase(IntegrationTestCase):
 		frappe.db.set_single_value("Global Defaults", "default_company", "_Test Company")
 		frappe.defaults.set_global_default("company", "_Test Company")
 		frappe.db.set_single_value("Stock Settings", "default_warehouse", None)
+		# let Delivery Notes submit without seeding stock for every fixture item
+		frappe.db.set_single_value("Stock Settings", "allow_negative_stock", 1)
 		frappe.clear_cache()
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)
