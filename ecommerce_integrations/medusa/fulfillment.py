@@ -1,15 +1,15 @@
 # Copyright (c) 2024, Frappe and contributors
 # For license information, please see LICENSE
 
-from copy import deepcopy
-
 import frappe
 from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+from frappe import _
 from frappe.utils import cint, cstr, getdate
 
 from ecommerce_integrations.medusa.constants import (
 	FULFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
+	ORDER_LINE_ID_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
 	SETTING_DOCTYPE,
@@ -95,21 +95,18 @@ def get_fulfillment_items(dn_items, fulfillment, setting):
 	wh_map = setting.get_integration_to_erpnext_wh_mapping()
 	warehouse = wh_map.get(cstr(fulfillment.get("location_id"))) or setting.warehouse
 
-	# line_item_id -> quantity from the fulfillment
-	# Verified against @medusajs/types 2.4.0.
-	fulfillment_items = deepcopy(fulfillment.get("items") or [])
-	qty_by_line = {cstr(fi.get("line_item_id")): fi.get("quantity") for fi in fulfillment_items}
+	# line_item_id -> quantity from the fulfillment (line_item_id is the Medusa order
+	# line id, stamped on the DN row as medusa_order_line_id). Verified against
+	# @medusajs/types 2.4.0.
+	qty_by_line = {
+		cstr(fi.get("line_item_id")): fi.get("quantity") for fi in (fulfillment.get("items") or [])
+	}
 
 	final_items = []
 	for dn_item in dn_items:
-		# the SO->DN row links back to the Medusa order line via so_detail/against_sales_order;
-		# match on the source order line id carried on the DN item.
-		line_id = cstr(dn_item.get("medusa_order_line_id") or dn_item.get("ecommerce_item_id") or "")
+		# match strictly on the Medusa order line id stamped on the DN row
+		line_id = cstr(dn_item.get(ORDER_LINE_ID_FIELD) or "")
 		qty = qty_by_line.get(line_id)
-
-		if qty is None and len(qty_by_line) == 1:
-			# single-line fulfillment: fall back to the only fulfilled line
-			qty = next(iter(qty_by_line.values()))
 
 		if qty is None:
 			continue
@@ -118,12 +115,13 @@ def get_fulfillment_items(dn_items, fulfillment, setting):
 		dn_item.warehouse = warehouse
 		final_items.append(dn_item)
 
-	# if nothing matched (line-id metadata absent), ship the whole DN from the
-	# resolved warehouse rather than dropping the delivery entirely
+	# fail loudly rather than ship arbitrary stock when no line matched (missing metadata)
 	if not final_items:
-		for dn_item in dn_items:
-			dn_item.warehouse = warehouse
-		return dn_items
+		frappe.throw(
+			_("Could not match Medusa fulfillment {0} items to the Delivery Note").format(
+				cstr(fulfillment.get("id"))
+			)
+		)
 
 	return final_items
 
