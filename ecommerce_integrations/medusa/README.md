@@ -14,8 +14,8 @@ Medusa's **Admin API** using a single static Admin API key.
 | Direction | Flow | Trigger |
 | --- | --- | --- |
 | Medusa → ERPNext | Order → **Sales Order** | `order.placed` webhook |
-| Medusa → ERPNext | Payment captured → **Sales Invoice** + Payment Entry | `order.payment_captured` webhook |
-| Medusa → ERPNext | Fulfillment → **Delivery Note** | `fulfillment.created` webhook |
+| Medusa → ERPNext | Payment captured → **Sales Invoice** + Payment Entry | `order.completed` webhook |
+| Medusa → ERPNext | Fulfillment → **Delivery Note** | `order.fulfillment_created` webhook |
 | Medusa → ERPNext | Order canceled → cancel/flag SO/SI/DN | `order.canceled` webhook |
 | Medusa → ERPNext | Return received → **Credit Note** (return Sales Invoice) | `order.return_received` webhook |
 | Medusa → ERPNext | Product → **Item** (+ variants) | lazily, when first ordered |
@@ -52,7 +52,7 @@ Medusa v2 has no admin endpoint to register webhooks, so this app ships a subscr
 that you drop into your Medusa project's `src/subscribers/`. It:
 
 - listens for the five events in `constants.WEBHOOK_EVENTS`
-  (`order.placed`, `order.payment_captured`, `fulfillment.created`,
+  (`order.placed`, `order.completed`, `order.fulfillment_created`,
   `order.canceled`, `order.return_received`),
 - HMAC-SHA256 signs the JSON body with a shared **webhook secret**, putting the
   base64 digest in the `X-Medusa-Hmac-Sha256` header and the event name in
@@ -149,13 +149,13 @@ then builds and submits a **Sales Order**. Line items carry unit price, quantity
 a per-unit discount (`medusa_item_discount`); per-line taxes and the shipping charge
 become **Sales Taxes and Charges** rows (consolidated if configured).
 
-### Invoice + payment (`order.payment_captured`)
+### Invoice + payment (`order.completed`)
 `invoice.prepare_sales_invoice` finds the submitted Sales Order, makes and submits a
 **Sales Invoice**, and — if the grand total is positive — creates and submits a
 **Payment Entry** against the configured cash/bank account. Deduped on the invoice's
 `medusa_order_id`.
 
-### Fulfillment → Delivery Note (`fulfillment.created`)
+### Fulfillment → Delivery Note (`order.fulfillment_created`)
 `fulfillment.prepare_delivery_note` creates one **Delivery Note** per Medusa
 fulfillment (deduped on `medusa_fulfillment_id`), shipping the fulfilled quantities
 from the warehouse mapped to the fulfillment's stock location.

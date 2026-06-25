@@ -41,8 +41,8 @@ These map 1:1 to `EVENT_MAPPER` in the connector's `constants.py`:
 | Medusa topic | ERPNext handler |
 | --- | --- |
 | `order.placed` | `sync_sales_order` |
-| `order.payment_captured` | `prepare_sales_invoice` |
-| `fulfillment.created` | `prepare_delivery_note` |
+| `order.completed` | `prepare_sales_invoice` |
+| `order.fulfillment_created` | `prepare_delivery_note` |
 | `order.canceled` | `cancel_order` |
 | `order.return_received` | `prepare_credit_note` |
 

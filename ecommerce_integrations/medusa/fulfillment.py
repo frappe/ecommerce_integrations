@@ -28,9 +28,9 @@ def prepare_delivery_note(payload, request_id=None):
 	frappe.set_user("Administrator")
 	frappe.flags.request_id = request_id
 
-	# the fulfillment event may wrap the order, or be the order itself
-	# Verified against @medusajs/types 2.4.0.
-	order = payload.get("order") if isinstance(payload, dict) and payload.get("order") else payload
+	# order.fulfillment_created carries {order_id, fulfillment_id}; resolve to the
+	# full order (with its fulfillments) so create_delivery_note can iterate them.
+	order = _resolve_order(payload)
 
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	log = frappe.get_doc("Ecommerce Integration Log", request_id) if request_id else None
@@ -124,6 +124,31 @@ def get_fulfillment_items(dn_items, fulfillment, setting):
 		)
 
 	return final_items
+
+
+def _resolve_order(payload):
+	"""Normalise a delivery-note payload to a Medusa order dict.
+
+	The companion subscriber forwards the full order for order.fulfillment_created, but
+	resolve defensively so a raw {order_id, fulfillment_id} event, an {order} wrapper, or
+	a poll/backfill order all work. Fetching the full order is safe: its fulfillments are
+	deduped on medusa_fulfillment_id, so already-synced ones are skipped.
+	"""
+	if not isinstance(payload, dict):
+		return payload
+	if payload.get("fulfillments"):
+		return payload
+	inner = payload.get("order")
+	if isinstance(inner, dict) and inner.get("fulfillments"):
+		return inner
+	order_id = payload.get("order_id") or payload.get("id")
+	if not order_id and isinstance(inner, dict):
+		order_id = inner.get("id")
+	if order_id:
+		from ecommerce_integrations.medusa.connection import MedusaClient
+
+		return MedusaClient().get_order(cstr(order_id))
+	return payload
 
 
 def _finish(log, status, message=None):

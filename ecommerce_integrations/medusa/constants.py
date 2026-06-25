@@ -16,16 +16,20 @@ API_VERSION = "v2"
 # which HMAC-signs the payload and POSTs it to ``connection.store_request_data``.
 WEBHOOK_EVENTS = [
 	"order.placed",
-	"order.payment_captured",
-	"fulfillment.created",
+	"order.completed",
+	"order.fulfillment_created",
 	"order.canceled",
 	"order.return_received",
 ]
 
+# Medusa v2 order-scoped events. Note the payload shapes differ: order.placed /
+# order.completed / order.canceled carry {id: <order id>}, while order.fulfillment_created
+# carries {order_id, fulfillment_id} and order.return_received {order_id, return_id}. The
+# companion subscriber normalises these to the order/return object before forwarding.
 EVENT_MAPPER = {
 	"order.placed": "ecommerce_integrations.medusa.order.sync_sales_order",
-	"order.payment_captured": "ecommerce_integrations.medusa.invoice.prepare_sales_invoice",
-	"fulfillment.created": "ecommerce_integrations.medusa.fulfillment.prepare_delivery_note",
+	"order.completed": "ecommerce_integrations.medusa.invoice.prepare_sales_invoice",
+	"order.fulfillment_created": "ecommerce_integrations.medusa.fulfillment.prepare_delivery_note",
 	"order.canceled": "ecommerce_integrations.medusa.order.cancel_order",
 	"order.return_received": "ecommerce_integrations.medusa.returns.prepare_credit_note",
 }
