@@ -40,13 +40,14 @@ def prepare_delivery_note(payload, request_id=None):
 			_finish(log, "Invalid", "Delivery Note sync disabled in Medusa Setting.")
 			return
 
-		order_id = cstr(order.get("id"))
-		so_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id, "docstatus": 1}, "name")
-		if not so_name:
+		# ensure the SO exists even if the fulfillment processed before order.placed
+		from ecommerce_integrations.medusa.order import ensure_sales_order
+
+		so = ensure_sales_order(order)
+		if not so:
 			_finish(log, "Invalid", "Sales Order not found for syncing delivery note.")
 			return
 
-		so = frappe.get_doc("Sales Order", so_name)
 		create_delivery_note(order, setting, so)
 		_finish(log, "Success")
 	except Exception as e:

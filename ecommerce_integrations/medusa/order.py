@@ -342,6 +342,19 @@ def get_sales_order(order_id):
 		return frappe.get_doc("Sales Order", name)
 
 
+def ensure_sales_order(order):
+	"""Return the submitted Sales Order for a Medusa order, creating it first if it is
+	missing (e.g. a downstream webhook processed before order.placed). Idempotent.
+	"""
+	filters = {ORDER_ID_FIELD: cstr(order.get("id")), "docstatus": 1}
+	name = frappe.db.get_value("Sales Order", filters, "name")
+	if not name:
+		sync_sales_order(order)
+		frappe.db.commit()
+		name = frappe.db.get_value("Sales Order", filters, "name")
+	return frappe.get_doc("Sales Order", name) if name else None
+
+
 def cancel_order(payload, request_id=None):
 	"""Handle a Medusa ``order.canceled`` event.
 
@@ -359,7 +372,8 @@ def cancel_order(payload, request_id=None):
 		order_id = cstr(order.get("id"))
 		order_status = order.get("status") or "canceled"
 
-		sales_order = get_sales_order(order_id)
+		# ensure the SO exists even if order.canceled processed before order.placed
+		sales_order = ensure_sales_order(order)
 		if not sales_order:
 			_finish(log, "Invalid", "Sales Order does not exist")
 			return
@@ -426,16 +440,11 @@ def _replay_order_state(order):
 		cancel_order(order)
 		return
 
-	captured = any(
-		pc.get("status") in ("captured", "completed")
-		or any(p.get("captured_at") for p in (pc.get("payments") or []))
-		for pc in (order.get("payment_collections") or [])
-	)
-	if captured:
-		from ecommerce_integrations.medusa.invoice import prepare_sales_invoice
+	from ecommerce_integrations.medusa.invoice import prepare_sales_invoice
 
-		prepare_sales_invoice(order)
-		frappe.db.commit()
+	# prepare_sales_invoice gates on a captured payment internally
+	prepare_sales_invoice(order)
+	frappe.db.commit()
 
 	if order.get("fulfillments"):
 		from ecommerce_integrations.medusa.fulfillment import prepare_delivery_note

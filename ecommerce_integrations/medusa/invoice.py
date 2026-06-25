@@ -14,6 +14,29 @@ from ecommerce_integrations.medusa.constants import (
 from ecommerce_integrations.medusa.utils import create_medusa_log, parse_datetime
 
 
+def is_payment_captured(order) -> bool:
+	"""True if the Medusa order has a captured payment."""
+	return any(
+		pc.get("status") in ("captured", "completed")
+		or any(p.get("captured_at") for p in (pc.get("payments") or []))
+		for pc in (order.get("payment_collections") or [])
+	)
+
+
+def ensure_sales_invoice(order):
+	"""Return the submitted non-return Sales Invoice for an order, creating it (and the
+	Sales Order) first if missing. Idempotent; gated like the live invoice path. Used so
+	an out-of-order return webhook still has an invoice to credit.
+	"""
+	filters = {ORDER_ID_FIELD: cstr(order.get("id")), "docstatus": 1, "is_return": 0}
+	name = frappe.db.get_value("Sales Invoice", filters, "name", order_by="creation desc")
+	if not name:
+		prepare_sales_invoice(order)
+		frappe.db.commit()
+		name = frappe.db.get_value("Sales Invoice", filters, "name", order_by="creation desc")
+	return name
+
+
 def prepare_sales_invoice(payload, request_id=None):
 	"""Create (and pay) a Sales Invoice for a captured Medusa order.
 
@@ -35,13 +58,20 @@ def prepare_sales_invoice(payload, request_id=None):
 			_finish(log, "Invalid", "Sales Invoice sync disabled in Medusa Setting.")
 			return
 
-		order_id = cstr(order.get("id"))
-		so_name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id, "docstatus": 1}, "name")
-		if not so_name:
+		# only invoice an order whose payment is captured (order.completed alone is
+		# not proof of payment), so we never record an uncaptured order as paid.
+		if not is_payment_captured(order):
+			_finish(log, "Invalid", "Order payment not captured; not invoicing.")
+			return
+
+		# ensure the SO exists even if order.completed processed before order.placed
+		from ecommerce_integrations.medusa.order import ensure_sales_order
+
+		so = ensure_sales_order(order)
+		if not so:
 			_finish(log, "Invalid", "Sales Order not found for syncing sales invoice.")
 			return
 
-		so = frappe.get_doc("Sales Order", so_name)
 		create_sales_invoice(order, setting, so)
 		_finish(log, "Success")
 	except Exception as e:

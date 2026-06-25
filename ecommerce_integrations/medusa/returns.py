@@ -57,6 +57,13 @@ def prepare_credit_note(payload, request_id=None):
 			order_by="creation desc",
 		)
 		if not si_name:
+			# the return may arrive before the order/invoice webhooks; ensure them from
+			# the full order so the credit note still has an invoice to credit.
+			from ecommerce_integrations.medusa.invoice import ensure_sales_invoice
+
+			full_order = MedusaClient().get_order(order_id)
+			si_name = ensure_sales_invoice(full_order) if full_order else None
+		if not si_name:
 			_finish(log, "Invalid", "Sales Invoice not found for syncing credit note.")
 			return
 
