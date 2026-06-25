@@ -1,0 +1,10 @@
+{
+  "name": "medusa-erpnext-subscriber",
+  "version": "1.0.0",
+  "description": "Medusa v2 subscriber that forwards order/fulfillment/return events to the ERPNext ecommerce_integrations connector.",
+  "type": "module",
+  "license": "MIT",
+  "peerDependencies": {
+    "@medusajs/framework": ">=2.0.0"
+  }
+}
