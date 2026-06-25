@@ -98,3 +98,47 @@ class TestOrder(TestCase):
 		self.assertTrue(
 			frappe.db.exists("Delivery Note", {ORDER_ID_FIELD: "order_01HORDER00000000000000001"})
 		)
+
+	def test_ensure_submits_existing_draft_sales_order(self):
+		# a leftover draft Sales Order (failed prior run / manual import) must not block
+		# replay: ensure_sales_order should submit it rather than skip on the dedup.
+		from ecommerce_integrations.medusa.order import (
+			ensure_sales_order,
+			get_order_items,
+			get_order_taxes,
+		)
+		from ecommerce_integrations.medusa.product import create_items_if_not_exist
+		from ecommerce_integrations.utils.price_list import get_dummy_price_list
+		from ecommerce_integrations.utils.taxation import get_dummy_tax_category
+
+		order = self.load_fixture("order")
+		create_items_if_not_exist(order)
+		setting = frappe.get_doc("Medusa Setting")
+
+		draft = frappe.get_doc(
+			{
+				"doctype": "Sales Order",
+				"naming_series": "SAL-ORD-.YYYY.-",
+				ORDER_ID_FIELD: "order_01HORDER00000000000000001",
+				"customer": setting.default_customer,
+				"company": setting.company,
+				"currency": "inr",
+				"transaction_date": "2024-01-01",
+				"delivery_date": "2024-12-31",
+				"selling_price_list": get_dummy_price_list(),
+				"ignore_pricing_rule": 1,
+				"tax_category": get_dummy_tax_category(),
+				"items": get_order_items(order, setting),
+				"taxes": get_order_taxes(order, setting),
+			}
+		)
+		draft.flags.ignore_mandatory = True
+		draft.insert(ignore_permissions=True)
+		self.assertEqual(draft.docstatus, 0)
+
+		so = ensure_sales_order(order)
+		self.assertIsNotNone(so)
+		self.assertEqual(so.docstatus, 1)
+		self.assertEqual(
+			frappe.db.count("Sales Order", {ORDER_ID_FIELD: "order_01HORDER00000000000000001"}), 1
+		)
