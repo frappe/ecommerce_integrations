@@ -81,3 +81,13 @@ class TestFulfillment(TestCase):
 				n.get(FULFILLMENT_ID_FIELD) == "ful_BADLINE000000000000000001" for n in self._delivery_notes()
 			)
 		)
+
+	def test_fulfillment_event_payload_resolves_order(self):
+		# a live order.fulfillment_created event carries {order_id, fulfillment_id}, not the
+		# order; the handler must resolve the full order and still create the Delivery Note.
+		payload = {
+			"order_id": "order_01HORDER00000000000000001",
+			"fulfillment_id": "ful_01HFULFILL000000000000001",
+		}
+		prepare_delivery_note(payload)
+		self.assertEqual(len(self._delivery_notes()), 1)
