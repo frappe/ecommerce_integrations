@@ -65,9 +65,10 @@ def upload_inventory_data_to_medusa(inventory_levels, warehouse_map) -> None:
 				inventory_item_id = _resolve_inventory_item_id(client, d, inventory_item_cache)
 
 				if not inventory_item_id:
-					# Variant deleted on Medusa side — mark synced and skip.
-					update_inventory_sync_status(d.ecom_item, time=synced_on)
+					# No Medusa inventory item for this SKU; may be a transient empty
+					# lookup, so do NOT advance the watermark - let it retry next cycle.
 					d.status = "Not Found"
+					d.failure_reason = "No Medusa inventory item found for SKU"
 					frappe.db.commit()
 					continue
 

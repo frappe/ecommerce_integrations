@@ -266,7 +266,8 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 	Returns True if matched and linked via an Ecommerce Item (no Item created).
 	"""
 	sku = item_dict.get("sku")
-	if not sku or variant_of or has_variant:
+	# templates carry no SKU of their own; a variant may match an existing Item by SKU
+	if not sku or has_variant:
 		return False
 
 	item_name = frappe.db.get_value("Item", {"item_code": sku})
@@ -280,6 +281,7 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 					"integration_item_code": product_id,
 					"has_variants": 0,
 					"variant_id": cstr(variant_id),
+					"variant_of": cstr(variant_of) if variant_of else None,
 					"sku": sku,
 				}
 			).insert()
@@ -451,6 +453,7 @@ def _create_medusa_product(item, template_item, setting):
 	variant_sku = variants[0].get("sku") if variants else item.item_code
 
 	# write the Ecommerce Item link(s)
+	link_errors = []
 	ecom_items = {item.name: item}
 	ecom_items[template_item.name] = template_item
 	for d in ecom_items.values():
@@ -467,8 +470,17 @@ def _create_medusa_product(item, template_item, setting):
 					"variant_of": d.variant_of,
 				}
 			).insert()
-		except Exception:
-			continue
+		except Exception as e:
+			link_errors.append(f"{d.name}: {e}")
+
+	if link_errors:
+		create_medusa_log(
+			status="Error",
+			request_data=body,
+			message=f"Created Medusa product {product_id} but failed to link ERPNext items: {link_errors}",
+			method="upload_erpnext_item",
+		)
+		return
 
 	create_medusa_log(
 		status="Success",

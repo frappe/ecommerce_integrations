@@ -21,6 +21,7 @@ PAGE_SIZE = 20
 @frappe.whitelist()
 def get_products(offset=0):
 	"""Return one page of Medusa products formatted for the desk DataTable."""
+	frappe.only_for("System Manager")
 	offset = int(offset or 0)
 	client = MedusaClient()
 	data = client.get("/products", params={"limit": PAGE_SIZE, "offset": offset})
@@ -51,6 +52,7 @@ def get_products(offset=0):
 
 @frappe.whitelist()
 def get_product_count():
+	frappe.only_for("System Manager")
 	items = frappe.db.get_list("Item", {"variant_of": ["is", "not set"]})
 	erpnext_count = len(items)
 
@@ -76,9 +78,26 @@ def is_synced(product_id) -> bool:
 	return ecommerce_item.is_synced(MODULE_NAME, integration_item_code=str(product_id))
 
 
+def _is_fully_synced(product) -> bool:
+	"""True only when the template and every current variant are already linked, so a
+	product that gained a variant since the last import is re-synced rather than skipped."""
+	if not ecommerce_item.is_synced(MODULE_NAME, integration_item_code=str(product.get("id"))):
+		return False
+	for variant in product.get("variants") or []:
+		if not ecommerce_item.is_synced(
+			MODULE_NAME,
+			integration_item_code=str(product.get("id")),
+			variant_id=str(variant.get("id")),
+			sku=variant.get("sku"),
+		):
+			return False
+	return True
+
+
 @frappe.whitelist()
 def import_product(product_id):
 	"""Sync a single Medusa product to ERPNext synchronously (table button)."""
+	frappe.only_for("System Manager")
 	try:
 		MedusaProduct(product_id).sync_product()
 		return True
@@ -89,6 +108,7 @@ def import_product(product_id):
 
 @frappe.whitelist()
 def import_all_products():
+	frappe.only_for("System Manager")
 	frappe.enqueue(
 		queue_sync_all_products,
 		queue="long",
@@ -113,7 +133,7 @@ def queue_sync_all_products(*args, **kwargs):
 			publish(f"Syncing product {product_id}", br=False)
 			frappe.db.savepoint(savepoint)
 
-			if is_synced(product_id):
+			if _is_fully_synced(product):
 				publish(f"Product {product_id} already synced. Skipping...")
 				continue
 
