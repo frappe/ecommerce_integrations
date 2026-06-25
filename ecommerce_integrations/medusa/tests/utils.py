@@ -58,6 +58,9 @@ class FakeMedusaClient:
 	# -- low level (only what the sync code calls) -------------------------------
 
 	def get(self, path, params=None):
+		if path == "/returns":
+			# order.py backfill fetches an order's returns from here
+			return {"returns": [load_fixture("return")], "count": 1}
 		# inventory.py resolves a variant SKU -> inventory_item_id via this endpoint
 		if path == "/inventory-items":
 			sku = (params or {}).get("sku")

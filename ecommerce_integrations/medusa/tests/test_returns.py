@@ -114,3 +114,15 @@ class TestReturns(TestCase):
 			n for n in self._credit_notes() if n.get(RETURN_ID_FIELD) == "ret_01HRETURNFULL0000000000001"
 		]
 		self.assertEqual(len(notes), 1)
+
+	def test_unmatched_return_does_not_overcredit(self):
+		returns = _returns_module()
+		if not returns:
+			self.skipTest("medusa.returns not yet implemented")
+
+		# a return whose line items match no invoice row must NOT credit the whole invoice
+		ret = self.load_fixture("return")
+		ret["items"] = [{"item_id": "no_such_order_line", "quantity": 1}]
+		returns.prepare_credit_note({"order_id": ORDER_ID, "return": ret})
+
+		self.assertEqual(len(self._credit_notes()), 0)

@@ -98,6 +98,12 @@ class TestOrder(TestCase):
 		self.assertTrue(
 			frappe.db.exists("Delivery Note", {ORDER_ID_FIELD: "order_01HORDER00000000000000001"})
 		)
+		# returns already made on the historical order are replayed as credit notes too
+		self.assertTrue(
+			frappe.db.exists(
+				"Sales Invoice", {ORDER_ID_FIELD: "order_01HORDER00000000000000001", "is_return": 1}
+			)
+		)
 
 	def test_ensure_submits_existing_draft_sales_order(self):
 		# a leftover draft Sales Order (failed prior run / manual import) must not block
