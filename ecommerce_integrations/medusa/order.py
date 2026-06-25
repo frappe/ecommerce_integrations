@@ -346,12 +346,23 @@ def ensure_sales_order(order):
 	"""Return the submitted Sales Order for a Medusa order, creating it first if it is
 	missing (e.g. a downstream webhook processed before order.placed). Idempotent.
 	"""
-	filters = {ORDER_ID_FIELD: cstr(order.get("id")), "docstatus": 1}
-	name = frappe.db.get_value("Sales Order", filters, "name")
-	if not name:
-		sync_sales_order(order)
+	order_id = cstr(order.get("id"))
+	name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id, "docstatus": 1}, "name")
+	if name:
+		return frappe.get_doc("Sales Order", name)
+
+	# a draft Sales Order (failed prior run or manual import) would block
+	# sync_sales_order's dedup and leave nothing submitted; submit it instead.
+	draft = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id, "docstatus": 0}, "name")
+	if draft:
+		so = frappe.get_doc("Sales Order", draft)
+		so.submit()
 		frappe.db.commit()
-		name = frappe.db.get_value("Sales Order", filters, "name")
+		return so
+
+	sync_sales_order(order)
+	frappe.db.commit()
+	name = frappe.db.get_value("Sales Order", {ORDER_ID_FIELD: order_id, "docstatus": 1}, "name")
 	return frappe.get_doc("Sales Order", name) if name else None
 
 

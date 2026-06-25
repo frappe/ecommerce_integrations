@@ -78,6 +78,7 @@ class MedusaSetting(SettingController):
 	@frappe.whitelist()
 	def fetch_medusa_locations(self):
 		"""Pull stock locations from Medusa so the operator can map them to warehouses."""
+		self.check_permission("write")
 		from ecommerce_integrations.medusa.connection import MedusaClient
 
 		self.medusa_warehouse_mapping = []
