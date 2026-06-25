@@ -480,8 +480,5 @@ def _order_returns(order):
 	returns = order.get("returns")
 	if returns is not None:
 		return returns
-	try:
-		data = MedusaClient().get("/returns", params={"order_id": cstr(order.get("id"))})
-		return data.get("returns", [])
-	except Exception:
-		return []
+	data = MedusaClient().get("/returns", params={"order_id": cstr(order.get("id"))})
+	return data.get("returns", [])
