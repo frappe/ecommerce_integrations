@@ -11,6 +11,11 @@ from ecommerce_integrations.medusa.constants import (
 	ORDER_STATUS_FIELD,
 	SETTING_DOCTYPE,
 )
+from ecommerce_integrations.medusa.currency import (
+	company_currency,
+	order_currency,
+	receivable_account,
+)
 from ecommerce_integrations.medusa.utils import create_medusa_log, parse_datetime
 
 
@@ -91,6 +96,13 @@ def create_sales_invoice(order, setting, so):
 	posting_date = getdate(posting_date)
 
 	sales_invoice = make_sales_invoice(so.name, ignore_permissions=True)
+
+	# multi-currency: a foreign-currency invoice needs a receivable account in that
+	# currency (ERPNext requires debit_to currency == document currency).
+	currency = order_currency(order, setting.company)
+	if currency != company_currency(setting.company):
+		sales_invoice.debit_to = receivable_account(setting.company, currency)
+
 	sales_invoice.set(ORDER_ID_FIELD, order_id)
 	sales_invoice.set(ORDER_NUMBER_FIELD, cstr(order.get("display_id")))
 	sales_invoice.set(ORDER_STATUS_FIELD, order.get("status"))

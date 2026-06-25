@@ -16,6 +16,11 @@ from ecommerce_integrations.medusa.constants import (
 	ORDER_STATUS_FIELD,
 	SETTING_DOCTYPE,
 )
+from ecommerce_integrations.medusa.currency import (
+	company_currency,
+	exchange_rate,
+	order_currency,
+)
 from ecommerce_integrations.medusa.customer import MedusaCustomer
 from ecommerce_integrations.medusa.utils import create_medusa_log, parse_datetime, to_amount
 from ecommerce_integrations.utils.price_list import get_dummy_price_list
@@ -117,6 +122,10 @@ def create_sales_order(order, setting):
 		setting.selling_price_list if cint(setting.use_price_list) else get_dummy_price_list()
 	)
 
+	comp_ccy = company_currency(setting.company)
+	currency = order_currency(order, setting.company)
+	conversion_rate = exchange_rate(currency, comp_ccy, transaction_date)
+
 	so = frappe.get_doc(
 		{
 			"doctype": "Sales Order",
@@ -128,8 +137,11 @@ def create_sales_order(order, setting):
 			"transaction_date": transaction_date,
 			"delivery_date": transaction_date,
 			"company": setting.company,
-			"currency": order.get("currency_code"),
+			"currency": currency,
+			"conversion_rate": conversion_rate,
 			"selling_price_list": selling_price_list,
+			"price_list_currency": currency,
+			"plc_conversion_rate": conversion_rate,
 			"ignore_pricing_rule": 1,
 			"tax_category": get_dummy_tax_category(),
 			"items": items,

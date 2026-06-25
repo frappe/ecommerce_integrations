@@ -180,6 +180,28 @@ with a per-batch log.
 the configured date window and runs each through the normal `sync_sales_order` path,
 then clears the toggle.
 
+## Multi-currency
+
+Medusa regions can each have their own currency. When a Medusa order's currency differs
+from the ERPNext company's default currency, the connector:
+
+- books the Sales Order / Invoice in the order currency with a **`conversion_rate`** from
+  ERPNext's exchange-rate lookup (Currency Exchange records first, then the configured
+  provider) at the order's posting date — so the GL is correct in company currency;
+- sets the Sales Invoice **`debit_to`** to a receivable account in the order currency,
+  **auto-creating** a `Debtors <CCY>` account under the company if one doesn't exist
+  (ERPNext requires the receivable currency to match the document currency);
+- records the Payment Entry into the configured (company-currency) cash/bank account,
+  letting ERPNext book the realised exchange gain/loss — so the company's **Exchange
+  Gain/Loss account** must be set.
+
+**One ERPNext constraint to know:** a customer's accounting is locked to a single currency
+(ERPNext enforces one GL-entry currency per party). A Medusa customer who orders in two
+currencies cannot be invoiced in both on one ERPNext customer — the second-currency invoice
+fails loudly and is logged as an `Error` for manual handling (e.g. a separate customer
+record) rather than mis-booking. In practice customers transact in their own region's
+currency, so this is an edge case.
+
 ## Logs & troubleshooting
 
 Every inbound event and every push creates an **Ecommerce Integration Log**
