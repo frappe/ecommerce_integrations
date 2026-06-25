@@ -113,6 +113,11 @@ def create_credit_note(invoice_name, ret, setting):
 		tax.item_wise_tax_detail = json.dumps(detail)
 
 	returned_items = _get_returned_si_items(credit_note, ret)
+	# the return named items but none matched a credit-note row: fail safe rather
+	# than credit the whole invoice.
+	if (ret.get("items") or []) and not returned_items:
+		frappe.throw(frappe._("Could not match Medusa return items to the Sales Invoice"))
+
 	# partial return: only some qty/items were returned
 	all_items = {item.sales_invoice_item for item in credit_note.items}
 	if returned_items and set(returned_items) != all_items:

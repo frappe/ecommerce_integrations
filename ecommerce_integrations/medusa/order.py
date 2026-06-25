@@ -462,3 +462,26 @@ def _replay_order_state(order):
 
 		prepare_delivery_note(order)
 		frappe.db.commit()
+
+	# returns already made on a historical order won't arrive as live webhooks
+	for ret in _order_returns(order):
+		from ecommerce_integrations.medusa.returns import prepare_credit_note
+
+		prepare_credit_note({"order_id": order.get("id"), "return": ret})
+		frappe.db.commit()
+
+
+def _order_returns(order):
+	"""Returns made against an order: the embedded list if present, else fetched.
+
+	The backfill order list doesn't expand returns, so fetch them from Medusa when
+	they aren't already on the order object.
+	"""
+	returns = order.get("returns")
+	if returns is not None:
+		return returns
+	try:
+		data = MedusaClient().get("/returns", params={"order_id": cstr(order.get("id"))})
+		return data.get("returns", [])
+	except Exception:
+		return []
