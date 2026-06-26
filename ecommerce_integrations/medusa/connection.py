@@ -183,5 +183,9 @@ def _validate_request(req, hmac_header):
 	computed = base64.b64encode(digest)
 
 	if not hmac_header or not hmac.compare_digest(computed, hmac_header.encode()):
-		create_medusa_log(status="Error", message="Unverified webhook", request_data=req.data)
-		frappe.throw(_("Unverified Webhook Data"))
+		# req.data is raw bytes; decode so the log can serialise it, and reject with 401
+		# rather than letting an unserialisable payload surface as a 500.
+		create_medusa_log(
+			status="Error", message="Unverified webhook", request_data=frappe.safe_decode(req.data)
+		)
+		frappe.throw(_("Unverified Webhook Data"), frappe.AuthenticationError)

@@ -34,3 +34,21 @@ class TestConnection(TestCase):
 		setting = frappe.get_doc(SETTING_DOCTYPE)
 		setting.fetch_medusa_locations()
 		self.assertTrue(any(r.medusa_location_id for r in setting.medusa_warehouse_mapping))
+
+	def test_bad_signature_is_rejected_cleanly(self):
+		# a wrong signature over a raw-bytes body must raise an auth error and still log,
+		# not surface as a 500 from trying to serialise the bytes payload.
+		from ecommerce_integrations.medusa.connection import _validate_request
+
+		class _Req:
+			data = b'{"id": "x"}'
+
+		with self.assertRaises(frappe.AuthenticationError):
+			_validate_request(_Req(), "not-the-right-signature")
+
+		self.assertTrue(
+			frappe.db.exists(
+				"Ecommerce Integration Log",
+				{"integration": MODULE_NAME, "status": "Error", "message": ["like", "%Unverified%"]},
+			)
+		)
