@@ -10,9 +10,12 @@ from ecommerce_integrations.unicommerce.constants import INVOICE_CODE_FIELD, ORD
 from ecommerce_integrations.unicommerce.delivery_note import create_delivery_note
 from ecommerce_integrations.unicommerce.order import create_order
 from ecommerce_integrations.unicommerce.tests.test_client import UnicommerceClientTestSuite
+from ecommerce_integrations.unicommerce.tests.utils import enable_setting
 
 
 class TestDeliveryNote(UnicommerceClientTestSuite):
+	# Enable delivery_note so the invoice skips stock update, keeping items deliverable.
+	@enable_setting("delivery_note")
 	def test_create_invoice_and_delivery_note(self):
 		"""Use mocked invoice json to create and assert synced fields"""
 		# treat "CREATED" state as invoiced to allow testing the invoicing flow
