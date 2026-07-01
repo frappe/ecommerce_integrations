@@ -332,7 +332,7 @@ UNICOMMERCE_INDIAN_STATES_MAPPING = {
 	"MZ": "Mizoram",
 	"NL": "Nagaland",
 	"OR": "Odisha",
-	"PY": "Pondicherry",
+	"PY": "Puducherry",
 	"PB": "Punjab",
 	"RJ": "Rajasthan",
 	"SK": "Sikkim",
