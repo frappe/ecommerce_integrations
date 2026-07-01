@@ -11,10 +11,10 @@ from ecommerce_integrations.unicommerce.product import (
 	_validate_field,
 	import_product_from_unicommerce,
 )
-from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.test_client import UnicommerceClientTestSuite
 
 
-class TestUnicommerceProduct(TestCaseApiClient):
+class TestUnicommerceProduct(UnicommerceClientTestSuite):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()

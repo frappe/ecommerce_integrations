@@ -2,7 +2,6 @@ from collections import defaultdict
 from copy import deepcopy
 
 import frappe
-from frappe.test_runner import make_test_records
 
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
@@ -15,28 +14,28 @@ from ecommerce_integrations.unicommerce.order import (
 	_sync_order_items,
 	create_order,
 )
-from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.test_client import UnicommerceClientTestSuite
 
 
-class TestUnicommerceOrder(TestCaseApiClient):
-	@classmethod
-	def setUpClass(cls):
-		super().setUpClass()
-		make_test_records("Unicommerce Channel")
+class TestUnicommerceOrder(UnicommerceClientTestSuite):
+	def assert_synced_order_fields(self, sales_order, order):
+		customer_name = order["addresses"][0]["name"]
+		self.assertIn(customer_name, sales_order.customer)
+		self.assertEqual(sales_order.get(CHANNEL_ID_FIELD), order["channel"])
+		self.assertEqual(sales_order.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(sales_order.get(ORDER_STATUS_FIELD), order["status"])
 
 	def test_validate_item_list(self):
-		order_files = ["order-SO5905", "order-SO5906", "order-SO5907"]
-		items_list = [
-			{"MC-100", "TITANIUM_WATCH"},
-			{
-				"MC-100",
-			},
-			{"MC-100", "TITANIUM_WATCH"},
-		]
+		expected_items_by_order = {
+			"order-SO5905": {"MC-100", "TITANIUM_WATCH"},
+			"order-SO5906": {"MC-100"},
+			"order-SO5907": {"MC-100", "TITANIUM_WATCH"},
+		}
 
-		for order_file, items in zip(order_files, items_list, strict=False):
-			order = self.load_fixture(order_file)["saleOrderDTO"]
-			self.assertEqual(items, _sync_order_items(order, client=self.client))
+		for order_file, expected_items in expected_items_by_order.items():
+			with self.subTest(order=order_file):
+				order = self.load_fixture(order_file)["saleOrderDTO"]
+				self.assertEqual(expected_items, _sync_order_items(order, client=self.client))
 
 	def test_get_line_items(self):
 		so_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
@@ -68,9 +67,6 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertEqual(item_to_qty["MC-100"], 11)
 		self.assertAlmostEqual(total_price, 7028.0)
 
-	def test_get_taxes(self):
-		pass
-
 	def test_get_facility_code(self):
 		line_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]
 		facility = _get_facility_code(line_items)
@@ -86,26 +82,18 @@ class TestUnicommerceOrder(TestCaseApiClient):
 	def test_create_order(self):
 		order = self.load_fixture("order-SO6008-order")
 
-		so = create_order(order, client=self.client)
+		sales_order = create_order(order, client=self.client)
 
-		customer_name = order["addresses"][0]["name"]
-		self.assertTrue(customer_name in so.customer)
-		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
-		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
-		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
+		self.assert_synced_order_fields(sales_order, order)
 
 	def test_create_order_multiple_items(self):
 		order = self.load_fixture("order-SO5906")["saleOrderDTO"]
 
-		so = create_order(order, client=self.client)
+		sales_order = create_order(order, client=self.client)
 
-		customer_name = order["addresses"][0]["name"]
-		self.assertTrue(customer_name in so.customer)
-		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
-		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
-		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
+		self.assert_synced_order_fields(sales_order, order)
 
-		qty = sum(item.qty for item in so.items)
-		amount = sum(item.amount for item in so.items)
+		qty = sum(item.qty for item in sales_order.items)
+		amount = sum(item.amount for item in sales_order.items)
 		self.assertEqual(qty, 11)
 		self.assertAlmostEqual(amount, 7028.0)

@@ -50,7 +50,8 @@ def create_log(
 ):
 	make_new = make_new or not bool(frappe.flags.request_id)
 
-	if rollback:
+	# Skip rollback during tests so it doesn't discard the test's own setup data.
+	if rollback and not frappe.flags.in_test:
 		frappe.db.rollback()
 
 	if make_new:
@@ -73,7 +74,9 @@ def create_log(
 	log.status = status
 	log.save(ignore_permissions=True)
 
-	frappe.db.commit()
+	# Skip commit during tests so log/test data stays in the transaction and rolls back, keeping tests isolated.
+	if not frappe.flags.in_test:
+		frappe.db.commit()
 
 	return log
 

@@ -1,20 +1,17 @@
 import json
-import os
 
 import frappe
 import shopify
 
 from ecommerce_integrations.shopify.product import ShopifyProduct
 
-from ...tests.utils import TestCase
+from ...tests.utils import ShopifyTestSuite
 from .shopify_import_products import queue_sync_all_products
 
 
-class TestShopifyImportProducts(TestCase):
+class TestShopifyImportProducts(ShopifyTestSuite):
 	def __init__(self, obj):
-		with open(os.path.join(os.path.dirname(__file__), "../../tests/data/bulk_products.json"), "rb") as f:
-			products_json = json.loads(f.read())
-			self._products = products_json["products"]
+		self._products = json.loads(self.load_fixture("bulk_products"))["products"]
 
 		super().__init__(obj)
 
