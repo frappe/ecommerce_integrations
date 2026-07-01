@@ -15,22 +15,21 @@ WAREHOUSE_MAPPING_FIELDS = ("unicommerce_facility_code", "erpnext_warehouse", "e
 
 
 def enable_setting(fieldname, value=1):
-	"""Decorator: temporarily set a Unicommerce Settings field for a single test.
+	"""Decorator: set a Unicommerce Settings field for a single test.
 
 	Uses set_single_value (writes to `tabSingles` directly), so it bypasses the
 	doctype's mandatory/validate checks — unlike frappe's `change_settings`, which
 	does a full `.save()` and fails on Unicommerce Settings' mandatory fields.
+
+	No restore is needed: the write is not committed and the suite's tearDown
+	rolls back the transaction between tests, so the change is undone automatically.
 	"""
 
 	def decorator(fn):
 		@wraps(fn)
 		def wrapper(self, *args, **kwargs):
-			previous = frappe.db.get_single_value(SETTINGS_DOCTYPE, fieldname)
 			frappe.db.set_single_value(SETTINGS_DOCTYPE, fieldname, value)
-			try:
-				return fn(self, *args, **kwargs)
-			finally:
-				frappe.db.set_single_value(SETTINGS_DOCTYPE, fieldname, previous)
+			return fn(self, *args, **kwargs)
 
 		return wrapper
 

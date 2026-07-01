@@ -1,5 +1,4 @@
 import json
-import time
 from functools import lru_cache
 from pathlib import Path
 from typing import ClassVar
@@ -258,15 +257,8 @@ class MockAmazonRepository(AmazonRepository):
 		)
 
 	def call_sp_api_method(self, sp_api_method, **kwargs):
-		max_retries = self.amz_setting.max_retry_limit
-
-		for _x in range(max_retries):
-			try:
-				result = sp_api_method(**kwargs)
-				return result.get("payload")
-			except Exception:
-				time.sleep(3)
-				continue
+		# Mocked SP-API methods are deterministic, so no retry/backoff is needed here.
+		return sp_api_method(**kwargs).get("payload")
 
 	def get_finances_instance(self):
 		return MockFinances(**self.instance_params)

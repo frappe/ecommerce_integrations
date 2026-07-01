@@ -1,5 +1,4 @@
 import frappe
-from frappe.tests.utils import make_test_records
 
 from ecommerce_integrations.unicommerce.customer import (
 	_create_customer_addresses,
@@ -10,11 +9,6 @@ from ecommerce_integrations.unicommerce.tests.test_client import UnicommerceClie
 
 
 class TestUnicommerceCustomer(UnicommerceClientTestSuite):
-	@classmethod
-	def setUpClass(cls):
-		super().setUpClass()
-		make_test_records("Unicommerce Channel")
-
 	def test_create_customer(self):
 		order = self.load_fixture("order-SO5905")["saleOrderDTO"]
 
