@@ -52,7 +52,15 @@
 			"sku": "TEE-M-RED",
 			"weight": 210,
 			"options": [{ "value": "M" }, { "value": "Red" }],
-			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+			"prices": [
+				{
+					"amount": 19.99,
+					"currency_code": "usd",
+					"price_rules": [{ "attribute": "region_id", "value": "reg_01HEUROPE000000000000001" }]
+				},
+				{ "amount": 22.99, "currency_code": "eur", "price_rules": [] },
+				{ "amount": 24.99, "currency_code": "usd", "price_rules": [] }
+			]
 		},
 		{
 			"id": "variant_M_Blue",

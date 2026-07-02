@@ -108,6 +108,21 @@ class MedusaClient:
 	def update_product(self, product_id: str, body: dict) -> dict:
 		return self.post(f"/products/{product_id}", body=body).get("product", {})
 
+	def get_or_create_product_type(self, value: str) -> str | None:
+		"""Resolve a product-type value (e.g. an ERPNext Item Group) to a Medusa
+		Product Type id.
+
+		Medusa v2 products reference types by ``type_id``; look one up by value
+		(GET /admin/product-types?value=...) and create it when missing
+		(POST /admin/product-types with {value}).
+		"""
+		if not value:
+			return None
+		types = self.get("/product-types", params={"value": value}).get("product_types") or []
+		if types:
+			return types[0].get("id")
+		return self.post("/product-types", body={"value": value}).get("product_type", {}).get("id")
+
 	def get_customer(self, customer_id: str) -> dict:
 		return self.get(f"/customers/{customer_id}").get("customer", {})
 

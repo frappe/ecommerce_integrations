@@ -102,10 +102,15 @@ class FakeMedusaClient:
 		yield load_fixture("variant_product")
 
 	def create_product(self, body):
+		FakeMedusaClient.created_products.append(body)
 		return {
 			"id": "prod_created",
 			"variants": [{"id": "variant_created", "sku": body.get("variants", [{}])[0].get("sku")}],
 		}
+
+	def get_or_create_product_type(self, value):
+		# deterministic fake id so tests can assert the type_id mapping
+		return f"ptyp_{value}" if value else None
 
 	def update_product(self, product_id, body):
 		return {"id": product_id}
@@ -127,8 +132,9 @@ class FakeMedusaClient:
 		return {}
 
 
-# class-level push log, reset per-test in TestCase.setUp
+# class-level push / create-product logs, reset per-test in TestCase.setUp
 FakeMedusaClient.calls = []
+FakeMedusaClient.created_products = []
 
 
 class TestCase(IntegrationTestCase):
@@ -202,8 +208,9 @@ class TestCase(IntegrationTestCase):
 		cls.setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	def setUp(self):
-		# reset the shared inventory-push log before every test
+		# reset the shared inventory-push / create-product logs before every test
 		FakeMedusaClient.calls = []
+		FakeMedusaClient.created_products = []
 
 		# The connector logs via create_medusa_log(), which COMMITS mid-handler, so any
 		# Sales Order / Invoice / Item / Customer it creates survives IntegrationTestCase's

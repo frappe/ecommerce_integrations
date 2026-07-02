@@ -16,6 +16,12 @@ from ecommerce_integrations.medusa.constants import (
 )
 from ecommerce_integrations.medusa.utils import create_medusa_log, to_amount
 
+# Medusa v2's convention for a product without meaningful options (used by the
+# admin dashboard and the POST /admin/products docs): a single option titled
+# "Default option" with the single value "Default option value".
+DEFAULT_OPTION_TITLE = "Default option"
+DEFAULT_OPTION_VALUE = "Default option value"
+
 
 class MedusaProduct:
 	"""Medusa v2 product -> ERPNext Item.
@@ -90,7 +96,7 @@ class MedusaProduct:
 			product["variant_id"] = variant.get("id")
 			product["sku"] = variant.get("sku")
 			product["weight"] = product.get("weight") or variant.get("weight")
-			product["price"] = _get_variant_price(variant)
+			product["price"] = _get_variant_price(variant, _setting_currency(self.setting))
 			self._create_item(product, warehouse)
 
 	def _create_attributes(self, product):
@@ -179,6 +185,7 @@ class MedusaProduct:
 		if not template_item:
 			return
 
+		currency = _setting_currency(self.setting)
 		for variant in product.get("variants") or []:
 			medusa_item_variant = {
 				"id": product.get("id"),
@@ -188,7 +195,7 @@ class MedusaProduct:
 				"type": product.get("type"),
 				"sku": variant.get("sku"),
 				"uom": template_item.stock_uom or _("Nos"),
-				"price": _get_variant_price(variant),
+				"price": _get_variant_price(variant, currency),
 				"weight": variant.get("weight") or product.get("weight"),
 				"thumbnail": product.get("thumbnail"),
 			}
@@ -242,8 +249,10 @@ def _has_variants(product) -> bool:
 	variants = product.get("variants") or []
 	if len(variants) > 1:
 		return True
-	# TODO: confirm against Medusa v2 Admin API — Medusa names the implicit option
-	# "Default option"; treat a lone default option as a single item.
+	# Medusa v2 products always carry >=1 option; the implicit one (created by the
+	# admin dashboard / documented POST /admin/products convention) is titled
+	# "Default option" with value "Default option value". Treat a lone default
+	# option as a single item. (Doc-verified 2026-07-02.)
 	for option in options:
 		title = (option.get("title") or "").lower()
 		if title not in ("", "default option", "default"):
@@ -251,13 +260,37 @@ def _has_variants(product) -> bool:
 	return False
 
 
-def _get_variant_price(variant) -> float | None:
+def _get_variant_price(variant, currency: str | None = None) -> float | None:
+	"""Pick a variant's base price from Medusa v2 ``variants.prices``.
+
+	GET /admin/products includes prices by default (``*variants.prices`` plus
+	``price_rules.attribute/value`` are in the endpoint's default fields);
+	``amount`` is a decimal major-currency value. Prices scoped to a context
+	(e.g. a region) carry ``price_rules`` rows, plain currency prices carry
+	none. Prefer the rule-free price in ``currency``, then any rule-free
+	price, then the first. (Doc-verified 2026-07-02.)
+	"""
 	prices = variant.get("prices") or []
 	if not prices:
 		return None
-	# prefer the Setting's price-list currency if configured; else first price
-	# TODO: confirm against Medusa v2 Admin API — price selection (region/currency).
-	return to_amount(prices[0].get("amount"))
+
+	base_prices = [p for p in prices if not (p.get("price_rules") or p.get("rules"))]
+	if currency:
+		for price in base_prices:
+			if (price.get("currency_code") or "").lower() == currency.lower():
+				return to_amount(price.get("amount"))
+
+	price = base_prices[0] if base_prices else prices[0]
+	return to_amount(price.get("amount"))
+
+
+def _setting_currency(setting) -> str | None:
+	"""Currency used for price selection/upload: the Setting's selling price
+	list's currency if configured, else the site's default currency."""
+	return (
+		setting.selling_price_list
+		and frappe.db.get_value("Price List", setting.selling_price_list, "currency")
+	) or frappe.defaults.get_global_default("currency")
 
 
 def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None, has_variant=False) -> bool:
@@ -393,46 +426,67 @@ def upload_erpnext_item(item, method=None):
 
 
 def _variant_body(item, setting) -> dict:
-	"""Build a Medusa variant body from an ERPNext Item."""
-	# TODO: confirm against Medusa v2 Admin API — variant create/update payload.
+	"""Build a Medusa variant body from an ERPNext Item.
+
+	Per POST /admin/products (AdminCreateProductVariant): ``title`` and
+	``prices`` are required (``prices`` may be an empty array), ``options`` is
+	an object mapping option title -> value and must line up with the product's
+	options, and ``sku``/``manage_inventory``/``weight`` (number, grams) are
+	optional. (Doc-verified 2026-07-02.)
+	"""
 	body = {
 		"title": item.item_name or item.item_code,
 		"sku": item.item_code,
 		"manage_inventory": bool(item.is_stock_item),
+		"options": {DEFAULT_OPTION_TITLE: DEFAULT_OPTION_VALUE},
+		"prices": [],
 	}
 	if item.get("weight_per_unit"):
 		body["weight"] = flt(item.weight_per_unit)
 
 	price = item.get(ITEM_SELLING_RATE_FIELD)
 	if price is not None:
-		currency = (
-			setting.selling_price_list
-			and frappe.db.get_value("Price List", setting.selling_price_list, "currency")
-		) or frappe.defaults.get_global_default("currency")
-		# TODO: confirm against Medusa v2 Admin API — prices accept major-currency amounts.
+		currency = _setting_currency(setting)
+		# price shape: {amount, currency_code} with amount a decimal
+		# major-currency value, e.g. 19.99 == $19.99 (doc-verified 2026-07-02)
 		body["prices"] = [{"amount": flt(price), "currency_code": (currency or "usd").lower()}]
 	return body
 
 
-def _product_body(template_item, setting) -> dict:
-	"""Build a Medusa product body from an ERPNext (template) Item."""
-	# TODO: confirm against Medusa v2 Admin API — product create payload.
+def _product_body(template_item, setting, client) -> dict:
+	"""Build a Medusa product body from an ERPNext (template) Item.
+
+	Per POST /admin/products (AdminCreateProduct, strict schema): ``title`` is
+	required, ``status`` is one of draft/proposed/published/rejected, ``weight``
+	is a number, and the product type is referenced by ``type_id`` — the
+	v1-style nested ``type: {value}`` no longer exists, so the Item Group is
+	resolved to a Product Type id first. (Doc-verified 2026-07-02.)
+	"""
 	status = "published" if setting.sync_new_item_as_active else "draft"
 	if template_item.get("disabled"):
 		status = "draft"
-	return {
+	body = {
 		"title": template_item.item_name or template_item.item_code,
 		"description": template_item.description,
 		"status": status,
-		"weight": flt(template_item.weight_per_unit) if template_item.get("weight_per_unit") else None,
-		"type": {"value": template_item.item_group} if template_item.get("item_group") else None,
 	}
+	if template_item.get("weight_per_unit"):
+		body["weight"] = flt(template_item.weight_per_unit)
+	if template_item.get("item_group"):
+		type_id = client.get_or_create_product_type(template_item.item_group)
+		if type_id:
+			body["type_id"] = type_id
+	return body
 
 
 def _create_medusa_product(item, template_item, setting):
 	client = MedusaClient()
-	body = _product_body(template_item, setting)
+	body = _product_body(template_item, setting, client)
 
+	# a product created with variants must declare matching options; ERPNext
+	# items have none of their own, so use Medusa's documented default option
+	# (doc-verified 2026-07-02)
+	body["options"] = [{"title": DEFAULT_OPTION_TITLE, "values": [DEFAULT_OPTION_VALUE]}]
 	variant = _variant_body(item if not item.has_variants else template_item, setting)
 	body["variants"] = [variant]
 
@@ -492,9 +546,7 @@ def _create_medusa_product(item, template_item, setting):
 
 def _update_medusa_product(item, template_item, setting, product_id):
 	client = MedusaClient()
-	body = _product_body(template_item, setting)
-	# drop create-only keys for an update
-	body.pop("variants", None)
+	body = _product_body(template_item, setting, client)
 
 	try:
 		client.update_product(product_id, body)

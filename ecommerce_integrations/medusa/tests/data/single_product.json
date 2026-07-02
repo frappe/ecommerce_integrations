@@ -15,7 +15,7 @@
 			"id": "opt_default",
 			"title": "Default option",
 			"values": [
-				{ "value": "Default variant" }
+				{ "value": "Default option value" }
 			]
 		}
 	],
@@ -26,10 +26,10 @@
 			"sku": "MUG-TEST-001",
 			"weight": 350,
 			"options": [
-				{ "value": "Default variant" }
+				{ "value": "Default option value" }
 			],
 			"prices": [
-				{ "amount": 19.99, "currency_code": "usd" }
+				{ "amount": 19.99, "currency_code": "usd", "price_rules": [] }
 			]
 		}
 	]
