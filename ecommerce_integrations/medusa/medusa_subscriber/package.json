@@ -31,7 +31,8 @@
   "devDependencies": {
     "@medusajs/framework": "2.4.0",
     "@types/node": "20.17.7",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "@medusajs/medusa": "2.4.0"
   },
   "repository": {
     "type": "git",
