@@ -6,12 +6,42 @@ Medusa connector. It signs each event the same way the connector verifies it, so
 ERPNext can ingest fully-formed orders, invoices, delivery notes, cancellations and
 credit notes.
 
-This package is **not** an npm dependency — it's a pair of source files you copy
-into your own Medusa app.
+You can consume it either as an **npm package** or by **copying the source files**
+into your Medusa app — both are supported.
+
+> Medusa v2 only auto-registers subscribers found in the *app's* `src/subscribers/`
+> directory; an npm package cannot register a subscriber by itself. That's why the
+> npm route still needs one thin re-export file in your app (step 1a below).
 
 ## Install
 
-1. Copy the two source files into your Medusa app's `src/` (keep the layout):
+1. Get the code into your app — pick one:
+
+   **a) npm package** (published to GitHub Packages as
+   `@the-groots/medusa-erpnext-subscriber`):
+
+   ```sh
+   echo "@the-groots:registry=https://npm.pkg.github.com" >> .npmrc
+   npm install @the-groots/medusa-erpnext-subscriber
+   ```
+
+   then add a thin registration file so Medusa discovers the subscriber:
+
+   ```ts
+   // src/subscribers/erpnext-sync.ts
+   export { default, config } from "@the-groots/medusa-erpnext-subscriber/subscriber"
+   ```
+
+   The main entry also exports `forwardToErpnext` (plus the handler/config as
+   `erpnextSync` / `erpnextSyncConfig`) if you want to wrap the forward in your
+   own workflow:
+
+   ```ts
+   import { forwardToErpnext } from "@the-groots/medusa-erpnext-subscriber"
+   ```
+
+   **b) copy-in** — copy the two source files into your Medusa app's `src/`
+   (keep the layout):
 
    ```
    your-medusa-app/

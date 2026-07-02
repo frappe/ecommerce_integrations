@@ -1,0 +1,88 @@
+name: publish-subscriber
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FORK-ONLY INFRA — NOT PART OF THE UPSTREAM frappe/ecommerce_integrations PR.
+#
+# Publishes ecommerce_integrations/medusa/medusa_subscriber/ to GitHub Packages
+# as @the-groots/medusa-erpnext-subscriber so the-groots-medusa (and any other
+# Medusa app in the org) can `npm install` it instead of carrying copies of the
+# source files. The canonical TS source stays in this repo because it ships
+# with the upstream connector PR.
+#
+# IMPORTANT: upstream PRs are filed from feat/medusa-connector — drop this file
+# from the PR branch before filing (e.g. file the PR from a branch created with
+# `git rm .github/workflows/publish-subscriber.yml` on top).
+#
+# Versioning matches the org's npm-publish convention (the-groots-branding):
+# <major.minor from package.json>.<git rev-list --count HEAD>, so a given
+# commit always maps to the same version and re-runs are no-ops.
+#
+# NOTE on auth: this fork lives under a personal account (kiegsgroot/…), and
+# GitHub Packages only lets GITHUB_TOKEN publish packages scoped to the repo
+# owner. Publishing to the @the-groots scope therefore needs the repo secret
+# NPM_PUBLISH_TOKEN — a PAT of a the-groots org member with write:packages.
+# GITHUB_TOKEN is kept as a fallback in case the fork is ever transferred into
+# the org.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [feat/medusa-connector, main]
+    paths:
+      - "ecommerce_integrations/medusa/medusa_subscriber/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ecommerce_integrations/medusa/medusa_subscriber
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN || secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # required for `git rev-list --count HEAD`
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@the-groots'
+
+      - id: ver
+        name: Compute semver
+        run: |
+          set -euo pipefail
+          MM=$(jq -r .version package.json)
+          MM=${MM%.*}                          # keep major.minor
+          PATCH=$(git rev-list --count HEAD)   # repo-wide commit count
+          VERSION="${MM}.${PATCH}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Publishing version: ${VERSION}"
+
+      - name: Pin package.json version
+        run: |
+          jq --arg v "${{ steps.ver.outputs.version }}" '.version = $v' package.json > /tmp/pkg.json
+          mv /tmp/pkg.json package.json
+          cat package.json | jq '{name, version}'
+
+      - name: Install & build
+        run: |
+          npm install
+          npm run build
+
+      - name: Publish
+        run: |
+          # Skip cleanly if this exact version already exists in the
+          # registry (re-run, race with parallel push, etc.).
+          if npm view "@the-groots/medusa-erpnext-subscriber@${{ steps.ver.outputs.version }}" version 2>/dev/null; then
+            echo "Version ${{ steps.ver.outputs.version }} already published — skipping."
+            exit 0
+          fi
+          npm publish
