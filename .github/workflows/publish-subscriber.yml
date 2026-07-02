@@ -26,7 +26,6 @@ name: publish-subscriber
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
-  workflow_dispatch: {}
   push:
     branches: [feat/medusa-connector, main]
     paths:
