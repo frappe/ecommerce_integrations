@@ -74,7 +74,7 @@ jobs:
 
       - name: Install & build
         run: |
-          npm install
+          npm install --legacy-peer-deps  # root peers (@medusajs/medusa) otherwise auto-install and float past the pinned framework
           npm run build
 
       - name: Publish
