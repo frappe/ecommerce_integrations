@@ -1,6 +1,10 @@
 from copy import deepcopy
 
 import frappe
+<<<<<<< HEAD
+=======
+from erpnext.selling.doctype.sales_order.mapper import make_delivery_note
+>>>>>>> ede3a80 (fix(imports): update erpnext helper imports to their new mapper and services locations)
 from frappe.utils import cint, cstr, getdate
 
 from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note

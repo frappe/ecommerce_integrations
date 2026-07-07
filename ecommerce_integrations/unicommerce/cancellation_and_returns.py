@@ -3,10 +3,16 @@ from collections import defaultdict
 from datetime import date, datetime
 
 import frappe
+<<<<<<< HEAD
 from frappe.utils import now_datetime
 
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from erpnext.controllers.accounts_controller import update_child_qty_rate
+=======
+from erpnext.accounts.doctype.sales_invoice.mapper import make_sales_return
+from erpnext.accounts.services.child_item_update import update_child_qty_rate
+from frappe.utils import now_datetime
+>>>>>>> ede3a80 (fix(imports): update erpnext helper imports to their new mapper and services locations)
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (

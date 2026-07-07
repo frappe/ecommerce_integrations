@@ -4,9 +4,14 @@ from collections import defaultdict
 from typing import Any, NewType
 
 import requests
+<<<<<<< HEAD
 
 import frappe
 from frappe import _, _dict
+=======
+from erpnext.selling.doctype.sales_order.mapper import make_sales_invoice
+from frappe import _
+>>>>>>> ede3a80 (fix(imports): update erpnext helper imports to their new mapper and services locations)
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
 
