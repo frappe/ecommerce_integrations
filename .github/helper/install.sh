@@ -10,6 +10,10 @@ sudo apt-get -y install redis-server libcups2-dev mariadb-client -qq
 
 pip install frappe-bench
 
+# Derive branches from the CI branch so satellite apps match the bench being tested.
+githubbranch=${GITHUB_BASE_REF:-${GITHUB_REF##*/}}
+paymentsbranch=${PAYMENTS_BRANCH:-${githubbranch%"-hotfix"}}
+
 git clone https://github.com/frappe/frappe --branch version-15 --depth 1
 bench init --skip-assets --frappe-path ~/frappe --python "$(which python)" frappe-bench
 
@@ -32,7 +36,7 @@ sed -i 's/schedule:/# schedule:/g' Procfile
 sed -i 's/socketio:/# socketio:/g' Procfile
 sed -i 's/redis_socketio:/# redis_socketio:/g' Procfile
 
-bench get-app payments --branch develop
+bench get-app payments --branch "$paymentsbranch"
 bench get-app erpnext --branch version-15
 bench get-app ecommerce_integrations "${GITHUB_WORKSPACE}"
 
