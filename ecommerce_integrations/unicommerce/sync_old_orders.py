@@ -163,6 +163,7 @@ def _fetch_orders_in_range(client, from_date, to_date, status, summary):
 		base_body["status"] = status
 
 	display_start = 0
+	is_first_page = True
 	total_records = None
 	seen = set()
 
@@ -171,7 +172,7 @@ def _fetch_orders_in_range(client, from_date, to_date, status, summary):
 		body["searchOptions"] = {
 			"displayStart": display_start,
 			"displayLength": PAGE_SIZE,
-			"getCount": display_start == 0,
+			"getCount": is_first_page,
 		}
 
 		resp, ok = _request_with_retry(client, body)
@@ -188,7 +189,7 @@ def _fetch_orders_in_range(client, from_date, to_date, status, summary):
 			)
 			return
 
-		if display_start == 0:
+		if is_first_page:
 			total_records = resp.get("totalRecords")
 			summary["total_reported"] = total_records
 			create_unicommerce_log(
@@ -224,6 +225,7 @@ def _fetch_orders_in_range(client, from_date, to_date, status, summary):
 		yield new_page
 
 		display_start += len(elements)
+		is_first_page = False
 
 		# Stop once the reported total is reached
 		if total_records is not None and display_start >= total_records:
