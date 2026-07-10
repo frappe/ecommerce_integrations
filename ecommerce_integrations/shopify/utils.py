@@ -75,13 +75,9 @@ def _migrate_items_to_ecommerce_item(log):
 def _get_items_to_migrate() -> list[_dict]:
 	"""get all list of items that have shopify fields but do not have associated ecommerce item."""
 
-	old_data = frappe.db.sql(
-		"""SELECT item.name as erpnext_item_code, shopify_product_id, shopify_variant_id, item.variant_of, item.has_variants
-			FROM tabItem item
-			LEFT JOIN `tabEcommerce Item` ei on ei.erpnext_item_code = item.name
-			WHERE ei.erpnext_item_code IS NULL AND shopify_product_id IS NOT NULL""",
-		as_dict=True,
-	)
+	item = frappe.qb.DocType("Item")
+	ei = frappe.qb.DocType("Ecommerce Item")
+	old_data = ( frappe.qb.from_(item) .from_(ei) .select( item.name.as_("erpnext_item_code"), item.shopify_product_id, item.shopify_variant_id, item.variant_of, item.has_variants ) .where((ei.erpnext_item_code.isnull() & item.shopify_product_id.isnotnull())) .run(as_dict=True) )
 
 	return old_data or []
 

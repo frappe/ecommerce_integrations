@@ -68,7 +68,7 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 	def test_validate_brand(self):
 		brand_name = "_Test Brand"
-		frappe.db.sql("delete from tabBrand where name = %s", brand_name)
+		frappe.db.delete("Brand", {"name": brand_name})
 
 		_validate_create_brand(brand_name)
 

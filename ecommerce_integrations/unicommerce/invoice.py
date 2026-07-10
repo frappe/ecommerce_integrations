@@ -7,6 +7,7 @@ import frappe
 import requests
 from erpnext.selling.doctype.sales_order.mapper import make_sales_invoice
 from frappe import _
+from frappe.query_builder.functions import Sum
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file
 
@@ -190,11 +191,12 @@ def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
 
-	frappe.db.sql(
-		f"""update `tabSales Order`
-			set {ORDER_INVOICE_STATUS_FIELD} = %s
-			where name in %s""",
-		(status, sales_orders),
+	sales_order = frappe.qb.DocType("Sales Order")
+	(
+		frappe.qb.update(sales_order)
+		.set(sales_order[ORDER_INVOICE_STATUS_FIELD], status)
+		.where(sales_order.name.isin(sales_orders))
+		.run()
 	)
 
 
@@ -205,15 +207,17 @@ def _validate_wh_allocation(warehouse_allocation: WHAllocation):
 		return
 
 	so_codes = list(warehouse_allocation.keys())
-	so_item_data = frappe.db.sql(
-		"""
-			select item_code, sum(qty) as qty, parent as sales_order
-			from `tabSales Order Item`
-			where
-				parent in %s
-			group by parent, item_code""",
-		(so_codes,),
-		as_dict=True,
+	so_item = frappe.qb.DocType("Sales Order Item")
+	so_item_data = (
+		frappe.qb.from_(so_item)
+		.select(
+			so_item.item_code,
+			Sum(so_item.qty).as_("qty"),
+			so_item.parent.as_("sales_order"),
+		)
+		.where(so_item.parent.isin(so_codes))
+		.groupby(so_item.parent, so_item.item_code)
+		.run(as_dict=True)
 	)
 
 	expected_item_qty = {}

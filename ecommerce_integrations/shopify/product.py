@@ -188,12 +188,7 @@ class ShopifyProduct:
 				self._create_item(shopify_item_variant, warehouse, 0, attributes, template_item.name)
 
 	def _get_attribute_value(self, variant_attr_val, attribute):
-		attribute_value = frappe.db.sql(
-			"""select attribute_value from `tabItem Attribute Value`
-			where parent = %s and (abbr = %s or attribute_value = %s)""",
-			(attribute["attribute"], variant_attr_val, variant_attr_val),
-			as_list=1,
-		)
+		attribute_value = frappe.get_all( "Item Attribute Value", filters={"parent": attribute['attribute']}, fields=["attribute_value"] )
 		return attribute_value[0][0] if len(attribute_value) > 0 else cint(variant_attr_val)
 
 	def _get_item_group(self, product_type=None):
@@ -216,11 +211,15 @@ class ShopifyProduct:
 
 	def _get_supplier(self, product_dict):
 		if product_dict.get("vendor"):
-			supplier = frappe.db.sql(
-				f"""select name from tabSupplier
-				where name = %s or {SUPPLIER_ID_FIELD} = %s """,
-				(product_dict.get("vendor"), product_dict.get("vendor").lower()),
-				as_list=1,
+			supplier_dt = frappe.qb.DocType("Supplier")
+			supplier = (
+				frappe.qb.from_(supplier_dt)
+				.select(supplier_dt.name)
+				.where(
+					(supplier_dt.name == product_dict.get("vendor"))
+					| (supplier_dt[SUPPLIER_ID_FIELD] == product_dict.get("vendor").lower())
+				)
+				.run(as_list=True)
 			)
 
 			if supplier:
