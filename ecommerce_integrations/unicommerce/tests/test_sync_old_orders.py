@@ -45,6 +45,20 @@ class TestFetchOrdersInRange(IntegrationTestCase):
 		# stops exactly at total -> no wasted 3rd page request
 		self.assertEqual(client.request.call_count, 2)
 
+	def test_sends_full_day_boundaries(self):
+		# No ±1-day padding: the search covers start-of-From .. end-of-To exactly.
+		client = MagicMock()
+		client.request.return_value = (_page([], total=0), True)
+		summary = {"total_reported": None, "incomplete": False}
+		with (
+			patch.object(sof, "create_unicommerce_log"),
+			patch.object(sof, "_utc_timeformat", side_effect=str),  # pass the datetime through unchanged
+		):
+			list(sof._fetch_orders_in_range(client, "2026-04-01", "2026-04-30", None, summary))
+		body = client.request.call_args.kwargs["body"]
+		self.assertEqual(body["fromDate"], "2026-04-01 00:00:00")
+		self.assertEqual(body["toDate"], "2026-04-30 23:59:59")
+
 	def test_empty_page_stops_cleanly(self):
 		client = MagicMock()
 		client.request.return_value = (_page([], total=0), True)
@@ -187,6 +201,12 @@ class TestValidateDateRange(IntegrationTestCase):
 	def test_valid_past_range_normalized_to_dates(self):
 		fr, to = sof._validate_date_range("2020-01-01", "2020-01-31")
 		self.assertEqual((fr, to), (getdate("2020-01-01"), getdate("2020-01-31")))
+
+	def test_range_over_max_throws(self):
+		# Max 31 inclusive calendar days: 1-31 OK; one day longer is rejected.
+		sof._validate_date_range("2020-01-01", "2020-01-31")  # 31 inclusive days -> ok
+		with self.assertRaises(frappe.ValidationError):
+			sof._validate_date_range("2020-01-01", "2020-02-01")  # 32 inclusive days -> throw
 
 	def test_missing_date_throws(self):
 		with self.assertRaises(frappe.ValidationError):
