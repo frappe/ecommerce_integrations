@@ -77,7 +77,21 @@ def _get_items_to_migrate() -> list[_dict]:
 
 	item = frappe.qb.DocType("Item")
 	ei = frappe.qb.DocType("Ecommerce Item")
-	old_data = ( frappe.qb.from_(item) .from_(ei) .select( item.name.as_("erpnext_item_code"), item.shopify_product_id, item.shopify_variant_id, item.variant_of, item.has_variants ) .where((ei.erpnext_item_code.isnull() & item.shopify_product_id.isnotnull())) .run(as_dict=True) )
+	old_data = (
+		frappe.qb.from_(item)
+		.left_join(ei)
+		.on(ei.erpnext_item_code == item.name)
+		.select(
+			item.name.as_("erpnext_item_code"),
+			item.shopify_product_id,
+			item.shopify_variant_id,
+			item.variant_of,
+			item.has_variants,
+		)
+		.where(ei.erpnext_item_code.isnull())
+		.where(item.shopify_product_id.isnotnull())
+		.run(as_dict=True)
+	)
 
 	return old_data or []
 
