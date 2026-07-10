@@ -188,8 +188,19 @@ class ShopifyProduct:
 				self._create_item(shopify_item_variant, warehouse, 0, attributes, template_item.name)
 
 	def _get_attribute_value(self, variant_attr_val, attribute):
-		attribute_value = frappe.get_all( "Item Attribute Value", filters={"parent": attribute['attribute']}, fields=["attribute_value"] )
-		return attribute_value[0][0] if len(attribute_value) > 0 else cint(variant_attr_val)
+		item_attribute_value = frappe.qb.DocType("Item Attribute Value")
+		attribute_value = (
+			frappe.qb.from_(item_attribute_value)
+			.select(item_attribute_value.attribute_value)
+			.where(item_attribute_value.parent == attribute["attribute"])
+			.where(
+				(item_attribute_value.abbr == variant_attr_val)
+				| (item_attribute_value.attribute_value == variant_attr_val)
+			)
+			.limit(1)
+			.run()
+		)
+		return attribute_value[0][0] if attribute_value else cint(variant_attr_val)
 
 	def _get_item_group(self, product_type=None):
 		parent_item_group = get_root_of("Item Group")
