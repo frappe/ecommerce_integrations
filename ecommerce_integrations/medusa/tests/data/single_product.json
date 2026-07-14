@@ -1,0 +1,36 @@
+{
+	"id": "prod_01HSINGLE0000000000000001",
+	"title": "Medusa Test Mug",
+	"description": "A sturdy ceramic mug for testing.",
+	"handle": "medusa-test-mug",
+	"status": "published",
+	"thumbnail": "https://medusa-test.local/mug.png",
+	"weight": 350,
+	"type": {
+		"id": "ptyp_01HMUG",
+		"value": "Drinkware"
+	},
+	"options": [
+		{
+			"id": "opt_default",
+			"title": "Default option",
+			"values": [
+				{ "value": "Default option value" }
+			]
+		}
+	],
+	"variants": [
+		{
+			"id": "variant_01HSINGLE000000000000001",
+			"title": "Default variant",
+			"sku": "MUG-TEST-001",
+			"weight": 350,
+			"options": [
+				{ "value": "Default option value" }
+			],
+			"prices": [
+				{ "amount": 19.99, "currency_code": "usd", "price_rules": [] }
+			]
+		}
+	]
+}

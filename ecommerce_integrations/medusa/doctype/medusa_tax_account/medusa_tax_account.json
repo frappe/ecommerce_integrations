@@ -1,0 +1,50 @@
+{
+ "actions": [],
+ "creation": "2024-06-25 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "medusa_tax",
+  "column_break_2",
+  "tax_account",
+  "tax_description"
+ ],
+ "fields": [
+  {
+   "fieldname": "medusa_tax",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Medusa Tax/Shipping Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "tax_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "ERPNext Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "tax_description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Tax Description",
+   "translatable": 1
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2024-06-25 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "medusa",
+ "name": "Medusa Tax Account",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

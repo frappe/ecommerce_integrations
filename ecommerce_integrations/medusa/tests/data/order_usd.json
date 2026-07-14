@@ -1,0 +1,128 @@
+{
+	"id": "order_01HORDER00000000000000001",
+	"display_id": 1042,
+	"status": "completed",
+	"email": "john.usd@medusa-test.local",
+	"currency_code": "usd",
+	"region_id": "reg_01HUS",
+	"customer_id": "cus_01HUSDCUSTOMER000000001",
+	"created_at": "2024-06-25T10:11:12.000Z",
+	"canceled_at": null,
+	"customer": {
+		"id": "cus_01HUSDCUSTOMER000000001",
+		"email": "john.usd@medusa-test.local",
+		"first_name": "John",
+		"last_name": "USD",
+		"phone": "+15555550111"
+	},
+	"items": [
+		{
+			"id": "item_mug",
+			"title": "Medusa Test Mug",
+			"product_id": "prod_01HSINGLE0000000000000001",
+			"variant_id": "variant_01HSINGLE000000000000001",
+			"variant_sku": "MUG-TEST-001",
+			"product_title": "Medusa Test Mug",
+			"variant_title": "Default variant",
+			"quantity": 2,
+			"unit_price": 19.99,
+			"subtotal": 39.98,
+			"total": 43.18,
+			"tax_total": 3.2,
+			"discount_total": 4.0
+		},
+		{
+			"id": "item_tee",
+			"title": "Medusa Test Tee - M / Red",
+			"product_id": "prod_01HVARIANT000000000000001",
+			"variant_id": "variant_M_Red",
+			"variant_sku": "TEE-M-RED",
+			"product_title": "Medusa Test Tee",
+			"variant_title": "M / Red",
+			"quantity": 1,
+			"unit_price": 24.99,
+			"subtotal": 24.99,
+			"total": 26.99,
+			"tax_total": 2.0,
+			"discount_total": 0.0
+		}
+	],
+	"shipping_address": {
+		"id": "addr_ship_01H",
+		"first_name": "Jane",
+		"last_name": "Doe",
+		"address_1": "123 Test Street",
+		"address_2": "Unit 4",
+		"city": "Testville",
+		"province": "CA",
+		"postal_code": "90210",
+		"country_code": "US",
+		"phone": "+15555550100",
+		"company": "Acme Co"
+	},
+	"billing_address": {
+		"id": "addr_bill_01H",
+		"first_name": "Jane",
+		"last_name": "Doe",
+		"address_1": "123 Test Street",
+		"address_2": "Unit 4",
+		"city": "Testville",
+		"province": "CA",
+		"postal_code": "90210",
+		"country_code": "US",
+		"phone": "+15555550100",
+		"company": "Acme Co"
+	},
+	"shipping_methods": [
+		{
+			"id": "sm_01H",
+			"name": "Standard Shipping",
+			"amount": 7.5
+		}
+	],
+	"item_total": 64.97,
+	"subtotal": 64.97,
+	"tax_total": 5.2,
+	"shipping_total": 7.5,
+	"discount_total": 4.0,
+	"total": 73.67,
+	"payment_collections": [
+		{
+			"id": "paycol_01H",
+			"amount": 73.67,
+			"status": "captured",
+			"payments": [
+				{
+					"id": "pay_01H",
+					"amount": 73.67,
+					"captured_at": "2024-06-25T10:12:00.000Z"
+				}
+			]
+		}
+	],
+	"fulfillments": [
+		{
+			"id": "ful_01HFULFILL000000000000001",
+			"location_id": "sloc_01HWH1",
+			"packed_at": "2024-06-25T11:00:00.000Z",
+			"shipped_at": "2024-06-25T12:00:00.000Z",
+			"delivered_at": null,
+			"items": [
+				{
+					"line_item_id": "item_mug",
+					"quantity": 2
+				},
+				{
+					"line_item_id": "item_tee",
+					"quantity": 1
+				}
+			],
+			"labels": [
+				{
+					"tracking_number": "1Z999AA10123456784",
+					"tracking_url": "https://track.local/1Z999AA10123456784"
+				}
+			]
+		}
+	]
+}

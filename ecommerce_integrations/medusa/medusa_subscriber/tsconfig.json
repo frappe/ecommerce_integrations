@@ -1,0 +1,22 @@
+{
+  // Emits CommonJS (no "type": "module" in package.json), matching the module
+  // format Medusa v2 apps compile to — an ESM-only build would fail when the
+  // app's CJS output require()s it.
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "lib": ["ES2021", "DOM"],
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "sourceMap": false,
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*"]
+}

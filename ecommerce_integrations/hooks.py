@@ -108,8 +108,14 @@ before_uninstall = "ecommerce_integrations.uninstall.before_uninstall"
 
 doc_events = {
 	"Item": {
-		"after_insert": "ecommerce_integrations.shopify.product.upload_erpnext_item",
-		"on_update": "ecommerce_integrations.shopify.product.upload_erpnext_item",
+		"after_insert": [
+			"ecommerce_integrations.shopify.product.upload_erpnext_item",
+			"ecommerce_integrations.medusa.product.upload_erpnext_item",
+		],
+		"on_update": [
+			"ecommerce_integrations.shopify.product.upload_erpnext_item",
+			"ecommerce_integrations.medusa.product.upload_erpnext_item",
+		],
 		"validate": [
 			"ecommerce_integrations.utils.taxation.validate_tax_template",
 			"ecommerce_integrations.unicommerce.product.validate_item",
@@ -136,11 +142,15 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
-	"all": ["ecommerce_integrations.shopify.inventory.update_inventory_on_shopify"],
+	"all": [
+		"ecommerce_integrations.shopify.inventory.update_inventory_on_shopify",
+		"ecommerce_integrations.medusa.inventory.update_inventory_on_medusa",
+	],
 	"daily": [],
 	"daily_long": ["ecommerce_integrations.zenoti.doctype.zenoti_settings.zenoti_settings.sync_stocks"],
 	"hourly": [
 		"ecommerce_integrations.shopify.order.sync_old_orders",
+		"ecommerce_integrations.medusa.order.sync_old_orders",
 		"ecommerce_integrations.amazon.doctype.amazon_sp_api_settings.amazon_sp_api_settings.schedule_get_order_details",
 	],
 	"hourly_long": [

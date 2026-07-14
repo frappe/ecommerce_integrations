@@ -12,6 +12,7 @@
 - Unicommerce - [User Documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/unicommerce_integration)
 - Zenoti - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/zenoti_integration)
 - Amazon - [User documentation](https://docs.erpnext.com/docs/v13/user/manual/en/erpnext_integration/amazon_integration)
+- Medusa (v2) - [Connector documentation](ecommerce_integrations/medusa/README.md)
 
 
 ### Installation
