@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import add_days, getdate
+from frappe.utils import date_diff, getdate
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient, _utc_timeformat
 from ecommerce_integrations.unicommerce.constants import ORDER_CODE_FIELD, SETTINGS_DOCTYPE
@@ -17,6 +17,9 @@ JOB_ID = "unicommerce_sync_old_orders"
 JOB_TIMEOUT_SEC = 12 * 60 * 60
 LOCK_TTL_SEC = 13 * 60 * 60
 
+# Max inclusive calendar days (e.g. 1 Jan-31 Jan = 31 days). Uni search cap is ~31 days.
+MAX_SELECTABLE_RANGE_DAYS = 31
+
 
 def _validate_date_range(from_date, to_date):
 	"""Validate dates server-side (endpoint is callable directly, not just via the JS button)."""
@@ -27,6 +30,9 @@ def _validate_date_range(from_date, to_date):
 		frappe.throw(_("From Date cannot be after To Date."))
 	if from_date > getdate():
 		frappe.throw(_("From Date cannot be in the future."))
+	# Inclusive day count: 1 Jan-31 Jan -> 31; reject anything longer.
+	if date_diff(to_date, from_date) + 1 > MAX_SELECTABLE_RANGE_DAYS:
+		frappe.throw(_("Date range cannot be longer than {0} days.").format(MAX_SELECTABLE_RANGE_DAYS))
 	return from_date, to_date
 
 
@@ -149,14 +155,10 @@ def _run_sync(settings, from_date, to_date, client=None):
 
 def _fetch_orders_in_range(client, from_date, to_date, status, summary):
 	"""Yield each page of UNIQUE orders (each with a valid code) in the date range."""
-	# Pad ±1 day (intentional): makes toDate inclusive and absorbs the UTC timezone shift.
-	# May include a few orders just outside the range; de-dup keeps it safe.
-	from_padded = add_days(from_date, -1)
-	to_padded = add_days(to_date, 1)
-
+	# Full days: start of From .. end of To. No padding, so the whole range fits the 31-day cap.
 	base_body = {
-		"fromDate": _utc_timeformat(from_padded),
-		"toDate": _utc_timeformat(to_padded),
+		"fromDate": _utc_timeformat(f"{from_date} 00:00:00"),
+		"toDate": _utc_timeformat(f"{to_date} 23:59:59"),
 		"dateType": "CREATED",
 	}
 	if status:

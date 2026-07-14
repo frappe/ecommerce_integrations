@@ -60,6 +60,23 @@ frappe.ui.form.on("Unicommerce Settings", {
 							);
 							return;
 						}
+						// Match server MAX_SELECTABLE_RANGE_DAYS (31 inclusive calendar days).
+						const max_days = 31;
+						const from = frappe.datetime.str_to_obj(
+							values.from_date,
+						);
+						const to = frappe.datetime.str_to_obj(values.to_date);
+						const inclusive_days =
+							frappe.datetime.get_diff(to, from) + 1;
+						if (inclusive_days > max_days) {
+							frappe.msgprint(
+								__(
+									"Date range cannot be longer than {0} days.",
+									[max_days],
+								),
+							);
+							return;
+						}
 						frappe.call({
 							method: "ecommerce_integrations.unicommerce.sync_old_orders.enqueue_sync_old_orders",
 							args: {
