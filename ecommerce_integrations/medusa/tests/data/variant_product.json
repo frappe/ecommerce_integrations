@@ -1,0 +1,90 @@
+{
+	"id": "prod_01HVARIANT000000000000001",
+	"title": "Medusa Test Tee",
+	"description": "A soft cotton tee for testing variants.",
+	"handle": "medusa-test-tee",
+	"status": "published",
+	"thumbnail": "https://medusa-test.local/tee.png",
+	"weight": 200,
+	"type": {
+		"id": "ptyp_01HTEE",
+		"value": "Apparel"
+	},
+	"options": [
+		{
+			"id": "opt_size",
+			"title": "Size",
+			"values": [
+				{ "value": "S" },
+				{ "value": "M" },
+				{ "value": "L" }
+			]
+		},
+		{
+			"id": "opt_colour",
+			"title": "Colour",
+			"values": [
+				{ "value": "Red" },
+				{ "value": "Blue" }
+			]
+		}
+	],
+	"variants": [
+		{
+			"id": "variant_S_Red",
+			"title": "S / Red",
+			"sku": "TEE-S-RED",
+			"weight": 200,
+			"options": [{ "value": "S" }, { "value": "Red" }],
+			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+		},
+		{
+			"id": "variant_S_Blue",
+			"title": "S / Blue",
+			"sku": "TEE-S-BLUE",
+			"weight": 200,
+			"options": [{ "value": "S" }, { "value": "Blue" }],
+			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+		},
+		{
+			"id": "variant_M_Red",
+			"title": "M / Red",
+			"sku": "TEE-M-RED",
+			"weight": 210,
+			"options": [{ "value": "M" }, { "value": "Red" }],
+			"prices": [
+				{
+					"amount": 19.99,
+					"currency_code": "usd",
+					"price_rules": [{ "attribute": "region_id", "value": "reg_01HEUROPE000000000000001" }]
+				},
+				{ "amount": 22.99, "currency_code": "eur", "price_rules": [] },
+				{ "amount": 24.99, "currency_code": "usd", "price_rules": [] }
+			]
+		},
+		{
+			"id": "variant_M_Blue",
+			"title": "M / Blue",
+			"sku": "TEE-M-BLUE",
+			"weight": 210,
+			"options": [{ "value": "M" }, { "value": "Blue" }],
+			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+		},
+		{
+			"id": "variant_L_Red",
+			"title": "L / Red",
+			"sku": "TEE-L-RED",
+			"weight": 220,
+			"options": [{ "value": "L" }, { "value": "Red" }],
+			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+		},
+		{
+			"id": "variant_L_Blue",
+			"title": "L / Blue",
+			"sku": "TEE-L-BLUE",
+			"weight": 220,
+			"options": [{ "value": "L" }, { "value": "Blue" }],
+			"prices": [{ "amount": 24.99, "currency_code": "usd" }]
+		}
+	]
+}

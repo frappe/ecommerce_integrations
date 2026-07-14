@@ -1,0 +1,10 @@
+{
+	"id": "ret_01HRETURN00000000000000001",
+	"order_id": "order_01HORDER00000000000000001",
+	"status": "received",
+	"location_id": "sloc_01HWH1",
+	"refund_amount": 26.99,
+	"items": [
+		{ "item_id": "item_tee", "quantity": 1 }
+	]
+}
