@@ -37,6 +37,24 @@ class UnicommerceAPIClient:
 
 		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
 
+	def _refresh_auth(self):
+		"""Fetch a fresh access token after a 401 and rebuild the auth header."""
+		self.settings.update_tokens(grant_type="refresh_token")
+		self.access_token = self.settings.access_token
+		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
+
+		# Persisting the token (to share it with other clients) is best-effort: a save
+		# failure must not block the retry, which already has the new token in-memory.
+		try:
+			# Background jobs lack write permission on Unicommerce Settings; bypass is
+			# intentional so token sharing works without a logged-in session user.
+			self.settings.flags.ignore_permissions = True
+			self.settings.flags.ignore_custom_fields = True
+			self.settings.save()
+		except Exception:
+			# Best-effort only — log so repeated failures are visible without blocking the retry.
+			frappe.log_error("Unicommerce: failed to persist refreshed access token")
+
 	def request(
 		self,
 		endpoint: str,
@@ -58,6 +76,17 @@ class UnicommerceAPIClient:
 			response = requests.request(
 				url=url, method=method, headers=headers, json=body, params=params, files=files
 			)
+			# Token expired mid-run -> refresh once and retry the call.
+			# File uploads are NOT retried: `requests` has already streamed the file
+			# object into the first request's body, so the handle is at EOF and
+			# replaying it would silently send an empty body. Such calls fall through
+			# and fail loudly instead, so the upload can be re-run intact.
+			if response.status_code == 401 and not files:
+				self._refresh_auth()
+				headers.update(self._auth_headers)
+				response = requests.request(
+					url=url, method=method, headers=headers, json=body, params=params, files=files
+				)
 			# unicommerce gives useful info in response text, show it in error logs
 			response.reason = cstr(response.reason) + cstr(response.text)
 			response.raise_for_status()

@@ -1,5 +1,5 @@
 import frappe
-from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from erpnext.selling.doctype.sales_order.mapper import make_sales_invoice
 from frappe.utils import cint, cstr, getdate, nowdate
 
 from ecommerce_integrations.shopify.constants import (

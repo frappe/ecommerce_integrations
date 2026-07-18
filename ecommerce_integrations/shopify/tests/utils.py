@@ -84,6 +84,11 @@ class TestCase(IntegrationTestCase):
 				}
 			).save(ignore_permissions=True)
 
+		# A new Item's item_defaults.default_warehouse is auto-filled from the frappe GLOBAL
+		# default warehouse, which the standard erpnext test companies set to a foreign company's
+		# warehouse -> item_defaults company/warehouse mismatch aborts item creation. Clear it.
+		frappe.db.set_default("default_warehouse", "")
+
 	def setUp(self):
 		ActiveResource.site = None
 		ActiveResource.headers = None

@@ -235,6 +235,9 @@ class AmazonRepository:
 		item.item_group = create_item_group(amazon_item)
 		item.brand = create_brand(amazon_item)
 		item.manufacturer = create_manufacturer(amazon_item)
+		# Mark as integration-created so cross-integration Item hooks (e.g. the Shopify
+		# upload_erpnext_item hook) skip it instead of trying to push it to their platform.
+		item.flags.from_integration = True
 		item.insert(ignore_permissions=True)
 
 		create_item_price(amazon_item, item.item_code)

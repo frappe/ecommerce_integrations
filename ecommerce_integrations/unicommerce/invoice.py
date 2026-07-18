@@ -5,7 +5,7 @@ from typing import Any, NewType
 
 import frappe
 import requests
-from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from erpnext.selling.doctype.sales_order.mapper import make_sales_invoice
 from frappe import _
 from frappe.utils import cint, flt, nowdate
 from frappe.utils.file_manager import save_file

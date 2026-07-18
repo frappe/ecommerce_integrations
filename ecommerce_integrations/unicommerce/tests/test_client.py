@@ -330,3 +330,89 @@ class TestUnicommerceClient(TestCaseApiClient):
 
 		self.assertEqual(resp.successful, True)
 		self.assert_last_request_headers("Facility", "TEST")
+
+
+class TestTokenRenewRetry(TestCase):
+	"""401 -> refresh -> retry-once behaviour added to api_client.request()."""
+
+	ENDPOINT = "/services/rest/v1/test/ping"
+	URL = "https://demostaging.unicommerce.com/services/rest/v1/test/ping"
+
+	def setUp(self):
+		# A self-contained mock so these token tests don't depend on the shared
+		# fixtures registered by TestCaseApiClient.setUp.
+		self.responses = responses.RequestsMock()
+		self.responses.start()
+		self.addCleanup(self.responses.stop)
+		self.addCleanup(self.responses.reset)
+
+	def _client(self):
+		# access_token is passed, so the constructor skips renew_tokens() (no network).
+		return UnicommerceAPIClient("https://demostaging.unicommerce.com", "AUTH_TOKEN")
+
+	def test_401_refreshes_token_and_retries_once(self):
+		"""A 401 triggers one refresh + retry, and the retry carries the fresh token."""
+		self.responses.add(responses.POST, self.URL, status=401, json={"successful": False})
+		self.responses.add(responses.POST, self.URL, status=200, json={"successful": True})
+
+		def _fake_refresh(client):
+			client._auth_headers = {"Authorization": "Bearer NEW_TOKEN"}
+
+		with patch.object(
+			UnicommerceAPIClient, "_refresh_auth", autospec=True, side_effect=_fake_refresh
+		) as refresh:
+			data, ok = self._client().request(endpoint=self.ENDPOINT, body={})
+
+		self.assertTrue(ok)
+		self.assertTrue(data["successful"])
+		refresh.assert_called_once()
+		self.assertEqual(len(self.responses.calls), 2)  # original + one retry
+		# original used the stale token; the retry used the refreshed one
+		self.assertEqual(self.responses.calls[0].request.headers["Authorization"], "Bearer AUTH_TOKEN")
+		self.assertEqual(self.responses.calls[1].request.headers["Authorization"], "Bearer NEW_TOKEN")
+
+	def test_persistent_401_gives_up_after_one_retry(self):
+		"""If the 401 persists after refreshing, give up instead of looping forever."""
+		self.responses.add(responses.POST, self.URL, status=401, json={"successful": False})
+		self.responses.add(responses.POST, self.URL, status=401, json={"successful": False})
+
+		with (
+			patch.object(UnicommerceAPIClient, "_refresh_auth") as refresh,
+			patch("ecommerce_integrations.unicommerce.api_client.create_unicommerce_log"),
+		):
+			data, ok = self._client().request(endpoint=self.ENDPOINT, body={})
+
+		self.assertIsNone(data)
+		self.assertFalse(ok)
+		refresh.assert_called_once()
+		self.assertEqual(len(self.responses.calls), 2)  # original + one retry, then stops
+
+	def test_no_401_does_not_refresh(self):
+		"""A successful response never touches the refresh path."""
+		self.responses.add(responses.POST, self.URL, status=200, json={"successful": True})
+
+		with patch.object(UnicommerceAPIClient, "_refresh_auth") as refresh:
+			data, ok = self._client().request(endpoint=self.ENDPOINT, body={})
+
+		self.assertTrue(ok)
+		refresh.assert_not_called()
+		self.assertEqual(len(self.responses.calls), 1)  # no retry on success
+
+	def test_file_upload_401_is_not_retried(self):
+		"""A file upload must not be replayed on 401: the stream is already consumed,
+		so retrying would send an empty body. Fail loudly instead of losing data."""
+		import io
+
+		self.responses.add(responses.POST, self.URL, status=401, json={"successful": False})
+
+		files = [("file", ("data.csv", io.BytesIO(b"a,b,c"), "text/csv"))]
+		with (
+			patch.object(UnicommerceAPIClient, "_refresh_auth") as refresh,
+			patch("ecommerce_integrations.unicommerce.api_client.create_unicommerce_log"),
+		):
+			data, ok = self._client().request(endpoint=self.ENDPOINT, files=files)
+
+		self.assertIsNone(data)
+		self.assertFalse(ok)
+		refresh.assert_not_called()  # uploads skip the refresh/retry path
+		self.assertEqual(len(self.responses.calls), 1)  # single attempt, no replay
