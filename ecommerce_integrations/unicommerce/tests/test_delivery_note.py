@@ -71,7 +71,7 @@ class TestDeliveryNote(TestCaseApiClient):
 	def test_backfill_display_order_code_on_resync(self):
 		"""Re-syncing an order backfills the display order no. on the order and on the
 		invoices / delivery notes already made from it before the field existed."""
-		from erpnext.selling.doctype.sales_order.mapper import make_delivery_note, make_sales_invoice
+		from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note, make_sales_invoice
 
 		# order-SO5905 is not invoiced by other tests, so this stays isolated.
 		order = self.load_fixture("order-SO5905")["saleOrderDTO"]
