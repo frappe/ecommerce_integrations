@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import Any, NewType
 
 import frappe
+from frappe.query_builder.functions import Coalesce
 from frappe.utils import add_to_date, flt
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
@@ -17,6 +18,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
 	ORDER_ITEM_BATCH_NO,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
@@ -128,6 +130,14 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
 	if existing_so:
 		so = frappe.get_doc("Sales Order", existing_so)
+		# Backfill display order no. on orders synced before the field existed, and
+		# propagate it onto the invoices / delivery notes already made from this order.
+		display_order_code = order.get("displayOrderCode")
+		if display_order_code and not so.get(ORDER_DISPLAY_CODE_FIELD):
+			# Backfill invoices / delivery notes first, then flag the order last so a
+			# failed backfill leaves it un-flagged for the next re-sync to retry.
+			_backfill_display_order_code(order["code"], display_order_code)
+			so.db_set(ORDER_DISPLAY_CODE_FIELD, display_order_code, update_modified=False)
 		return so
 
 	# If a sales order already exists, then every time it's executed
@@ -153,6 +163,19 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 		create_unicommerce_log(status="Success")
 		frappe.flags.request_id = None
 		return order
+
+
+def _backfill_display_order_code(uni_order_code: str, display_order_code: str) -> None:
+	"""Copy the display order no. onto Sales Invoices / Delivery Notes of an order
+	that were created before the field existed (they carry the same order code)."""
+	for doctype in ("Sales Invoice", "Delivery Note"):
+		dt = frappe.qb.DocType(doctype)
+		(
+			frappe.qb.update(dt)
+			.set(dt[ORDER_DISPLAY_CODE_FIELD], display_order_code)
+			.where(dt[ORDER_CODE_FIELD] == uni_order_code)
+			.where(Coalesce(dt[ORDER_DISPLAY_CODE_FIELD], "") == "")
+		).run()
 
 
 def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> set[str]:
@@ -185,6 +208,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"customer": customer.name,
 			"naming_series": channel_config.sales_order_series or settings.sales_order_series,
 			ORDER_CODE_FIELD: order["code"],
+			ORDER_DISPLAY_CODE_FIELD: order.get("displayOrderCode"),
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
 			FACILITY_CODE_FIELD: facility_code,
