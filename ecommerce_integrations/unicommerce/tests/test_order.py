@@ -7,6 +7,7 @@ from frappe.test_runner import make_test_records
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 )
 from ecommerce_integrations.unicommerce.order import (
@@ -92,6 +93,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertTrue(customer_name in so.customer)
 		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
 		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(so.get(ORDER_DISPLAY_CODE_FIELD), order["displayOrderCode"])
 		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
 
 	def test_create_order_multiple_items(self):
@@ -103,6 +105,7 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertTrue(customer_name in so.customer)
 		self.assertEqual(so.get(CHANNEL_ID_FIELD), order["channel"])
 		self.assertEqual(so.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(so.get(ORDER_DISPLAY_CODE_FIELD), order["displayOrderCode"])
 		self.assertEqual(so.get(ORDER_STATUS_FIELD), order["status"])
 
 		qty = sum(item.qty for item in so.items)
