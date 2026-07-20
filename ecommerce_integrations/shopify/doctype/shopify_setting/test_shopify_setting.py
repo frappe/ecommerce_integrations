@@ -22,11 +22,14 @@ from .shopify_setting import setup_custom_fields
 class TestShopifySetting(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
-		frappe.db.sql(
-			"""delete from `tabCustom Field`
-			where name like '%shopify%'"""
+		custom_field = frappe.qb.DocType("Custom Field")
+		(
+			frappe.qb.from_(custom_field)
+			.delete()
+			.where(custom_field.name.like("%shopify%"))
+			.run()
 		)
-
+ 
 	def test_custom_field_creation(self):
 		setup_custom_fields()
 
