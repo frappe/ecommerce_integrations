@@ -13,7 +13,10 @@ from ecommerce_integrations.unicommerce.constants import (
 	INVOICE_CODE_FIELD,
 	ORDER_CODE_FIELD,
 	ORDER_DISPLAY_CODE_FIELD,
+<<<<<<< HEAD
 	SETTINGS_DOCTYPE,
+=======
+>>>>>>> ebe12b0 (test: assert display order no. is mapped and backfilled on order, invoice and delivery note)
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.invoice import (
