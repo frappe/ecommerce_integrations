@@ -161,7 +161,8 @@ class TestRunSyncOrchestration(IntegrationTestCase):
 		orders = [
 			{"code": "NEW1", "channel": "SHOPIFY"},  # new -> created
 			{"code": "OFF", "channel": "AMAZON"},  # off-channel -> skipped
-			{"code": "EXIST", "channel": "SHOPIFY"},  # already synced -> skipped
+			# already synced -> skipped, but still backfilled from the search result
+			{"code": "EXIST", "channel": "SHOPIFY", "displayOrderCode": "SO-EXIST"},
 		]
 
 		def fake_fetch(client, fr, to, status, summary):
@@ -180,6 +181,7 @@ class TestRunSyncOrchestration(IntegrationTestCase):
 		with (
 			patch.object(sof, "_fetch_orders_in_range", side_effect=fake_fetch),
 			patch.object(sof, "create_order", return_value=MagicMock()) as create_order,
+			patch.object(sof, "backfill_display_order_code") as backfill,
 			patch.object(sof, "_create_sales_invoices"),
 			patch.object(sof, "_log_summary"),
 			patch(f"{SOF}.frappe.set_user"),
@@ -193,6 +195,9 @@ class TestRunSyncOrchestration(IntegrationTestCase):
 		self.assertEqual(summary["skipped_existing"], 1)
 		self.assertEqual(summary["failed"], 0)
 		create_order.assert_called_once()  # only the NEW order gets created
+
+		# Skipping an existing order must still fill in its display order no.
+		backfill.assert_called_once_with("EXIST", "SO-EXIST")
 
 
 class TestValidateDateRange(IntegrationTestCase):
