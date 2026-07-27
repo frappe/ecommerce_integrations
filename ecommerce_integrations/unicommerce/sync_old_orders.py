@@ -4,7 +4,11 @@ from frappe.utils import date_diff, getdate
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient, _utc_timeformat
 from ecommerce_integrations.unicommerce.constants import ORDER_CODE_FIELD, SETTINGS_DOCTYPE
-from ecommerce_integrations.unicommerce.order import _create_sales_invoices, create_order
+from ecommerce_integrations.unicommerce.order import (
+	_create_sales_invoices,
+	backfill_display_order_code,
+	create_order,
+)
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 SEARCH_ENDPOINT = "/services/rest/v1/oms/saleOrder/search"
@@ -120,6 +124,13 @@ def _run_sync(settings, from_date, to_date, client=None):
 			# If the SO already exists with not completed status, will be skipped.
 			existing_so = code in existing
 			if existing_so and not completed_mode:
+				# The order is skipped, but its display order no. may still be missing.
+				# displayOrderCode comes from the search result, so this needs no API call.
+				# Log and move on if it fails: the order itself is already synced.
+				try:
+					backfill_display_order_code(code, order_summary.get("displayOrderCode"))
+				except Exception as e:
+					create_unicommerce_log(status="Error", exception=e, rollback=True, make_new=True)
 				summary["skipped_existing"] += 1
 				continue
 
