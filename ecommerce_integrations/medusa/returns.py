@@ -83,10 +83,17 @@ def _resolve_return(payload):
 		return None
 
 	ret = payload.get("return") or payload
+	return_id = (ret or {}).get("id") or (ret or {}).get("return_id") or payload.get("return_id")
 	# a thin event may only carry ids -> fetch the full return
 	# Verified against @medusajs/types 2.4.0.
-	if ret and not ret.get("items") and ret.get("id"):
-		ret = MedusaClient().get_return(cstr(ret.get("id"))) or ret
+	if ret and not ret.get("items") and return_id:
+		ret = MedusaClient().get_return(cstr(return_id)) or ret
+	if ret and return_id and not ret.get("id"):
+		ret = dict(ret)
+		ret["id"] = return_id
+	if ret and payload.get("order_id") and not ret.get("order_id"):
+		ret = dict(ret)
+		ret["order_id"] = payload.get("order_id")
 	return ret if ret and ret.get("id") else None
 
 
