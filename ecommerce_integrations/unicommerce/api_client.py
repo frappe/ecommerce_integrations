@@ -178,6 +178,9 @@ class UnicommerceAPIClient:
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
+		else:
+			frappe.log_error("Failed to search shipping packages:", search_results)
+			return []
 
 	def get_inventory_snapshot(
 		self, sku_codes: list[str], facility_code: str, updated_since: int = 1430
