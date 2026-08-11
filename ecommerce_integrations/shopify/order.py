@@ -125,7 +125,7 @@ def create_sales_order(shopify_order, setting, company=None):
 		so.flags.ignore_mandatory = True
 		so.flags.shopiy_order_json = json.dumps(shopify_order)
 		so.save(ignore_permissions=True)
-		so.submit()
+		# so.submit()
 
 		if shopify_order.get("note"):
 			so.add_comment(text=f"Order Note: {shopify_order.get('note')}")
