@@ -1,0 +1,53 @@
+{
+  "code": "SO-CIR-001",
+  "displayOrderCode": "DO-CIR-001",
+  "channel": "RAINFOREST",
+  "facility": {
+    "code": "Test-123"
+  },
+  "state": "COMPLETE",
+  "statusCode": "COMPLETE",
+  "creationTime": 1627896326000,
+  "modifiedTime": 1627982726000,
+  "saleOrderItems": [
+    {
+      "code": "SOI-CIR-001",
+      "saleOrderItemCode": "SOI-CIR-001",
+      "itemCode": "MC-100",
+      "channelItemId": "CH-ITEM-001",
+      "quantity": 2,
+      "statusCode": "CREATED"
+    },
+    {
+      "code": "SOI-CIR-002",
+      "saleOrderItemCode": "SOI-CIR-002",
+      "itemCode": "MC-100",
+      "channelItemId": "CH-ITEM-002",
+      "quantity": 1,
+      "statusCode": "CREATED"
+    }
+  ],
+  "returns": [
+    {
+      "code": "RET-CIR-001",
+      "type": "Customer Returned",
+      "statusCode": "COMPLETE",
+      "creationTime": 1627900000000,
+      "trackingNumber": "TRACK-CIR-001",
+      "shippingProvider": "Bluedart",
+      "returnItems": [
+        {
+          "saleOrderItemCode": "SOI-CIR-001",
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "shippingPackages": [
+    {
+      "code": "PKG-CIR-001",
+      "statusCode": "SHIPPED",
+      "returnExpected": false
+    }
+  ]
+}
