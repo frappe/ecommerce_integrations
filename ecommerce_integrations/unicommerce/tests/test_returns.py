@@ -13,6 +13,7 @@ from ecommerce_integrations.unicommerce.cancellation_and_returns import (
 	sync_rto_returns,
 )
 from ecommerce_integrations.unicommerce.constants import (
+	FACILITY_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.tests.utils import TestCase
@@ -156,7 +157,11 @@ class TestRTOReturnSync(TestCase):
 			patch("frappe.db.exists", return_value=False),
 			patch(
 				"frappe.db.get_value",
-				return_value=frappe._dict(name="INV-001", posting_date="2026-04-01"),
+				return_value=frappe._dict(
+					name="INV-001",
+					posting_date="2026-04-01",
+					**{FACILITY_CODE_FIELD: "FAC-001"},
+				),
 			),
 			patch(f"{CANCELLATION_MODULE}.create_credit_note", side_effect=mock_create_credit_note),
 			patch(f"{CANCELLATION_MODULE}.create_unicommerce_log") as log,
@@ -179,28 +184,31 @@ class TestCustomerInitiatedReturnSync(TestCase):
 
 	def test_skips_when_credit_note_already_exists(self):
 		"""De-duplication: skip if a credit note with this return code exists."""
+		mock_client = MagicMock()
 		with (
 			patch("frappe.db.exists", return_value=True),
 			patch(f"{CANCELLATION_MODULE}.create_cir_credit_note") as create_cn,
 		):
-			sync_customer_initiated_returns(self.so_data)
+			sync_customer_initiated_returns(self.so_data, client=mock_client)
 
 		create_cn.assert_not_called()
 
 	def test_creates_credit_note_when_none_exists(self):
+		mock_client = MagicMock()
 		with (
 			patch("frappe.db.exists", return_value=False),
 			patch(f"{CANCELLATION_MODULE}.create_cir_credit_note") as create_cn,
 		):
-			sync_customer_initiated_returns(self.so_data)
+			sync_customer_initiated_returns(self.so_data, client=mock_client)
 
 		create_cn.assert_called_once()
 		self.assertEqual(create_cn.call_args.args[1]["code"], "RET-CIR-001")
 
 	def test_returns_early_for_empty_returns(self):
 		"""No-op when the order has no returns."""
+		mock_client = MagicMock()
 		with patch(f"{CANCELLATION_MODULE}.create_cir_credit_note") as create_cn:
-			sync_customer_initiated_returns({"code": "SO-NO-RETURNS", "returns": []})
+			sync_customer_initiated_returns({"code": "SO-NO-RETURNS", "returns": []}, client=mock_client)
 
 		create_cn.assert_not_called()
 
@@ -214,11 +222,12 @@ class TestCustomerInitiatedReturnSync(TestCase):
 			],
 		}
 
+		mock_client = MagicMock()
 		with (
 			patch("frappe.db.exists", return_value=False),
 			patch(f"{CANCELLATION_MODULE}.create_cir_credit_note") as create_cn,
 		):
-			sync_customer_initiated_returns(so_data)
+			sync_customer_initiated_returns(so_data, client=mock_client)
 
 		create_cn.assert_called_once()
 		self.assertEqual(create_cn.call_args.args[1]["code"], "RET-002")
