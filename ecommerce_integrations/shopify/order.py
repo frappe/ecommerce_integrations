@@ -18,7 +18,7 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 )
 from ecommerce_integrations.shopify.customer import ShopifyCustomer
-from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code
+from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code, set_hsn_code
 from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.utils.price_list import get_dummy_price_list
 from ecommerce_integrations.utils.taxation import get_dummy_tax_category
@@ -151,20 +151,19 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
-			items.append(
-				{
-					"item_code": item_code,
-					"item_name": shopify_item.get("name"),
-					"rate": _get_item_price(shopify_item, taxes_inclusive),
-					"delivery_date": delivery_date,
-					"qty": shopify_item.get("quantity"),
-					"stock_uom": shopify_item.get("uom") or "Nos",
-					"warehouse": setting.warehouse,
-					ORDER_ITEM_DISCOUNT_FIELD: (
-						_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
-					),
-				}
+			item = frappe._dict()
+			item.item_code = item_code
+			item.item_name = shopify_item.get("name")
+			item.rate = _get_item_price(shopify_item, taxes_inclusive)
+			item.delivery_date = delivery_date
+			item.qty = shopify_item.get("quantity")
+			item.stock_uom = shopify_item.get("uom") or "Nos"
+			item.warehouse = setting.warehouse
+			item[ORDER_ITEM_DISCOUNT_FIELD] = (
+				_get_total_discount(shopify_item) / cint(shopify_item.get("quantity"))
 			)
+			set_hsn_code(item)
+			items.append(item)
 		else:
 			items = []
 

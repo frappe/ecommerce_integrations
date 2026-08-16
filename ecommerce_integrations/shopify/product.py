@@ -327,6 +327,12 @@ def get_item_code(shopify_item):
 	if item:
 		return item.item_code
 
+def set_hsn_code(item: dict):
+	if "india_compliance" in frappe.get_installed_apps():
+		hsn_code, item_group = frappe.db.get_value("Item", item.item_code, ("gst_hsn_code", "item_group"))
+		if not hsn_code:
+			hsn_code = frappe.db.get_value("Item Group", item_group, "gst_hsn_code")
+		item.gst_hsn_code = hsn_code
 
 @temp_shopify_session
 def upload_erpnext_item(doc, method=None):
