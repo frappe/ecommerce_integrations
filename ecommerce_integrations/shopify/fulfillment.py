@@ -14,12 +14,24 @@ from ecommerce_integrations.shopify.order import get_sales_order
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
-def prepare_delivery_note(payload, request_id=None):
+def prepare_delivery_note(payload, request_id=None, store_name=None):
+	"""Prepare delivery note from Shopify fulfillment.
+	
+	Args:
+		payload: Order data from Shopify
+		request_id: Shopify Log entry ID
+		store_name: Name of the store (for logging)
+	"""
 	frappe.set_user("Administrator")
 	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	order = payload
+	
+	# Set store context for API calls in this background job
+	if store_name:
+		frappe.logger().info(f"Preparing delivery note for order from {store_name}")
+		frappe.local.shopify_store_name = store_name
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
