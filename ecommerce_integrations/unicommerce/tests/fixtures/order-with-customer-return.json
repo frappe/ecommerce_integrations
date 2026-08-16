@@ -1,0 +1,68 @@
+{
+  "code": "SO-CIR-001",
+  "displayOrderCode": "SO-CIR-001",
+  "channel": "RAINFOREST",
+  "status": "COMPLETE",
+  "created": 1625049926000,
+  "updated": 1625049926000,
+  "currencyCode": "INR",
+  "addresses": [
+    {
+      "id": "24006",
+      "name": "Test Customer 2",
+      "addressLine1": "456 Test Ave",
+      "city": "Delhi",
+      "state": "DL",
+      "country": "IN",
+      "pincode": "110001",
+      "phone": "8888888888"
+    }
+  ],
+  "shippingPackages": [
+    {
+      "code": "PKG-CIR-001",
+      "status": "DISPATCHED",
+      "facilityCode": "Test-123"
+    }
+  ],
+  "saleOrderItems": [
+    {
+      "code": "TEST-ITEM-002",
+      "itemSku": "TEST-ITEM-2",
+      "itemName": "Test Item 2",
+      "totalPrice": 2000.0,
+      "sellingPrice": 2000.0,
+      "quantity": 2,
+      "statusCode": "CREATED",
+      "facilityCode": "Test-123",
+      "shippingPackageCode": "PKG-CIR-001"
+    },
+    {
+      "code": "TEST-ITEM-003",
+      "itemSku": "TEST-ITEM-3",
+      "itemName": "Test Item 3",
+      "totalPrice": 1500.0,
+      "sellingPrice": 1500.0,
+      "quantity": 1,
+      "statusCode": "CREATED",
+      "facilityCode": "Test-123",
+      "shippingPackageCode": "PKG-CIR-001"
+    }
+  ],
+  "returns": [
+    {
+      "code": "RET-CIR-001",
+      "type": "Customer Returned",
+      "status": "COMPLETE",
+      "created": 1625136326000,
+      "returnDate": 1625136326000,
+      "trackingNumber": "TRACK-12345",
+      "shippingProvider": "DTDC",
+      "returnItems": [
+        {
+          "saleOrderItemCode": "TEST-ITEM-002"
+        }
+      ]
+    }
+  ]
+}

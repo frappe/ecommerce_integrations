@@ -459,6 +459,7 @@ def setup_custom_fields(update=True):
 				fieldtype="Data",
 				insert_after="unicommerce_section",
 				read_only=1,
+				search_index=1,
 			),
 			dict(
 				fieldname=ORDER_DISPLAY_CODE_FIELD,

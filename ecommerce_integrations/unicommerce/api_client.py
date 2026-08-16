@@ -177,6 +177,9 @@ class UnicommerceAPIClient:
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
+		else:
+			frappe.log_error("Failed to search sales orders:", search_results)
+			return []
 
 	def get_inventory_snapshot(
 		self, sku_codes: list[str], facility_code: str, updated_since: int = 1430
@@ -449,6 +452,53 @@ class UnicommerceAPIClient:
 
 		if statuses and "elements" in search_results:
 			return search_results["elements"]
+		else:
+			frappe.log_error("Failed to search shipping packages:", search_results)
+			return []
+
+	def get_return_details(
+		self,
+		reverse_pickup_code: str | None = None,
+		shipment_code: str | None = None,
+		facility_code: str | None = None,
+	) -> JsonDict | None:
+		"""Get return details using reverse pickup code or shipping package code.
+
+		Provides accurate return creation date via returnSaleOrderValue.returnCreatedDate.
+		Requires Facility header for authentication.
+
+		Args:
+			reverse_pickup_code: Reverse pickup code for CIR returns
+			shipment_code: Shipping package code for RTO returns
+			facility_code: Facility code (required for Return API header)
+
+		Returns:
+			Return details including returnSaleOrderValue with returnCreatedDate,
+			or None if API call fails
+
+		ref: https://documentation.unicommerce.com/docs/return-get.html
+		"""
+		body = {}
+
+		# Only include the parameter we're actually using (not null)
+		if reverse_pickup_code:
+			body["reversePickupCode"] = reverse_pickup_code
+		if shipment_code:
+			body["shipmentCode"] = shipment_code
+
+		# Facility header is required for Return API
+		extra_headers = {}
+		if facility_code:
+			extra_headers["Facility"] = facility_code
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/return/get",
+			body=body,
+			headers=extra_headers,
+		)
+
+		if status:
+			return response
 
 	def create_import_job(
 		self,

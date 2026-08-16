@@ -63,7 +63,7 @@ def create_delivery_note(so, sales_invoice):
 	res.unicommerce_shipment_id = sales_invoice.unicommerce_shipping_package_code
 	res.save()
 	res.submit()
-	log = create_unicommerce_log(method="create_delevery_note", make_new=True)
+	log = create_unicommerce_log(method="create_delivery_note", make_new=True)
 	frappe.flags.request_id = log.name
 	create_unicommerce_log(status="Success")
 	frappe.flags.request_id = None

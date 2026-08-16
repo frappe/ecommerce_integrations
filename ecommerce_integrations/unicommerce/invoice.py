@@ -51,9 +51,7 @@ INVOICED_STATE = ["PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPE
 
 
 @frappe.whitelist()
-def generate_unicommerce_invoices(
-	sales_orders: list[SOCode], warehouse_allocation: WHAllocation | None = None
-):
+def generate_unicommerce_invoices(sales_orders: Any, warehouse_allocation: Any = None):
 	"""Request generation of invoice to Unicommerce and sync that invoice.
 
 	1. Get shipping package details using get_sale_order
@@ -153,6 +151,9 @@ def bulk_generate_invoices(
 
 
 def _log_invoice_generation(sales_orders, failed_orders):
+	if not sales_orders:
+		return
+
 	failed_orders = set(failed_orders)
 	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
 	successful_orders = list(set(sales_orders) - set(failed_orders))
@@ -162,7 +163,7 @@ def _log_invoice_generation(sales_orders, failed_orders):
 	failure_message = "\n".join(
 		[
 			f"generate invoices: {percent_success:.3%} invoices successful\n",
-			f"Failred orders = {', '.join(failed_orders)}",
+			f"Failed orders = {', '.join(failed_orders)}",
 			f"Requested orders = {', '.join(sales_orders)}",
 		]
 	)
@@ -170,7 +171,8 @@ def _log_invoice_generation(sales_orders, failed_orders):
 	update_invoicing_status(failed_orders, "Failed")
 	update_invoicing_status(successful_orders, "Success")
 
-	status = {0.0: "Failure", 100.0: "Success"}.get(percent_success) or "Partial Success"
+	# percent_success is a fraction, so the all-succeeded key is 1.0.
+	status = {0.0: "Failure", 1.0: "Success"}.get(percent_success) or "Partial Success"
 	create_unicommerce_log(status=status, message=failure_message)
 
 
@@ -189,6 +191,9 @@ def _get_orders_with_missing_invoice(sales_orders):
 def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
+
+	# `in %s` needs a list/tuple; a set renders as its Python repr and breaks the query.
+	sales_orders = list(sales_orders)
 
 	frappe.db.sql(
 		f"""update `tabSales Order`
