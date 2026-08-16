@@ -6,12 +6,14 @@ from shopify.resources import Product
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
-from ecommerce_integrations.shopify.constants import MODULE_NAME
+from ecommerce_integrations.shopify.constants import MODULE_NAME, SETTING_DOCTYPE
 from ecommerce_integrations.shopify.product import ShopifyProduct
 
 # constants
 SYNC_JOB_NAME = "shopify.job.sync.all.products"
 REALTIME_KEY = "shopify.key.sync.all.products"
+SYNC_PRODUCT_GROUP_JOB_NAME = "shopify.job.sync.all.product.groups"
+SYNC_PRODUCT_GROUP_REALTIME_KEY = "shopify.key.sync.all.product.groups"
 
 
 @frappe.whitelist()
@@ -124,6 +126,41 @@ def import_all_products():
 		job_name=SYNC_JOB_NAME,
 		key=REALTIME_KEY,
 	)
+
+
+@frappe.whitelist()
+def import_all_product_groups():
+	frappe.enqueue(
+		queue_sync_all_product_groups,
+		queue="long",
+		job_name=SYNC_PRODUCT_GROUP_JOB_NAME,
+		key=SYNC_PRODUCT_GROUP_REALTIME_KEY,
+	)
+
+
+def queue_sync_all_product_groups(*args, **kwargs):
+	_sync = True
+	collection = _fetch_products_from_shopify(limit=100)
+	savepoint = "shopify_product_groups_sync"
+	setting = frappe.get_doc(SETTING_DOCTYPE)
+	while _sync:
+		for product in collection:
+			try:
+				frappe.db.savepoint(savepoint)
+				shopify_product = ShopifyProduct(product.id, setting=setting)
+				shopify_product.sync_product(sync_product_group=True)
+			except Exception:
+				frappe.log_error(title="queue_sync_all_product_groups", message=frappe.get_traceback())
+				frappe.db.rollback(save_point=savepoint)
+				continue
+
+		if collection.has_next_page():
+			frappe.db.commit()  # nosemgrep
+			collection = _fetch_products_from_shopify(from_=collection.next_page_url)
+		else:
+			_sync = False
+	setting.save()
+	return True
 
 
 def queue_sync_all_products(*args, **kwargs):
