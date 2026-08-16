@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "creation": "2021-05-04 19:01:15.171337",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "whataform_location_value",
+  "erpnext_warehouse"
+ ],
+ "fields": [
+  {
+   "fieldname": "erpnext_warehouse",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "ERPNext Warehouse",
+   "options": "Warehouse",
+   "reqd": 1
+  },
+  {
+   "description": "declare the values of the field that you configured to select the dispatching warehouse in your whataform",
+   "fieldname": "whataform_location_value",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Whataform Location Value",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-03-30 07:54:30.252434",
+ "modified_by": "Administrator",
+ "module": "Whataform",
+ "name": "Whataform Warehouse Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
