@@ -1,0 +1,39 @@
+{
+  "code": "SO-RTO-001",
+  "displayOrderCode": "DO-RTO-001",
+  "channel": "RAINFOREST",
+  "facility": {
+    "code": "Test-123"
+  },
+  "state": "COMPLETE",
+  "statusCode": "COMPLETE",
+  "creationTime": 1627896326000,
+  "modifiedTime": 1627982726000,
+  "saleOrderItems": [
+    {
+      "code": "SOI-RTO-001",
+      "saleOrderItemCode": "SOI-RTO-001",
+      "itemCode": "MC-100",
+      "channelItemId": "CH-ITEM-001",
+      "quantity": 2,
+      "statusCode": "CREATED"
+    }
+  ],
+  "returns": [
+    {
+      "code": "PKG-RTO-001",
+      "type": "Courier Returned",
+      "statusCode": "COMPLETE",
+      "creationTime": 1627900000000,
+      "trackingNumber": "TRACK-RTO-001",
+      "shippingProvider": "DTDC"
+    }
+  ],
+  "shippingPackages": [
+    {
+      "code": "PKG-RTO-001",
+      "statusCode": "RETURNED",
+      "returnExpected": true
+    }
+  ]
+}

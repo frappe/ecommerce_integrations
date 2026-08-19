@@ -3,6 +3,10 @@ from frappe import _
 from frappe.utils import date_diff, getdate
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient, _utc_timeformat
+from ecommerce_integrations.unicommerce.cancellation_and_returns import (
+	sync_customer_initiated_returns,
+	sync_rto_returns,
+)
 from ecommerce_integrations.unicommerce.constants import ORDER_CODE_FIELD, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.order import (
 	_create_sales_invoices,
@@ -149,6 +153,8 @@ def _run_sync(settings, from_date, to_date, client=None):
 
 				if completed_mode:
 					_create_sales_invoices(detail, sales_order, client)
+					# after invoicing: the credit note is built from the invoice
+					_sync_old_returns(detail, code, client)
 
 				# Count only after the order (and its invoice) is fully handled, so a
 				# late failure lands in `failed` instead of double-counting this order.
@@ -162,6 +168,29 @@ def _run_sync(settings, from_date, to_date, client=None):
 
 	_log_summary(summary)
 	return summary
+
+
+def _sync_old_returns(detail, order_code, client=None):
+	"""Create credit notes for returns on an old order.
+
+	The hourly sweeps only see recently updated records, so old returns are synced
+	here while the order payload is in hand. Each type is isolated so one failure
+	doesn't block the other, without rolling back the order just synced.
+	"""
+	sync_functions = (
+		("customer initiated", sync_customer_initiated_returns),
+		("RTO", sync_rto_returns),
+	)
+	for return_type, sync_returns in sync_functions:
+		try:
+			sync_returns(detail, client=client)
+		except Exception as e:
+			create_unicommerce_log(
+				status="Error",
+				exception=e,
+				make_new=True,
+				message=f"Failed to sync {return_type} returns for order {order_code}",
+			)
 
 
 def _fetch_orders_in_range(client, from_date, to_date, status, summary):
