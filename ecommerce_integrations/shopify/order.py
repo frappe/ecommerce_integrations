@@ -112,14 +112,18 @@ def create_sales_order(shopify_order, setting, company=None):
 				"transaction_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"delivery_date": getdate(shopify_order.get("created_at")) or nowdate(),
 				"company": setting.company,
-				"selling_price_list": get_dummy_price_list(),
+				"selling_price_list": setting.price_list,
+				"territory": setting.territory,
 				"ignore_pricing_rule": 1,
 				"items": items,
 				"taxes": taxes,
 				"tax_category": get_dummy_tax_category(),
 			}
 		)
-
+		frappe.log_error(
+			message=f"Creating sales order {so}, {setting.price_list}",
+			title="Shopify Sales Order Creation"
+		)
 		if company:
 			so.update({"company": company, "status": "Draft"})
 		so.flags.ignore_mandatory = True
