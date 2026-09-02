@@ -132,12 +132,10 @@ def create_rto_return(package_info, client: UnicommerceAPIClient):
 		return
 
 	# the sweep calls us once per package that changed state
-	sync_rto_returns(
-		so_data, only_package=package_code, client=client, facility_code=invoice.get(FACILITY_CODE_FIELD)
-	)
+	sync_rto_returns(so_data, only_package=package_code, client=client)
 
 
-def sync_rto_returns(so_data, only_package=None, client=None, facility_code=None):
+def sync_rto_returns(so_data, only_package=None, client=None):
 	"""Create credit notes for RTO packages in the order payload.
 
 	Payload driven, so it also covers old orders outside the hourly sweep's window.
@@ -160,7 +158,7 @@ def sync_rto_returns(so_data, only_package=None, client=None, facility_code=None
 		invoice = frappe.db.get_value(
 			"Sales Invoice",
 			{SHIPPING_PACKAGE_CODE_FIELD: package_code, "is_return": 0, "docstatus": 1},
-			["name", "posting_date"],
+			["name", "posting_date", FACILITY_CODE_FIELD],
 			as_dict=True,
 		)
 		if not invoice:
@@ -181,8 +179,17 @@ def sync_rto_returns(so_data, only_package=None, client=None, facility_code=None
 				method="ecommerce_integrations.unicommerce.cancellation_and_returns.sync_rto_returns",
 			)
 			continue
+		# Use facility code from invoice (each package can have different facility)
+		package_facility_code = invoice.get(FACILITY_CODE_FIELD)
+		if not package_facility_code:
+			create_unicommerce_log(
+				status="Invalid",
+				message=f"Facility code not found on invoice {invoice.get('name')} for package {package_code}",
+				method="ecommerce_integrations.unicommerce.cancellation_and_returns.sync_rto_returns",
+			)
+			continue
 		return_timestamp, return_details = get_return_date_from_package(
-			client, shipment_code=package_code, facility_code=facility_code
+			client, shipment_code=package_code, facility_code=package_facility_code
 		)
 
 		# Use return API date - no fallback to invoice date
@@ -386,9 +393,13 @@ def create_cir_credit_note(so_data, return_data, client=None):
 
 	facility_code = si.get(FACILITY_CODE_FIELD)
 
-	# Initialize client if not provided
 	if not client:
-		client = UnicommerceAPIClient()
+		create_unicommerce_log(
+			status="Invalid",
+			message=f"Client not provided for return {return_data['code']}",
+			method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
+		)
+		return
 
 	return_timestamp, return_details = get_return_date_from_package(
 		client, return_code=return_data["code"], facility_code=facility_code
