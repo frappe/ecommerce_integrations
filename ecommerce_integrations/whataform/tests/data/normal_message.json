@@ -1,0 +1,46 @@
+{
+  "form": "1ba668db37b1dd",
+  "message": "M51e68688732561711638070",
+  "nro": "00000001",
+  "send": "2024-03-30 12:01:05",
+  "address1": "CR 123 # 321 - 112233",
+  "address2": "Apto 307",
+  "zip_code": "111213",
+  "city": "Bogota",
+  "country": "Colombia",
+  "email": "test@example.com",
+  "whatsapp": "+1234567890",
+  "first_name": "Pepito",
+  "last_name": "Fulano",
+  "address": "Carrera 77ng #123-45, Bogotá, Kolumbien APTO 123: https://whata.app/m/M83743243a417dd7df13f",
+  "address_detail": {
+    "adreess": "Cra. 77ng #123-45, Bogotá, Kolumbien APTO 123",
+    "address": "Cra. 77ng #123-45, Bogotá, Kolumbien APTO 123",
+    "address_line_1": "Cra. 77ng #123-45, Bogotá, Kolumbien",
+    "address_line_2": "APTO 123",
+    "url": "https://whata.app/m/M8374324398469bf5d0f5",
+    "lat": "4.7257854",
+    "lng": "-74.0295551"
+  },
+  "detail_order": {
+    "1": {
+      "sku": "TESTsku",
+      "product": "Test Product",
+      "cant": "2.00",
+      "pricing": "880",
+      "total": "1760"
+    }
+  },
+  "detail_order_text": "- *2 x* [TESTsku] Test Product | precio 880 | total 1760",
+  "currency": "USD",
+  "subtotal": "1760.00",
+  "discount": "100.00",
+  "discount_code": "CYBER",
+  "delivery": "8000.00",
+  "delivery_kg": "2.00",
+  "delivery_km": "0.00",
+  "percent_taxes": "0.00",
+  "taxes": "0.00",
+  "tips": "0.00",
+  "total": "9660.00"
+}

@@ -11,6 +11,7 @@ dynamic = ["version"]
 dependencies = [
     "ShopifyAPI==12.7.0",
     "boto3~=1.28.10",
+    "querystring_parser~=1.2.4",
 ]
 
 [project.license]

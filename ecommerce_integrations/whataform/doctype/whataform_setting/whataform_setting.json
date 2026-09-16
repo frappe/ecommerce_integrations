@@ -1,0 +1,247 @@
+{
+ "actions": [],
+ "creation": "2021-04-13 13:30:54.909583",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_whataform",
+  "column_break_4",
+  "form_id",
+  "webhook_url",
+  "customer_settings_section",
+  "first_name_field_key",
+  "last_name_field_key",
+  "email_field_key",
+  "whatsapp_field_key",
+  "customer_group",
+  "default_country",
+  "column_break_sjsk",
+  "address_line1_field_key",
+  "address_line2_field_key",
+  "zip_code_field_key",
+  "city_field_key",
+  "country_field_key",
+  "google_address_field_key",
+  "company_dependent_settings_section",
+  "company",
+  "column_break_19",
+  "section_break_25",
+  "sales_order_series",
+  "tax_master_template",
+  "column_break_27",
+  "shipping_rule",
+  "warehouse_mapping_section",
+  "warehouse",
+  "location_field_key",
+  "whataform_warehouse_mapping"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_whataform",
+   "fieldtype": "Check",
+   "label": "Enable Whataform"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Customer Settings"
+  },
+  {
+   "description": "Customer Group will set to selected group while syncing customers from Whataform",
+   "fieldname": "customer_group",
+   "fieldtype": "Link",
+   "label": "Customer Group",
+   "mandatory_depends_on": "eval:doc.enable_whataform",
+   "options": "Customer Group"
+  },
+  {
+   "description": "If individual warehouse are not mapped, the default warehouse is considered for transactions.",
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Default warehouse",
+   "mandatory_depends_on": "eval:doc.enable_whataform",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "company_dependent_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Company Dependent settings"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "mandatory_depends_on": "eval:doc.enable_whataform",
+   "options": "Company"
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_25",
+   "fieldtype": "Section Break",
+   "label": "Order Sync Settings"
+  },
+  {
+   "fieldname": "sales_order_series",
+   "fieldtype": "Select",
+   "label": "Sales Order Series",
+   "mandatory_depends_on": "eval:doc.enable_whataform"
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "whataform_warehouse_mapping",
+   "fieldtype": "Table",
+   "label": "Whataform Warehouse Mapping",
+   "options": "Whataform Warehouse Mapping"
+  },
+  {
+   "description": "eg: 1ba668db37b1dd - used as preshared secret for accpetance of the webhook",
+   "fieldname": "form_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Form ID",
+   "mandatory_depends_on": "eval:doc.enable_whataform"
+  },
+  {
+   "fieldname": "shipping_rule",
+   "fieldtype": "Link",
+   "label": "Shipping Rule",
+   "mandatory_depends_on": "eval:doc.enable_whataform",
+   "options": "Shipping Rule"
+  },
+  {
+   "description": "If no country field is set, customers will default to this country",
+   "fieldname": "default_country",
+   "fieldtype": "Link",
+   "label": "Default Country",
+   "options": "Country"
+  },
+  {
+   "fieldname": "column_break_sjsk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "address1",
+   "fieldname": "address_line1_field_key",
+   "fieldtype": "Data",
+   "label": "Address Line 1 Field"
+  },
+  {
+   "default": "address2",
+   "fieldname": "address_line2_field_key",
+   "fieldtype": "Data",
+   "label": "Address Line 2 FIeld"
+  },
+  {
+   "default": "zip_code",
+   "fieldname": "zip_code_field_key",
+   "fieldtype": "Data",
+   "label": "ZIP Code Field"
+  },
+  {
+   "default": "city",
+   "fieldname": "city_field_key",
+   "fieldtype": "Data",
+   "label": "City Field"
+  },
+  {
+   "default": "country",
+   "fieldname": "country_field_key",
+   "fieldtype": "Data",
+   "label": "Country Field"
+  },
+  {
+   "default": "address",
+   "description": "field using the whataform google integration",
+   "fieldname": "google_address_field_key",
+   "fieldtype": "Data",
+   "label": "Google Address Field"
+  },
+  {
+   "fieldname": "warehouse_mapping_section",
+   "fieldtype": "Section Break",
+   "label": "Warehouse Mapping"
+  },
+  {
+   "description": "Webhook field on which the location is tranferred; can by the same as city or any other field of choice",
+   "fieldname": "location_field_key",
+   "fieldtype": "Data",
+   "label": "Whataform Location Field"
+  },
+  {
+   "default": "email",
+   "fieldname": "email_field_key",
+   "fieldtype": "Data",
+   "label": "Email Field"
+  },
+  {
+   "description": "Configure this URL inside whataform as webhook",
+   "fieldname": "webhook_url",
+   "fieldtype": "Data",
+   "is_virtual": 1,
+   "label": "Webhook URL",
+   "read_only": 1
+  },
+  {
+   "default": "whatsapp",
+   "fieldname": "whatsapp_field_key",
+   "fieldtype": "Data",
+   "label": "Whatsapp Field"
+  },
+  {
+   "default": "name",
+   "fieldname": "first_name_field_key",
+   "fieldtype": "Data",
+   "label": "First Name Field"
+  },
+  {
+   "default": "name",
+   "fieldname": "last_name_field_key",
+   "fieldtype": "Data",
+   "label": "Last Name Field"
+  },
+  {
+   "description": "This will be used to infer taxes on the order",
+   "fieldname": "tax_master_template",
+   "fieldtype": "Link",
+   "label": "Tax Master Template",
+   "mandatory_depends_on": "eval:doc.enable_whataform",
+   "options": "Sales Taxes and Charges Template"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-03-31 17:03:53.116392",
+ "modified_by": "Administrator",
+ "module": "Whataform",
+ "name": "Whataform Setting",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

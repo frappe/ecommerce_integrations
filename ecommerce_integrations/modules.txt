@@ -3,3 +3,4 @@ shopify
 Zenoti
 unicommerce
 Amazon
+Whataform
