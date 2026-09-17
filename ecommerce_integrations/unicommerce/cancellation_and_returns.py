@@ -395,7 +395,8 @@ def create_cir_credit_note(so_data, return_data, client=None):
 		)
 		return
 	si = frappe.get_doc("Sales Invoice", invoice_name)
-	so_si_item_map = {item.so_detail: item.name for item in si.items}
+	# charge items have no sales order row, so they don't make a full return partial
+	so_si_item_map = {item.so_detail: item.name for item in si.items if item.so_detail}
 
 	facility_code = si.get(FACILITY_CODE_FIELD)
 
@@ -447,7 +448,12 @@ def create_cir_credit_note(so_data, return_data, client=None):
 
 
 def _handle_partial_returns(credit_note, returned_items: list[str]) -> None:
-	"""Remove non-returned items from credit note and update taxes."""
+	"""Remove non-returned items from credit note and update taxes.
+
+	Charge items are never returned, so a partial return drops them and their tax:
+	COD and shipping are charged on the shipment, not on the goods. A full return
+	keeps them, as create_cir_credit_note ignores rows with no sales order row.
+	"""
 
 	item_code_to_qty_map = defaultdict(float)
 	for item in credit_note.items:

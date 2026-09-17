@@ -16,6 +16,8 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	CHANNEL_TAX_ACCOUNT_FIELD_MAP,
+	CHARGE_TAX_HEADS_MAP,
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	IS_COD_CHECKBOX,
@@ -27,9 +29,15 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PACKAGE_STATUS_FIELD,
 	SHIPPING_PROVIDER_CODE,
+	TAX_FIELDS_MAPPING,
 	TRACKING_CODE_FIELD,
 )
-from ecommerce_integrations.unicommerce.order import get_taxes
+from ecommerce_integrations.unicommerce.order import (
+	ChargeItems,
+	get_charge_tax_heads,
+	get_tax_rate,
+	get_taxes,
+)
 from ecommerce_integrations.unicommerce.utils import (
 	create_unicommerce_log,
 	get_unicommerce_date,
@@ -359,11 +367,17 @@ def create_sales_invoice(
 	shipping_package_status = shipping_package_info.get("status")
 
 	si = make_sales_invoice(so.name)
+	charge_items = _get_charge_items(settings)
+
 	si_line_items = _get_line_items(
 		uni_line_items, warehouse, so.name, channel_config.cost_center, warehouse_allocations
 	)
+	# keep before get_taxes, which drops the tax rows of these charges
+	si_line_items += _get_charge_line_items(
+		uni_line_items, channel_config.cost_center, charge_items, channel_config
+	)
 	si.set("items", si_line_items)
-	si.set("taxes", get_taxes(uni_line_items, channel_config))
+	si.set("taxes", get_taxes(uni_line_items, channel_config, charge_items))
 	si.set(INVOICE_CODE_FIELD, si_data["code"])
 	si.set(SHIPPING_PACKAGE_CODE_FIELD, shipping_package_code)
 	si.set(SHIPPING_PROVIDER_CODE, shipping_provider_code)
@@ -476,6 +490,81 @@ def _get_line_items(
 		return _assign_wh_and_so_row(si_items, warehouse_allocations, so_code)
 
 	return si_items
+
+
+def _get_charge_items(settings) -> ChargeItems:
+	"""Get charges billed as invoice items, as {(tax head, tax rate): item code}."""
+
+	if not settings.get("add_charges_as_items"):
+		return {}
+
+	charge_items = {}
+
+	for row in settings.charge_items:
+		for tax_head in CHARGE_TAX_HEADS_MAP.get(row.charge, ()):
+			charge_items[(tax_head, flt(row.tax_rate))] = row.item_code
+
+	return charge_items
+
+
+def _get_charge_line_items(
+	line_items, cost_center: str, charge_items: ChargeItems, channel_config
+) -> list[dict[str, Any]]:
+	"""Build invoice items for charges billed as items, one per charge and tax rate."""
+
+	if not charge_items:
+		return []
+
+	billed_as_item = get_charge_tax_heads(charge_items)
+	charge_wise_totals = defaultdict(float)  # (tax head, tax rate) -> charge billed at it
+	missing = set()
+
+	for item in line_items:
+		tax_rate = get_tax_rate(item)
+
+		for tax_head in (head for heads in CHARGE_TAX_HEADS_MAP.values() for head in heads):
+			charge = flt(item.get(TAX_FIELDS_MAPPING[tax_head]))
+			if not charge:
+				continue
+
+			if (tax_head, tax_rate) in charge_items:
+				charge_wise_totals[(tax_head, tax_rate)] += charge
+			elif tax_head in billed_as_item or tax_rate:
+				# billed as an item at another rate, or taxed on this line: either way
+				# a tax row would lose the charge or mismatch GST, so ask for an item.
+				# an untaxed charge that is never billed as an item stays a tax row.
+				missing.add((tax_head, tax_rate))
+
+	if missing:
+		charge_of_tax_head = {
+			head: charge for charge, heads in CHARGE_TAX_HEADS_MAP.items() for head in heads
+		}
+		frappe.throw(
+			_("No charge item is configured for {}. Add one in Unicommerce Settings.").format(
+				", ".join(f"{charge_of_tax_head[head]} at {tax_rate}%" for head, tax_rate in sorted(missing))
+			),
+			title=_("Charge Item Missing"),
+		)
+
+	charge_lines = []
+
+	for (tax_head, tax_rate), charge in charge_wise_totals.items():
+		charge = flt(charge, 2)
+		if not charge:
+			continue
+
+		charge_lines.append(
+			{
+				"item_code": charge_items[(tax_head, tax_rate)],
+				"rate": charge,
+				"qty": 1,
+				"stock_uom": "Nos",
+				"cost_center": cost_center,
+				"income_account": channel_config.get(CHANNEL_TAX_ACCOUNT_FIELD_MAP[tax_head]),
+			}
+		)
+
+	return charge_lines
 
 
 def _assign_wh_and_so_row(line_items, warehouse_allocation: list[ItemWHAlloc], so_code: str):
