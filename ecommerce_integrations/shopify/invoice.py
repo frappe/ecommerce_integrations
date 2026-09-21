@@ -8,6 +8,7 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 )
 from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
 def prepare_sales_invoice(payload, request_id=None):
@@ -48,6 +49,7 @@ def create_sales_invoice(shopify_order, setting, so):
 		sales_invoice.naming_series = setting.sales_invoice_series or "SI-Shopify-"
 		sales_invoice.flags.ignore_mandatory = True
 		set_cost_center(sales_invoice.items, setting.cost_center)
+		copy_item_wise_tax_details(sales_invoice, so.name)
 		sales_invoice.insert(ignore_mandatory=True)
 		sales_invoice.submit()
 		if sales_invoice.grand_total > 0:
