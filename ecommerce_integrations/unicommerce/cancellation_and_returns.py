@@ -160,7 +160,7 @@ def sync_rto_returns(so_data, only_package=None, client=None, facility_code=None
 		invoice = frappe.db.get_value(
 			"Sales Invoice",
 			{SHIPPING_PACKAGE_CODE_FIELD: package_code, "is_return": 0, "docstatus": 1},
-			["name", "posting_date"],
+			["name", "posting_date", FACILITY_CODE_FIELD],
 			as_dict=True,
 		)
 		if not invoice:
@@ -182,7 +182,9 @@ def sync_rto_returns(so_data, only_package=None, client=None, facility_code=None
 			)
 			continue
 		return_timestamp, return_details = get_return_date_from_package(
-			client, shipment_code=package_code, facility_code=facility_code
+			client,
+			shipment_code=package_code,
+			facility_code=facility_code or invoice.get(FACILITY_CODE_FIELD),
 		)
 
 		# Use return API date - no fallback to invoice date
