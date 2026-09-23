@@ -29,6 +29,11 @@
   "sales_order_series",
   "sales_invoice_series",
   "order_status_days",
+  "sync_old_orders_section",
+  "sync_old_orders",
+  "column_break_xcby",
+  "from_date",
+  "to_date",
   "delivery_note_settings_section",
   "delivery_note",
   "inventory_sync_settings_section",
@@ -262,12 +267,41 @@
    "fieldname": "delivery_note",
    "fieldtype": "Check",
    "label": "Import Delivery Notes from Unicommerce on Shipment"
+  },
+  {
+   "fieldname": "sync_old_orders_section",
+   "fieldtype": "Section Break",
+   "label": "Sync Old Orders"
+  },
+  {
+   "default": "0",
+   "fieldname": "sync_old_orders",
+   "fieldtype": "Check",
+   "label": "Sync Old Orders"
+  },
+  {
+   "fieldname": "column_break_xcby",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval: doc.sync_old_orders",
+   "fieldname": "from_date",
+   "fieldtype": "Datetime",
+   "label": "From",
+   "mandatory_depends_on": "eval: doc.sync_old_orders"
+  },
+  {
+   "depends_on": "eval: doc.sync_old_orders",
+   "fieldname": "to_date",
+   "fieldtype": "Datetime",
+   "label": "To",
+   "mandatory_depends_on": "eval: doc.sync_old_orders"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-05-02 14:04:26.684256",
+ "modified": "2025-05-21 13:11:26.045783",
  "modified_by": "Administrator",
  "module": "unicommerce",
  "name": "Unicommerce Settings",
@@ -284,6 +318,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
