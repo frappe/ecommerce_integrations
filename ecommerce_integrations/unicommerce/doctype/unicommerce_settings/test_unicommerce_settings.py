@@ -69,3 +69,83 @@ class TestUnicommerceSettings(TestCase):
 		self.assertEqual(self.settings.token_type, "bearer")
 		self.assertTrue(str(self.settings.expires_on) > now())
 		self.assertTrue(responses.assert_call_count(url, 1))
+
+	def test_unknown_charge_is_rejected(self):
+		"""requirement: A charge that bills no Unicommerce tax head can't be a charge item."""
+		settings = self._settings_with_charges({"charge": "Loyalty Charges", "tax_rate": 18.0})
+
+		self.assertRaises(frappe.ValidationError, settings.validate_charge_items)
+
+	def test_charge_item_must_not_maintain_stock(self):
+		"""requirement: Stock item can't be a charge item."""
+		settings = self._settings_with_charges({"charge": "Gift Wrap Charges", "tax_rate": 18.0})
+		settings.charge_items[0].item_code = self._charge_item(18.0, is_stock_item=1)
+
+		self.assertRaises(frappe.ValidationError, settings.validate_charge_items)
+
+	def test_charge_item_at_multiple_tax_rates_is_rejected(self):
+		"""requirement: Charge item can't be used at more than one tax rate."""
+		item_code = self._charge_item(5.0)
+		settings = self._settings_with_charges(
+			{"charge": "Cash On Delivery Charges", "tax_rate": 5.0, "item_code": item_code},
+			{"charge": "Cash On Delivery Charges", "tax_rate": 18.0, "item_code": item_code},
+		)
+
+		self.assertRaises(frappe.ValidationError, settings.validate_charge_items)
+
+	def test_duplicate_charge_and_rate_is_rejected(self):
+		"""requirement: Charge and tax rate can't be repeated."""
+		settings = self._settings_with_charges(
+			{"charge": "Gift Wrap Charges", "tax_rate": 18.0},
+			{"charge": "Gift Wrap Charges", "tax_rate": 18.0},
+		)
+
+		self.assertRaises(frappe.ValidationError, settings.validate_charge_items)
+
+	def test_same_charge_at_different_rates_is_allowed(self):
+		"""requirement: Same charge can be added for different tax rates, and charges can share an item at one rate."""
+		settings = self._settings_with_charges(
+			{"charge": "Gift Wrap Charges", "tax_rate": 18.0},
+			{"charge": "Gift Wrap Charges", "tax_rate": 5.0},
+			{"charge": "Cash On Delivery Charges", "tax_rate": 18.0},
+		)
+
+		settings.validate_charge_items()
+
+	def test_charge_items_are_left_alone_when_charges_are_not_billed_as_items(self):
+		"""requirement: Charge items are not validated when disabled."""
+		settings = self._settings_with_charges(
+			{"charge": "Gift Wrap Charges", "tax_rate": 18.0},
+			{"charge": "Gift Wrap Charges", "tax_rate": 18.0},
+		)
+		settings.add_charges_as_items = 0
+
+		settings.validate_charge_items()
+
+	def _settings_with_charges(self, *rows):
+		"""Settings with charges billed as items."""
+		settings = frappe.get_doc(SETTINGS_DOCTYPE)
+		settings.add_charges_as_items = 1
+		settings.charge_items = []
+
+		for row in rows:
+			settings.append("charge_items", {"item_code": self._charge_item(row["tax_rate"]), **row})
+
+		return settings
+
+	def _charge_item(self, tax_rate: float, is_stock_item: int = 0) -> str:
+		item_code = f"_Test Unicommerce Charge Item {tax_rate:g} {is_stock_item}"
+
+		if not frappe.db.exists("Item", item_code):
+			item = frappe.get_doc(
+				doctype="Item",
+				item_code=item_code,
+				item_group="Products",
+				stock_uom="Nos",
+				is_stock_item=is_stock_item,
+			)
+			# skip uploading the item to other integrations enabled by their tests
+			item.flags.from_integration = True
+			item.insert()
+
+		return item_code

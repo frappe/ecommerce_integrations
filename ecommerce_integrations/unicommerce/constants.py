@@ -74,6 +74,13 @@ CHANNEL_TAX_ACCOUNT_FIELD_MAP = {
 	"shipping_method_charges": "fnf_account",
 }
 
+# Unicommerce Charge Item charge -> tax heads it covers
+CHARGE_TAX_HEADS_MAP = {
+	"Cash On Delivery Charges": ("cash_on_delivery_charges",),
+	"Gift Wrap Charges": ("gift_wrap_charges",),
+	"Shipping Charges": ("shipping_charges", "shipping_method_charges"),
+}
+
 
 UNICOMMERCE_COUNTRY_MAPPING = {
 	"AD": "Andorra",

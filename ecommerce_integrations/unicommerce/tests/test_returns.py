@@ -17,6 +17,7 @@ from ecommerce_integrations.unicommerce.cancellation_and_returns import (
 )
 from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	RETURN_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
@@ -288,6 +289,71 @@ class TestInvoiceForReturnSelection(TestCase):
 
 		with patch("frappe.get_all", side_effect=self._mock_get_all(invoices, invoice_item_map)):
 			self.assertIsNone(_get_invoice_for_return("SO-MULTI", {"A", "B"}))
+
+
+class TestReturnWithChargeItems(TestCase):
+	"""Test charge items on an invoice in customer-initiated returns."""
+
+	def _create_credit_note(self, returned_order_item_codes, with_charge_item=True):
+		"""Return items from an invoice with two products and a charge item; get the partial return mock."""
+		from types import SimpleNamespace
+
+		so = SimpleNamespace(
+			items=[
+				frappe._dict(name="SOI-A", **{ORDER_ITEM_CODE_FIELD: "A-0"}),
+				frappe._dict(name="SOI-B", **{ORDER_ITEM_CODE_FIELD: "B-0"}),
+			]
+		)
+		si_items = [
+			frappe._dict(name="SII-A", so_detail="SOI-A"),
+			frappe._dict(name="SII-B", so_detail="SOI-B"),
+		]
+		if with_charge_item:
+			si_items.append(frappe._dict(name="SII-COD", so_detail=None))
+
+		si = SimpleNamespace(name="SI-1", get=lambda fieldname: None, items=si_items)
+		return_data = {
+			"code": "RET-1",
+			"returnItems": [{"saleOrderItemCode": code} for code in returned_order_item_codes],
+		}
+
+		with (
+			patch("frappe.db.get_value", return_value="SO-1"),
+			patch(
+				"frappe.get_doc",
+				side_effect=lambda doctype, *args, **kwargs: so if doctype == "Sales Order" else si,
+			),
+			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
+			patch(f"{CANCELLATION_MODULE}.get_return_date_from_package", return_value=(None, {})),
+			patch(f"{CANCELLATION_MODULE}.create_unicommerce_log"),
+			patch(f"{CANCELLATION_MODULE}.create_credit_note", return_value=MagicMock()),
+			patch(f"{CANCELLATION_MODULE}._handle_partial_returns") as handle_partial_returns,
+		):
+			create_cir_credit_note({"code": "SO-1"}, return_data, client=MagicMock())
+
+		return handle_partial_returns
+
+	def test_full_return_is_not_partial(self):
+		"""Returning every product reverses the whole invoice, charge items included."""
+		self.assertFalse(self._create_credit_note(["A-0", "B-0"]).called)
+
+	def test_partial_return(self):
+		"""Returning some products still removes the rest."""
+		handle_partial_returns = self._create_credit_note(["A-0"])
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], ["SII-A"])
+
+	def test_full_return_without_charge_items_is_not_partial(self):
+		"""An invoice with no charge item is unaffected: every row has a sales order row."""
+		self.assertFalse(self._create_credit_note(["A-0", "B-0"], with_charge_item=False).called)
+
+	def test_partial_return_without_charge_items(self):
+		"""An invoice with no charge item still drops the rows that weren't returned."""
+		handle_partial_returns = self._create_credit_note(["A-0"], with_charge_item=False)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], ["SII-A"])
 
 
 class TestPartialReturns(TestCase):
