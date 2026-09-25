@@ -21,7 +21,11 @@ from ecommerce_integrations.shopify.customer import ShopifyCustomer
 from ecommerce_integrations.shopify.product import create_items_if_not_exist, get_item_code
 from ecommerce_integrations.shopify.utils import create_shopify_log
 from ecommerce_integrations.utils.price_list import get_dummy_price_list
-from ecommerce_integrations.utils.taxation import get_dummy_tax_category
+from ecommerce_integrations.utils.taxation import (
+	ITEM_WISE_TAX_KEY,
+	get_dummy_tax_category,
+	set_item_wise_tax_details,
+)
 
 DEFAULT_TAX_FIELDS = {
 	"sales_tax": "default_sales_tax_account",
@@ -124,6 +128,7 @@ def create_sales_order(shopify_order, setting, company=None):
 			so.update({"company": company, "status": "Draft"})
 		so.flags.ignore_mandatory = True
 		so.flags.shopiy_order_json = json.dumps(shopify_order)
+		set_item_wise_tax_details(so)
 		so.save(ignore_permissions=True)
 		so.submit()
 
@@ -151,11 +156,15 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
+			rate = _get_item_price(shopify_item, taxes_inclusive)
 			items.append(
 				{
 					"item_code": item_code,
 					"item_name": shopify_item.get("name"),
-					"rate": _get_item_price(shopify_item, taxes_inclusive),
+					"rate": rate,
+					# a fully discounted line nets to 0; flag it free so ERPNext keeps
+					# the rate at 0 instead of back-filling it from the price list
+					"is_free_item": 1 if flt(rate) <= 0 else 0,
 					"delivery_date": delivery_date,
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
@@ -211,7 +220,7 @@ def get_order_taxes(shopify_order, setting, items):
 					"tax_amount": tax.get("price"),
 					"included_in_print_rate": 0,
 					"cost_center": setting.cost_center,
-					"item_wise_tax_detail": {item_code: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]},
+					ITEM_WISE_TAX_KEY: {item_code: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]},
 					"dont_recompute_tax": 1,
 				}
 			)
@@ -226,11 +235,6 @@ def get_order_taxes(shopify_order, setting, items):
 
 	if cint(setting.consolidate_taxes):
 		taxes = consolidate_order_taxes(taxes)
-
-	for row in taxes:
-		tax_detail = row.get("item_wise_tax_detail")
-		if isinstance(tax_detail, dict):
-			row["item_wise_tax_detail"] = json.dumps(tax_detail)
 
 	return taxes
 
@@ -249,12 +253,12 @@ def consolidate_order_taxes(taxes):
 				"included_in_print_rate": 0,
 				"dont_recompute_tax": 1,
 				"tax_amount": 0,
-				"item_wise_tax_detail": {},
+				ITEM_WISE_TAX_KEY: {},
 			},
 		)
 		tax_account_wise_data[account_head]["tax_amount"] += flt(tax.get("tax_amount"))
-		if tax.get("item_wise_tax_detail"):
-			tax_account_wise_data[account_head]["item_wise_tax_detail"].update(tax["item_wise_tax_detail"])
+		if tax.get(ITEM_WISE_TAX_KEY):
+			tax_account_wise_data[account_head][ITEM_WISE_TAX_KEY].update(tax[ITEM_WISE_TAX_KEY])
 
 	return tax_account_wise_data.values()
 
@@ -339,7 +343,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					),
 					"tax_amount": tax["price"],
 					"cost_center": setting.cost_center,
-					"item_wise_tax_detail": {
+					ITEM_WISE_TAX_KEY: {
 						setting.shipping_item: [flt(tax.get("rate")) * 100, flt(tax.get("price"))]
 					}
 					if shipping_as_item
