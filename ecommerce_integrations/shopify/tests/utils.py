@@ -81,6 +81,7 @@ class TestCase(IntegrationTestCase):
 							"erpnext_warehouse": "_Test Warehouse 2 - _TC",
 						},
 					],
+					"shopify_item_group_hsn_mapping": [],
 				}
 			).save(ignore_permissions=True)
 

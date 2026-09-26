@@ -52,6 +52,7 @@
   "inventory_sync_frequency",
   "fetch_shopify_locations",
   "shopify_warehouse_mapping",
+  "shopify_item_group_hsn_mapping",
   "sync_old_orders_section",
   "sync_old_orders",
   "column_break_45",
@@ -387,12 +388,18 @@
    "fieldtype": "Link",
    "label": "Default Shipping Charges Account",
    "options": "Account"
+  },
+  {
+   "fieldname": "shopify_item_group_hsn_mapping",
+   "fieldtype": "Table",
+   "label": "Shopify Item Group HSN Mapping",
+   "options": "Shopify Item Group HSN Mapping"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-10-24 10:38:49.247431",
+ "modified": "2024-12-11 15:45:53.201261",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",

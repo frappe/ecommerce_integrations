@@ -1,7 +1,9 @@
 from typing import Optional
 
 import frappe
+import shopify
 from frappe import _, msgprint
+from frappe.query_builder import DocType
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import get_root_of
 from shopify.resources import Product, Variant
@@ -26,12 +28,13 @@ class ShopifyProduct:
 		variant_id: str | None = None,
 		sku: str | None = None,
 		has_variants: int | None = 0,
+		setting: object | None = None,
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
 		self.has_variants = has_variants
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		self.setting = setting if setting else frappe.get_doc(SETTING_DOCTYPE)
 
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
@@ -54,11 +57,22 @@ class ShopifyProduct:
 		)
 
 	@temp_shopify_session
-	def sync_product(self):
-		if not self.is_synced():
+	def sync_product(self, sync_product_group=False):
+		if not self.is_synced() or sync_product_group:
 			shopify_product = Product.find(self.product_id)
 			product_dict = shopify_product.to_dict()
-			self._make_item(product_dict)
+			product_dict = self._update_hsn_sac_code(product_dict)
+			if sync_product_group:
+				self._sync_product_group(product_dict)
+			else:
+				self._make_item(product_dict)
+
+	def _sync_product_group(self, product_dict):
+		self._get_item_group(
+			product_type=product_dict.get("product_type"),
+			sync_product_group=True,
+			hsnsac_code=product_dict.get("gst_hsn_code"),
+		)
 
 	def _make_item(self, product_dict):
 		_add_weight_details(product_dict)
@@ -127,7 +141,9 @@ class ShopifyProduct:
 			"item_code": cstr(product_dict.get("item_code")) or cstr(product_dict.get("id")),
 			"item_name": product_dict.get("title", "").strip(),
 			"description": product_dict.get("body_html") or product_dict.get("title"),
-			"item_group": self._get_item_group(product_dict.get("product_type")),
+			"item_group": self._get_item_group(
+				product_dict.get("product_type"), hsnsac_code=product_dict.get("gst_hsn_code")
+			),
 			"has_variants": has_variant,
 			"attributes": attributes or [],
 			"stock_uom": product_dict.get("uom") or _("Nos"),
@@ -137,6 +153,7 @@ class ShopifyProduct:
 			"weight_uom": WEIGHT_TO_ERPNEXT_UOM_MAP[product_dict.get("weight_unit")],
 			"weight_per_unit": product_dict.get("weight"),
 			"default_supplier": self._get_supplier(product_dict),
+			"gst_hsn_code": product_dict.get("gst_hsn_code"),
 		}
 
 		integration_item_code = product_dict["id"]  # shopify product_id
@@ -174,6 +191,7 @@ class ShopifyProduct:
 					"item_price": variant.get("price"),
 					"weight_unit": variant.get("weight_unit"),
 					"weight": variant.get("weight"),
+					"gst_hsn_code": product_dict.get("gst_hsn_code"),
 				}
 
 				for i, variant_attr in enumerate(SHOPIFY_VARIANTS_ATTR_LIST):
@@ -187,22 +205,49 @@ class ShopifyProduct:
 						)
 				self._create_item(shopify_item_variant, warehouse, 0, attributes, template_item.name)
 
+	def _update_hsn_sac_code(self, product_dict):
+		try:
+			for variant in product_dict.get("variants"):
+				if variant.get("inventory_item_id"):
+					inventory_item = shopify.InventoryItem.find(variant.get("inventory_item_id"))
+					if hasattr(inventory_item, "harmonized_system_code"):
+						product_dict["gst_hsn_code"] = inventory_item.harmonized_system_code
+						break
+		except Exception:
+			frappe.log_error(title="_update_hsn_sac_code", message=frappe.get_traceback())
+		if not (product_dict.get("gst_hsn_code")):
+			hsnsac_code = frappe.db.get_value(
+				"Shopify Item Group HSN Mapping",
+				{
+					"parent": SETTING_DOCTYPE,
+					"item_group": product_dict.get("product_type"),
+					"hsnsac_code": ["is", "set"],
+				},
+				"hsnsac_code",
+			)
+			if hsnsac_code:
+				product_dict["gst_hsn_code"] = hsnsac_code
+
+		return product_dict
+
 	def _get_attribute_value(self, variant_attr_val, attribute):
-		attribute_value = frappe.db.sql(
-			"""select attribute_value from `tabItem Attribute Value`
-			where parent = %s and (abbr = %s or attribute_value = %s)""",
-			(attribute["attribute"], variant_attr_val, variant_attr_val),
-			as_list=1,
+		attribute_value = frappe.db.get_all(
+			"Item Attribute Value",
+			filters={"parent": attribute["attribute"]},
+			or_filters={"abbr": variant_attr_val, "attribute_value": variant_attr_val},
+			fields=["attribute_value"],
+			as_list=True,
 		)
 		return attribute_value[0][0] if len(attribute_value) > 0 else cint(variant_attr_val)
 
-	def _get_item_group(self, product_type=None):
+	def _get_item_group(self, product_type=None, hsnsac_code=None, sync_product_group=False):
 		parent_item_group = get_root_of("Item Group")
 
 		if not product_type:
 			return parent_item_group
 
 		if frappe.db.get_value("Item Group", product_type, "name"):
+			self._sync_item_group_hsn_sac_code(sync_product_group, product_type, hsnsac_code, False)
 			return product_type
 		item_group = frappe.get_doc(
 			{
@@ -212,16 +257,49 @@ class ShopifyProduct:
 				"is_group": "No",
 			}
 		).insert()
+		self._sync_item_group_hsn_sac_code(sync_product_group, product_type, hsnsac_code)
 		return item_group.name
+
+	def _update_hsn_code_in_item_group(self, product_type, hsnsac_code):
+		try:
+			if not (frappe.db.get_value("Item Group", product_type, "gst_hsn_code")) and hsnsac_code:
+				frappe.db.set_value("Item Group", product_type, "gst_hsn_code", hsnsac_code)
+		except Exception:
+			pass
+
+	def _update_in_item_group_mapping(self, sync_product_group, product_type, hsnsac_code):
+		has_value_flag = False
+		for row in self.setting.shopify_item_group_hsn_mapping:
+			if row.get("item_group") == product_type:
+				if hsnsac_code and row.get("hsnsac_code") != hsnsac_code:
+					row.hsnsac_code = hsnsac_code
+				has_value_flag = True
+				break
+		if not has_value_flag:
+			self._sync_item_group_hsn_sac_code(sync_product_group, product_type, hsnsac_code)
+
+	def _sync_item_group_hsn_sac_code(self, sync_product_group, item_group, hsnsac_code=None, is_new=True):
+		if sync_product_group:
+			if is_new:
+				self.setting.append(
+					"shopify_item_group_hsn_mapping",
+					{"item_group": item_group, "hsnsac_code": hsnsac_code},
+				)
+			else:
+				self._update_hsn_code_in_item_group(item_group, hsnsac_code)
+				self._update_in_item_group_mapping(sync_product_group, item_group, hsnsac_code)
 
 	def _get_supplier(self, product_dict):
 		if product_dict.get("vendor"):
-			supplier = frappe.db.sql(
-				f"""select name from tabSupplier
-				where name = %s or {SUPPLIER_ID_FIELD} = %s """,
-				(product_dict.get("vendor"), product_dict.get("vendor").lower()),
-				as_list=1,
-			)
+			Supplier = DocType("Supplier")
+			supplier = (
+				frappe.qb.from_(Supplier)
+				.select(Supplier.name)
+				.where(
+					(Supplier.name == product_dict.get("vendor"))
+					| (Supplier[SUPPLIER_ID_FIELD] == product_dict.get("vendor").lower())
+				)
+			).run(as_list=True)
 
 			if supplier:
 				return product_dict.get("vendor")
