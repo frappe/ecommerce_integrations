@@ -33,6 +33,7 @@ from ecommerce_integrations.unicommerce.utils import (
 	get_unicommerce_date,
 	remove_non_alphanumeric_chars,
 )
+from ecommerce_integrations.utils.taxation import set_item_wise_tax_details
 
 JsonDict = dict[str, Any]
 SOCode = NewType("SOCode", str)
@@ -379,6 +380,7 @@ def create_sales_invoice(
 	si.ignore_pricing_rule = 1
 	si.update_stock = False if settings.delivery_note else update_stock
 	si.flags.raw_data = si_data
+	set_item_wise_tax_details(si)
 	si.insert()
 
 	_verify_total(si, si_data)
