@@ -295,7 +295,12 @@ def get_taxes(line_items, channel_config) -> list:
 
 			tax_map[tax_head] += tax_amount
 
-			item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
+			# Sum across lines sharing an item code so no line's tax is dropped.
+			entry = item_wise_tax_map[tax_head].get(item_code)
+			if entry:
+				entry[1] += tax_amount
+			else:
+				item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
 
 	taxes = []
 
