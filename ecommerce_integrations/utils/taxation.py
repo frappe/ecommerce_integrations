@@ -35,7 +35,9 @@ def set_item_wise_tax_details(doc):
 		for item_code, (rate, amount) in (tax.get(ITEM_WISE_TAX_KEY) or {}).items():
 			# Unicommerce splits a qty>1 line into one row per unit; spread the tax across them.
 			items = items_by_code.get(item_code) or []
-			for item, share in zip(items, _split_amount(flt(amount), len(items))):
+			if not items:
+				continue
+			for item, share in zip(items, _split_amount(flt(amount), len(items)), strict=True):
 				rows.append(
 					frappe._dict(
 						item=item,
