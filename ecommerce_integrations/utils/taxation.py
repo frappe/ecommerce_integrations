@@ -49,6 +49,31 @@ def set_item_wise_tax_details(doc):
 
 	if rows:
 		doc._item_wise_tax_details = rows
+		set_nil_rated_for_untaxed_items(doc, {row.item.item_code for row in rows})
+
+
+def set_nil_rated_for_untaxed_items(doc, taxed_item_codes):
+	"""In a mixed order, flag items with no GST as Nil-Rated; else India Compliance treats them as Taxable and blocks the order."""
+
+	if not frappe.get_meta("Item Tax Template").has_field("gst_treatment"):
+		return
+
+	untaxed = [
+		item
+		for item in doc.get("items")
+		if item.item_code not in taxed_item_codes and not item.item_tax_template
+	]
+	if not untaxed:
+		return
+
+	template = frappe.db.get_value(
+		"Item Tax Template", {"company": doc.get("company"), "gst_treatment": "Nil-Rated"}, "name"
+	)
+	if not template:
+		return
+
+	for item in untaxed:
+		item.item_tax_template = template
 
 
 def copy_item_wise_tax_details(target, source_name):
