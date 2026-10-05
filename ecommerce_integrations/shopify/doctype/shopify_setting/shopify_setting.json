@@ -50,6 +50,7 @@
   "price_list",
   "territory",
   "warehouse",
+  "allow_variant_to_individual_item",
   "update_erpnext_stock_levels_to_shopify",
   "inventory_sync_frequency",
   "fetch_shopify_locations",
@@ -402,12 +403,18 @@
    "fieldtype": "Link",
    "label": "Territory",
    "options": "Territory"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_variant_to_individual_item",
+   "fieldtype": "Check",
+   "label": "Allow Shopify Variant to map to Individual ERPNext Items"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-08-11 16:29:25.460201",
+ "modified": "2026-09-26 16:24:55.000159",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
