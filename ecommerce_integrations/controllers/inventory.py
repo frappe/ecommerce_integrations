@@ -1,12 +1,12 @@
-from typing import List, Tuple
-
 import frappe
 from frappe import _dict
+from frappe.query_builder import DocType
+from frappe.query_builder.functions import Max, Sum
 from frappe.utils import now
 from frappe.utils.nestedset import get_descendants_of
 
 
-def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict]:
+def get_inventory_levels(warehouses: tuple[str], integration: str) -> list[_dict]:
 	"""
 	Get list of dict containing items for which the inventory needs to be updated on Integeration.
 
@@ -16,21 +16,30 @@ def get_inventory_levels(warehouses: Tuple[str], integration: str) -> List[_dict
 
 	returns: list of _dict containing ecom_item, item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
 	"""
-	data = frappe.db.sql(
-		f"""
-			SELECT ei.name as ecom_item, bin.item_code as item_code, integration_item_code, variant_id, actual_qty, warehouse, reserved_qty
-			FROM `tabEcommerce Item` ei
-				JOIN tabBin bin
-				ON ei.erpnext_item_code = bin.item_code
-			WHERE bin.warehouse in ({', '.join('%s' for _ in warehouses)})
-				AND bin.modified > ei.inventory_synced_on
-				AND ei.integration = %s
-		""",
-		values=warehouses + (integration,),
-		as_dict=1,
+	EcommerceItem = DocType("Ecommerce Item")
+	Bin = DocType("Bin")
+
+	query = (
+		frappe.qb.from_(EcommerceItem)
+		.join(Bin)
+		.on(EcommerceItem.erpnext_item_code == Bin.item_code)
+		.select(
+			EcommerceItem.name.as_("ecom_item"),
+			Bin.item_code.as_("item_code"),
+			EcommerceItem.integration_item_code,
+			EcommerceItem.variant_id,
+			Bin.actual_qty,
+			Bin.warehouse,
+			Bin.reserved_qty,
+		)
+		.where(
+			(Bin.warehouse.isin(warehouses))
+			& (Bin.modified > EcommerceItem.inventory_synced_on)
+			& (EcommerceItem.integration == integration)
+		)
 	)
 
-	return data
+	return query.run(as_dict=1)
 
 
 def get_inventory_levels_of_group_warehouse(warehouse: str, integration: str):
@@ -40,30 +49,31 @@ def get_inventory_levels_of_group_warehouse(warehouse: str, integration: str):
 	leaf warehouses is required"""
 
 	child_warehouse = get_descendants_of("Warehouse", warehouse)
-	all_warehouses = tuple(child_warehouse) + (warehouse,)
+	all_warehouses = (*tuple(child_warehouse), warehouse)
 
-	data = frappe.db.sql(
-		f"""
-			SELECT ei.name as ecom_item, bin.item_code as item_code,
-				integration_item_code,
-				variant_id,
-				sum(actual_qty) as actual_qty,
-				sum(reserved_qty) as reserved_qty,
-				max(bin.modified) as last_updated,
-				max(ei.inventory_synced_on) as last_synced
-			FROM `tabEcommerce Item` ei
-				JOIN tabBin bin
-				ON ei.erpnext_item_code = bin.item_code
-			WHERE bin.warehouse in ({', '.join(['%s'] * len(all_warehouses))})
-				AND integration = %s
-			GROUP BY
-				ei.erpnext_item_code
-			HAVING
-				last_updated > last_synced
-			""",
-		values=all_warehouses + (integration,),
-		as_dict=1,
+	EcommerceItem = DocType("Ecommerce Item")
+	Bin = DocType("Bin")
+
+	query = (
+		frappe.qb.from_(EcommerceItem)
+		.join(Bin)
+		.on(EcommerceItem.erpnext_item_code == Bin.item_code)
+		.select(
+			EcommerceItem.name.as_("ecom_item"),
+			Bin.item_code.as_("item_code"),
+			EcommerceItem.integration_item_code,
+			EcommerceItem.variant_id,
+			Sum(Bin.actual_qty).as_("actual_qty"),
+			Sum(Bin.reserved_qty).as_("reserved_qty"),
+			Max(Bin.modified).as_("last_updated"),
+			Max(EcommerceItem.inventory_synced_on).as_("last_synced"),
+		)
+		.where((Bin.warehouse.isin(all_warehouses)) & (EcommerceItem.integration == integration))
+		.groupby(EcommerceItem.erpnext_item_code)
+		.having(Max(Bin.modified) > Max(EcommerceItem.inventory_synced_on))
 	)
+
+	data = query.run(as_dict=1)
 
 	# add warehouse as group warehouse for sending to integrations
 	for item in data:

@@ -80,7 +80,7 @@ class UnicommerceShipmentManifest(Document):
 					",".join(facility_codes)
 				)
 			)
-		return list(facility_codes)[0]
+		return next(iter(facility_codes))
 
 	def create_and_close_manifest_on_unicommerce(self):
 		shipping_packages = [d.shipping_package_code for d in self.manifest_items]
@@ -152,9 +152,7 @@ def get_sales_invoice_details(sales_invoice):
 		as_dict=True,
 	)
 
-	items = frappe.db.get_values(
-		"Sales Invoice Item", {"parent": sales_invoice}, "item_name", as_dict=True
-	)
+	items = frappe.db.get_values("Sales Invoice Item", {"parent": sales_invoice}, "item_name", as_dict=True)
 
 	unique_items = {item.item_name for item in items}
 	si_data["item_list"] = ",".join(unique_items)
@@ -163,9 +161,7 @@ def get_sales_invoice_details(sales_invoice):
 
 
 @frappe.whitelist()
-def search_packages(
-	search_term: str, channel: Optional[str] = None, shipper: Optional[str] = None
-):
+def search_packages(search_term: str, channel: str | None = None, shipper: str | None = None):
 	filters = {
 		CHANNEL_ID_FIELD: channel,
 		SHIPPING_PROVIDER_CODE: shipper,
@@ -181,9 +177,7 @@ def search_packages(
 		INVOICE_CODE_FIELD: search_term,
 	}
 
-	packages = frappe.get_list(
-		"Sales Invoice", filters=filters, or_filters=or_filters, limit_page_length=1
-	)
+	packages = frappe.get_list("Sales Invoice", filters=filters, or_filters=or_filters, limit_page_length=1)
 
 	if packages:
 		return packages[0].name
@@ -191,7 +185,6 @@ def search_packages(
 
 @frappe.whitelist()
 def get_shipping_package_list(source_name, target_doc=None):
-
 	if target_doc and isinstance(target_doc, str):
 		target_doc = json.loads(target_doc)
 

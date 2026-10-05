@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 import frappe
 from erpnext.stock.doctype.batch.batch import Batch
@@ -95,7 +94,7 @@ def get_facility_code(stock_entry, unicommerce_settings) -> str:
 			_("{} only supports one target warehouse (unicommerce facility)").format(GRN_STOCK_ENTRY_TYPE)
 		)
 
-	warehouse = list(target_warehouses)[0]
+	warehouse = next(iter(target_warehouses))
 	warehouse_mapping = unicommerce_settings.get_erpnext_to_integration_wh_mapping(all_wh=True)
 
 	facility = warehouse_mapping.get(warehouse)
@@ -130,9 +129,7 @@ def upload_grn(doc, method=None):
 		msg += _("Confirm the status on Import Log in Uniware.")
 		frappe.msgprint(msg, title="Success")
 	elif response.successful and errors:
-		frappe.msgprint(
-			"Partial success, unicommerce reported errors:<br>{}".format("<br>".join(errors))
-		)
+		frappe.msgprint("Partial success, unicommerce reported errors:<br>{}".format("<br>".join(errors)))
 
 
 def _prepare_grn_import_csv(stock_entry) -> str:
@@ -190,8 +187,7 @@ def _prepare_grn_import_csv(stock_entry) -> str:
 	return file.file_name
 
 
-def _get_csv_content(rows: List[GRNItemRow]) -> bytes:
-
+def _get_csv_content(rows: list[GRNItemRow]) -> bytes:
 	writer = UnicodeWriter()
 
 	for row in rows:
@@ -208,7 +204,7 @@ def _get_unicommerce_format_date(date) -> str:
 
 
 def create_auto_grn_import(csv_filename: str, facility_code: str, client=None):
-	""" Create new import job for Auto GRN items"""
+	"""Create new import job for Auto GRN items"""
 	if client is None:
 		client = UnicommerceAPIClient()
 	resp = client.create_import_job(

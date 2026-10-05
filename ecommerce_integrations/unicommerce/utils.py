@@ -48,7 +48,7 @@ def force_sync(document) -> None:
 
 
 def get_unicommerce_date(timestamp: int) -> datetime.date:
-	""" Convert unicommerce ms timestamp to datetime."""
+	"""Convert unicommerce ms timestamp to datetime."""
 	return datetime.date.fromtimestamp(timestamp // 1000)
 
 

@@ -2,8 +2,8 @@
 # See LICENSE
 
 # import frappe
-import unittest
+from frappe.tests import IntegrationTestCase
 
 
-class TestUnicommerceShippingProvider(unittest.TestCase):
+class TestUnicommerceShippingProvider(IntegrationTestCase):
 	pass

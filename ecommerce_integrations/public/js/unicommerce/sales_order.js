@@ -6,8 +6,7 @@ frappe.ui.form.on("Sales Order", {
 				__("Open Unicommerce Order"),
 				function () {
 					frappe.call({
-						method:
-							"ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
+						method: "ecommerce_integrations.unicommerce.utils.get_unicommerce_document_url",
 						args: {
 							code: frm.doc.unicommerce_order_code,
 							doctype: frm.doc.doctype,
@@ -19,10 +18,14 @@ frappe.ui.form.on("Sales Order", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
-		if (frm.doc.unicommerce_order_code && frm.doc.docstatus == 1 && flt(frm.doc.per_billed, 6) < 100) {
+		if (
+			frm.doc.unicommerce_order_code &&
+			frm.doc.docstatus == 1 &&
+			flt(frm.doc.per_billed, 6) < 100
+		) {
 			// remove default button
 			frm.remove_custom_button("Sales Invoice", "Create");
 			const so_code = frm.doc.name;
@@ -33,7 +36,7 @@ frappe.ui.form.on("Sales Order", {
 					sales_order_row: item.name,
 					item_code: item.item_code,
 					warehouse: item.warehouse,
-				}
+				};
 			});
 
 			const warehouse_allocation = {};
@@ -43,20 +46,20 @@ frappe.ui.form.on("Sales Order", {
 				__("Generate Invoice"),
 				function () {
 					frappe.call({
-						method:
-							"ecommerce_integrations.unicommerce.invoice.generate_unicommerce_invoices",
+						method: "ecommerce_integrations.unicommerce.invoice.generate_unicommerce_invoices",
 						args: {
 							sales_orders: [so_code],
 							warehouse_allocation: warehouse_allocation,
 						},
 						freeze: true,
-						freeze_message: "Requesting Invoice generation. Once synced, invoice will appear in linked documents.",
+						freeze_message:
+							"Requesting Invoice generation. Once synced, invoice will appear in linked documents.",
 						callback: function (r) {
 							frm.reload_doc();
-						}
+						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 	},

@@ -6,8 +6,16 @@ def execute():
 
 	default_fields_map = [
 		{"amazon_field": "ASIN", "item_field": "item_code", "use_to_find_item_code": 1},
-		{"amazon_field": "SellerSKU", "item_field": None, "use_to_find_item_code": 0,},
-		{"amazon_field": "Title", "item_field": None, "use_to_find_item_code": 0,},
+		{
+			"amazon_field": "SellerSKU",
+			"item_field": None,
+			"use_to_find_item_code": 0,
+		},
+		{
+			"amazon_field": "Title",
+			"item_field": None,
+			"use_to_find_item_code": 0,
+		},
 	]
 	amz_settings = frappe.db.get_all("Amazon SP API Settings", pluck="name")
 

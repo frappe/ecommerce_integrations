@@ -2,8 +2,8 @@
 # See LICENSE
 
 # import frappe
-import unittest
+from frappe.tests import IntegrationTestCase
 
 
-class TestShopifySetting(unittest.TestCase):
+class TestShopifySetting(IntegrationTestCase):
 	pass

@@ -4,6 +4,7 @@
 import unittest
 
 import frappe
+from frappe.tests import IntegrationTestCase
 from shopify.resources import Webhook
 from shopify.session import Session
 
@@ -11,14 +12,13 @@ from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
 
 
-class TestShopifyConnection(unittest.TestCase):
+class TestShopifyConnection(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		cls.setting = frappe.get_doc(SETTING_DOCTYPE)
 
 	@unittest.skip("Can't run these tests in CI")
 	def test_register_webhooks(self):
-
 		webhooks = connection.register_webhooks(
 			self.setting.shopify_url, self.setting.get_password("password")
 		)
@@ -30,7 +30,6 @@ class TestShopifyConnection(unittest.TestCase):
 
 	@unittest.skip("Can't run these tests in CI")
 	def test_unregister_webhooks(self):
-
 		connection.unregister_webhooks(self.setting.shopify_url, self.setting.get_password("password"))
 
 		callback_url = connection.get_callback_url()

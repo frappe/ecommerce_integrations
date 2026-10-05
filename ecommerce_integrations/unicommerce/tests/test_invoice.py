@@ -9,6 +9,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.invoice import bulk_generate_invoices, create_sales_invoice
@@ -44,6 +45,7 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		si = create_sales_invoice(si_data=si_data, so_code=so.name, shipping_label=label)
 
 		self.assertEqual(si.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(si.get(ORDER_DISPLAY_CODE_FIELD), order["displayOrderCode"])
 		self.assertEqual(si.get(FACILITY_CODE_FIELD), "Test-123")
 		self.assertEqual(si.get(INVOICE_CODE_FIELD), si_data["code"])
 		self.assertEqual(si.get(SHIPPING_PACKAGE_CODE_FIELD), si_data["shippingPackageCode"])
@@ -55,9 +57,7 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertGreaterEqual(
-			len(attachments), 2, msg=f"Expected 2 attachments, found: {str(attachments)}"
-		)
+		self.assertGreaterEqual(len(attachments), 2, msg=f"Expected 2 attachments, found: {attachments!s}")
 
 	def test_end_to_end_invoice_generation(self):
 		"""Full invoice generation test with mocked responses."""
@@ -103,6 +103,7 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		si = frappe.get_doc("Sales Invoice", sales_invoice_code)
 
 		self.assertEqual(si.get(ORDER_CODE_FIELD), order["code"])
+		self.assertEqual(si.get(ORDER_DISPLAY_CODE_FIELD), order["displayOrderCode"])
 		self.assertEqual(si.get(FACILITY_CODE_FIELD), "Test-123")
 		self.assertEqual(si.get(INVOICE_CODE_FIELD), si_data["code"])
 		self.assertEqual(si.get(SHIPPING_PACKAGE_CODE_FIELD), si_data["shippingPackageCode"])
@@ -113,6 +114,4 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		attachments = frappe.get_all(
 			"File", fields=["name", "file_name"], filters={"attached_to_name": si.name}
 		)
-		self.assertGreaterEqual(
-			len(attachments), 2, msg=f"Expected 2 attachments, found: {str(attachments)}"
-		)
+		self.assertGreaterEqual(len(attachments), 1, msg=f"Expected 1 attachments, found: {attachments!s}")

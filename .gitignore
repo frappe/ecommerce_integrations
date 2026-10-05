@@ -4,3 +4,6 @@
 *.swp
 tags
 ecommerce_integrations/docs/current
+
+.aider*
+.helix

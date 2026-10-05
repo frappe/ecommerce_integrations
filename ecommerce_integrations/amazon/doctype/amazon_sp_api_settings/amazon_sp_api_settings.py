@@ -32,7 +32,7 @@ class AmazonSPAPISettings(Document):
 			frappe.throw(frappe._("Value for <b>Max Retry Limit</b> must be less than or equal to 5."))
 
 	def save(self):
-		super(AmazonSPAPISettings, self).save()
+		super().save()
 
 		if not self.is_old_data_migrated:
 			migrate_old_data()
@@ -96,8 +96,16 @@ class AmazonSPAPISettings(Document):
 	def set_default_fields_map(self):
 		for field_map in [
 			{"amazon_field": "ASIN", "item_field": "item_code", "use_to_find_item_code": 1},
-			{"amazon_field": "SellerSKU", "item_field": None, "use_to_find_item_code": 0,},
-			{"amazon_field": "Title", "item_field": None, "use_to_find_item_code": 0,},
+			{
+				"amazon_field": "SellerSKU",
+				"item_field": None,
+				"use_to_find_item_code": 0,
+			},
+			{
+				"amazon_field": "Title",
+				"item_field": None,
+				"use_to_find_item_code": 0,
+			},
 		]:
 			self.append("amazon_fields_map", field_map)
 
@@ -124,9 +132,7 @@ class AmazonSPAPISettings(Document):
 
 			frappe.msgprint(_("Order details will be fetched in the background."))
 		else:
-			frappe.msgprint(
-				_("Please enable the Amazon SP API Settings {0}.").format(frappe.bold(self.name))
-			)
+			frappe.msgprint(_("Please enable the Amazon SP API Settings {0}.").format(frappe.bold(self.name)))
 
 
 # Called via a hook in every hour.
@@ -167,9 +173,7 @@ def migrate_old_data():
 
 	if column_exists:
 		item = frappe.qb.DocType("Item")
-		items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(
-			as_dict=True
-		)
+		items = (frappe.qb.from_(item).select("*").where(item.amazon_item_code.notnull())).run(as_dict=True)
 
 		for item in items:
 			if not frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name}):

@@ -2,8 +2,9 @@
 # See LICENSE
 
 # import frappe
-import unittest
+
+from frappe.tests import IntegrationTestCase
 
 
-class TestZenotiErrorLogs(unittest.TestCase):
+class TestZenotiErrorLogs(IntegrationTestCase):
 	pass

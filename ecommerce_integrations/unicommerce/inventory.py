@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Dict
 
 import frappe
 from frappe.utils import cint, now
@@ -32,9 +31,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		return
 
 	# check if need to run based on configured sync frequency
-	if not force and not need_to_run(
-		SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"
-	):
+	if not force and not need_to_run(SETTINGS_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync"):
 		return
 
 	# get configured warehouses
@@ -45,7 +42,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 		client = UnicommerceAPIClient()
 
 	# track which ecommerce item was updated successfully
-	success_map: Dict[str, bool] = defaultdict(lambda: True)
+	success_map: dict[str, bool] = defaultdict(lambda: True)
 	inventory_synced_on = now()
 
 	for warehouse in warehouses:
@@ -82,7 +79,7 @@ def update_inventory_on_unicommerce(client=None, force=False):
 	_update_inventory_sync_status(success_map, inventory_synced_on)
 
 
-def _update_inventory_sync_status(ecom_item_success_map: Dict[str, bool], timestamp: str) -> None:
+def _update_inventory_sync_status(ecom_item_success_map: dict[str, bool], timestamp: str) -> None:
 	for ecom_item, status in ecom_item_success_map.items():
 		if status:
 			update_inventory_sync_status(ecom_item, timestamp)

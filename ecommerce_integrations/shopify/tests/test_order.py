@@ -2,11 +2,12 @@
 # See LICENSE
 
 import json
-import unittest
+
+from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.shopify.order import sync_sales_order
 
 
-class TestOrder(unittest.TestCase):
+class TestOrder(IntegrationTestCase):
 	def test_sync_with_variants(self):
 		pass

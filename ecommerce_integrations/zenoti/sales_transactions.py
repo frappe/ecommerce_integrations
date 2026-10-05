@@ -250,9 +250,7 @@ def process_sales_line_items(invoice, cost_center, center):
 		if len(item_err_msg_list):
 			item_err_msg = "\n".join(err for err in item_err_msg_list)
 			err_msg_list.append(item_err_msg)
-		emp_err_msg = check_for_employee(
-			line_item["employee"]["name"], line_item["employee"]["code"], center
-		)
+		emp_err_msg = check_for_employee(line_item["employee"]["name"], line_item["employee"]["code"], center)
 		if emp_err_msg:
 			err_msg_list.append(emp_err_msg)
 		sold_by = frappe.db.get_value(
@@ -449,9 +447,7 @@ def make_invoice(invoice_details):
 	doc.posting_time = invoice_details["posting_time"]
 	doc.due_date = invoice_details["posting_date"]
 	doc.cost_center = invoice_details["cost_center"]
-	doc.selling_price_list = frappe.db.get_single_value(
-		"Zenoti Settings", "default_selling_price_list"
-	)
+	doc.selling_price_list = frappe.db.get_single_value("Zenoti Settings", "default_selling_price_list")
 	doc.set_warehouse = invoice_details["set_warehouse"]
 	doc.update_stock = 1
 	doc.rounding_adjustment = invoice_details["rounding_adjustment"]

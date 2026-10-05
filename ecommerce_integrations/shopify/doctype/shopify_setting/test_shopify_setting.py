@@ -1,9 +1,8 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See LICENSE
 
-import unittest
-
 import frappe
+from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
@@ -20,7 +19,7 @@ from ecommerce_integrations.shopify.constants import (
 from .shopify_setting import setup_custom_fields
 
 
-class TestShopifySetting(unittest.TestCase):
+class TestShopifySetting(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		frappe.db.sql(
@@ -29,7 +28,6 @@ class TestShopifySetting(unittest.TestCase):
 		)
 
 	def test_custom_field_creation(self):
-
 		setup_custom_fields()
 
 		created_fields = frappe.get_all(

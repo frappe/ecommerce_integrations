@@ -1,11 +1,11 @@
 import os
 import sys
-import unittest
 from unittest.mock import patch
 
 import frappe
 import shopify
 from erpnext import get_default_cost_center
+from frappe.tests import IntegrationTestCase
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
 
@@ -35,9 +35,13 @@ from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYP
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-class TestCase(unittest.TestCase):
+class TestCase(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
+		# Call parent first to auto-generate standard test records like _Test Company
+		super().setUpClass()
+
+		# Now setup Shopify settings with test data
 		with patch(
 			"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.ShopifySetting._handle_webhooks"
 		):
@@ -80,6 +84,11 @@ class TestCase(unittest.TestCase):
 				}
 			).save(ignore_permissions=True)
 
+		# A new Item's item_defaults.default_warehouse is auto-filled from the frappe GLOBAL
+		# default warehouse, which the standard erpnext test companies set to a foreign company's
+		# warehouse -> item_defaults company/warehouse mismatch aborts item creation. Clear it.
+		frappe.db.set_default("default_warehouse", "")
+
 	def setUp(self):
 		ActiveResource.site = None
 		ActiveResource.headers = None
@@ -95,7 +104,7 @@ class TestCase(unittest.TestCase):
 		self.http.site = "https://frappetest.myshopify.com"
 
 	def load_fixture(self, name, format="json"):
-		with open(os.path.dirname(__file__) + "/data/%s.%s" % (name, format), "rb") as f:
+		with open(os.path.dirname(__file__) + f"/data/{name}.{format}", "rb") as f:
 			return f.read()
 
 	def fake(self, endpoint, **kwargs):
@@ -106,9 +115,9 @@ class TestCase(unittest.TestCase):
 		if "extension" in kwargs and not kwargs["extension"]:
 			extension = ""
 		else:
-			extension = ".%s" % (kwargs.pop("extension", "json"))
+			extension = ".{}".format(kwargs.pop("extension", "json"))
 
-		url = "https://frappetest.myshopify.com%s/%s%s" % (prefix, endpoint, extension)
+		url = f"https://frappetest.myshopify.com{prefix}/{endpoint}{extension}"
 		try:
 			url = kwargs["url"]
 		except KeyError:
@@ -116,7 +125,7 @@ class TestCase(unittest.TestCase):
 
 		headers = {}
 		if kwargs.pop("has_user_agent", True):
-			userAgent = "ShopifyPythonAPI/%s Python/%s" % (shopify.VERSION, sys.version.split(" ", 1)[0])
+			userAgent = "ShopifyPythonAPI/{} Python/{}".format(shopify.VERSION, sys.version.split(" ", 1)[0])
 			headers["User-agent"] = userAgent
 
 		try:

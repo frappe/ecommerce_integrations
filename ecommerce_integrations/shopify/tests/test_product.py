@@ -165,7 +165,10 @@ def make_item(item_code=None, properties=None):
 			"item_name": item_code,
 			"description": item_code,
 			"item_group": "Products",
-			"attributes": [{"attribute": "Test Sync Size"}, {"attribute": "Test Sync Colour"},],
+			"attributes": [
+				{"attribute": "Test Sync Size"},
+				{"attribute": "Test Sync Colour"},
+			],
 			"has_variants": 1,
 		}
 	)

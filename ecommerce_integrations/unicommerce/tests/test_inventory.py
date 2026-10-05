@@ -93,7 +93,6 @@ class TestUnicommerceProduct(TestCaseApiClient):
 
 
 def make_ecommerce_item(item_code):
-
 	if ecommerce_item.is_synced(MODULE_NAME, item_code):
 		return
 

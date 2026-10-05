@@ -1,8 +1,6 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
-from typing import Dict, List
-
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
@@ -94,19 +92,17 @@ class ShopifySetting(SettingController):
 					{"shopify_location_id": location.id, "shopify_location_name": location.name},
 				)
 
-	def get_erpnext_warehouses(self) -> List[ERPNextWarehouse]:
+	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]
 
-	def get_erpnext_to_integration_wh_mapping(self) -> Dict[ERPNextWarehouse, IntegrationWarehouse]:
+	def get_erpnext_to_integration_wh_mapping(self) -> dict[ERPNextWarehouse, IntegrationWarehouse]:
 		return {
-			wh_map.erpnext_warehouse: wh_map.shopify_location_id
-			for wh_map in self.shopify_warehouse_mapping
+			wh_map.erpnext_warehouse: wh_map.shopify_location_id for wh_map in self.shopify_warehouse_mapping
 		}
 
-	def get_integration_to_erpnext_wh_mapping(self) -> Dict[IntegrationWarehouse, ERPNextWarehouse]:
+	def get_integration_to_erpnext_wh_mapping(self) -> dict[IntegrationWarehouse, ERPNextWarehouse]:
 		return {
-			wh_map.shopify_location_id: wh_map.erpnext_warehouse
-			for wh_map in self.shopify_warehouse_mapping
+			wh_map.shopify_location_id: wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping
 		}
 
 

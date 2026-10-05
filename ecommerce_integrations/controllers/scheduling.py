@@ -16,9 +16,7 @@ def need_to_run(setting, interval_field, timestamp_field) -> bool:
 	interval = frappe.db.get_single_value(setting, interval_field, cache=True)
 	last_run = frappe.db.get_single_value(setting, timestamp_field)
 
-	if last_run and get_datetime() < get_datetime(
-		add_to_date(last_run, minutes=cint(interval, default=10))
-	):
+	if last_run and get_datetime() < get_datetime(add_to_date(last_run, minutes=cint(interval, default=10))):
 		return False
 
 	frappe.db.set_value(setting, None, timestamp_field, now(), update_modified=False)

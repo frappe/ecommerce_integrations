@@ -28,9 +28,7 @@ class TestUnicommerceProduct(TestCaseApiClient):
 			json=self.load_fixture("missing_item"),
 			match=[responses.json_params_matcher({"skuCode": "MISSING"})],
 		)
-		self.assertRaises(
-			frappe.ValidationError, import_product_from_unicommerce, "MISSING", self.client
-		)
+		self.assertRaises(frappe.ValidationError, import_product_from_unicommerce, "MISSING", self.client)
 
 		log = frappe.get_last_doc("Ecommerce Integration Log", filters={"integration": "unicommerce"})
 		self.assertTrue("Failed to import" in log.message, "Logging for missing item not working")
