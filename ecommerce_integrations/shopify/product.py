@@ -58,7 +58,7 @@ class ShopifyProduct:
 		if not self.is_synced():
 			shopify_product = Product.find(self.product_id)
 			product_dict = shopify_product.to_dict()
-			complete_variants(product_dict, lambda: _fetch_all_variants(self.product_id))
+			complete_variants(product_dict, lambda: fetch_all_variants(self.product_id))
 			self._make_item(product_dict)
 
 	def _make_item(self, product_dict):
@@ -272,7 +272,8 @@ def complete_variants(product_dict, fetch_all):
 	return product_dict
 
 
-def _fetch_all_variants(product_id):
+def fetch_all_variants(product_id):
+	"""Every variant of a Shopify product, page by page."""
 	from shopify.collection import PaginatedIterator
 
 	variants = []
