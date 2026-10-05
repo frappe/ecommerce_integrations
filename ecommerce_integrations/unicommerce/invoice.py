@@ -138,6 +138,8 @@ def bulk_generate_invoices(
 
 	failed_orders = []
 	for so_code in sales_orders:
+		# a failure rolls back only this order, not the batch
+		frappe.db.savepoint("bulk_generate_invoices")
 		try:
 			so = frappe.get_doc("Sales Order", so_code)
 			channel = so.get(CHANNEL_ID_FIELD)
@@ -145,7 +147,8 @@ def bulk_generate_invoices(
 			wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
 			_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
 		except Exception as e:
-			create_unicommerce_log(status="Failure", exception=e, rollback=True, make_new=True)
+			frappe.db.rollback(save_point="bulk_generate_invoices")
+			create_unicommerce_log(status="Failure", exception=e, make_new=True)
 			failed_orders.append(so_code)
 
 	_log_invoice_generation(sales_orders, failed_orders)
