@@ -32,6 +32,7 @@ from ecommerce_integrations.unicommerce.utils import (
 	create_unicommerce_log,
 	get_unicommerce_date,
 	remove_non_alphanumeric_chars,
+	strip_pdf_javascript,
 )
 from ecommerce_integrations.utils.taxation import set_item_wise_tax_details
 
@@ -138,6 +139,8 @@ def bulk_generate_invoices(
 
 	failed_orders = []
 	for so_code in sales_orders:
+		# a failure rolls back only this order, not the batch
+		frappe.db.savepoint("bulk_generate_invoices")
 		try:
 			so = frappe.get_doc("Sales Order", so_code)
 			channel = so.get(CHANNEL_ID_FIELD)
@@ -145,7 +148,8 @@ def bulk_generate_invoices(
 			wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
 			_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
 		except Exception as e:
-			create_unicommerce_log(status="Failure", exception=e, rollback=True, make_new=True)
+			frappe.db.rollback(save_point="bulk_generate_invoices")
+			create_unicommerce_log(status="Failure", exception=e, make_new=True)
 			failed_orders.append(so_code)
 
 	_log_invoice_generation(sales_orders, failed_orders)
@@ -417,32 +421,27 @@ def attach_unicommerce_docs(
 ) -> None:
 	"""Attach invoice and label to specified sales invoice.
 
-	Both invoice and label are base64 encoded PDFs.
+	Both invoice and label are base64 encoded PDFs. JavaScript is stripped
+	before saving: frappe refuses to store PDFs containing scripts.
 
 	File names are generated using specified invoice and shipping package code."""
 
-	invoice_code = remove_non_alphanumeric_chars(invoice_code)
-	package_code = remove_non_alphanumeric_chars(package_code)
+	attachments = (
+		("unicommerce-invoice", invoice, invoice_code),
+		("unicommerce-label", label, package_code),
+	)
 
-	if invoice:
-		save_file(
-			f"unicommerce-invoice-{invoice_code}.pdf",
-			invoice,
-			"Sales Invoice",
-			sales_invoice,
-			decode=True,
-			is_private=1,
-		)
+	for prefix, content, code in attachments:
+		if not content:
+			continue
+		file_name = f"{prefix}-{remove_non_alphanumeric_chars(code or '')}.pdf"
 
-	if label:
-		save_file(
-			f"unicommerce-label-{package_code}.pdf",
-			label,
-			"Sales Invoice",
-			sales_invoice,
-			decode=True,
-			is_private=1,
-		)
+		sanitized = strip_pdf_javascript(content)
+		if sanitized is None:
+			frappe.throw(_("{0} could not be read as a PDF").format(file_name))
+
+		# sanitized is raw PDF bytes, not base64
+		save_file(file_name, sanitized, "Sales Invoice", sales_invoice, is_private=1)
 
 
 def _get_line_items(
