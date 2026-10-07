@@ -35,11 +35,43 @@ class ShopifySetting(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
+	def _get_password_safe(self, fieldname: str) -> str:
+		"""
+		Safely get password field value without raising exceptions.
+		Returns empty string if password doesn't exist or document is new.
+		"""
+		try:
+			if not self.name or self.is_new():
+				return ""
+
+			password = self.get_password(fieldname, raise_exception=False)
+			return password if password else ""
+		except Exception:
+			return ""
+
+	def _get_secret(self, fieldname: str) -> str:
+		"""
+		Return the plaintext secret for a Password field.
+
+		Uses the in-memory value when it is freshly entered (new or edited doc),
+		otherwise reads the decrypted value from the encrypted store. Frappe masks
+		saved Password fields to a dummy '*****' placeholder, so a naive
+		``self.field or fallback`` would leak the dummy as the real secret on any
+		re-save where the user did not retype it.
+		"""
+		value = self.get(fieldname)
+		if value and not self.is_dummy_password(value):
+			return value
+		return self._get_password_safe(fieldname)
+
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = self.shopify_url.replace("https://", "")
+			self.shopify_url = self.shopify_url.replace("https://", "").replace("http://", "")
+
+		self._set_default_authentication_method()
+		self._validate_authentication_fields()
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -51,9 +83,96 @@ class ShopifySetting(SettingController):
 		if self.is_enabled() and not self.is_old_data_migrated:
 			migrate_from_old_connector()
 
+	# --- Authentication helpers ---
+
+	def _set_default_authentication_method(self):
+		"""Set default authentication method for existing documents."""
+		if not self.authentication_method:
+			self.authentication_method = "Static Token"
+
+	def _validate_authentication_fields(self):
+		"""Validate that required fields are present based on authentication method."""
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method == "Static Token":
+			password = self._get_secret("password")
+			if not password:
+				frappe.throw(_("Password / Access Token is required for Static Token authentication"))
+
+			if not self.shared_secret:
+				frappe.throw(_("Shared secret / API Secret is required for Static Token authentication"))
+
+		elif self.authentication_method == "OAuth 2.0 Client Credentials":
+			if not self.client_id:
+				frappe.throw(_("Client ID is required for OAuth 2.0 authentication"))
+
+			client_secret = self._get_secret("client_secret")
+			if not client_secret:
+				frappe.throw(_("Client Secret is required for OAuth 2.0 authentication"))
+
+	def before_save(self):
+		"""Pre-generate OAuth token on save for better UX."""
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method != "OAuth 2.0 Client Credentials":
+			return
+
+		credentials_changed = self.has_value_changed("client_id") or self.has_value_changed("client_secret")
+		client_secret_raw = self._get_secret("client_secret")
+
+		try:
+			if credentials_changed:
+				from ecommerce_integrations.shopify.oauth import refresh_oauth_token
+
+				refresh_oauth_token(self, client_secret=client_secret_raw)
+			elif not self._get_password_safe("oauth_access_token"):
+				self._get_or_generate_oauth_token()
+		except frappe.ValidationError:
+			if credentials_changed:
+				raise  # Bad credentials on rotation must block save
+			from ecommerce_integrations.shopify.utils import create_shopify_log
+
+			create_shopify_log(
+				status="Warning",
+				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
+				message=_("Token pre-generation failed on save; will retry on first sync."),
+			)
+		except Exception as e:
+			from ecommerce_integrations.shopify.utils import create_shopify_log
+
+			create_shopify_log(
+				status="Warning",
+				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
+				message=_("Token pre-generation failed on save; will retry on first sync."),
+				exception=str(e),
+			)
+
+	# --- Webhooks ---
+
 	def _handle_webhooks(self):
+		"""Handle webhook registration/unregistration. Uses appropriate token based on auth method."""
+		import requests
+
 		if self.is_enabled() and not self.webhooks:
-			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
+			if self.authentication_method == "OAuth 2.0 Client Credentials":
+				password = self._get_or_generate_oauth_token()
+			else:
+				password = self._get_secret("password")
+
+			try:
+				new_webhooks = connection.register_webhooks(self.shopify_url, password)
+			except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+				from ecommerce_integrations.shopify.utils import create_shopify_log
+
+				create_shopify_log(
+					status="Warning",
+					method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting._handle_webhooks",
+					message=_("Webhook registration failed due to network error. Disable and re-enable to retry."),
+					exception=str(e),
+				)
+				return
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
@@ -65,9 +184,39 @@ class ShopifySetting(SettingController):
 				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
 
 		elif not self.is_enabled():
-			connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
+			if self.authentication_method == "OAuth 2.0 Client Credentials":
+				password = self._get_password_safe("oauth_access_token")
+			else:
+				password = self._get_password_safe("password")
+
+			if password:
+				connection.unregister_webhooks(self.shopify_url, password)
 
 			self.webhooks = list()  # remove all webhooks
+
+	def _get_or_generate_oauth_token(self) -> str:
+		"""Get existing valid OAuth token, or generate a new one."""
+		from ecommerce_integrations.shopify.oauth import is_token_valid, refresh_oauth_token
+
+		current_token = self._get_password_safe("oauth_access_token")
+		token_expiry = self.token_expires_at
+
+		if current_token and is_token_valid(token_expiry):
+			return current_token
+
+		# Pass in-memory plaintext during validate/before_save (not yet in encrypted store)
+		client_secret_raw = self._get_secret("client_secret")
+
+		try:
+			new_token = refresh_oauth_token(self, client_secret=client_secret_raw)
+			return new_token
+		except Exception as e:
+			frappe.throw(
+				_("Failed to generate OAuth token: {0}").format(str(e)),
+				title=_("OAuth Authentication Error"),
+			)
+
+	# --- Existing methods (unchanged) ---
 
 	def _validate_warehouse_links(self):
 		for wh_map in self.shopify_warehouse_mapping:
