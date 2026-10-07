@@ -26,6 +26,9 @@ frappe.ui.form.on("Shopify Setting", {
 	},
 
 	refresh: function (frm) {
+		frm.add_custom_button(__("Import Item Group"), function () {
+			frm.trigger("shopify_import_item_group");
+		});
 		frm.add_custom_button(__("Import Products"), function () {
 			frappe.set_route("shopify-import-products");
 		});
@@ -35,6 +38,12 @@ frappe.ui.form.on("Shopify Setting", {
 			});
 		});
 		frm.trigger("setup_queries");
+	},
+
+	shopify_import_item_group: function (frm) {
+		frappe.call({
+			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_product_groups",
+		});
 	},
 
 	setup_queries: function (frm) {

@@ -25,6 +25,13 @@ class TestProduct(TestCase):
 		ecommerce_item_exists = frappe.db.exists("Ecommerce Item", {"erpnext_item_code": item.name})
 		self.assertTrue(bool(ecommerce_item_exists))
 
+	def test_sync_item_group(self):
+		self.fake("products/6704435495065", body=self.load_fixture("variant_product"))
+		product = ShopifyProduct(product_id="6704435495065")
+		product.sync_product(sync_product_group=1)
+		self.assertEqual(frappe.get_last_doc("Item Group").name, "shirt")
+		self.assertEqual(product.setting.shopify_item_group_hsn_mapping[0].item_group, "shirt")
+
 	def test_sync_product_with_variants(self):
 		self.fake("products/6704435495065", body=self.load_fixture("variant_product"))
 
