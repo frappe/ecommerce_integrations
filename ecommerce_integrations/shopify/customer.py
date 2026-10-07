@@ -24,6 +24,8 @@ class ShopifyCustomer(EcommerceCustomer):
 		customer_name = cstr(customer.get("first_name")) + " " + cstr(customer.get("last_name"))
 		if len(customer_name.strip()) == 0:
 			customer_name = customer.get("email")
+		if not customer_name:
+			customer_name = f"Customer {customer.get('id')}"
 
 		customer_group = self.setting.customer_group
 		super().sync_customer(customer_name, customer_group)
