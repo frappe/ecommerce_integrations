@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from copy import deepcopy
 
@@ -6,17 +7,21 @@ from frappe.test_runner import make_test_records
 
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
+	CHARGE_TAX_HEADS_MAP,
 	ORDER_CODE_FIELD,
 	ORDER_DISPLAY_CODE_FIELD,
 	ORDER_STATUS_FIELD,
+	TAX_FIELDS_MAPPING,
 )
 from ecommerce_integrations.unicommerce.order import (
 	_get_facility_code,
 	_get_line_items,
 	_sync_order_items,
 	create_order,
+	get_taxes,
 )
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.utils import line_item_with_charges
 
 
 class TestUnicommerceOrder(TestCaseApiClient):
@@ -70,7 +75,74 @@ class TestUnicommerceOrder(TestCaseApiClient):
 		self.assertAlmostEqual(total_price, 7028.0)
 
 	def test_get_taxes(self):
-		pass
+		"""Taxes of the same SKU on multiple lines add up."""
+		invoice = self.load_fixture("invoice-SDU0010")["invoice"]
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = invoice["invoiceItems"][0]
+
+		single_line = get_taxes([line_item], channel_config)
+		batch_split = get_taxes([deepcopy(line_item), deepcopy(line_item)], channel_config)
+
+		self.assertEqual(len(batch_split), len(single_line))
+
+		for tax, single_line_tax in zip(batch_split, single_line, strict=True):
+			item_wise_tax = json.loads(tax["item_wise_tax_detail"])
+			self.assertEqual(len(item_wise_tax), 1)
+
+			(tax_rate, tax_amount), (expected_rate, expected_amount) = (
+				next(iter(item_wise_tax.values())),
+				next(iter(json.loads(single_line_tax["item_wise_tax_detail"]).values())),
+			)
+
+			self.assertEqual(tax_rate, expected_rate)
+			self.assertAlmostEqual(tax_amount, 2 * expected_amount)
+			self.assertAlmostEqual(tax_amount, tax["tax_amount"])
+
+	def test_get_taxes_with_charges_billed_as_items(self):
+		"""Tax on a charge billed as an item moves from the item to the charge item."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0)
+		charge_items = {("cash_on_delivery_charges", 18.0): "COD-CHARGES"}
+
+		taxes = get_taxes([line_item], channel_config, charge_items)
+		tax_by_head = {tax["description"]: tax for tax in taxes}
+
+		self.assertNotIn("CASH ON DELIVERY CHARGES", tax_by_head)
+
+		for tax_head in ("CGST", "SGST"):
+			tax = tax_by_head[tax_head]
+			item_wise_tax = json.loads(tax["item_wise_tax_detail"])
+
+			self.assertEqual(item_wise_tax.pop("COD-CHARGES"), [9.0, 9.0])
+			self.assertEqual(next(iter(item_wise_tax.values())), [9.0, 30.51])
+			self.assertAlmostEqual(tax["tax_amount"], 39.51)
+
+	def test_get_taxes_keeps_charges_as_tax_rows_by_default(self):
+		"""Charges stay tax rows by default."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0)
+
+		taxes = get_taxes([line_item], channel_config)
+		tax_by_head = {tax["description"]: tax for tax in taxes}
+
+		self.assertEqual(tax_by_head["CASH ON DELIVERY CHARGES"]["tax_amount"], 100.0)
+		item_wise_tax = json.loads(tax_by_head["CGST"]["item_wise_tax_detail"])
+		self.assertAlmostEqual(next(iter(item_wise_tax.values()))[1], 39.51)
+
+	def test_charge_tax_heads_are_known(self):
+		"""Charge tax heads exist in TAX_FIELDS_MAPPING."""
+		for charge, tax_heads in CHARGE_TAX_HEADS_MAP.items():
+			for tax_head in tax_heads:
+				self.assertIn(tax_head, TAX_FIELDS_MAPPING, f"{charge} covers unknown tax head {tax_head}")
+
+	def test_charge_options_match_charge_tax_heads(self):
+		"""Charge Select options and CHARGE_TAX_HEADS_MAP hold the same charges.
+
+		They are separate copies, so a charge on one side only bills nothing.
+		"""
+		options = frappe.get_meta("Unicommerce Charge Item").get_field("charge").options.split("\n")
+
+		self.assertEqual(set(options), set(CHARGE_TAX_HEADS_MAP))
 
 	def test_get_facility_code(self):
 		line_items = self.load_fixture("order-SO6008-order")["saleOrderItems"]

@@ -7,6 +7,7 @@ import frappe
 
 from ecommerce_integrations.unicommerce.cancellation_and_returns import (
 	_get_invoice_for_return,
+	_get_refunded_qty_by_invoice_row,
 	_handle_partial_returns,
 	create_cir_credit_note,
 	create_credit_note,
@@ -17,6 +18,7 @@ from ecommerce_integrations.unicommerce.cancellation_and_returns import (
 )
 from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
+	ORDER_ITEM_CODE_FIELD,
 	RETURN_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
@@ -290,6 +292,268 @@ class TestInvoiceForReturnSelection(TestCase):
 			self.assertIsNone(_get_invoice_for_return("SO-MULTI", {"A", "B"}))
 
 
+class TestRefundedQtyLookup(TestCase):
+	"""The refund lookup aggregates in SQL and locks rows only where the database allows it."""
+
+	def test_aggregates_and_locks_rows_on_mariadb(self):
+		with (
+			patch.object(frappe.db, "db_type", "mariadb"),
+			patch("frappe.db.sql", return_value=[]) as run_sql,
+		):
+			self.assertEqual(_get_refunded_qty_by_invoice_row("SI-1"), {})
+
+		query = run_sql.call_args.args[0]
+		self.assertIn("FOR UPDATE", query)
+		self.assertIn("GROUP BY", query)
+		self.assertIn("SUM", query)
+
+	def test_aggregates_without_row_lock_on_postgres(self):
+		"""Postgres rejects FOR UPDATE combined with GROUP BY.
+
+		Regression test: the locking aggregate errored on Postgres sites,
+		so no further credit note could be created for an invoice.
+		"""
+		with (
+			patch.object(frappe.db, "db_type", "postgres"),
+			patch("frappe.db.sql", return_value=[]) as run_sql,
+		):
+			self.assertEqual(_get_refunded_qty_by_invoice_row("SI-1"), {})
+
+		self.assertNotIn("FOR UPDATE", run_sql.call_args.args[0])
+		self.assertIn("GROUP BY", run_sql.call_args.args[0])
+
+
+class TestReturnWithChargeItems(TestCase):
+	"""Test charge items on an invoice in customer-initiated returns."""
+
+	def _create_credit_note(
+		self,
+		returned_order_item_codes,
+		with_charge_item=True,
+		previously_refunded_qty=None,
+		si_items=None,
+		return_quantities=None,
+	):
+		"""Return items from an invoice with two products and a charge item; get the partial return mock."""
+		from types import SimpleNamespace
+
+		so = SimpleNamespace(
+			items=[
+				frappe._dict(name="SOI-A", **{ORDER_ITEM_CODE_FIELD: "A-0"}),
+				frappe._dict(name="SOI-B", **{ORDER_ITEM_CODE_FIELD: "B-0"}),
+			]
+		)
+		if si_items is None:
+			si_items = [
+				frappe._dict(name="SII-A", so_detail="SOI-A", qty=1),
+				frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			]
+			if with_charge_item:
+				si_items.append(frappe._dict(name="SII-COD", so_detail=None, qty=1))
+
+		si = SimpleNamespace(name="SI-1", get=lambda fieldname: None, items=si_items)
+		quantities = return_quantities or {}
+		return_data = {
+			"code": "RET-1",
+			"returnItems": [
+				{"saleOrderItemCode": code, "quantity": quantities.get(code, 1)}
+				for code in returned_order_item_codes
+			],
+		}
+
+		with (
+			patch("frappe.db.get_value", return_value="SO-1"),
+			patch(
+				"frappe.get_doc",
+				side_effect=lambda doctype, *args, **kwargs: so if doctype == "Sales Order" else si,
+			),
+			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
+			patch(f"{CANCELLATION_MODULE}.get_return_date_from_package", return_value=(None, {})),
+			patch(f"{CANCELLATION_MODULE}.create_unicommerce_log"),
+			patch(f"{CANCELLATION_MODULE}.create_credit_note", return_value=MagicMock()),
+			patch(
+				f"{CANCELLATION_MODULE}._get_refunded_qty_by_invoice_row",
+				return_value=dict(previously_refunded_qty or {}),
+			),
+			patch(f"{CANCELLATION_MODULE}._handle_partial_returns") as handle_partial_returns,
+		):
+			create_cir_credit_note({"code": "SO-1"}, return_data, client=MagicMock())
+
+		return handle_partial_returns
+
+	def test_full_return_is_not_partial(self):
+		"""Returning every product reverses the whole invoice, charge items included."""
+		self.assertFalse(self._create_credit_note(["A-0", "B-0"]).called)
+
+	def test_partial_return(self):
+		"""Returning some products still removes the rest."""
+		handle_partial_returns = self._create_credit_note(["A-0"])
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A": 1})
+
+	def test_last_partial_return_refunds_charge_items(self):
+		"""The return completing all product rows refunds charges exactly once."""
+		handle_partial_returns = self._create_credit_note(["B-0"], previously_refunded_qty={"SII-A": 1})
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-B": 1, "SII-COD": 1})
+
+	def test_last_partial_return_does_not_refund_charge_twice(self):
+		"""A charge already present on a credit note is not included again."""
+		handle_partial_returns = self._create_credit_note(
+			["B-0"], previously_refunded_qty={"SII-A": 1, "SII-COD": 1}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-B": 1})
+
+	def test_full_return_without_charge_items_is_not_partial(self):
+		"""An invoice with no charge item is unaffected: every row has a sales order row."""
+		self.assertFalse(self._create_credit_note(["A-0", "B-0"], with_charge_item=False).called)
+
+	def test_partial_return_without_charge_items(self):
+		"""An invoice with no charge item still drops the rows that weren't returned."""
+		handle_partial_returns = self._create_credit_note(["A-0"], with_charge_item=False)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A": 1})
+
+	def test_return_of_split_product_rows_credits_every_row(self):
+		"""A sales order row billed as two invoice rows is refunded on both rows.
+
+		Regression test: the so_detail-keyed map used to keep only the last
+		invoice row of a split sales order row, silently dropping the rest.
+		"""
+		si_items = [
+			frappe._dict(name="SII-A1", so_detail="SOI-A", qty=1),
+			frappe._dict(name="SII-A2", so_detail="SOI-A", qty=1),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		handle_partial_returns = self._create_credit_note(
+			["A-0"], si_items=si_items, return_quantities={"A-0": 2}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A1": 1, "SII-A2": 1})
+
+	def test_split_product_row_is_not_refunded_as_charge(self):
+		"""The extra row of a split product must wait for its own return, not ride along with a charge refund."""
+		si_items = [
+			frappe._dict(name="SII-A1", so_detail="SOI-A", qty=1),
+			frappe._dict(name="SII-A2", so_detail="SOI-A", qty=1),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		# returning the other product, with the split rows returned previously,
+		# refunds the charge once the last product row is credited
+		handle_partial_returns = self._create_credit_note(
+			["B-0"], si_items=si_items, previously_refunded_qty={"SII-A1": 1, "SII-A2": 1}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-B": 1, "SII-COD": 1})
+
+	def test_partial_quantity_return_credits_returned_quantity_only(self):
+		"""Returning one unit of a three-unit row refunds one unit, not the whole row."""
+		si_items = [
+			frappe._dict(name="SII-A", so_detail="SOI-A", qty=3),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		handle_partial_returns = self._create_credit_note(
+			["A-0"], si_items=si_items, return_quantities={"A-0": 1}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A": 1})
+
+	def test_return_quantity_spans_split_invoice_rows(self):
+		"""Returned units fill the linked invoice rows in order, partly refunding the last one."""
+		si_items = [
+			frappe._dict(name="SII-A1", so_detail="SOI-A", qty=1),
+			frappe._dict(name="SII-A2", so_detail="SOI-A", qty=2),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		handle_partial_returns = self._create_credit_note(
+			["A-0"], si_items=si_items, return_quantities={"A-0": 2}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A1": 1, "SII-A2": 1})
+
+	def test_return_quantity_is_capped_at_not_yet_refunded_units(self):
+		"""Units already credited by an earlier credit note are not credited again."""
+		si_items = [
+			frappe._dict(name="SII-A", so_detail="SOI-A", qty=3),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		# one unit of A and all of B already refunded: a return of five more
+		# units of A credits only the two remaining ones, which completes the
+		# invoice and refunds the charge
+		handle_partial_returns = self._create_credit_note(
+			["A-0"],
+			si_items=si_items,
+			return_quantities={"A-0": 5},
+			previously_refunded_qty={"SII-A": 1, "SII-B": 1},
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A": 2, "SII-COD": 1})
+
+	def test_partial_quantity_return_does_not_refund_charges(self):
+		"""Charges wait until every unit of every product row is cumulatively returned."""
+		si_items = [
+			frappe._dict(name="SII-A", so_detail="SOI-A", qty=3),
+			frappe._dict(name="SII-B", so_detail="SOI-B", qty=1),
+			frappe._dict(name="SII-COD", so_detail=None, qty=1),
+		]
+		handle_partial_returns = self._create_credit_note(
+			["A-0"], si_items=si_items, return_quantities={"A-0": 1}
+		)
+
+		handle_partial_returns.assert_called_once()
+		self.assertEqual(handle_partial_returns.call_args.args[1], {"SII-A": 1})
+
+	def test_invoice_row_is_locked_against_concurrent_returns(self):
+		"""Concurrent returns for one invoice serialize on its row, so charges are refunded exactly once."""
+		from types import SimpleNamespace
+
+		so = SimpleNamespace(items=[frappe._dict(name="SOI-A", **{ORDER_ITEM_CODE_FIELD: "A-0"})])
+		si = SimpleNamespace(
+			name="SI-1",
+			get=lambda fieldname: None,
+			items=[
+				frappe._dict(name="SII-A", so_detail="SOI-A", qty=1),
+				frappe._dict(name="SII-COD", so_detail=None, qty=1),
+			],
+		)
+		get_doc = MagicMock(
+			side_effect=lambda doctype, *args, **kwargs: so if doctype == "Sales Order" else si
+		)
+
+		with (
+			patch("frappe.db.get_value", return_value="SO-1"),
+			patch("frappe.get_doc", get_doc),
+			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
+			patch(f"{CANCELLATION_MODULE}._get_refunded_qty_by_invoice_row", return_value={}),
+			patch(f"{CANCELLATION_MODULE}.get_return_date_from_package", return_value=(None, {})),
+			patch(f"{CANCELLATION_MODULE}.create_unicommerce_log"),
+			patch(f"{CANCELLATION_MODULE}.create_credit_note", return_value=MagicMock()),
+		):
+			create_cir_credit_note(
+				{"code": "SO-1"},
+				{"code": "RET-1", "returnItems": [{"saleOrderItemCode": "A-0", "quantity": 1}]},
+				client=MagicMock(),
+			)
+
+		si_call = next(call for call in get_doc.call_args_list if call.args[0] == "Sales Invoice")
+		self.assertIs(si_call.kwargs.get("for_update"), True)
+
+
 class TestPartialReturns(TestCase):
 	"""Test _handle_partial_returns strips items and rescales tax."""
 
@@ -307,17 +571,15 @@ class TestPartialReturns(TestCase):
 		)
 
 	def test_strips_non_returned_items_and_rescales_tax(self):
-		from types import SimpleNamespace
-
 		credit_note = self._credit_note(
 			items=[
-				{"item_code": "ITEM-A", "qty": 2.0, "sales_invoice_item": "SI-A"},
-				{"item_code": "ITEM-B", "qty": 2.0, "sales_invoice_item": "SI-B"},
+				{"item_code": "ITEM-A", "qty": 2.0, "rate": 100.0, "sales_invoice_item": "SI-A"},
+				{"item_code": "ITEM-B", "qty": 2.0, "rate": 100.0, "sales_invoice_item": "SI-B"},
 			],
 			item_wise_tax_detail={"ITEM-A": [18.0, 36.0], "ITEM-B": [18.0, 36.0]},
 		)
 
-		_handle_partial_returns(credit_note, ["SI-A"])
+		_handle_partial_returns(credit_note, {"SI-A": 2})
 
 		self.assertEqual([item.item_code for item in credit_note.items], ["ITEM-A"])
 		# ITEM-A fully returned keeps its tax, ITEM-B is zeroed
@@ -327,24 +589,50 @@ class TestPartialReturns(TestCase):
 		"""Returning half the qty of an item credits half its tax."""
 		credit_note = self._credit_note(
 			items=[
-				{"item_code": "ITEM-A", "qty": 1.0, "sales_invoice_item": "SI-A1"},
-				{"item_code": "ITEM-A", "qty": 1.0, "sales_invoice_item": "SI-A2"},
+				{"item_code": "ITEM-A", "qty": 1.0, "rate": 100.0, "sales_invoice_item": "SI-A1"},
+				{"item_code": "ITEM-A", "qty": 1.0, "rate": 100.0, "sales_invoice_item": "SI-A2"},
 			],
 			item_wise_tax_detail={"ITEM-A": [18.0, 36.0]},
 		)
 
-		_handle_partial_returns(credit_note, ["SI-A1"])
+		_handle_partial_returns(credit_note, {"SI-A1": 1})
 
+		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, 18.0)
+
+	def test_reduces_quantity_of_partially_returned_row(self):
+		"""One returned unit of a two-unit row credits one unit, amount and tax included."""
+		credit_note = self._credit_note(
+			items=[{"item_code": "ITEM-A", "qty": 2.0, "rate": 100.0, "sales_invoice_item": "SI-A"}],
+			item_wise_tax_detail={"ITEM-A": [18.0, 36.0]},
+		)
+
+		_handle_partial_returns(credit_note, {"SI-A": 1})
+
+		self.assertAlmostEqual(credit_note.items[0].qty, 1.0)
+		self.assertAlmostEqual(credit_note.items[0].amount, 100.0)
+		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, 18.0)
+
+	def test_quantity_reduction_keeps_credit_note_sign(self):
+		"""Credit note rows carry negative quantities; a partial refund stays negative."""
+		credit_note = self._credit_note(
+			items=[{"item_code": "ITEM-A", "qty": -2.0, "rate": 100.0, "sales_invoice_item": "SI-A"}],
+			item_wise_tax_detail={"ITEM-A": [18.0, 36.0]},
+		)
+
+		_handle_partial_returns(credit_note, {"SI-A": 1})
+
+		self.assertAlmostEqual(credit_note.items[0].qty, -1.0)
+		self.assertAlmostEqual(credit_note.items[0].amount, -100.0)
 		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, 18.0)
 
 	def test_survives_tax_detail_naming_an_absent_item(self):
 		"""The breakup can name an item that isn't on the credit note."""
 		credit_note = self._credit_note(
-			items=[{"item_code": "ITEM-A", "qty": 1.0, "sales_invoice_item": "SI-A"}],
+			items=[{"item_code": "ITEM-A", "qty": 1.0, "rate": 100.0, "sales_invoice_item": "SI-A"}],
 			item_wise_tax_detail={"ITEM-A": [18.0, 18.0], "ITEM-GHOST": [18.0, 18.0]},
 		)
 
-		_handle_partial_returns(credit_note, ["SI-A"])
+		_handle_partial_returns(credit_note, {"SI-A": 1})
 
 		# only the item on the document contributes tax
 		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, 18.0)
@@ -352,12 +640,12 @@ class TestPartialReturns(TestCase):
 	def test_division_by_zero_protection(self):
 		"""Prevent crash when tax breakup references items absent from credit note."""
 		credit_note = self._credit_note(
-			items=[{"item_code": "ITEM-A", "qty": 1.0, "sales_invoice_item": "SI-A"}],
+			items=[{"item_code": "ITEM-A", "qty": 1.0, "rate": 100.0, "sales_invoice_item": "SI-A"}],
 			item_wise_tax_detail={"ITEM-B": [18.0, 18.0]},  # ITEM-B not in credit note
 		)
 
 		# Should not raise division by zero
-		_handle_partial_returns(credit_note, ["SI-A"])
+		_handle_partial_returns(credit_note, {"SI-A": 1})
 
 		# Tax should be zero since no matching items
 		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, 0.0)
@@ -365,12 +653,12 @@ class TestPartialReturns(TestCase):
 	def test_skips_tax_rows_without_item_wise_detail(self):
 		"""Tax rows without an item wise breakup are left alone."""
 		credit_note = self._credit_note(
-			items=[{"item_code": "ITEM-A", "qty": 1.0, "sales_invoice_item": "SI-A"}],
+			items=[{"item_code": "ITEM-A", "qty": 1.0, "rate": 100.0, "sales_invoice_item": "SI-A"}],
 			item_wise_tax_detail=None,
 			tax_amount=50.0,
 		)
 
-		_handle_partial_returns(credit_note, ["SI-A"])
+		_handle_partial_returns(credit_note, {"SI-A": 1})
 
 		self.assertEqual(credit_note.taxes[0].tax_amount, 50.0)
 
