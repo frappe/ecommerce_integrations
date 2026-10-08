@@ -143,14 +143,16 @@ class UnicommerceSettings(SettingController):
 			return
 
 		# invoice insert rejects these items, so catch them here
-		item_details = {
-			item.name: item
-			for item in frappe.get_all(
-				"Item",
-				filters={"name": ("in", [row.item_code for row in self.charge_items])},
-				fields=["name", "is_stock_item", "disabled", "is_sales_item"],
+		charge_item_codes = [row.item_code for row in self.charge_items]
+
+		def invalid_items(**filters) -> set[str]:
+			return set(
+				frappe.get_all("Item", filters={"name": ("in", charge_item_codes), **filters}, pluck="name")
 			)
-		}
+
+		disabled_items = invalid_items(disabled=1)
+		non_sales_items = invalid_items(is_sales_item=0)
+		stock_items = invalid_items(is_stock_item=1)
 		configured = set()
 		item_tax_rates = {}
 
@@ -182,12 +184,7 @@ class UnicommerceSettings(SettingController):
 					title=_("Charge Item at Multiple Tax Rates"),
 				)
 
-			# link field validation reports missing items
-			item = item_details.get(row.item_code)
-			if not item:
-				continue
-
-			if item.disabled:
+			if row.item_code in disabled_items:
 				frappe.throw(
 					_(
 						"Row #{0}: {1} is disabled, so it cannot bill {2}. Enable it or use another item."
@@ -195,7 +192,7 @@ class UnicommerceSettings(SettingController):
 					title=_("Disabled Charge Item"),
 				)
 
-			if not item.is_sales_item:
+			if row.item_code in non_sales_items:
 				frappe.throw(
 					_(
 						"Row #{0}: {1} is not a sales item, so it cannot bill {2}. Use an item that can be sold."
@@ -203,7 +200,7 @@ class UnicommerceSettings(SettingController):
 					title=_("Non Sales Charge Item"),
 				)
 
-			if item.is_stock_item:
+			if row.item_code in stock_items:
 				frappe.throw(
 					_("Row #{0}: {1} maintains stock, so it cannot bill {2}. Use a service item.").format(
 						row.idx, get_link_to_form("Item", row.item_code), row.charge

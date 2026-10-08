@@ -370,14 +370,10 @@ def _get_invoice_for_return(order_code, returned_so_items):
 
 
 def _get_refunded_qty_by_invoice_row(invoice_name: str) -> dict[str, float]:
-	"""Quantity of each invoice row already credited by non-cancelled credit notes.
+	"""Quantity already credited on each invoice row by non-cancelled credit notes.
 
-	Aggregated in the database. On MariaDB the read also locks the matched rows:
-	the caller serializes on the invoice row lock, but this transaction's
-	snapshot predates that lock, so a plain read could miss a credit note
-	committed by a concurrent return for this invoice. Postgres forbids
-	FOR UPDATE combined with GROUP BY, so there the invoice row lock is the
-	only serialization point.
+	The sum happens in the database, so there is one entry per invoice row.
+	Rows are locked only on MariaDB; Postgres does not allow FOR UPDATE with GROUP BY.
 	"""
 
 	sales_invoice = frappe.qb.DocType("Sales Invoice")
@@ -400,8 +396,6 @@ def _get_refunded_qty_by_invoice_row(invoice_name: str) -> dict[str, float]:
 		.groupby(sales_invoice_item.sales_invoice_item)
 	)
 
-	# MariaDB REPEATABLE READ needs the locking read; Postgres forbids FOR UPDATE
-	# with GROUP BY, and its locking reads would use the stale snapshot anyway.
 	if frappe.db.db_type == "mariadb":
 		refunded_rows = refunded_rows.for_update()
 
@@ -424,15 +418,12 @@ def create_cir_credit_note(so_data, return_data, client=None):
 	# Get items from SO which are returned, map SO item -> SI item with linked rows.
 	so_item_code_map = {item.get(ORDER_ITEM_CODE_FIELD): item.name for item in so.items}
 
-	# a return can carry back fewer units than were invoiced on a sales order row
 	returned_qty_by_so_item = defaultdict(int)
 	for return_item in return_data.get("returnItems") or []:
-		so_item = so_item_code_map.get(return_item.get("saleOrderItemCode"))
-		if so_item:
+		if so_item := so_item_code_map.get(return_item.get("saleOrderItemCode")):
 			returned_qty_by_so_item[so_item] += cint(return_item.get("quantity") or 1)
-	returned_so_items = set(returned_qty_by_so_item)
 
-	invoice_name = _get_invoice_for_return(so_data["code"], returned_so_items)
+	invoice_name = _get_invoice_for_return(so_data["code"], set(returned_qty_by_so_item))
 	if not invoice_name:
 		# no invoice, or the returned rows span more than one package's invoice
 		create_unicommerce_log(
@@ -441,13 +432,8 @@ def create_cir_credit_note(so_data, return_data, client=None):
 			method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
 		)
 		return
-	# the row lock serializes returns for one invoice: a concurrent return waits
-	# until this credit note is committed, so the charge rows are refunded by
-	# exactly one of them
 	si = frappe.get_doc("Sales Invoice", invoice_name, for_update=True)
-	# charge items have no sales order row, so they don't make a full return
-	# partial. One sales order row can be billed as multiple invoice rows, so
-	# map each sales order row to every invoice row linked to it.
+
 	so_si_items_map = defaultdict(list)
 	for item in si.items:
 		if item.so_detail:

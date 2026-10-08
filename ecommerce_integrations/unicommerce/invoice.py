@@ -534,9 +534,6 @@ def _get_charge_line_items(
 				income_account = channel_config.get(CHANNEL_TAX_ACCOUNT_FIELD_MAP[tax_head])
 				charge_wise_totals[(item_code, tax_rate, income_account)] += charge
 			elif tax_head in billed_as_item or tax_rate:
-				# billed as an item at another rate, or taxed on this line: either way
-				# a tax row would lose the charge or mismatch GST, so ask for an item.
-				# an untaxed charge that is never billed as an item stays a tax row.
 				missing.add((tax_head, tax_rate))
 
 	if missing:
