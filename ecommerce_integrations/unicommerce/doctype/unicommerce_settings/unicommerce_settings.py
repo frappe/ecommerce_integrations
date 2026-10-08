@@ -6,7 +6,7 @@ import requests
 import frappe
 from frappe import _
 from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
-from frappe.utils import add_to_date, get_datetime, now_datetime
+from frappe.utils import add_to_date, flt, get_datetime, get_link_to_form, now_datetime
 
 from ecommerce_integrations.controllers.setting import (
 	ERPNextWarehouse,
@@ -16,6 +16,7 @@ from ecommerce_integrations.controllers.setting import (
 from ecommerce_integrations.unicommerce.constants import (
 	ADDRESS_JSON_FIELD,
 	CHANNEL_ID_FIELD,
+	CHARGE_TAX_HEADS_MAP,
 	CUSTOMER_CODE_FIELD,
 	FACILITY_CODE_FIELD,
 	GRN_STOCK_ENTRY_TYPE,
@@ -60,6 +61,7 @@ class UnicommerceSettings(SettingController):
 			return
 
 		self.validate_warehouse_mapping()
+		self.validate_charge_items()
 		self.validate_auto_grn_settings()
 		if not self.access_token or now_datetime() >= get_datetime(self.expires_on):
 			try:
@@ -133,6 +135,78 @@ class UnicommerceSettings(SettingController):
 			entry_type.purpose = "Material Transfer"
 			entry_type.insert()
 			entry_type.add_comment(text="Entry type used for Auto GRN on unicommerce, do not modify.")
+
+	def validate_charge_items(self):
+		"""Charge items should be known charges, unique per charge and tax rate, and items a sales invoice accepts."""
+
+		if not self.get("add_charges_as_items"):
+			return
+
+		# invoice insert rejects these items, so catch them here
+		charge_item_codes = [row.item_code for row in self.charge_items]
+
+		def invalid_items(**filters) -> set[str]:
+			return set(
+				frappe.get_all("Item", filters={"name": ("in", charge_item_codes), **filters}, pluck="name")
+			)
+
+		disabled_items = invalid_items(disabled=1)
+		non_sales_items = invalid_items(is_sales_item=0)
+		stock_items = invalid_items(is_stock_item=1)
+		configured = set()
+		item_tax_rates = {}
+
+		for row in self.charge_items:
+			tax_rate = flt(row.tax_rate)
+
+			if row.charge not in CHARGE_TAX_HEADS_MAP:
+				frappe.throw(
+					_("Row #{0}: {1} is not a supported charge. Use one of {2}.").format(
+						row.idx, row.charge, ", ".join(CHARGE_TAX_HEADS_MAP)
+					),
+					title=_("Unknown Charge"),
+				)
+
+			if (row.charge, tax_rate) in configured:
+				frappe.throw(
+					_("Row #{0}: {1} is already configured at {2}%.").format(row.idx, row.charge, tax_rate),
+					title=_("Duplicate Charge Item"),
+				)
+
+			configured.add((row.charge, tax_rate))
+
+			# tax breakup holds one rate per item
+			if item_tax_rates.setdefault(row.item_code, tax_rate) != tax_rate:
+				frappe.throw(
+					_("Row #{0}: {1} is already used at {2}%. Use a separate item for each tax rate.").format(
+						row.idx, get_link_to_form("Item", row.item_code), item_tax_rates[row.item_code]
+					),
+					title=_("Charge Item at Multiple Tax Rates"),
+				)
+
+			if row.item_code in disabled_items:
+				frappe.throw(
+					_(
+						"Row #{0}: {1} is disabled, so it cannot bill {2}. Enable it or use another item."
+					).format(row.idx, get_link_to_form("Item", row.item_code), row.charge),
+					title=_("Disabled Charge Item"),
+				)
+
+			if row.item_code in non_sales_items:
+				frappe.throw(
+					_(
+						"Row #{0}: {1} is not a sales item, so it cannot bill {2}. Use an item that can be sold."
+					).format(row.idx, get_link_to_form("Item", row.item_code), row.charge),
+					title=_("Non Sales Charge Item"),
+				)
+
+			if row.item_code in stock_items:
+				frappe.throw(
+					_("Row #{0}: {1} maintains stock, so it cannot bill {2}. Use a service item.").format(
+						row.idx, get_link_to_form("Item", row.item_code), row.charge
+					),
+					title=_("Stock Item as Charge Item"),
+				)
 
 	def validate_warehouse_mapping(self):
 		erpnext_whs = {wh_map.erpnext_warehouse for wh_map in self.warehouse_mapping}

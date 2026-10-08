@@ -3,7 +3,8 @@ from collections import defaultdict
 from datetime import date, datetime
 
 import frappe
-from frappe.utils import now_datetime
+from frappe.query_builder.functions import Abs, Sum
+from frappe.utils import cint, flt, now_datetime
 
 from erpnext.accounts.doctype.sales_invoice.sales_invoice import make_sales_return
 from erpnext.controllers.accounts_controller import update_child_qty_rate
@@ -368,6 +369,41 @@ def _get_invoice_for_return(order_code, returned_so_items):
 			return invoice_name
 
 
+def _get_refunded_qty_by_invoice_row(invoice_name: str) -> dict[str, float]:
+	"""Quantity already credited on each invoice row by non-cancelled credit notes.
+
+	The sum happens in the database, so there is one entry per invoice row.
+	Rows are locked only on MariaDB; Postgres does not allow FOR UPDATE with GROUP BY.
+	"""
+
+	sales_invoice = frappe.qb.DocType("Sales Invoice")
+	sales_invoice_item = frappe.qb.DocType("Sales Invoice Item")
+
+	refunded_rows = (
+		frappe.qb.from_(sales_invoice_item)
+		.inner_join(sales_invoice)
+		.on(sales_invoice_item.parent == sales_invoice.name)
+		.select(
+			sales_invoice_item.sales_invoice_item,
+			Abs(Sum(sales_invoice_item.qty)).as_("refunded_qty"),
+		)
+		.where(
+			(sales_invoice.return_against == invoice_name)
+			& (sales_invoice.is_return == 1)
+			& (sales_invoice.docstatus < 2)
+			& sales_invoice_item.sales_invoice_item.isnotnull()
+		)
+		.groupby(sales_invoice_item.sales_invoice_item)
+	)
+
+	if frappe.db.db_type == "mariadb":
+		refunded_rows = refunded_rows.for_update()
+
+	refunded = refunded_rows.run(as_dict=True)
+
+	return {row.sales_invoice_item: row.refunded_qty for row in refunded}
+
+
 def create_cir_credit_note(so_data, return_data, client=None):
 	sales_order_name = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: so_data["code"]})
 	if not sales_order_name:
@@ -382,10 +418,12 @@ def create_cir_credit_note(so_data, return_data, client=None):
 	# Get items from SO which are returned, map SO item -> SI item with linked rows.
 	so_item_code_map = {item.get(ORDER_ITEM_CODE_FIELD): item.name for item in so.items}
 
-	returned_so_codes = [item.get("saleOrderItemCode") for item in return_data.get("returnItems") or []]
-	returned_so_items = {so_item_code_map.get(code) for code in returned_so_codes} - {None}
+	returned_qty_by_so_item = defaultdict(int)
+	for return_item in return_data.get("returnItems") or []:
+		if so_item := so_item_code_map.get(return_item.get("saleOrderItemCode")):
+			returned_qty_by_so_item[so_item] += cint(return_item.get("quantity") or 1)
 
-	invoice_name = _get_invoice_for_return(so_data["code"], returned_so_items)
+	invoice_name = _get_invoice_for_return(so_data["code"], set(returned_qty_by_so_item))
 	if not invoice_name:
 		# no invoice, or the returned rows span more than one package's invoice
 		create_unicommerce_log(
@@ -394,8 +432,12 @@ def create_cir_credit_note(so_data, return_data, client=None):
 			method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
 		)
 		return
-	si = frappe.get_doc("Sales Invoice", invoice_name)
-	so_si_item_map = {item.so_detail: item.name for item in si.items}
+	si = frappe.get_doc("Sales Invoice", invoice_name, for_update=True)
+
+	so_si_items_map = defaultdict(list)
+	for item in si.items:
+		if item.so_detail:
+			so_si_items_map[item.so_detail].append(item)
 
 	facility_code = si.get(FACILITY_CODE_FIELD)
 
@@ -429,10 +471,39 @@ def create_cir_credit_note(so_data, return_data, client=None):
 	credit_note.set(TRACKING_CODE_FIELD, return_data.get("trackingNumber"))
 	credit_note.set(SHIPPING_PROVIDER_CODE, return_data.get("shippingProvider"))
 
-	returned_si_items = [so_si_item_map.get(so_item) for so_item in returned_so_items]
+	previously_refunded_qty = _get_refunded_qty_by_invoice_row(si.name)
 
-	if set(returned_si_items) != set(so_si_item_map.values()):
-		_handle_partial_returns(credit_note, returned_si_items)
+	# allocate the returned quantity of each sales order row across the invoice
+	# rows linked to it, in order, never crediting a unit twice
+	refunded_qty_by_row: dict[str, float] = {}
+	for so_item_name, returned_qty in returned_qty_by_so_item.items():
+		units_left = returned_qty
+		for row in so_si_items_map.get(so_item_name, ()):
+			if units_left <= 0:
+				break
+			unrefunded = row.qty - previously_refunded_qty.get(row.name, 0)
+			if unrefunded <= 0:
+				continue
+			credited = min(units_left, unrefunded)
+			refunded_qty_by_row[row.name] = credited
+			units_left -= credited
+
+	# Refund charges exactly once, on the return that makes every product row
+	# cumulatively returned in full. This keeps the result independent of return batching.
+	if all(
+		previously_refunded_qty.get(item.name, 0) + refunded_qty_by_row.get(item.name, 0) >= item.qty
+		for item in si.items
+		if item.so_detail
+	):
+		for item in si.items:
+			# charge items have no sales order row
+			if not item.so_detail and item.name not in previously_refunded_qty:
+				refunded_qty_by_row[item.name] = item.qty
+
+	# a full return credit note already carries the right quantities as copied
+	is_full_return = all(refunded_qty_by_row.get(item.name) == item.qty for item in si.items)
+	if not is_full_return:
+		_handle_partial_returns(credit_note, refunded_qty_by_row)
 
 	credit_note.save()
 
@@ -446,15 +517,27 @@ def create_cir_credit_note(so_data, return_data, client=None):
 	return credit_note
 
 
-def _handle_partial_returns(credit_note, returned_items: list[str]) -> None:
-	"""Remove non-returned items from credit note and update taxes."""
+def _handle_partial_returns(credit_note, refunded_qty_by_row: dict[str, float]) -> None:
+	"""Remove non-returned items, reduce partially returned ones, and update taxes.
+
+	Charge items are excluded until all product rows have cumulatively been
+	returned. create_cir_credit_note adds their invoice row IDs to
+	refunded_qty_by_row on the return that completes the invoice.
+	"""
 
 	item_code_to_qty_map = defaultdict(float)
 	for item in credit_note.items:
 		item_code_to_qty_map[item.item_code] += item.qty
 
-	# remove non-returned items
-	credit_note.items = [item for item in credit_note.items if item.sales_invoice_item in returned_items]
+	# remove rows that aren't returned at all
+	credit_note.items = [item for item in credit_note.items if item.sales_invoice_item in refunded_qty_by_row]
+
+	# a partially returned row is credited for the returned quantity only,
+	# keeping the sign of the credit note's rows
+	for item in credit_note.items:
+		refunded_qty = refunded_qty_by_row[item.sales_invoice_item]
+		item.qty = -refunded_qty if item.qty < 0 else refunded_qty
+		item.amount = flt(item.qty * item.rate)
 
 	returned_qty_map = defaultdict(float)
 	for item in credit_note.items:
