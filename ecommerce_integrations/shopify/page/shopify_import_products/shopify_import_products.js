@@ -54,6 +54,7 @@ shopify.ProductImporter = class {
 			label: __("Shopify Account"),
 			fieldtype: "Link",
 			options: "Shopify Account",
+			get_query: () => ({ filters: { enable_shopify: 1 } }),
 			default: this.shopifyAccount,
 			change: () => {
 				const account = this.accountField.get_value() || null;
