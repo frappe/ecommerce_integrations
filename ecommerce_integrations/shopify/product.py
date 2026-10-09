@@ -80,8 +80,7 @@ class ShopifyProduct:
 
 		if _has_variants(product_dict):
 			self.has_variants = 1
-			if self._link_existing_template(product_dict):
-				return
+			self._link_existing_template(product_dict)
 			attributes = self._create_attribute(product_dict)
 			self._create_item(product_dict, warehouse, 1, attributes)
 			self._create_item_variants(product_dict, warehouse, attributes)
@@ -90,30 +89,29 @@ class ShopifyProduct:
 			product_dict["variant_id"] = product_dict["variants"][0]["id"]
 			self._create_item(product_dict, warehouse)
 
-	def _link_existing_template(self, product_dict) -> bool:
+	def _link_existing_template(self, product_dict) -> None:
 		"""Link a product with variants to the ERPNext template another store already sells.
 
-		Matches only when every variant's SKU belongs to a variant of one and the same
-		template; a partial match creates new items rather than a half-linked product.
-		Returns true if linked.
+		Variants whose SKU is already known are linked to their existing items, provided they
+		all belong to one template; the regular sync then finds them linked and creates only
+		the remaining variants under that template. Existing links are kept, so a re-sync
+		after Shopify added a variant only adds what is missing.
 		"""
-		variants = product_dict.get("variants") or []
-		skus = [cstr(variant.get("sku")) for variant in variants]
-		if not variants or not all(skus):
-			return False
-
-		item_codes = []
-		for sku in skus:
-			item_code = frappe.db.get_value(
+		known = []
+		for variant in product_dict.get("variants") or []:
+			sku = cstr(variant.get("sku"))
+			item_code = sku and frappe.db.get_value(
 				"Ecommerce Item", {"integration": MODULE_NAME, "sku": sku}, "erpnext_item_code"
 			)
-			if not item_code:
-				return False
-			item_codes.append(item_code)
+			if item_code:
+				known.append((variant, sku, item_code))
 
-		templates = {frappe.db.get_value("Item", item_code, "variant_of") for item_code in item_codes}
+		if not known:
+			return
+
+		templates = {frappe.db.get_value("Item", item_code, "variant_of") for _, _, item_code in known}
 		if len(templates) != 1 or not next(iter(templates)):
-			return False
+			return
 		template = templates.pop()
 
 		product_id = cstr(product_dict["id"])
@@ -125,21 +123,21 @@ class ShopifyProduct:
 				"sku": sku,
 				"variant_of": template,
 			}
-			for variant, sku, item_code in zip(variants, skus, item_codes, strict=True)
+			for variant, sku, item_code in known
 		]
 		for link in links:
-			frappe.get_doc(
-				{
-					"doctype": "Ecommerce Item",
-					"integration": MODULE_NAME,
-					"integration_item_code": product_id,
-					"item_synced_on": now(),
-					**self.account_filters,
-					**link,
-				}
-			).insert()
+			link_filters = {
+				"integration": MODULE_NAME,
+				"integration_item_code": product_id,
+				"erpnext_item_code": link["erpnext_item_code"],
+				**self.account_filters,
+			}
+			if frappe.db.exists("Ecommerce Item", link_filters):
+				continue
 
-		return True
+			frappe.get_doc(
+				{"doctype": "Ecommerce Item", "item_synced_on": now(), **link_filters, **link}
+			).insert()
 
 	def _create_attribute(self, product_dict):
 		attribute = []

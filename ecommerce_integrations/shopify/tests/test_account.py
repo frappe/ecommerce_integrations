@@ -174,29 +174,55 @@ class TestSharedProducts(IntegrationTestCase):
 			"variants": [{"id": 20 + i, "sku": sku} for i, sku in enumerate(skus)],
 		}
 
+	def links(self):
+		return [
+			(link.erpnext_item_code, link.variant_id, link.has_variants)
+			for link in frappe.get_all(
+				"Ecommerce Item",
+				{"shopify_account": "second.myshopify.com", "integration_item_code": "2"},
+				["erpnext_item_code", "variant_id", "has_variants"],
+				order_by="erpnext_item_code",
+			)
+		]
+
 	def test_variants_link_to_the_template_of_the_other_store(self):
 		from ecommerce_integrations.shopify.product import ShopifyProduct
 
 		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
-		self.assertTrue(product._link_existing_template(self.product("SHARED-S", "SHARED-M")))
+		product._link_existing_template(self.product("SHARED-S", "SHARED-M"))
 
-		links = frappe.get_all(
-			"Ecommerce Item",
-			{"shopify_account": "second.myshopify.com", "integration_item_code": "2"},
-			["erpnext_item_code", "variant_id", "has_variants"],
-			order_by="erpnext_item_code",
-		)
 		self.assertEqual(
-			[(link.erpnext_item_code, link.variant_id, link.has_variants) for link in links],
-			[("SHARED-M", "21", 0), ("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)],
+			self.links(), [("SHARED-M", "21", 0), ("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)]
 		)
 
-	def test_partial_variant_match_is_not_linked(self):
+	def test_known_variants_are_linked_when_others_are_new(self):
 		from ecommerce_integrations.shopify.product import ShopifyProduct
 
 		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
-		self.assertFalse(product._link_existing_template(self.product("SHARED-S", "UNKNOWN-L")))
-		self.assertFalse(frappe.db.exists("Ecommerce Item", {"shopify_account": "second.myshopify.com"}))
+		product._link_existing_template(self.product("SHARED-S", "NEW-L"))
+
+		# the new variant is left to the regular sync, which creates it under the linked template
+		self.assertEqual(self.links(), [("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)])
+
+	def test_resync_adds_only_missing_links(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		product._link_existing_template(self.product("SHARED-S"))
+		product._link_existing_template(self.product("SHARED-S", "SHARED-M"))
+
+		self.assertEqual(
+			self.links(), [("SHARED-M", "21", 0), ("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)]
+		)
+
+	def test_variants_of_different_templates_are_not_linked(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		frappe.db.set_value("Item", "SHARED-M", "variant_of", "OTHER-TPL", update_modified=False)
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		product._link_existing_template(self.product("SHARED-S", "SHARED-M"))
+
+		self.assertEqual(self.links(), [])
 
 	def test_importer_refuses_a_disabled_account(self):
 		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (
