@@ -11,6 +11,7 @@ import frappe
 from frappe.model import table_fields
 
 from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, MODULE_NAME
+from ecommerce_integrations.shopify.utils import normalize_shop_url
 
 LEGACY_SETTING_DOCTYPE = "Shopify Setting"
 CHILD_DOCTYPES = ("Shopify Tax Account", "Shopify Warehouse Mapping", "Shopify Webhooks")
@@ -22,7 +23,7 @@ def execute():
 	frappe.reload_doc("ecommerce_integrations", "doctype", "ecommerce_integration_log")
 
 	values = get_legacy_values()
-	shopify_url = (values.get("shopify_url") or "").replace("https://", "").strip()
+	shopify_url = normalize_shop_url(values.get("shopify_url"))
 
 	if shopify_url and not frappe.db.exists(ACCOUNT_DOCTYPE, shopify_url):
 		create_account(shopify_url, values)

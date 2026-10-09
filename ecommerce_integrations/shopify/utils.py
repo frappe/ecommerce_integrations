@@ -19,6 +19,14 @@ def create_shopify_log(shopify_account=None, **kwargs):
 	return create_log(module_def=MODULE_NAME, fields=fields, **kwargs)
 
 
+def normalize_shop_url(shopify_url: str | None) -> str:
+	"""Shop domain without scheme, path or surrounding whitespace, e.g. frappe.myshopify.com."""
+	url = (shopify_url or "").strip().lower()
+	for scheme in ("https://", "http://"):
+		url = url.removeprefix(scheme)
+	return url.split("/")[0]
+
+
 def get_account_name(shopify_account) -> str | None:
 	"""Name of a Shopify Account given as document or name."""
 	if not shopify_account:
