@@ -16,10 +16,10 @@ from ecommerce_integrations.shopify.constants import (
 	SUPPLIER_ID_FIELD,
 )
 
-from .shopify_setting import setup_custom_fields
+from .shopify_account import setup_custom_fields
 
 
-class TestShopifySetting(IntegrationTestCase):
+class TestShopifyAccount(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		frappe.db.sql(
