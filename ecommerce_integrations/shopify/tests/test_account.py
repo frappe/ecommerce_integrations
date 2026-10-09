@@ -55,6 +55,30 @@ class TestShopifyAccount(IntegrationTestCase):
 		self.assertEqual(account.name, "named.myshopify.com")
 		self.assertEqual(account.shopify_url, "named.myshopify.com")
 
+	def test_shop_url_stays_the_account_name(self):
+		# webhooks are routed by the domain the account is named after, so the URL is
+		# read-only after creation, and a changed value never diverges from the name
+		self.assertTrue(frappe.get_meta(ACCOUNT_DOCTYPE).get_field("shopify_url").set_only_once)
+
+		account = make_account("fixed.myshopify.com")
+		account.shopify_url = "other.myshopify.com"
+		account.save()
+
+		self.assertEqual(account.name, "fixed.myshopify.com")
+		self.assertEqual(account.shopify_url, "fixed.myshopify.com")
+
+	def test_import_progress_is_published_per_account(self):
+		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (
+			publish,
+		)
+
+		with patch("frappe.publish_realtime") as publish_realtime:
+			publish("Syncing", shopify_account="one.myshopify.com")
+
+		self.assertEqual(
+			publish_realtime.call_args.args[0], "shopify.key.sync.all.products.one.myshopify.com"
+		)
+
 	def test_default_account_is_the_only_enabled_one(self):
 		make_account("one.myshopify.com", enabled=1)
 		make_account("disabled.myshopify.com")
