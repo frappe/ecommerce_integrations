@@ -8,21 +8,20 @@ from ecommerce_integrations.shopify.constants import (
 	FULLFILLMENT_ID_FIELD,
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	SETTING_DOCTYPE,
 )
 from ecommerce_integrations.shopify.order import get_sales_order
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, resolve_account
 from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
-def prepare_delivery_note(payload, request_id=None):
+def prepare_delivery_note(payload, request_id=None, shopify_account=None):
 	frappe.set_user("Administrator")
-	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	order = payload
 
 	try:
+		setting = resolve_account(shopify_account, request_id)
 		sales_order = get_sales_order(cstr(order["id"]))
 		if sales_order:
 			create_delivery_note(order, setting, sales_order)
@@ -50,7 +49,7 @@ def create_delivery_note(shopify_order, setting, so):
 			dn.posting_date = getdate(fulfillment.get("created_at"))
 			dn.naming_series = setting.delivery_note_series or "DN-Shopify-"
 			dn.items = get_fulfillment_items(
-				dn.items, fulfillment.get("line_items"), fulfillment.get("location_id")
+				dn.items, fulfillment.get("line_items"), setting, fulfillment.get("location_id")
 			)
 			dn.flags.ignore_mandatory = True
 			copy_item_wise_tax_details(dn, so.name)
@@ -61,13 +60,12 @@ def create_delivery_note(shopify_order, setting, so):
 				dn.add_comment(text=f"Order Note: {shopify_order.get('note')}")
 
 
-def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
+def get_fulfillment_items(dn_items, fulfillment_items, setting, location_id=None):
 	# local import to avoid circular imports
 	from ecommerce_integrations.shopify.product import get_item_code
 
 	fulfillment_items = deepcopy(fulfillment_items)
 
-	setting = frappe.get_cached_doc(SETTING_DOCTYPE)
 	wh_map = setting.get_integration_to_erpnext_wh_mapping()
 	warehouse = wh_map.get(str(location_id)) or setting.warehouse
 
@@ -77,7 +75,7 @@ def get_fulfillment_items(dn_items, fulfillment_items, location_id=None):
 		nonlocal fulfillment_items
 
 		for item in fulfillment_items:
-			if get_item_code(item) == dn_item.item_code:
+			if get_item_code(item, setting) == dn_item.item_code:
 				fulfillment_items.remove(item)
 				return item
 

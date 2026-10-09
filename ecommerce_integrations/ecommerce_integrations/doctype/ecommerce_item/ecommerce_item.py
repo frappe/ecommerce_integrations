@@ -39,6 +39,9 @@ class EcommerceItem(Document):
 
 		if self.sku:
 			unique_sku = {"integration": self.integration, "sku": self.sku}
+			# a SKU is unique per store: two Shopify stores may sell the same SKU
+			if self.get("shopify_account"):
+				unique_sku["shopify_account"] = self.shopify_account
 			filters.append(unique_sku)
 
 		for filter in filters:
@@ -56,15 +59,17 @@ def is_synced(
 	integration_item_code: str,
 	variant_id: str | None = None,
 	sku: str | None = None,
+	filters: dict | None = None,
 ) -> bool:
 	"""Check if item is synced from integration.
 
 	sku is optional. Use SKU alone with integration to check if it's synced.
+	filters narrows the lookup further, e.g. to one store of an integration.
 	E.g.
 	        integration: shopify,
 	        integration_item_code: TSHIRT
 	"""
-	filter = {"integration": integration, "integration_item_code": integration_item_code}
+	filter = {"integration": integration, "integration_item_code": integration_item_code, **(filters or {})}
 
 	if variant_id:
 		filter.update({"variant_id": variant_id})
@@ -72,12 +77,12 @@ def is_synced(
 	item_exists = bool(frappe.db.exists("Ecommerce Item", filter))
 
 	if not item_exists and sku:
-		return _is_sku_synced(integration, sku)
+		return _is_sku_synced(integration, sku, filters)
 	return item_exists
 
 
-def _is_sku_synced(integration: str, sku: str) -> bool:
-	filter = {"integration": integration, "sku": sku}
+def _is_sku_synced(integration: str, sku: str, filters: dict | None = None) -> bool:
+	filter = {"integration": integration, "sku": sku, **(filters or {})}
 	return bool(frappe.db.exists("Ecommerce Item", filter))
 
 
@@ -86,8 +91,9 @@ def get_erpnext_item_code(
 	integration_item_code: str,
 	variant_id: str | None = None,
 	has_variants: int | None = 0,
+	filters: dict | None = None,
 ) -> str | None:
-	filters = {"integration": integration, "integration_item_code": integration_item_code}
+	filters = {"integration": integration, "integration_item_code": integration_item_code, **(filters or {})}
 	if variant_id:
 		filters.update({"variant_id": variant_id})
 	elif has_variants:
@@ -102,6 +108,7 @@ def get_erpnext_item(
 	variant_id: str | None = None,
 	sku: str | None = None,
 	has_variants: int | None = 0,
+	filters: dict | None = None,
 ):
 	"""Get ERPNext item for specified ecommerce_item.
 
@@ -111,11 +118,17 @@ def get_erpnext_item(
 	item_code = None
 	if sku:
 		item_code = frappe.db.get_value(
-			"Ecommerce Item", {"sku": sku, "integration": integration}, fieldname="erpnext_item_code"
+			"Ecommerce Item",
+			{"sku": sku, "integration": integration, **(filters or {})},
+			fieldname="erpnext_item_code",
 		)
 	if not item_code:
 		item_code = get_erpnext_item_code(
-			integration, integration_item_code, variant_id=variant_id, has_variants=has_variants
+			integration,
+			integration_item_code,
+			variant_id=variant_id,
+			has_variants=has_variants,
+			filters=filters,
 		)
 
 	if item_code:
@@ -130,16 +143,19 @@ def create_ecommerce_item(
 	sku: str | None = None,
 	variant_of: str | None = None,
 	has_variants=0,
+	ecommerce_item_fields: dict | None = None,
 ) -> None:
 	"""Create Item in erpnext and link it with Ecommerce item doctype.
 
 	item_dict contains fields necessary to populate Item doctype.
+	ecommerce_item_fields are set on the Ecommerce Item and also narrow the "already synced"
+	check, e.g. to one store of an integration.
 	"""
 
 	# SKU not allowed for template items
 	sku = cstr(sku) if not has_variants else None
 
-	if is_synced(integration, integration_item_code, variant_id, sku):
+	if is_synced(integration, integration_item_code, variant_id, sku, filters=ecommerce_item_fields):
 		return
 
 	# crete default item
@@ -167,6 +183,7 @@ def create_ecommerce_item(
 			"variant_of": cstr(variant_of),
 			"sku": sku,
 			"item_synced_on": now(),
+			**(ecommerce_item_fields or {}),
 		}
 	)
 

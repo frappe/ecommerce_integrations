@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "integration",
+  "shopify_account",
   "erpnext_item_code",
   "integration_item_code",
   "sku",
@@ -38,6 +39,14 @@
    "read_only": 1,
    "reqd": 1,
    "search_index": 1
+  },
+  {
+   "depends_on": "eval:doc.integration == \"shopify\"",
+   "fieldname": "shopify_account",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Shopify Account",
+   "options": "Shopify Account"
   },
   {
    "fieldname": "integration_item_code",
@@ -95,7 +104,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-15 11:36:04.733227",
+ "modified": "2026-10-09 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",

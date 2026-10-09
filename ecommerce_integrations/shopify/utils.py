@@ -8,18 +8,74 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 	create_log,
 )
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	MODULE_NAME,
 	OLD_SETTINGS_DOCTYPE,
-	SETTING_DOCTYPE,
 )
 
 
-def create_shopify_log(**kwargs):
-	return create_log(module_def=MODULE_NAME, **kwargs)
+def create_shopify_log(shopify_account=None, **kwargs):
+	fields = {"shopify_account": get_account_name(shopify_account)} if shopify_account else None
+	return create_log(module_def=MODULE_NAME, fields=fields, **kwargs)
 
 
-def migrate_from_old_connector(payload=None, request_id=None):
+def get_account_name(shopify_account) -> str | None:
+	"""Name of a Shopify Account given as document or name."""
+	if not shopify_account:
+		return None
+	return shopify_account if isinstance(shopify_account, str) else shopify_account.name
+
+
+def get_shopify_account(shopify_account):
+	"""Shopify Account document, given as document or name."""
+	if isinstance(shopify_account, str):
+		return frappe.get_doc(ACCOUNT_DOCTYPE, shopify_account)
+	return shopify_account
+
+
+def get_enabled_accounts() -> list[str]:
+	return frappe.get_all(ACCOUNT_DOCTYPE, filters={"enable_shopify": 1}, pluck="name", order_by="creation")
+
+
+def get_default_account():
+	"""The account to act with when the caller does not name one.
+
+	This is only unambiguous while exactly one account is enabled, which is the state an
+	existing single-store site migrates into.
+	"""
+	accounts = get_enabled_accounts()
+	if not accounts:
+		frappe.throw(_("No Shopify Account is enabled."))
+	if len(accounts) > 1:
+		frappe.throw(
+			_("More than one Shopify Account is enabled, so the account has to be specified: {0}").format(
+				", ".join(accounts)
+			)
+		)
+	return frappe.get_doc(ACCOUNT_DOCTYPE, accounts[0])
+
+
+def resolve_account(shopify_account=None, request_id=None):
+	"""Account a background job works for.
+
+	In order of preference: the account passed to the job, the account recorded on the
+	job's integration log (so a retry from the log keeps its store), the only enabled account.
+	"""
+	if shopify_account:
+		return get_shopify_account(shopify_account)
+
+	if request_id:
+		logged_account = frappe.db.get_value("Ecommerce Integration Log", request_id, "shopify_account")
+		if logged_account:
+			return frappe.get_doc(ACCOUNT_DOCTYPE, logged_account)
+
+	return get_default_account()
+
+
+def migrate_from_old_connector(payload=None, request_id=None, shopify_account=None):
 	"""This function is called to migrate data from old connector to new connector."""
+
+	shopify_account = resolve_account(shopify_account, request_id)
 
 	if request_id:
 		log = frappe.get_doc("Ecommerce Integration Log", request_id)
@@ -27,6 +83,7 @@ def migrate_from_old_connector(payload=None, request_id=None):
 		log = create_shopify_log(
 			status="Queued",
 			method="ecommerce_integrations.shopify.utils.migrate_from_old_connector",
+			shopify_account=shopify_account,
 		)
 
 	frappe.enqueue(
@@ -34,6 +91,7 @@ def migrate_from_old_connector(payload=None, request_id=None):
 		queue="long",
 		is_async=True,
 		log=log,
+		shopify_account=get_account_name(shopify_account),
 	)
 
 
@@ -50,7 +108,7 @@ def ensure_old_connector_is_disabled():
 		frappe.throw(msg)
 
 
-def _migrate_items_to_ecommerce_item(log):
+def _migrate_items_to_ecommerce_item(log, shopify_account):
 	shopify_fields = ["shopify_product_id", "shopify_variant_id"]
 
 	for field in shopify_fields:
@@ -60,14 +118,14 @@ def _migrate_items_to_ecommerce_item(log):
 	items = _get_items_to_migrate()
 
 	try:
-		_create_ecommerce_items(items)
+		_create_ecommerce_items(items, shopify_account)
 	except Exception:
 		log.status = "Error"
 		log.traceback = frappe.get_traceback()
 		log.save()
 		return
 
-	frappe.db.set_value(SETTING_DOCTYPE, SETTING_DOCTYPE, "is_old_data_migrated", 1)
+	frappe.db.set_value(ACCOUNT_DOCTYPE, shopify_account, "is_old_data_migrated", 1)
 	log.status = "Success"
 	log.save()
 
@@ -86,7 +144,7 @@ def _get_items_to_migrate() -> list[_dict]:
 	return old_data or []
 
 
-def _create_ecommerce_items(items: list[_dict]) -> None:
+def _create_ecommerce_items(items: list[_dict], shopify_account: str) -> None:
 	for item in items:
 		if not all((item.erpnext_item_code, item.shopify_product_id, item.shopify_variant_id)):
 			continue
@@ -100,6 +158,7 @@ def _create_ecommerce_items(items: list[_dict]) -> None:
 				"variant_id": item.shopify_variant_id,
 				"variant_of": item.variant_of,
 				"has_variants": item.has_variants,
+				"shopify_account": shopify_account,
 			}
 		)
 		ecommerce_item.save()

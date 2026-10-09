@@ -15,12 +15,15 @@ shopify.ProductImporter = class {
 	constructor(wrapper) {
 		this.wrapper = $(wrapper).find(".layout-main-section");
 		this.page = wrapper.page;
+		this.shopifyAccount = frappe.route_options?.shopify_account || null;
+		frappe.route_options = null;
 		this.init();
 		this.syncRunning = false;
 	}
 
 	init() {
 		frappe.run_serially([
+			() => this.addAccountField(),
 			() => this.addMarkup(),
 			() => this.fetchProductCount(),
 			() => this.addTable(),
@@ -42,6 +45,28 @@ shopify.ProductImporter = class {
 			this.toggleSyncAllButton();
 			this.logSync();
 		}
+	}
+
+	addAccountField() {
+		// without a selection the server uses the only enabled account
+		this.accountField = this.page.add_field({
+			fieldname: "shopify_account",
+			label: __("Shopify Account"),
+			fieldtype: "Link",
+			options: "Shopify Account",
+			default: this.shopifyAccount,
+			change: () => {
+				const account = this.accountField.get_value() || null;
+				if (account === this.shopifyAccount) return;
+				this.shopifyAccount = account;
+				this.reload();
+			},
+		});
+	}
+
+	async reload() {
+		this.fetchProductCount();
+		this.shopifyProductTable.refresh(await this.fetchShopifyProducts());
 	}
 
 	addMarkup() {
@@ -105,6 +130,7 @@ shopify.ProductImporter = class {
 				message: { erpnextCount, shopifyCount, syncedCount },
 			} = await frappe.call({
 				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_product_count",
+				args: { shopify_account: this.shopifyAccount },
 			});
 
 			this.wrapper.find("#count-products-shopify").text(shopifyCount);
@@ -165,7 +191,7 @@ shopify.ProductImporter = class {
 				message: { products, nextUrl, prevUrl },
 			} = await frappe.call({
 				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.get_shopify_products",
-				args: { from_ },
+				args: { from_, shopify_account: this.shopifyAccount },
 			});
 			this.nextUrl = nextUrl;
 			this.prevUrl = prevUrl;
@@ -259,7 +285,7 @@ shopify.ProductImporter = class {
 	async syncProduct(product) {
 		const { message: status } = await frappe.call({
 			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.sync_product",
-			args: { product },
+			args: { product, shopify_account: this.shopifyAccount },
 		});
 
 		if (status) this.fetchProductCount();
@@ -270,7 +296,7 @@ shopify.ProductImporter = class {
 	async resyncProduct(product) {
 		const { message: status } = await frappe.call({
 			method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.resync_product",
-			args: { product },
+			args: { product, shopify_account: this.shopifyAccount },
 		});
 
 		if (status) this.fetchProductCount();
@@ -303,6 +329,7 @@ shopify.ProductImporter = class {
 		} else {
 			frappe.call({
 				method: "ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products.import_all_products",
+				args: { shopify_account: this.shopifyAccount },
 			});
 		}
 
