@@ -46,6 +46,12 @@ class TestShopifyAccount(IntegrationTestCase):
 	def tearDown(self):
 		frappe.db.rollback()
 
+	def test_account_is_named_after_the_shop_domain(self):
+		account = make_account(" HTTPS://Named.myshopify.com/admin ")
+
+		self.assertEqual(account.name, "named.myshopify.com")
+		self.assertEqual(account.shopify_url, "named.myshopify.com")
+
 	def test_default_account_is_the_only_enabled_one(self):
 		make_account("one.myshopify.com", enabled=1)
 		make_account("disabled.myshopify.com")

@@ -29,6 +29,7 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import (
 	ensure_old_connector_is_disabled,
 	migrate_from_old_connector,
+	normalize_shop_url,
 )
 
 
@@ -36,11 +37,17 @@ class ShopifyAccount(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
+	def autoname(self):
+		# the account is named after the shop domain Shopify sends with its webhooks,
+		# so normalise the URL before it becomes the name
+		self.shopify_url = normalize_shop_url(self.shopify_url)
+		self.name = self.shopify_url
+
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = self.shopify_url.replace("https://", "")
+			self.shopify_url = normalize_shop_url(self.shopify_url)
 		self._validate_single_enabled_account()
 		self._handle_webhooks()
 		self._validate_warehouse_links()
