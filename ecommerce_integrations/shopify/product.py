@@ -2,7 +2,7 @@ from typing import Optional
 
 import frappe
 from frappe import _, msgprint
-from frappe.utils import cint, cstr
+from frappe.utils import cint, cstr, now
 from frappe.utils.nestedset import get_root_of
 from shopify.resources import Product, Variant
 
@@ -80,6 +80,8 @@ class ShopifyProduct:
 
 		if _has_variants(product_dict):
 			self.has_variants = 1
+			if self._link_existing_template(product_dict):
+				return
 			attributes = self._create_attribute(product_dict)
 			self._create_item(product_dict, warehouse, 1, attributes)
 			self._create_item_variants(product_dict, warehouse, attributes)
@@ -87,6 +89,57 @@ class ShopifyProduct:
 		else:
 			product_dict["variant_id"] = product_dict["variants"][0]["id"]
 			self._create_item(product_dict, warehouse)
+
+	def _link_existing_template(self, product_dict) -> bool:
+		"""Link a product with variants to the ERPNext template another store already sells.
+
+		Matches only when every variant's SKU belongs to a variant of one and the same
+		template; a partial match creates new items rather than a half-linked product.
+		Returns true if linked.
+		"""
+		variants = product_dict.get("variants") or []
+		skus = [cstr(variant.get("sku")) for variant in variants]
+		if not variants or not all(skus):
+			return False
+
+		item_codes = []
+		for sku in skus:
+			item_code = frappe.db.get_value(
+				"Ecommerce Item", {"integration": MODULE_NAME, "sku": sku}, "erpnext_item_code"
+			)
+			if not item_code:
+				return False
+			item_codes.append(item_code)
+
+		templates = {frappe.db.get_value("Item", item_code, "variant_of") for item_code in item_codes}
+		if len(templates) != 1 or not next(iter(templates)):
+			return False
+		template = templates.pop()
+
+		product_id = cstr(product_dict["id"])
+		links = [{"erpnext_item_code": template, "has_variants": 1}]
+		links += [
+			{
+				"erpnext_item_code": item_code,
+				"variant_id": cstr(variant["id"]),
+				"sku": sku,
+				"variant_of": template,
+			}
+			for variant, sku, item_code in zip(variants, skus, item_codes, strict=True)
+		]
+		for link in links:
+			frappe.get_doc(
+				{
+					"doctype": "Ecommerce Item",
+					"integration": MODULE_NAME,
+					"integration_item_code": product_id,
+					"item_synced_on": now(),
+					**self.account_filters,
+					**link,
+				}
+			).insert()
+
+		return True
 
 	def _create_attribute(self, product_dict):
 		attribute = []

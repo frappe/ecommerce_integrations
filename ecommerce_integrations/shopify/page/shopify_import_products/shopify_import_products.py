@@ -1,12 +1,13 @@
 from time import process_time
 
 import frappe
+from frappe import _
 from frappe.exceptions import UniqueValidationError
 from shopify.resources import Product
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
-from ecommerce_integrations.shopify.constants import MODULE_NAME
+from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, MODULE_NAME
 from ecommerce_integrations.shopify.product import ShopifyProduct
 from ecommerce_integrations.shopify.utils import get_account_name, get_default_account
 
@@ -17,7 +18,12 @@ REALTIME_KEY = "shopify.key.sync.all.products"
 
 def _get_account(shopify_account=None) -> str:
 	"""Account the page works on: the one picked on the page, else the only enabled one."""
-	return shopify_account or get_default_account().name
+	if not shopify_account:
+		return get_default_account().name
+
+	if not frappe.db.get_value(ACCOUNT_DOCTYPE, shopify_account, "enable_shopify"):
+		frappe.throw(_("Shopify Account {0} is not enabled.").format(frappe.bold(shopify_account)))
+	return shopify_account
 
 
 @frappe.whitelist()

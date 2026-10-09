@@ -117,6 +117,90 @@ class TestShopifyAccount(IntegrationTestCase):
 		)
 
 
+class TestSharedProducts(IntegrationTestCase):
+	"""A product another store already sells is linked to the existing ERPNext items."""
+
+	def setUp(self):
+		for name in frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name"):
+			frappe.db.set_value(ACCOUNT_DOCTYPE, name, "enable_shopify", 0)
+		make_account("first.myshopify.com")
+		make_account("second.myshopify.com", enabled=1)
+
+		# template with two variants, sold by the first store
+		for item_code, variant_of in (
+			("SHARED-TPL", None),
+			("SHARED-S", "SHARED-TPL"),
+			("SHARED-M", "SHARED-TPL"),
+		):
+			frappe.get_doc(
+				{
+					"doctype": "Item",
+					"name": item_code,
+					"item_code": item_code,
+					"item_name": item_code,
+					"item_group": "All Item Groups",
+					"stock_uom": "Nos",
+					"has_variants": 0 if variant_of else 1,
+					"variant_of": variant_of,
+				}
+			).db_insert()
+		for item_code, variant_id in (("SHARED-S", "11"), ("SHARED-M", "12")):
+			frappe.get_doc(
+				{
+					"doctype": "Ecommerce Item",
+					"integration": MODULE_NAME,
+					"shopify_account": "first.myshopify.com",
+					"erpnext_item_code": item_code,
+					"integration_item_code": "1",
+					"variant_id": variant_id,
+					"sku": item_code,
+					"variant_of": "SHARED-TPL",
+				}
+			).insert()
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def product(self, *skus):
+		return {
+			"id": 2,
+			"options": [{"name": "Size", "values": ["S", "M"]}],
+			"variants": [{"id": 20 + i, "sku": sku} for i, sku in enumerate(skus)],
+		}
+
+	def test_variants_link_to_the_template_of_the_other_store(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		self.assertTrue(product._link_existing_template(self.product("SHARED-S", "SHARED-M")))
+
+		links = frappe.get_all(
+			"Ecommerce Item",
+			{"shopify_account": "second.myshopify.com", "integration_item_code": "2"},
+			["erpnext_item_code", "variant_id", "has_variants"],
+			order_by="erpnext_item_code",
+		)
+		self.assertEqual(
+			[(link.erpnext_item_code, link.variant_id, link.has_variants) for link in links],
+			[("SHARED-M", "21", 0), ("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)],
+		)
+
+	def test_partial_variant_match_is_not_linked(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		self.assertFalse(product._link_existing_template(self.product("SHARED-S", "UNKNOWN-L")))
+		self.assertFalse(frappe.db.exists("Ecommerce Item", {"shopify_account": "second.myshopify.com"}))
+
+	def test_importer_refuses_a_disabled_account(self):
+		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (
+			_get_account,
+		)
+
+		self.assertEqual(_get_account("second.myshopify.com"), "second.myshopify.com")
+		self.assertRaises(frappe.ValidationError, _get_account, "first.myshopify.com")
+
+
 class TestWebhookAccount(IntegrationTestCase):
 	def setUp(self):
 		for name in frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name"):
