@@ -11,6 +11,7 @@ from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	API_VERSION,
 	EVENT_MAPPER,
 	WEBHOOK_EVENTS,
@@ -20,6 +21,7 @@ from ecommerce_integrations.shopify.utils import (
 	get_account_name,
 	get_default_account,
 	get_shopify_account,
+	normalize_shop_url,
 )
 
 
@@ -127,16 +129,23 @@ def store_request_data() -> None:
 
 
 def _get_webhook_account(req):
-	"""The account an incoming webhook belongs to.
+	"""The account an incoming webhook belongs to, by the shop domain Shopify sends with it.
 
-	Webhooks are accepted while exactly one account is enabled; with more, the request
-	cannot be attributed to a store and is logged and refused.
+	A request from a shop without an enabled account is logged and refused.
 	"""
-	try:
-		return get_default_account()
-	except frappe.ValidationError as e:
-		create_shopify_log(status="Error", request_data=req.data, exception=e)
-		raise
+	shop_domain = normalize_shop_url(req.headers.get("X-Shopify-Shop-Domain"))
+	account = (
+		frappe.db.get_value(ACCOUNT_DOCTYPE, {"name": shop_domain, "enable_shopify": 1}, "name")
+		if shop_domain
+		else None
+	)
+
+	if not account:
+		message = _("No enabled Shopify Account for shop {0}").format(shop_domain or _("(no shop domain)"))
+		create_shopify_log(status="Error", request_data=req.data, message=message)
+		frappe.throw(message)
+
+	return frappe.get_doc(ACCOUNT_DOCTYPE, account)
 
 
 def process_request(data, event, shopify_account=None):

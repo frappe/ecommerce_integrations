@@ -1,6 +1,9 @@
 # Copyright (c) 2026, Frappe and Contributors
 # See LICENSE
 
+import base64
+import hashlib
+import hmac
 from unittest.mock import patch
 
 import frappe
@@ -63,10 +66,28 @@ class TestShopifyAccount(IntegrationTestCase):
 
 		self.assertRaises(frappe.ValidationError, get_default_account)
 
-	def test_only_one_account_can_be_enabled(self):
+	def test_several_accounts_can_be_enabled(self):
 		make_account("one.myshopify.com", enabled=1)
+		make_account("two.myshopify.com", enabled=1)
 
-		self.assertRaises(frappe.ValidationError, make_account, "two.myshopify.com", enabled=1)
+		# without a named account, nothing can pick one of them
+		self.assertRaises(frappe.ValidationError, get_default_account)
+
+	def test_disabling_does_not_depend_on_shopify_accepting_the_credentials(self):
+		account = make_account("one.myshopify.com", enabled=1)
+		account.append("webhooks", {"webhook_id": "1", "method": "orders/create"})
+		account.db_update_all()
+		account.reload()
+
+		account.enable_shopify = 0
+		with patch(
+			"ecommerce_integrations.shopify.connection.unregister_webhooks",
+			side_effect=Exception("401 Unauthorized"),
+		):
+			account.save()
+
+		self.assertEqual(account.enable_shopify, 0)
+		self.assertFalse(account.webhooks)
 
 	def test_resolve_account_prefers_the_account_of_the_log(self):
 		make_account("one.myshopify.com", enabled=1)
@@ -207,33 +228,57 @@ class TestSharedProducts(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, _get_account, "first.myshopify.com")
 
 
-class TestWebhookAccount(IntegrationTestCase):
+class TestWebhookRouting(IntegrationTestCase):
+	"""Incoming webhooks are attributed to the account of the shop that sent them."""
+
 	def setUp(self):
 		for name in frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name"):
 			frappe.db.set_value(ACCOUNT_DOCTYPE, name, "enable_shopify", 0)
+		make_account("one.myshopify.com", enabled=1, shared_secret="secret-one")
+		make_account("two.myshopify.com", enabled=1, shared_secret="secret-two")
+		make_account("retired.myshopify.com", shared_secret="secret-retired")
 
 	def tearDown(self):
 		frappe.db.rollback()
 
-	def test_webhook_is_refused_while_its_store_is_ambiguous(self):
+	def request(self, shop_domain, secret=None, body=b'{"id": 1}'):
+		headers = {"X-Shopify-Shop-Domain": shop_domain} if shop_domain else {}
+		if secret:
+			digest = hmac.new(secret.encode(), body, hashlib.sha256).digest()
+			headers["X-Shopify-Hmac-Sha256"] = base64.b64encode(digest).decode()
+		return frappe._dict(data=body, headers=headers)
+
+	def test_webhook_is_attributed_to_the_sending_shop(self):
 		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		make_account("one.myshopify.com", enabled=1)
-		# a second enabled account cannot be saved, but data may still end up that way
-		make_account("two.myshopify.com")
-		frappe.db.set_value(ACCOUNT_DOCTYPE, "two.myshopify.com", "enable_shopify", 1)
+		self.assertEqual(_get_webhook_account(self.request("two.myshopify.com")).name, "two.myshopify.com")
+		self.assertEqual(_get_webhook_account(self.request("One.MyShopify.com")).name, "one.myshopify.com")
 
-		request = frappe._dict(data=b"{}")
-		with patch("ecommerce_integrations.shopify.connection.create_shopify_log") as log:
-			self.assertRaises(frappe.ValidationError, _get_webhook_account, request)
-			log.assert_called_once()
-
-	def test_webhook_belongs_to_the_only_enabled_account(self):
+	def test_webhook_from_an_unknown_or_disabled_shop_is_refused(self):
 		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		make_account("one.myshopify.com", enabled=1)
+		for shop_domain in ("unknown.myshopify.com", "retired.myshopify.com", None):
+			with patch("ecommerce_integrations.shopify.connection.create_shopify_log") as log:
+				self.assertRaises(frappe.ValidationError, _get_webhook_account, self.request(shop_domain))
+				log.assert_called_once()
 
-		self.assertEqual(_get_webhook_account(frappe._dict(data=b"{}")).name, "one.myshopify.com")
+	def test_signature_is_checked_with_the_secret_of_the_sending_shop(self):
+		from ecommerce_integrations.shopify.connection import _validate_request
+
+		account = frappe.get_doc(ACCOUNT_DOCTYPE, "two.myshopify.com")
+
+		valid = self.request("two.myshopify.com", secret="secret-two")
+		_validate_request(valid, valid.headers["X-Shopify-Hmac-Sha256"], account)
+
+		signed_by_other_shop = self.request("two.myshopify.com", secret="secret-one")
+		with patch("ecommerce_integrations.shopify.connection.create_shopify_log"):
+			self.assertRaises(
+				frappe.ValidationError,
+				_validate_request,
+				signed_by_other_shop,
+				signed_by_other_shop.headers["X-Shopify-Hmac-Sha256"],
+				account,
+			)
 
 
 class TestSettingMigration(IntegrationTestCase):
