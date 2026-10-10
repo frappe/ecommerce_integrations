@@ -215,6 +215,24 @@ class TestSharedProducts(IntegrationTestCase):
 			self.links(), [("SHARED-M", "21", 0), ("SHARED-S", "20", 0), ("SHARED-TPL", None, 1)]
 		)
 
+	def test_product_keeps_its_own_template(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		frappe.get_doc(
+			{
+				"doctype": "Ecommerce Item",
+				"integration": MODULE_NAME,
+				"shopify_account": "second.myshopify.com",
+				"erpnext_item_code": "SHARED-S",
+				"integration_item_code": "2",
+				"has_variants": 1,
+			}
+		).insert()
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		product._link_existing_template(self.product("SHARED-M"))
+
+		self.assertEqual(self.links(), [("SHARED-S", None, 1)])
+
 	def test_variants_of_different_templates_are_not_linked(self):
 		from ecommerce_integrations.shopify.product import ShopifyProduct
 
@@ -266,6 +284,12 @@ class TestSettingMigration(IntegrationTestCase):
 	"""The patch turns the configuration of the removed single into an account."""
 
 	legacy = migration.LEGACY_SETTING_DOCTYPE
+
+	def setUp(self):
+		# reload_doc may run DDL, which commits the test transaction in MariaDB
+		reload_doc = patch.object(migration.frappe, "reload_doc")
+		reload_doc.start()
+		self.addCleanup(reload_doc.stop)
 
 	def tearDown(self):
 		frappe.db.rollback()
