@@ -14,6 +14,7 @@ from ecommerce_integrations.shopify.constants import (
 	ACCOUNT_DOCTYPE,
 	API_VERSION,
 	EVENT_MAPPER,
+	OAUTH_AUTH_METHOD,
 	WEBHOOK_EVENTS,
 )
 from ecommerce_integrations.shopify.utils import (
@@ -56,8 +57,24 @@ def shopify_session(shopify_account):
 		return
 
 	setting = get_shopify_account(shopify_account)
-	with Session.temp(setting.shopify_url, API_VERSION, setting.get_password("password")):
+	with Session.temp(setting.shopify_url, API_VERSION, get_access_token(setting)):
 		yield
+
+
+def get_access_token(setting) -> str:
+	"""Admin API token of an account: the static token, or a current OAuth token."""
+	if setting.authentication_method == OAUTH_AUTH_METHOD:
+		from ecommerce_integrations.shopify.oauth import get_valid_access_token
+
+		return get_valid_access_token(setting)
+	return setting.get_password("password")
+
+
+def get_webhook_secret(setting) -> str:
+	"""Secret Shopify signs the account's webhooks with: an OAuth app signs with its client secret."""
+	if setting.authentication_method == OAUTH_AUTH_METHOD:
+		return setting.get_password("client_secret", raise_exception=False)
+	return setting.shared_secret
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -167,7 +184,12 @@ def process_request(data, event, shopify_account=None):
 
 
 def _validate_request(req, hmac_header, shopify_account):
-	secret_key = get_shopify_account(shopify_account).shared_secret
+	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
+	if not secret_key:
+		create_shopify_log(
+			status="Error", request_data=req.data, message=_("Webhook secret is not configured")
+		)
+		frappe.throw(_("Unverified Webhook Data"))
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 

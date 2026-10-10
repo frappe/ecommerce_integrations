@@ -20,10 +20,12 @@ from ecommerce_integrations.shopify.constants import (
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
 	ITEM_SELLING_RATE_FIELD,
+	OAUTH_AUTH_METHOD,
 	ORDER_ID_FIELD,
 	ORDER_ITEM_DISCOUNT_FIELD,
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
+	STATIC_TOKEN_AUTH_METHOD,
 	SUPPLIER_ID_FIELD,
 )
 from ecommerce_integrations.shopify.utils import (
@@ -48,6 +50,7 @@ class ShopifyAccount(SettingController):
 
 		if self.shopify_url:
 			self.shopify_url = normalize_shop_url(self.shopify_url)
+		self._validate_credentials()
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -59,9 +62,42 @@ class ShopifyAccount(SettingController):
 		if self.is_enabled() and not self.is_old_data_migrated:
 			migrate_from_old_connector(shopify_account=self.name)
 
+	def _validate_credentials(self):
+		if not self.authentication_method:
+			self.authentication_method = STATIC_TOKEN_AUTH_METHOD
+
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method == OAUTH_AUTH_METHOD:
+			required = {"client_id": _("Client ID"), "client_secret": _("Client Secret")}
+		else:
+			required = {
+				"password": _("Password / Access Token"),
+				"shared_secret": _("Shared secret / API Secret"),
+			}
+
+		for fieldname, label in required.items():
+			value = self.get(fieldname)
+			if (
+				self.meta.get_field(fieldname).fieldtype == "Password"
+				and value
+				and self.is_dummy_password(value)
+			):
+				continue
+			if not value:
+				frappe.throw(_("{0} is required for {1}.").format(label, self.authentication_method))
+
+		if self.authentication_method == OAUTH_AUTH_METHOD and (
+			self.is_new() or self.has_value_changed("client_id") or self.has_value_changed("client_secret")
+		):
+			# new or changed credentials: get a token now, so wrong ones fail on save
+			self.token_expires_at = None
+			connection.get_access_token(self)
+
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
-			new_webhooks = connection.register_webhooks(self.shopify_url, self.get_password("password"))
+			new_webhooks = connection.register_webhooks(self.shopify_url, connection.get_access_token(self))
 
 			if not new_webhooks:
 				msg = _("Failed to register webhooks with Shopify.") + "<br>"
@@ -77,7 +113,7 @@ class ShopifyAccount(SettingController):
 			# unregister (e.g. 401 for a wrong token) must not refuse the save.
 			if self.webhooks:
 				try:
-					connection.unregister_webhooks(self.shopify_url, self.get_password("password"))
+					connection.unregister_webhooks(self.shopify_url, connection.get_access_token(self))
 				except Exception:
 					frappe.log_error(title=_("Shopify: unregistering webhooks failed"))
 					frappe.msgprint(

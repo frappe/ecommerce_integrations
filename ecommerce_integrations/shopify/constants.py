@@ -4,6 +4,9 @@
 
 MODULE_NAME = "shopify"
 ACCOUNT_DOCTYPE = "Shopify Account"
+
+STATIC_TOKEN_AUTH_METHOD = "Static Token"
+OAUTH_AUTH_METHOD = "OAuth 2.0 Client Credentials"
 OLD_SETTINGS_DOCTYPE = "Shopify Settings"
 
 API_VERSION = "2024-01"

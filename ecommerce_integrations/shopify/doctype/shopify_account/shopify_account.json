@@ -9,10 +9,15 @@
   "enable_shopify",
   "column_break_4",
   "section_break_2",
+  "authentication_method",
   "shopify_url",
   "column_break_3",
   "password",
   "shared_secret",
+  "client_id",
+  "client_secret",
+  "oauth_access_token",
+  "token_expires_at",
   "section_break_4",
   "webhooks",
   "customer_settings_section",
@@ -80,6 +85,14 @@
    "label": "Authentication Details"
   },
   {
+   "default": "Static Token",
+   "description": "Static Token for custom apps with an Admin API access token; OAuth 2.0 Client Credentials for apps created in the Shopify Dev Dashboard.",
+   "fieldname": "authentication_method",
+   "fieldtype": "Select",
+   "label": "Authentication Method",
+   "options": "Static Token\nOAuth 2.0 Client Credentials"
+  },
+  {
    "description": "eg: frappe.myshopify.com. Cannot be changed later: another shop needs its own account.",
    "fieldname": "shopify_url",
    "fieldtype": "Data",
@@ -94,16 +107,49 @@
    "fieldtype": "Column Break"
   },
   {
+   "depends_on": "eval:doc.authentication_method!='OAuth 2.0 Client Credentials'",
    "fieldname": "password",
    "fieldtype": "Password",
    "label": "Password / Access Token",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method!='OAuth 2.0 Client Credentials'"
   },
   {
+   "depends_on": "eval:doc.authentication_method!='OAuth 2.0 Client Credentials'",
    "fieldname": "shared_secret",
    "fieldtype": "Data",
    "label": "Shared secret / API Secret",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method!='OAuth 2.0 Client Credentials'"
+  },
+  {
+   "depends_on": "eval:doc.authentication_method=='OAuth 2.0 Client Credentials'",
+   "description": "Client ID of the app in the Shopify Dev Dashboard",
+   "fieldname": "client_id",
+   "fieldtype": "Data",
+   "label": "Client ID",
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='OAuth 2.0 Client Credentials'"
+  },
+  {
+   "depends_on": "eval:doc.authentication_method=='OAuth 2.0 Client Credentials'",
+   "description": "Also used to verify the webhooks Shopify sends for this app",
+   "fieldname": "client_secret",
+   "fieldtype": "Password",
+   "label": "Client Secret",
+   "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='OAuth 2.0 Client Credentials'"
+  },
+  {
+   "fieldname": "oauth_access_token",
+   "fieldtype": "Password",
+   "hidden": 1,
+   "label": "OAuth Access Token",
+   "read_only": 1
+  },
+  {
+   "fieldname": "token_expires_at",
+   "fieldtype": "Datetime",
+   "hidden": 1,
+   "label": "Token Expires At",
+   "no_copy": 1,
+   "read_only": 1
   },
   {
    "collapsible": 1,
@@ -399,7 +445,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-10-09 15:00:00.000000",
+ "modified": "2026-10-10 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Account",
