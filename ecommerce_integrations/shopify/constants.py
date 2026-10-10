@@ -3,7 +3,7 @@
 
 
 MODULE_NAME = "shopify"
-SETTING_DOCTYPE = "Shopify Setting"
+ACCOUNT_DOCTYPE = "Shopify Account"
 OLD_SETTINGS_DOCTYPE = "Shopify Settings"
 
 API_VERSION = "2024-01"

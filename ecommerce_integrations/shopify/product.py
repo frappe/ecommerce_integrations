@@ -2,21 +2,27 @@ from typing import Optional
 
 import frappe
 from frappe import _, msgprint
-from frappe.utils import cint, cstr
+from frappe.utils import cint, cstr, now
 from frappe.utils.nestedset import get_root_of
 from shopify.resources import Product, Variant
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
-from ecommerce_integrations.shopify.connection import temp_shopify_session
+from ecommerce_integrations.shopify.connection import shopify_session
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	ITEM_SELLING_RATE_FIELD,
 	MODULE_NAME,
-	SETTING_DOCTYPE,
 	SHOPIFY_VARIANTS_ATTR_LIST,
 	SUPPLIER_ID_FIELD,
 	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_account_name,
+	get_default_account,
+	get_enabled_accounts,
+	get_shopify_account,
+)
 
 
 class ShopifyProduct:
@@ -26,15 +32,20 @@ class ShopifyProduct:
 		variant_id: str | None = None,
 		sku: str | None = None,
 		has_variants: int | None = 0,
+		shopify_account=None,
 	):
 		self.product_id = str(product_id)
 		self.variant_id = str(variant_id) if variant_id else None
 		self.sku = str(sku) if sku else None
 		self.has_variants = has_variants
-		self.setting = frappe.get_doc(SETTING_DOCTYPE)
+		self.setting = get_shopify_account(shopify_account) if shopify_account else get_default_account()
 
 		if not self.setting.is_enabled():
 			frappe.throw(_("Can not create Shopify product when integration is disabled."))
+
+	@property
+	def account_filters(self) -> dict:
+		return {"shopify_account": self.setting.name}
 
 	def is_synced(self) -> bool:
 		return ecommerce_item.is_synced(
@@ -42,6 +53,7 @@ class ShopifyProduct:
 			integration_item_code=self.product_id,
 			variant_id=self.variant_id,
 			sku=self.sku,
+			filters=self.account_filters,
 		)
 
 	def get_erpnext_item(self):
@@ -51,14 +63,15 @@ class ShopifyProduct:
 			variant_id=self.variant_id,
 			sku=self.sku,
 			has_variants=self.has_variants,
+			filters=self.account_filters,
 		)
 
-	@temp_shopify_session
 	def sync_product(self):
 		if not self.is_synced():
-			shopify_product = Product.find(self.product_id)
-			product_dict = shopify_product.to_dict()
-			self._make_item(product_dict)
+			with shopify_session(self.setting):
+				shopify_product = Product.find(self.product_id)
+				product_dict = shopify_product.to_dict()
+				self._make_item(product_dict)
 
 	def _make_item(self, product_dict):
 		_add_weight_details(product_dict)
@@ -67,6 +80,7 @@ class ShopifyProduct:
 
 		if _has_variants(product_dict):
 			self.has_variants = 1
+			self._link_existing_template(product_dict)
 			attributes = self._create_attribute(product_dict)
 			self._create_item(product_dict, warehouse, 1, attributes)
 			self._create_item_variants(product_dict, warehouse, attributes)
@@ -74,6 +88,71 @@ class ShopifyProduct:
 		else:
 			product_dict["variant_id"] = product_dict["variants"][0]["id"]
 			self._create_item(product_dict, warehouse)
+
+	def _link_existing_template(self, product_dict) -> None:
+		"""Link a product with variants to the ERPNext template another store already sells.
+
+		Variants whose SKU is already known are linked to their existing items, provided they
+		all belong to one template and the product has no other template in this store; the regular sync then finds them linked and creates only
+		the remaining variants under that template. Existing links are kept, so a re-sync
+		after Shopify added a variant only adds what is missing.
+		"""
+		known = []
+		for variant in product_dict.get("variants") or []:
+			sku = cstr(variant.get("sku"))
+			item_code = sku and frappe.db.get_value(
+				"Ecommerce Item", {"integration": MODULE_NAME, "sku": sku}, "erpnext_item_code"
+			)
+			if item_code:
+				known.append((variant, sku, item_code))
+
+		if not known:
+			return
+
+		templates = {frappe.db.get_value("Item", item_code, "variant_of") for _, _, item_code in known}
+		if len(templates) != 1 or not next(iter(templates)):
+			return
+		template = templates.pop()
+
+		product_id = cstr(product_dict["id"])
+		# a product keeps the template it already has in this store; linking another
+		# one would leave it with two templates and new variants under either
+		current_template = frappe.db.get_value(
+			"Ecommerce Item",
+			{
+				"integration": MODULE_NAME,
+				"integration_item_code": product_id,
+				"has_variants": 1,
+				**self.account_filters,
+			},
+			"erpnext_item_code",
+		)
+		if current_template and current_template != template:
+			return
+
+		links = [{"erpnext_item_code": template, "has_variants": 1}]
+		links += [
+			{
+				"erpnext_item_code": item_code,
+				"variant_id": cstr(variant["id"]),
+				"sku": sku,
+				"variant_of": template,
+			}
+			for variant, sku, item_code in known
+		]
+		for link in links:
+			link_filters = {
+				"integration": MODULE_NAME,
+				"integration_item_code": product_id,
+				"erpnext_item_code": link["erpnext_item_code"],
+				**self.account_filters,
+			}
+			if frappe.db.exists("Ecommerce Item", link_filters):
+				continue
+
+			frappe.get_doc(
+				{"doctype": "Ecommerce Item", "item_synced_on": now(), **link_filters, **link}
+			).insert()
 
 	def _create_attribute(self, product_dict):
 		attribute = []
@@ -144,7 +223,12 @@ class ShopifyProduct:
 		sku = item_dict["sku"]
 
 		if not _match_sku_and_link_item(
-			item_dict, integration_item_code, variant_id, variant_of=variant_of, has_variant=has_variant
+			item_dict,
+			integration_item_code,
+			variant_id,
+			self.setting.name,
+			variant_of=variant_of,
+			has_variant=has_variant,
 		):
 			ecommerce_item.create_ecommerce_item(
 				MODULE_NAME,
@@ -154,11 +238,15 @@ class ShopifyProduct:
 				sku=sku,
 				variant_of=variant_of,
 				has_variants=has_variant,
+				ecommerce_item_fields=self.account_filters,
 			)
 
 	def _create_item_variants(self, product_dict, warehouse, attributes):
 		template_item = ecommerce_item.get_erpnext_item(
-			MODULE_NAME, integration_item_code=product_dict.get("id"), has_variants=1
+			MODULE_NAME,
+			integration_item_code=product_dict.get("id"),
+			has_variants=1,
+			filters=self.account_filters,
 		)
 
 		if template_item:
@@ -271,8 +359,13 @@ def _get_item_image(product_dict):
 	return None
 
 
-def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None, has_variant=False) -> bool:
+def _match_sku_and_link_item(
+	item_dict, product_id, variant_id, shopify_account, variant_of=None, has_variant=False
+) -> bool:
 	"""Tries to match new item with existing item using Shopify SKU == item_code.
+
+	An item another store already sells under the same SKU matches as well, so a product
+	offered in two stores maps to one ERPNext item.
 
 	Returns true if matched and linked.
 	"""
@@ -280,13 +373,16 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 	if not sku or variant_of or has_variant:
 		return False
 
-	item_name = frappe.db.get_value("Item", {"item_code": sku})
+	item_name = frappe.db.get_value("Item", {"item_code": sku}) or frappe.db.get_value(
+		"Ecommerce Item", {"integration": MODULE_NAME, "sku": sku}, "erpnext_item_code"
+	)
 	if item_name:
 		try:
 			ecommerce_item = frappe.get_doc(
 				{
 					"doctype": "Ecommerce Item",
 					"integration": MODULE_NAME,
+					"shopify_account": shopify_account,
 					"erpnext_item_code": item_name,
 					"integration_item_code": product_id,
 					"has_variants": 0,
@@ -301,48 +397,45 @@ def _match_sku_and_link_item(item_dict, product_id, variant_id, variant_of=None,
 			return False
 
 
-def create_items_if_not_exist(order):
+def create_items_if_not_exist(order, shopify_account):
 	"""Using shopify order, sync all items that are not already synced."""
 	for item in order.get("line_items", []):
 		product_id = item["product_id"]
 		variant_id = item.get("variant_id")
 		sku = item.get("sku")
-		product = ShopifyProduct(product_id, variant_id=variant_id, sku=sku)
+		product = ShopifyProduct(product_id, variant_id=variant_id, sku=sku, shopify_account=shopify_account)
 
 		if not product.is_synced():
 			product.sync_product()
 
 
-def get_item_code(shopify_item):
+def get_item_code(shopify_item, shopify_account=None):
 	"""Get item code using shopify_item dict.
 
-	Item should contain both product_id and variant_id."""
+	Item should contain both product_id and variant_id.
+	With shopify_account, only items linked to that store are considered."""
 
+	account = get_account_name(shopify_account)
 	item = ecommerce_item.get_erpnext_item(
 		integration=MODULE_NAME,
 		integration_item_code=shopify_item.get("product_id"),
 		variant_id=shopify_item.get("variant_id"),
 		sku=shopify_item.get("sku"),
+		filters={"shopify_account": account} if account else None,
 	)
 	if item:
 		return item.item_code
 
 
-@temp_shopify_session
 def upload_erpnext_item(doc, method=None):
 	"""This hook is called when inserting new or updating existing `Item`.
 
-	New items are pushed to shopify and changes to existing items are
-	updated depending on what is configured in "Shopify Setting" doctype.
+	New items are pushed to every enabled Shopify Account that uploads ERPNext items, and
+	changes to existing items are updated depending on what each account configures.
 	"""
-	template_item = item = doc  # alias for readability
+	item = doc
 	# a new item recieved from ecommerce_integrations is being inserted
 	if item.flags.from_integration:
-		return
-
-	setting = frappe.get_doc(SETTING_DOCTYPE)
-
-	if not setting.is_enabled() or not setting.upload_erpnext_items:
 		return
 
 	if frappe.flags.in_import:
@@ -351,11 +444,21 @@ def upload_erpnext_item(doc, method=None):
 	if item.has_variants:
 		return
 
+	for account in get_enabled_accounts():
+		setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+		if setting.upload_erpnext_items:
+			with shopify_session(setting):
+				_upload_erpnext_item(item, setting)
+
+
+def _upload_erpnext_item(item, setting):
+	template_item = item
+
 	if len(item.attributes) > 3:
 		msgprint(_("Template items/Items with 4 or more attributes can not be uploaded to Shopify."))
 		return
 
-	if doc.variant_of and not setting.upload_variants_as_items:
+	if item.variant_of and not setting.upload_variants_as_items:
 		msgprint(_("Enable variant sync in setting to upload item to Shopify."))
 		return
 
@@ -364,7 +467,11 @@ def upload_erpnext_item(doc, method=None):
 
 	product_id = frappe.db.get_value(
 		"Ecommerce Item",
-		{"erpnext_item_code": template_item.name, "integration": MODULE_NAME},
+		{
+			"erpnext_item_code": template_item.name,
+			"integration": MODULE_NAME,
+			"shopify_account": setting.name,
+		},
 		"integration_item_code",
 	)
 	is_new_product = not bool(product_id)
@@ -420,6 +527,7 @@ def upload_erpnext_item(doc, method=None):
 						"doctype": "Ecommerce Item",
 						"erpnext_item_code": d.name,
 						"integration": MODULE_NAME,
+						"shopify_account": setting.name,
 						"integration_item_code": str(product.id),
 						"variant_id": "" if d.has_variants else str(product.variants[0].id),
 						"sku": "" if d.has_variants else str(product.variants[0].sku),
@@ -429,7 +537,7 @@ def upload_erpnext_item(doc, method=None):
 				)
 				ecom_item.insert()
 
-		write_upload_log(status=is_successful, product=product, item=item)
+		write_upload_log(status=is_successful, product=product, item=item, shopify_account=setting)
 	elif setting.update_shopify_item_on_update:
 		product = Product.find(product_id)
 		if product:
@@ -464,15 +572,23 @@ def upload_erpnext_item(doc, method=None):
 
 			is_successful = product.save()
 			if is_successful and item.variant_of:
-				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
+				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes, setting.name)
 
-			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+			write_upload_log(
+				status=is_successful, product=product, item=item, action="Updated", shopify_account=setting
+			)
 
 
-def map_erpnext_variant_to_shopify_variant(shopify_product: Product, erpnext_item, variant_attributes):
+def map_erpnext_variant_to_shopify_variant(
+	shopify_product: Product, erpnext_item, variant_attributes, shopify_account
+):
 	variant_product_id = frappe.db.get_value(
 		"Ecommerce Item",
-		{"erpnext_item_code": erpnext_item.name, "integration": MODULE_NAME},
+		{
+			"erpnext_item_code": erpnext_item.name,
+			"integration": MODULE_NAME,
+			"shopify_account": shopify_account,
+		},
 		"integration_item_code",
 	)
 	if not variant_product_id:
@@ -489,6 +605,7 @@ def map_erpnext_variant_to_shopify_variant(shopify_product: Product, erpnext_ite
 							"doctype": "Ecommerce Item",
 							"erpnext_item_code": erpnext_item.name,
 							"integration": MODULE_NAME,
+							"shopify_account": shopify_account,
 							"integration_item_code": str(shopify_product.id),
 							"variant_id": variant_product_id,
 							"sku": str(variant.sku),
@@ -549,7 +666,7 @@ def update_default_variant_properties(
 		default_variant.sku = sku
 
 
-def write_upload_log(status: bool, product: Product, item, action="Created") -> None:
+def write_upload_log(status: bool, product: Product, item, action="Created", shopify_account=None) -> None:
 	if not status:
 		msg = _("Failed to upload item to Shopify") + "<br>"
 		msg += _("Shopify reported errors:") + " " + ", ".join(product.errors.full_messages())
@@ -560,6 +677,7 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 			request_data=product.to_dict(),
 			message=msg,
 			method="upload_erpnext_item",
+			shopify_account=shopify_account,
 		)
 	else:
 		create_shopify_log(
@@ -567,4 +685,5 @@ def write_upload_log(status: bool, product: Product, item, action="Created") -> 
 			request_data=product.to_dict(),
 			message=f"{action} Item: {item.name}, shopify product: {product.id}",
 			method="upload_erpnext_item",
+			shopify_account=shopify_account,
 		)

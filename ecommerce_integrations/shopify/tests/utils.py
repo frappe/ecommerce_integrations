@@ -9,7 +9,9 @@ from frappe.tests import IntegrationTestCase
 from pyactiveresource.activeresource import ActiveResource
 from pyactiveresource.testing import http_fake
 
-from ecommerce_integrations.shopify.constants import API_VERSION, SETTING_DOCTYPE
+from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, API_VERSION
+
+TEST_SHOPIFY_URL = "frappetest.myshopify.com"
 
 # Following code is adapted from Shopify python api under MIT license with minor changes.
 
@@ -41,16 +43,24 @@ class TestCase(IntegrationTestCase):
 		# Call parent first to auto-generate standard test records like _Test Company
 		super().setUpClass()
 
-		# Now setup Shopify settings with test data
+		# Now setup a Shopify Account with test data, as the only enabled account
 		with patch(
-			"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.ShopifySetting._handle_webhooks"
+			"ecommerce_integrations.shopify.doctype.shopify_account.shopify_account.ShopifyAccount._handle_webhooks"
 		):
-			setting = frappe.get_doc(SETTING_DOCTYPE)
+			for account in frappe.get_all(
+				ACCOUNT_DOCTYPE, {"enable_shopify": 1, "name": ("!=", TEST_SHOPIFY_URL)}
+			):
+				frappe.db.set_value(ACCOUNT_DOCTYPE, account.name, "enable_shopify", 0)
+
+			if frappe.db.exists(ACCOUNT_DOCTYPE, TEST_SHOPIFY_URL):
+				setting = frappe.get_doc(ACCOUNT_DOCTYPE, TEST_SHOPIFY_URL)
+			else:
+				setting = frappe.new_doc(ACCOUNT_DOCTYPE)
 
 			setting.update(
 				{
 					"enable_shopify": 1,
-					"shopify_url": "frappetest.myshopify.com",
+					"shopify_url": TEST_SHOPIFY_URL,
 					"password": "supersecret",
 					"shared_secret": "supersecret",
 					"default_customer": "_Test Customer",
@@ -68,7 +78,6 @@ class TestCase(IntegrationTestCase):
 					"upload_erpnext_items": 1,
 					"update_shopify_item_on_update": 1,
 					"update_erpnext_stock_levels_to_shopify": 1,
-					"doctype": "Shopify Setting",
 					"shopify_warehouse_mapping": [
 						{
 							"shopify_location_id": "62279942297",
@@ -83,6 +92,7 @@ class TestCase(IntegrationTestCase):
 					],
 				}
 			).save(ignore_permissions=True)
+			cls.shopify_account = setting.name
 
 		# A new Item's item_defaults.default_warehouse is auto-filled from the frappe GLOBAL
 		# default warehouse, which the standard erpnext test companies set to a foreign company's
