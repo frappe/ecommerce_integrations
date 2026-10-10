@@ -3,6 +3,7 @@ import functools
 import hashlib
 import hmac
 import json
+from contextlib import contextmanager
 
 import frappe
 from frappe import _
@@ -12,14 +13,22 @@ from shopify.session import Session
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
 	EVENT_MAPPER,
-	SETTING_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_account_name,
+	get_default_account,
+	get_shopify_account,
+)
 
 
 def temp_shopify_session(func):
-	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
+	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns.
+
+	The session belongs to the account passed as the `shopify_account` keyword argument
+	(document or name), or to the only enabled account when the caller passes none.
+	"""
 
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
@@ -27,14 +36,26 @@ def temp_shopify_session(func):
 		if frappe.flags.in_test:
 			return func(*args, **kwargs)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
+		account = kwargs.get("shopify_account")
+		setting = get_shopify_account(account) if account else get_default_account()
 		if setting.is_enabled():
-			auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
-
-			with Session.temp(*auth_details):
+			with shopify_session(setting):
 				return func(*args, **kwargs)
 
 	return wrapper
+
+
+@contextmanager
+def shopify_session(shopify_account):
+	"""Temporary Shopify API session for one account, for code that holds the account itself."""
+	# no auth in testing
+	if frappe.flags.in_test:
+		yield
+		return
+
+	setting = get_shopify_account(shopify_account)
+	with Session.temp(setting.shopify_url, API_VERSION, setting.get_password("password")):
+		yield
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -96,17 +117,31 @@ def store_request_data() -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
 
-		_validate_request(frappe.request, hmac_header)
+		shopify_account = _get_webhook_account(frappe.request)
+		_validate_request(frappe.request, hmac_header, shopify_account)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
-		process_request(data, event)
+		process_request(data, event, shopify_account)
 
 
-def process_request(data, event):
+def _get_webhook_account(req):
+	"""The account an incoming webhook belongs to.
+
+	Webhooks are accepted while exactly one account is enabled; with more, the request
+	cannot be attributed to a store and is logged and refused.
+	"""
+	try:
+		return get_default_account()
+	except frappe.ValidationError as e:
+		create_shopify_log(status="Error", request_data=req.data, exception=e)
+		raise
+
+
+def process_request(data, event, shopify_account=None):
 	# create log
-	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account)
 
 	# enqueue backround job
 	frappe.enqueue(
@@ -114,13 +149,16 @@ def process_request(data, event):
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": data, "request_id": log.name},
+		**{
+			"payload": data,
+			"request_id": log.name,
+			"shopify_account": get_account_name(shopify_account),
+		},
 	)
 
 
-def _validate_request(req, hmac_header):
-	settings = frappe.get_doc(SETTING_DOCTYPE)
-	secret_key = settings.shared_secret
+def _validate_request(req, hmac_header, shopify_account):
+	secret_key = get_shopify_account(shopify_account).shared_secret
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 

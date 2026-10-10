@@ -7,6 +7,7 @@
  "field_order": [
   "title",
   "integration",
+  "shopify_account",
   "status",
   "method",
   "message",
@@ -29,6 +30,15 @@
    "in_standard_filter": 1,
    "label": "Integration",
    "options": "Module Def"
+  },
+  {
+   "depends_on": "eval:doc.integration == \"shopify\"",
+   "fieldname": "shopify_account",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Shopify Account",
+   "options": "Shopify Account",
+   "read_only": 1
   },
   {
    "default": "Queued",
@@ -70,7 +80,7 @@
  ],
  "in_create": 1,
  "links": [],
- "modified": "2021-05-28 16:06:49.008875",
+ "modified": "2026-10-09 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Integration Log",
