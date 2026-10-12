@@ -92,6 +92,27 @@ class TestShopifyOAuth(IntegrationTestCase):
 		post.assert_called_once()
 		self.assertEqual(get_decrypted_password(ACCOUNT_DOCTYPE, SHOP, "oauth_access_token"), "token-2")
 
+	def test_credentials_changed_while_disabled_get_a_new_token_on_enable(self):
+		self.make_oauth_account()
+		with patch(f"{ACCOUNT_MODULE}.setup_custom_fields"):
+			account = frappe.get_doc(ACCOUNT_DOCTYPE, SHOP)
+			account.enable_shopify = 0
+			account.save()
+
+			account.client_secret = "secret-of-the-new-app"
+			account.save()
+			self.assertFalse(account.token_expires_at)
+
+			account.enable_shopify = 1
+			with (
+				patch(f"{ACCOUNT_MODULE}.ShopifyAccount._handle_webhooks"),
+				patch("requests.post", return_value=token_response("token-of-the-new-app")) as post,
+			):
+				account.save()
+
+		self.assertEqual(post.call_args.kwargs["data"]["client_secret"], "secret-of-the-new-app")
+		self.assertEqual(get_access_token(frappe.get_doc(ACCOUNT_DOCTYPE, SHOP)), "token-of-the-new-app")
+
 	def test_rejected_credentials_fail_the_save_and_hide_the_secret(self):
 		rejected = requests.exceptions.HTTPError(
 			response=error_response({"error": "invalid_client", "error_description": "Client unknown"})

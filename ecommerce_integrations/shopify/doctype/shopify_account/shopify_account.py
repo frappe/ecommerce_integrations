@@ -66,6 +66,15 @@ class ShopifyAccount(SettingController):
 		if not self.authentication_method:
 			self.authentication_method = STATIC_TOKEN_AUTH_METHOD
 
+		credentials_changed = self.is_new() or any(
+			self.has_value_changed(fieldname)
+			for fieldname in ("authentication_method", "client_id", "client_secret")
+		)
+		if credentials_changed:
+			# a token issued for the previous credentials must not be used again, also when
+			# they were changed while the account is disabled
+			self.token_expires_at = None
+
 		if not self.is_enabled():
 			return
 
@@ -89,10 +98,9 @@ class ShopifyAccount(SettingController):
 				frappe.throw(_("{0} is required for {1}.").format(label, self.authentication_method))
 
 		if self.authentication_method == OAUTH_AUTH_METHOD and (
-			self.is_new() or self.has_value_changed("client_id") or self.has_value_changed("client_secret")
+			credentials_changed or self.has_value_changed("enable_shopify")
 		):
-			# new or changed credentials: get a token now, so wrong ones fail on save
-			self.token_expires_at = None
+			# new credentials or a (re-)enabled account: get a token now, so wrong ones fail on save
 			connection.get_access_token(self)
 
 	def _handle_webhooks(self):
