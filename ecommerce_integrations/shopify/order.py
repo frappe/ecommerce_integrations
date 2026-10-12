@@ -413,8 +413,19 @@ def cancel_order(payload, request_id=None, shopify_account=None):
 
 def sync_old_orders():
 	for account in get_enabled_accounts():
-		if cint(frappe.db.get_value(ACCOUNT_DOCTYPE, account, "sync_old_orders")):
+		if not cint(frappe.db.get_value(ACCOUNT_DOCTYPE, account, "sync_old_orders")):
+			continue
+		# a store that fails (e.g. rejected credentials) must not hold up the others
+		try:
 			_sync_old_orders(shopify_account=account)
+		except Exception as e:
+			create_shopify_log(
+				status="Error",
+				method="ecommerce_integrations.shopify.order.sync_old_orders",
+				exception=e,
+				shopify_account=account,
+				make_new=True,
+			)
 
 
 @temp_shopify_session
