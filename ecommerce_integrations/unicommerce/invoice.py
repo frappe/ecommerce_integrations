@@ -41,9 +41,9 @@ from ecommerce_integrations.unicommerce.utils import (
 	create_unicommerce_log,
 	get_unicommerce_date,
 	remove_non_alphanumeric_chars,
+	set_item_wise_tax_details,
 	strip_pdf_javascript,
 )
-from ecommerce_integrations.utils.taxation import set_item_wise_tax_details
 
 JsonDict = dict[str, Any]
 SOCode = NewType("SOCode", str)
