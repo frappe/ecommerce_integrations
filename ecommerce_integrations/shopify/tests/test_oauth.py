@@ -123,12 +123,17 @@ class TestShopifyOAuth(IntegrationTestCase):
 		with (
 			patch("requests.post", return_value=response),
 			patch("time.sleep"),
-			patch("ecommerce_integrations.shopify.oauth.create_shopify_log") as log,
+			patch("ecommerce_integrations.shopify.utils.create_shopify_log") as shopify_log,
+			patch.object(frappe, "log_error") as log_error,
 		):
 			self.assertRaises(frappe.ValidationError, self.make_oauth_account_without_token_mock)
 
-		self.assertEqual(log.call_args.kwargs["request_data"]["client_secret"], "REDACTED")
-		self.assertEqual(log.call_args.kwargs["exception"], "Client unknown")
+		# logged without committing the caller's transaction, and without the secret
+		shopify_log.assert_not_called()
+		logged = json.loads(log_error.call_args.kwargs["message"])
+		self.assertEqual(logged["request"]["client_secret"], "REDACTED")
+		self.assertEqual(logged["error"], "Client unknown")
+		self.assertNotIn("wrong-secret", log_error.call_args.kwargs["message"])
 
 	def make_oauth_account_without_token_mock(self):
 		with (

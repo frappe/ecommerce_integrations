@@ -9,6 +9,7 @@ expires after about 24 hours. The token is stored encrypted on the account and r
 shortly before it expires.
 """
 
+import json
 import time
 from datetime import timedelta
 
@@ -19,7 +20,7 @@ from frappe.utils import get_datetime, get_datetime_str, now_datetime
 from frappe.utils.password import set_encrypted_password
 
 from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, OAUTH_AUTH_METHOD
-from ecommerce_integrations.shopify.utils import create_shopify_log, normalize_shop_url
+from ecommerce_integrations.shopify.utils import normalize_shop_url
 
 # renew this long before the token expires, so a request never starts with a stale token
 EXPIRY_BUFFER = timedelta(minutes=5)
@@ -51,13 +52,19 @@ def generate_oauth_token(shopify_url: str, client_id: str, client_secret: str) -
 			except ValueError:
 				error_message = e.response.text or error_message
 
-		create_shopify_log(
-			status="Error",
-			method="ecommerce_integrations.shopify.oauth.generate_oauth_token",
-			message=_("Failed to generate OAuth token"),
-			exception=error_message,
-			request_data={**payload, "client_secret": "REDACTED"},
-			response_data=error_response,
+		# Not create_shopify_log: it commits, and a token can be requested inside another
+		# document's transaction, e.g. while an Item is uploaded on save.
+		frappe.log_error(
+			title=_("Shopify: OAuth token request for {0} failed").format(shopify_url),
+			message=json.dumps(
+				{
+					"error": error_message,
+					"request": {**payload, "client_secret": "REDACTED"},
+					"response": error_response,
+				},
+				indent=1,
+				default=str,
+			),
 		)
 		frappe.throw(
 			_("Failed to generate OAuth token: {0}").format(error_message),
