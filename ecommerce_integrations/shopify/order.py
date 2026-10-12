@@ -421,7 +421,8 @@ def sync_old_orders():
 		except Exception as e:
 			create_shopify_log(
 				status="Error",
-				method="ecommerce_integrations.shopify.order.sync_old_orders",
+				# a short name: the log has no payload to retry, and the job runs again hourly
+				method="sync_old_orders",
 				exception=e,
 				shopify_account=account,
 				make_new=True,
