@@ -6,6 +6,7 @@ from unittest.mock import patch
 import frappe
 import responses
 from erpnext.stock.doctype.stock_entry.stock_entry_utils import make_stock_entry
+from frappe.test_runner import make_test_records
 from frappe.utils.pdf import pdf_contains_js
 from pypdf import PdfReader, PdfWriter
 from pypdf.generic import ArrayObject, DictionaryObject, FloatObject, NameObject, TextStringObject
@@ -13,15 +14,24 @@ from pypdf.generic import ArrayObject, DictionaryObject, FloatObject, NameObject
 from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
+	IS_CHARGE_ROW_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
 	ORDER_DISPLAY_CODE_FIELD,
 	ORDER_INVOICE_STATUS_FIELD,
+	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
-from ecommerce_integrations.unicommerce.invoice import bulk_generate_invoices, create_sales_invoice
+from ecommerce_integrations.unicommerce.invoice import (
+	_get_charge_items,
+	_get_charge_line_items,
+	_select_package_allocation,
+	bulk_generate_invoices,
+	create_sales_invoice,
+)
 from ecommerce_integrations.unicommerce.order import create_order, get_taxes
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
+from ecommerce_integrations.unicommerce.tests.utils import line_item_with_charges
 from ecommerce_integrations.unicommerce.utils import strip_pdf_javascript
 
 
@@ -29,6 +39,7 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
+		make_test_records("Unicommerce Channel")
 
 	def test_get_tax_lines(self):
 		invoice = self.load_fixture("invoice-SDU0010")["invoice"]
@@ -40,6 +51,140 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 		expected_tax = sum(item["totalTax"] for item in invoice["invoiceItems"])
 
 		self.assertAlmostEqual(created_tax, expected_tax)
+
+	def test_get_charge_line_items(self):
+		"""Charges are billed as one item per tax rate."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		charge_items = {
+			("cash_on_delivery_charges", 18.0): "COD-CHARGES-18",
+			("cash_on_delivery_charges", 5.0): "COD-CHARGES-5",
+		}
+
+		line_items = [
+			line_item_with_charges(cod_charge=40.0),
+			line_item_with_charges(cod_charge=35.0),
+			line_item_with_charges(cod_charge=25.0, tax_rate=5.0),
+		]
+
+		charge_lines = _get_charge_line_items(line_items, "Main - _TC", charge_items, channel_config)
+		charge_by_item = {line["item_code"]: line for line in charge_lines}
+
+		self.assertEqual(len(charge_lines), 2)
+		self.assertEqual(charge_by_item["COD-CHARGES-18"]["rate"], 75.0)
+		self.assertEqual(charge_by_item["COD-CHARGES-5"]["rate"], 25.0)
+
+		for charge_line in charge_lines:
+			self.assertEqual(charge_line["qty"], 1)
+			self.assertEqual(charge_line["income_account"], channel_config.cod_account)
+			self.assertNotIn("warehouse", charge_line)
+			# the mark lets returns recognize the row even after settings change
+			self.assertEqual(charge_line[IS_CHARGE_ROW_FIELD], 1)
+
+	def test_shipping_charge_aliases_create_one_item_line(self):
+		"""Both Unicommerce shipping fields consolidate into the configured item."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=0.0)
+		line_item["shippingCharges"] = 20.0
+		line_item["shippingMethodCharges"] = 30.0
+		charge_items = {
+			("shipping_charges", 18.0): "SHIPPING-CHARGES-18",
+			("shipping_method_charges", 18.0): "SHIPPING-CHARGES-18",
+		}
+
+		charge_lines = _get_charge_line_items([line_item], "Main - _TC", charge_items, channel_config)
+
+		self.assertEqual(len(charge_lines), 1)
+		self.assertEqual(charge_lines[0]["item_code"], "SHIPPING-CHARGES-18")
+		self.assertEqual(charge_lines[0]["rate"], 50.0)
+		self.assertEqual(charge_lines[0]["income_account"], channel_config.fnf_account)
+
+	def test_get_charge_line_items_of_unconfigured_rate(self):
+		"""Invoice is refused for a charge at a tax rate with no charge item."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0, tax_rate=5.0)
+
+		self.assertRaises(
+			frappe.ValidationError,
+			_get_charge_line_items,
+			[line_item],
+			"Main - _TC",
+			{("cash_on_delivery_charges", 18.0): "COD-CHARGES"},
+			channel_config,
+		)
+
+	def test_get_charge_line_items_of_unconfigured_charge(self):
+		"""Invoice is refused for a taxed charge with no charge item."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0)
+		line_item["giftWrapCharges"] = 20.0
+
+		self.assertRaises(
+			frappe.ValidationError,
+			_get_charge_line_items,
+			[line_item],
+			"Main - _TC",
+			{("cash_on_delivery_charges", 18.0): "COD-CHARGES"},
+			channel_config,
+		)
+
+	def test_get_charge_line_items_keeps_untaxed_charges_as_tax_rows(self):
+		"""Untaxed charge with no charge item stays a tax row."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0, tax_rate=0.0)
+		line_item["giftWrapCharges"] = 20.0
+
+		charge_lines = _get_charge_line_items(
+			[line_item], "Main - _TC", {("cash_on_delivery_charges", 0.0): "COD-CHARGES"}, channel_config
+		)
+
+		self.assertEqual(
+			[(line["item_code"], line["rate"]) for line in charge_lines], [("COD-CHARGES", 100.0)]
+		)
+
+	def test_get_charge_line_items_when_charges_are_not_billed_as_items(self):
+		"""No charge lines when charges are not billed as items."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = line_item_with_charges(cod_charge=100.0)
+		line_item["giftWrapCharges"] = 20.0
+
+		self.assertEqual(_get_charge_line_items([line_item], "Main - _TC", {}, channel_config), [])
+
+	def test_get_charge_line_items_without_charges(self):
+		"""No charge lines when there are no charges."""
+		channel_config = frappe.get_doc("Unicommerce Channel", "RAINFOREST")
+		line_item = self.load_fixture("invoice-SDU0010")["invoice"]["invoiceItems"][0]
+
+		charge_lines = _get_charge_line_items(
+			[line_item], "Main - _TC", {("cash_on_delivery_charges", 18.0): "COD-CHARGES"}, channel_config
+		)
+
+		self.assertEqual(charge_lines, [])
+
+	def test_get_charge_items(self):
+		"""Charge items are read from settings by tax head and rate."""
+		settings = frappe.get_doc(SETTINGS_DOCTYPE)
+		settings.add_charges_as_items = 1
+		settings.charge_items = []
+
+		for charge, item_code in (
+			("Cash On Delivery Charges", "COD-CHARGES"),
+			("Gift Wrap Charges", "GIFT-WRAP-CHARGES"),
+			("Shipping Charges", "SHIPPING-CHARGES"),
+		):
+			settings.append("charge_items", {"charge": charge, "tax_rate": 18.0, "item_code": item_code})
+
+		self.assertEqual(
+			_get_charge_items(settings),
+			{
+				("cash_on_delivery_charges", 18.0): "COD-CHARGES",
+				("gift_wrap_charges", 18.0): "GIFT-WRAP-CHARGES",
+				("shipping_charges", 18.0): "SHIPPING-CHARGES",
+				("shipping_method_charges", 18.0): "SHIPPING-CHARGES",
+			},
+		)
+
+		settings.add_charges_as_items = 0
+		self.assertEqual(_get_charge_items(settings), {})
 
 	@unittest.skip("Too similar to e2e test down below")
 	def test_create_invoice(self):
@@ -355,3 +500,48 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 			filters={"attached_to_name": si.name, "file_name": ("like", "unicommerce-invoice-%")},
 		)
 		self.assertEqual(len(attachments), 1, msg=f"Expected 1 attachment, found: {attachments!s}")
+
+
+class TestPackageAllocation(unittest.TestCase):
+	"""The order's warehouse allocation is cut down to each package's invoice."""
+
+	@staticmethod
+	def _allocation(rows):
+		return [{"item_code": code, "sales_order_row": row, "warehouse": "Stores - WP"} for code, row in rows]
+
+	def test_keeps_only_the_package_units(self):
+		"""Each package invoices separately, so it takes only its own units of the allocation."""
+		line_items = [
+			{"itemSku": "SKU-A", "quantity": 1},
+			{"itemSku": "SKU-B", "quantity": 2},
+		]
+		# the order's allocation: one SKU-A unit belongs to another package
+		allocation = self._allocation([("SKU-A", "r1"), ("SKU-A", "r2"), ("SKU-B", "r3"), ("SKU-B", "r4")])
+
+		with patch(
+			"ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item.ecommerce_item.get_erpnext_item_code",
+			side_effect=lambda **kwargs: kwargs["integration_item_code"],
+		):
+			package_allocation = _select_package_allocation(line_items, allocation)
+
+		self.assertEqual([d["sales_order_row"] for d in package_allocation], ["r1", "r3", "r4"])
+
+	def test_skips_rows_already_billed_by_an_earlier_package(self):
+		"""Two packages with the same SKU must not ship against the same sales order row."""
+		line_items = [{"itemSku": "SKU-A", "quantity": 1}]
+		allocation = self._allocation([("SKU-A", "r1"), ("SKU-A", "r2")])
+
+		with (
+			patch(
+				"ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item.ecommerce_item.get_erpnext_item_code",
+				side_effect=lambda **kwargs: kwargs["integration_item_code"],
+			),
+			patch("frappe.get_all", return_value=["r1"]) as get_all,
+		):
+			package_allocation = _select_package_allocation(line_items, allocation, "SO-1")
+
+		self.assertEqual([d["sales_order_row"] for d in package_allocation], ["r2"])
+		self.assertEqual(get_all.call_args.kwargs["filters"]["sales_order"], "SO-1")
+
+	def test_passes_empty_allocation_through(self):
+		self.assertIsNone(_select_package_allocation([], None))
