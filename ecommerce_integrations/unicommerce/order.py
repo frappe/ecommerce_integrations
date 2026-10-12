@@ -29,7 +29,11 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
-from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
+from ecommerce_integrations.unicommerce.utils import (
+	create_unicommerce_log,
+	get_unicommerce_date,
+	set_item_wise_tax_details,
+)
 from ecommerce_integrations.utils.taxation import ITEM_WISE_TAX_KEY, get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
@@ -232,6 +236,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"currency": order.get("currencyCode"),
 		}
 	)
+
+	set_item_wise_tax_details(so)
 
 	so.flags.raw_data = order
 	so.save()
