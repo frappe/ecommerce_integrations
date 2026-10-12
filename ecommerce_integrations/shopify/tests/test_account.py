@@ -123,6 +123,62 @@ class TestShopifyAccount(IntegrationTestCase):
 		)
 
 
+class TestAccountIsolation(IntegrationTestCase):
+	"""A failing store neither holds up the others nor opens a store to users without access."""
+
+	def setUp(self):
+		for name in frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name"):
+			frappe.db.set_value(ACCOUNT_DOCTYPE, name, "enable_shopify", 0)
+		make_account("broken.myshopify.com", enabled=1, upload_erpnext_items=1)
+		make_account("healthy.myshopify.com", upload_erpnext_items=1)
+		# two enabled stores, set directly: this part still allows only one to be saved enabled
+		frappe.db.set_value(ACCOUNT_DOCTYPE, "healthy.myshopify.com", "enable_shopify", 1)
+
+	def tearDown(self):
+		frappe.set_user("Administrator")
+		frappe.db.rollback()
+
+	def test_inventory_sync_continues_after_a_failing_store(self):
+		from ecommerce_integrations.shopify import inventory
+
+		with (
+			patch.object(
+				inventory, "_update_inventory_of_account", side_effect=[Exception("token rejected"), None]
+			) as update,
+			patch.object(inventory, "create_shopify_log") as log,
+		):
+			inventory.update_inventory_on_shopify()
+
+		self.assertEqual(
+			[c.args[0] for c in update.call_args_list],
+			frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name", order_by="creation"),
+		)
+		self.assertEqual(log.call_args.kwargs["shopify_account"], "broken.myshopify.com")
+
+	def test_item_upload_continues_after_a_failing_store(self):
+		from ecommerce_integrations.shopify import product
+
+		item = frappe._dict(name="_Test Item", flags=frappe._dict(), has_variants=0)
+		with (
+			patch.object(
+				product, "_upload_erpnext_item", side_effect=[Exception("token rejected"), None]
+			) as upload,
+			patch.object(product, "create_shopify_log"),
+			patch.object(product, "msgprint"),
+		):
+			product.upload_erpnext_item(item)
+
+		self.assertEqual(upload.call_count, 2)
+
+	def test_importer_needs_read_access_to_the_account(self):
+		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (
+			_get_account,
+		)
+
+		frappe.set_user("Guest")
+		self.assertRaises(frappe.PermissionError, _get_account, "broken.myshopify.com")
+
+
 class TestSharedProducts(IntegrationTestCase):
 	"""A product another store already sells is linked to the existing ERPNext items."""
 
