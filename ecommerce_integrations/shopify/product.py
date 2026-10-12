@@ -446,9 +446,29 @@ def upload_erpnext_item(doc, method=None):
 
 	for account in get_enabled_accounts():
 		setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
-		if setting.upload_erpnext_items:
+		if not setting.upload_erpnext_items:
+			continue
+
+		# A store that cannot take the item must neither block saving the Item nor the
+		# upload to the other stores; undo only this store's partial links.
+		savepoint = "shopify_upload_erpnext_item"
+		frappe.db.savepoint(savepoint)
+		try:
 			with shopify_session(setting):
 				_upload_erpnext_item(item, setting)
+		except Exception as e:
+			frappe.db.rollback(save_point=savepoint)
+			create_shopify_log(
+				status="Error",
+				method="upload_erpnext_item",
+				exception=e,
+				shopify_account=account,
+				make_new=True,
+			)
+			msgprint(
+				_("Could not upload {0} to Shopify Account {1}: {2}").format(item.name, account, e),
+				indicator="orange",
+			)
 
 
 def _upload_erpnext_item(item, setting):

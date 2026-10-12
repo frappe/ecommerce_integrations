@@ -54,6 +54,9 @@ shopify.ProductImporter = class {
 						"Select a Shopify Account.",
 					)}</div>`,
 				);
+			// the message replaced the table's markup; build a new table on the next selection
+			this.shopifyProductTable = null;
+			this.wrapper.find(".shopify-datatable-footer").hide();
 			return;
 		}
 
