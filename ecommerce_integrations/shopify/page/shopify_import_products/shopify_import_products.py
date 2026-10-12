@@ -17,13 +17,16 @@ REALTIME_KEY = "shopify.key.sync.all.products"
 
 
 def _get_account(shopify_account=None) -> str:
-	"""Account the page works on: the one picked on the page, else the only enabled one."""
-	if not shopify_account:
-		return get_default_account().name
+	"""Account the page works on: the one picked on the page, else the only enabled one.
 
-	if not frappe.db.get_value(ACCOUNT_DOCTYPE, shopify_account, "enable_shopify"):
-		frappe.throw(_("Shopify Account {0} is not enabled.").format(frappe.bold(shopify_account)))
-	return shopify_account
+	The page uses the account's stored credentials, so the caller needs read access to it.
+	"""
+	account = shopify_account or get_default_account().name
+	frappe.has_permission(ACCOUNT_DOCTYPE, "read", account, throw=True)
+
+	if not frappe.db.get_value(ACCOUNT_DOCTYPE, account, "enable_shopify"):
+		frappe.throw(_("Shopify Account {0} is not enabled.").format(frappe.bold(account)))
+	return account
 
 
 @frappe.whitelist()

@@ -21,23 +21,35 @@ def update_inventory_on_shopify() -> None:
 	Called by scheduler on configured interval.
 	"""
 	for account in get_enabled_accounts():
-		setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
+		# a store that fails (e.g. rejected credentials) must not hold up the others
+		try:
+			_update_inventory_of_account(account)
+		except Exception as e:
+			create_shopify_log(
+				status="Error",
+				method="update_inventory_on_shopify",
+				exception=e,
+				shopify_account=account,
+				make_new=True,
+			)
 
-		if not setting.update_erpnext_stock_levels_to_shopify:
-			continue
 
-		if not need_to_run(
-			ACCOUNT_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync", doc_name=account
-		):
-			continue
+def _update_inventory_of_account(account: str) -> None:
+	setting = frappe.get_doc(ACCOUNT_DOCTYPE, account)
 
-		warehous_map = setting.get_erpnext_to_integration_wh_mapping()
-		inventory_levels = get_inventory_levels(
-			tuple(warehous_map.keys()), MODULE_NAME, ecommerce_item_filters={"shopify_account": account}
-		)
+	if not setting.update_erpnext_stock_levels_to_shopify:
+		return
 
-		if inventory_levels:
-			upload_inventory_data_to_shopify(inventory_levels, warehous_map, shopify_account=account)
+	if not need_to_run(ACCOUNT_DOCTYPE, "inventory_sync_frequency", "last_inventory_sync", doc_name=account):
+		return
+
+	warehous_map = setting.get_erpnext_to_integration_wh_mapping()
+	inventory_levels = get_inventory_levels(
+		tuple(warehous_map.keys()), MODULE_NAME, ecommerce_item_filters={"shopify_account": account}
+	)
+
+	if inventory_levels:
+		upload_inventory_data_to_shopify(inventory_levels, warehous_map, shopify_account=account)
 
 
 @temp_shopify_session
