@@ -1,10 +1,12 @@
 import copy
 import json
 import os
+from copy import deepcopy
 from typing import ClassVar
 
 import frappe
 from frappe.tests import IntegrationTestCase
+from frappe.utils import flt
 
 from ecommerce_integrations.unicommerce.constants import PRODUCT_CATEGORY_FIELD, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings import (
@@ -80,9 +82,27 @@ class TestCase(IntegrationTestCase):
 		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 0)
 
 	def load_fixture(self, name):
-		with open(os.path.dirname(__file__) + f"/fixtures/{name}.json", "rb") as f:
-			data = f.read()
-		return json.loads(data)
+		return load_fixture(name)
+
+
+def load_fixture(name):
+	with open(os.path.dirname(__file__) + f"/fixtures/{name}.json", "rb") as f:
+		data = f.read()
+	return json.loads(data)
+
+
+def line_item_with_charges(cod_charge: float, tax_rate: float = 18.0):
+	"""Invoice line with COD charge, taxed along with the item as Unicommerce does."""
+	line_item = deepcopy(load_fixture("invoice-SDU0010")["invoice"]["invoiceItems"][0])
+
+	half_rate = tax_rate / 2
+	line_item["cashOnDeliveryCharges"] = cod_charge
+	line_item["centralGstPercentage"] = line_item["stateGstPercentage"] = half_rate
+	line_item["centralGst"] = line_item["stateGst"] = flt(
+		line_item["centralGst"] + cod_charge * half_rate / 100, 2
+	)
+
+	return line_item
 
 
 def _setup_test_item_categories():
