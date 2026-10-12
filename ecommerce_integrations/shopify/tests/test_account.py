@@ -163,12 +163,30 @@ class TestAccountIsolation(IntegrationTestCase):
 			patch.object(
 				product, "_upload_erpnext_item", side_effect=[Exception("token rejected"), None]
 			) as upload,
-			patch.object(product, "create_shopify_log"),
+			patch.object(product, "create_shopify_log") as shopify_log,
+			patch.object(frappe, "log_error") as log_error,
 			patch.object(product, "msgprint"),
 		):
 			product.upload_erpnext_item(item)
 
 		self.assertEqual(upload.call_count, 2)
+		# logged without committing the Item's transaction
+		shopify_log.assert_not_called()
+		self.assertEqual(log_error.call_args.kwargs["reference_name"], "broken.myshopify.com")
+
+	def test_old_order_failure_is_logged_but_not_offered_for_retry(self):
+		from ecommerce_integrations.shopify import order
+
+		frappe.db.set_value(ACCOUNT_DOCTYPE, "broken.myshopify.com", "sync_old_orders", 1)
+		with (
+			patch.object(order, "_sync_old_orders", side_effect=Exception("token rejected")),
+			patch.object(order, "create_shopify_log") as log,
+		):
+			order.sync_old_orders()
+
+		self.assertEqual(log.call_args.kwargs["shopify_account"], "broken.myshopify.com")
+		# the log retry only re-runs "ecommerce_integrations." methods, with a payload
+		self.assertFalse(log.call_args.kwargs["method"].startswith("ecommerce_integrations."))
 
 	def test_importer_needs_read_access_to_the_account(self):
 		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (

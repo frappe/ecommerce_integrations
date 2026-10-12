@@ -458,12 +458,11 @@ def upload_erpnext_item(doc, method=None):
 				_upload_erpnext_item(item, setting)
 		except Exception as e:
 			frappe.db.rollback(save_point=savepoint)
-			create_shopify_log(
-				status="Error",
-				method="upload_erpnext_item",
-				exception=e,
-				shopify_account=account,
-				make_new=True,
+			# not create_shopify_log: it commits, and this runs inside the Item's transaction
+			frappe.log_error(
+				title=_("Shopify: uploading {0} to {1} failed").format(item.name, account),
+				reference_doctype=ACCOUNT_DOCTYPE,
+				reference_name=account,
 			)
 			msgprint(
 				_("Could not upload {0} to Shopify Account {1}: {2}").format(item.name, account, e),
