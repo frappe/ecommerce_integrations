@@ -4,6 +4,7 @@ import frappe
 from frappe import _, msgprint
 from frappe.utils import cint, cstr
 from frappe.utils.nestedset import get_root_of
+from frappe.utils.synchronization import filelock
 from shopify.resources import Product, Variant
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
@@ -489,8 +490,16 @@ def upload_erpnext_item(doc, method=None):
 
 def upload_imported_item(item_code: str):
 	"""Background job: upload an Item that was created or updated by Data Import."""
-	if frappe.db.exists("Item", item_code):
-		upload_erpnext_item(frappe.get_doc("Item", item_code))
+	if not frappe.db.exists("Item", item_code):
+		return
+
+	item = frappe.get_doc("Item", item_code)
+	# Sibling variants share one Shopify product. Run their jobs one at a time and
+	# commit inside the lock, so only the first job creates the product and the
+	# others find its link.
+	with filelock(f"shopify_upload_item_{frappe.scrub(item.variant_of or item.name)}", timeout=300):
+		upload_erpnext_item(item)
+		frappe.db.commit()
 
 
 def _enqueue_imported_item_upload(item_code: str):
