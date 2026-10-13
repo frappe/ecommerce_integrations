@@ -33,19 +33,26 @@ def enqueue_sync_all_product_images():
 @temp_shopify_session
 def sync_all_product_images():
 	"""Download the image of every Shopify product into its linked or SKU-matched ERPNext Item."""
-	summary = {"added": 0, "skipped": 0, "unmatched": []}
+	summary = {"added": 0, "skipped": 0, "failed": [], "unmatched": []}
 
 	for page in PaginatedIterator(Product.find(limit=250)):
 		for product in page:
 			for variant in product.variants:
 				_sync_variant_image(product, variant, summary)
 
-	unmatched = summary["unmatched"]
+	failed, unmatched = summary["failed"], summary["unmatched"]
 	create_shopify_log(
-		status="Success",
+		status="Error" if failed else "Success",
 		method=SYNC_ALL_METHOD,
-		message=_("Images added: {0}, skipped: {1}, no matching ERPNext Item: {2} {3}").format(
-			summary["added"], summary["skipped"], len(unmatched), ", ".join(unmatched[:MAX_LOGGED_SKUS])
+		message=_(
+			"Images added: {0}, skipped: {1}, failed: {2} {3}, no matching ERPNext Item: {4} {5}"
+		).format(
+			summary["added"],
+			summary["skipped"],
+			len(failed),
+			", ".join(failed[:MAX_LOGGED_SKUS]),
+			len(unmatched),
+			", ".join(unmatched[:MAX_LOGGED_SKUS]),
 		),
 	)
 
@@ -79,7 +86,8 @@ def _sync_variant_image(product, variant, summary):
 		added = sync_item_image(item_code, _variant_image_src(product, variant))
 	except Exception:
 		frappe.log_error(title=_("Shopify image sync failed for Item {0}").format(item_code))
-		added = False
+		summary["failed"].append(item_code)
+		return
 
 	summary["added" if added else "skipped"] += 1
 
@@ -87,12 +95,19 @@ def _sync_variant_image(product, variant, summary):
 def _find_item_code(product, variant) -> str | None:
 	linked = ecommerce_item.get_erpnext_item_code(
 		MODULE_NAME, integration_item_code=str(product.id), variant_id=str(variant.id)
-	) or ecommerce_item.get_erpnext_item_code(MODULE_NAME, integration_item_code=str(product.id))
+	)
 	if linked:
 		return linked
 
 	sku = (variant.sku or "").strip()
-	return sku if sku and frappe.db.exists("Item", sku) else None
+	if sku and frappe.db.exists("Item", sku):
+		return sku
+
+	# A product-level link names the right Item only when the product has one variant;
+	# otherwise it may point to the template or a sibling variant.
+	if len(product.variants) == 1:
+		return ecommerce_item.get_erpnext_item_code(MODULE_NAME, integration_item_code=str(product.id))
+	return None
 
 
 def _variant_image_src(product, variant) -> str | None:
