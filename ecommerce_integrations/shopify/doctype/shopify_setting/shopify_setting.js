@@ -25,6 +25,16 @@ frappe.ui.form.on("Shopify Setting", {
 		});
 	},
 
+	sync_product_images: function (frm) {
+		if (frm.is_dirty()) {
+			frappe.msgprint(__("Please save the settings first."));
+			return;
+		}
+		frappe.call({
+			method: "ecommerce_integrations.shopify.product_image.enqueue_sync_all_product_images",
+		});
+	},
+
 	refresh: function (frm) {
 		frm.add_custom_button(__("Import Products"), function () {
 			frappe.set_route("shopify-import-products");
