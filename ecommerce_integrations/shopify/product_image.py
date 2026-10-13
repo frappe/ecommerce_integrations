@@ -3,12 +3,11 @@
 import os
 from urllib.parse import urlparse
 
+import frappe
 import requests
+from frappe import _
 from shopify.collection import PaginatedIterator
 from shopify.resources import Product
-
-import frappe
-from frappe import _
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
