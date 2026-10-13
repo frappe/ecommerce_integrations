@@ -16,6 +16,7 @@ from ecommerce_integrations.shopify.constants import (
 	SUPPLIER_ID_FIELD,
 	WEIGHT_TO_ERPNEXT_UOM_MAP,
 )
+from ecommerce_integrations.shopify.product_image import import_images_enabled, sync_item_image
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
@@ -155,6 +156,21 @@ class ShopifyProduct:
 				variant_of=variant_of,
 				has_variants=has_variant,
 			)
+
+		if import_images_enabled():
+			self._store_item_image(integration_item_code, variant_id, has_variant, item_dict["image"])
+
+	def _store_item_image(self, integration_item_code, variant_id, has_variant, image_src):
+		item_code = ecommerce_item.get_erpnext_item_code(
+			MODULE_NAME, integration_item_code, variant_id=variant_id, has_variants=has_variant
+		)
+		if not item_code:
+			return
+		try:
+			sync_item_image(item_code, image_src)
+		except Exception:
+			# A failed download must not stop the product import.
+			frappe.log_error(title=_("Shopify image sync failed for Item {0}").format(item_code))
 
 	def _create_item_variants(self, product_dict, warehouse, attributes):
 		template_item = ecommerce_item.get_erpnext_item(
@@ -346,6 +362,8 @@ def upload_erpnext_item(doc, method=None):
 		return
 
 	if frappe.flags.in_import:
+		if setting.upload_items_created_by_data_import:
+			_enqueue_imported_item_upload(item.name)
 		return
 
 	if item.has_variants:
@@ -467,6 +485,31 @@ def upload_erpnext_item(doc, method=None):
 				map_erpnext_variant_to_shopify_variant(product, item, variant_attributes)
 
 			write_upload_log(status=is_successful, product=product, item=item, action="Updated")
+
+
+def upload_imported_item(item_code: str):
+	"""Background job: upload an Item that was created or updated by Data Import."""
+	if frappe.db.exists("Item", item_code):
+		upload_erpnext_item(frappe.get_doc("Item", item_code))
+
+
+def _enqueue_imported_item_upload(item_code: str):
+	# Data Import fires both after_insert and on_update. RQ deduplication cannot
+	# catch this because enqueue_after_commit pushes both jobs at commit time,
+	# so track queued Items for the current request or job instead.
+	queued = frappe.flags.setdefault("shopify_imported_items_queued", set())
+	if item_code in queued:
+		return
+	queued.add(item_code)
+
+	frappe.enqueue(
+		"ecommerce_integrations.shopify.product.upload_imported_item",
+		queue="long",
+		item_code=item_code,
+		job_id=f"shopify_upload_imported_item::{item_code}",
+		deduplicate=True,
+		enqueue_after_commit=True,
+	)
 
 
 def map_erpnext_variant_to_shopify_variant(shopify_product: Product, erpnext_item, variant_attributes):
