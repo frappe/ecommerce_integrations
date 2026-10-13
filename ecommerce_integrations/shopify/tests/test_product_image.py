@@ -2,6 +2,7 @@
 # See LICENSE
 
 import json
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -12,7 +13,11 @@ from ecommerce_integrations.shopify.product import (
 	upload_erpnext_item,
 	upload_imported_item,
 )
-from ecommerce_integrations.shopify.product_image import sync_item_image
+from ecommerce_integrations.shopify.product_image import (
+	_find_item_code,
+	_sync_variant_image,
+	sync_item_image,
+)
 
 from .utils import TestCase
 
@@ -100,6 +105,51 @@ class TestProductImage(TestCase):
 		self.assertEqual(linked, code)
 		self.assertTrue(frappe.db.get_value("Item", code, "image").startswith("/files/"))
 
+	def test_multi_variant_image_goes_to_sku_item_not_template(self):
+		template = self.make_item("_Test Shopify Image Template")
+		sku_item = self.make_item("_Test Shopify Image Variant SKU")
+		self.link(template, product_id="9100", variant_id="")
+		product = shopify_product("9100", [("9101", "_Test Shopify Image Variant SKU"), ("9102", "OTHER")])
+
+		self.assertEqual(_find_item_code(product, product.variants[0]), sku_item)
+
+	def test_multi_variant_without_match_is_not_guessed(self):
+		template = self.make_item("_Test Shopify Image Template 2")
+		self.link(template, product_id="9200", variant_id="")
+		product = shopify_product("9200", [("9201", "NO-SUCH-SKU-1"), ("9202", "NO-SUCH-SKU-2")])
+
+		self.assertIsNone(_find_item_code(product, product.variants[0]))
+
+	def test_single_variant_falls_back_to_product_link(self):
+		code = self.make_item("_Test Shopify Image Single")
+		self.link(code, product_id="9300", variant_id="")
+		product = shopify_product("9300", [("9301", "NO-SUCH-SKU-3")])
+
+		self.assertEqual(_find_item_code(product, product.variants[0]), code)
+
+	@patch("ecommerce_integrations.shopify.product_image.requests.get", side_effect=ConnectionError("down"))
+	def test_failed_download_is_counted_as_failed(self, mock_get):
+		code = self.make_item("_Test Shopify Image Failure")
+		product = shopify_product("9400", [("9401", code)], image_src=IMAGE_SRC)
+		summary = {"added": 0, "skipped": 0, "failed": [], "unmatched": []}
+
+		_sync_variant_image(product, product.variants[0], summary)
+
+		self.assertEqual(summary["failed"], [code])
+		self.assertEqual(summary["skipped"], 0)
+
+	def link(self, item_code, product_id, variant_id):
+		frappe.get_doc(
+			{
+				"doctype": "Ecommerce Item",
+				"integration": MODULE_NAME,
+				"erpnext_item_code": item_code,
+				"integration_item_code": product_id,
+				"variant_id": variant_id,
+				"sku": item_code,
+			}
+		).insert(ignore_permissions=True)
+
 	def product_fixture(self):
 		product = json.loads(self.load_fixture("single_product"))
 		product["id"] = int(PRODUCT_ID)
@@ -168,6 +218,16 @@ class TestDataImportUpload(TestCase):
 		mock_enqueue.assert_not_called()
 
 	@patch("ecommerce_integrations.shopify.product.upload_erpnext_item")
+	@patch("ecommerce_integrations.shopify.product.filelock")
+	def test_variant_jobs_share_a_lock_per_template(self, mock_lock, mock_upload):
+		with patch("ecommerce_integrations.shopify.product.frappe.get_doc") as mock_get_doc:
+			mock_get_doc.return_value = SimpleNamespace(name="_Test Variant Red", variant_of="_Test Template")
+			upload_imported_item(self.item.name)
+
+		self.assertEqual(mock_lock.call_args.args[0], "shopify_upload_item__test_template")
+		mock_upload.assert_called_once()
+
+	@patch("ecommerce_integrations.shopify.product.upload_erpnext_item")
 	def test_background_job_uploads_the_item(self, mock_upload):
 		upload_imported_item(self.item.name)
 		mock_upload.assert_called_once()
@@ -177,3 +237,13 @@ class TestDataImportUpload(TestCase):
 	def test_background_job_ignores_deleted_item(self, mock_upload):
 		upload_imported_item("_Test Item That Does Not Exist")
 		mock_upload.assert_not_called()
+
+
+def shopify_product(product_id, variants, image_src=None):
+	"""Minimal stand-in for a shopify.Product: id, variants (id, sku) and images."""
+	images = [SimpleNamespace(id=1, src=image_src)] if image_src else []
+	return SimpleNamespace(
+		id=product_id,
+		images=images,
+		variants=[SimpleNamespace(id=vid, sku=sku, image_id=None) for vid, sku in variants],
+	)
