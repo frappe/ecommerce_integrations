@@ -43,9 +43,13 @@
   "erpnext_to_shopify_sync_section",
   "upload_erpnext_items",
   "update_shopify_item_on_update",
+  "upload_items_created_by_data_import",
   "column_break_34",
   "sync_new_item_as_active",
   "upload_variants_as_items",
+  "product_image_sync_section",
+  "import_product_images",
+  "sync_product_images",
   "inventory_sync_section",
   "warehouse",
   "update_erpnext_stock_levels_to_shopify",
@@ -251,6 +255,14 @@
    "label": "Update Shopify Item after updating ERPNext item"
   },
   {
+   "default": "0",
+   "depends_on": "eval:doc.upload_erpnext_items",
+   "description": "Items created through Data Import are uploaded by background jobs after the import.",
+   "fieldname": "upload_items_created_by_data_import",
+   "fieldtype": "Check",
+   "label": "Upload Items created by Data Import"
+  },
+  {
    "depends_on": "eval:doc.update_erpnext_stock_levels_to_shopify",
    "fieldname": "shopify_warehouse_mapping",
    "fieldtype": "Table",
@@ -339,6 +351,25 @@
    "label": "Upload ERPNext Variants as Shopify Items"
   },
   {
+   "fieldname": "product_image_sync_section",
+   "fieldtype": "Section Break",
+   "label": "Shopify to ERPNext Image Sync"
+  },
+  {
+   "default": "0",
+   "description": "Stores the Shopify product image as a file on the ERPNext Item when a product is imported or linked by SKU.",
+   "fieldname": "import_product_images",
+   "fieldtype": "Check",
+   "label": "Download Shopify Product Images into ERPNext"
+  },
+  {
+   "depends_on": "eval:doc.import_product_images",
+   "description": "Downloads the images of all Shopify products into the matching ERPNext Items that have no stored image.",
+   "fieldname": "sync_product_images",
+   "fieldtype": "Button",
+   "label": "Sync Images from Shopify"
+  },
+  {
    "default": "0",
    "fieldname": "sync_new_item_as_active",
    "fieldtype": "Check",
@@ -392,7 +423,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-10-24 10:38:49.247431",
+ "modified": "2026-10-13 10:00:00.000000",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Setting",
