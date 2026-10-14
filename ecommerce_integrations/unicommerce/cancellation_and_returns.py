@@ -22,6 +22,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
 )
+from ecommerce_integrations.unicommerce.invoice import _get_charge_items
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
 from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
@@ -274,8 +275,6 @@ def create_credit_note(invoice_name, posting_date=None):
 	credit_note = make_sales_return(invoice_name)
 
 	copy_item_wise_tax_details(credit_note, invoice_name, source_doctype="Sales Invoice")
-	for row in credit_note.get("_item_wise_tax_details") or []:
-		row.amount *= -1
 
 	facility_code = credit_note.get(FACILITY_CODE_FIELD)
 	return_warehouse = get_return_warehouse(facility_code)
@@ -361,8 +360,6 @@ def _get_invoice_for_return(order_code, returned_so_items, returned_item_codes=N
 		if returned_so_items and returned_so_items <= invoice_rows[invoice_name]:
 			return invoice_name
 
-	# invoices created without a warehouse allocation carry no row links at all:
-	# match them by item code, after the linked ones never matched
 	candidates = [
 		invoice_name
 		for invoice_name in invoices
@@ -370,17 +367,17 @@ def _get_invoice_for_return(order_code, returned_so_items, returned_item_codes=N
 		and returned_item_codes
 		and returned_item_codes <= invoice_item_codes[invoice_name]
 	]
-	# two packages of one order can carry the same SKU: an invoice whose matching
-	# rows are already refunded in full belongs to another package's return
+
 	if len(candidates) > 1:
-		return next(
-			(
-				invoice_name
-				for invoice_name in candidates
-				if _has_unrefunded_rows(invoice_name, invoice_items[invoice_name], returned_item_codes)
-			),
-			None,
-		)
+		unrefunded_candidates = [
+			invoice_name
+			for invoice_name in candidates
+			if _has_unrefunded_rows(invoice_name, invoice_items[invoice_name], returned_item_codes)
+		]
+		if len(unrefunded_candidates) != 1:
+			return None
+		return unrefunded_candidates[0]
+
 	return candidates[0] if candidates else None
 
 
@@ -466,8 +463,6 @@ def create_cir_credit_note(so_data, return_data, client=None):
 		)
 		return
 	si = frappe.get_doc("Sales Invoice", invoice_name, for_update=True)
-
-	from ecommerce_integrations.unicommerce.invoice import _get_charge_items
 
 	charge_item_codes = set(_get_charge_items(frappe.get_cached_doc(SETTINGS_DOCTYPE)).values())
 
@@ -628,6 +623,7 @@ def _handle_partial_returns(credit_note, refunded_qty_by_row: dict[str, float]) 
 			if return_percent is None:
 				continue
 			row.amount = flt(row.amount) * return_percent
+			row.taxable_amount = flt(row.taxable_amount) * return_percent
 			tax_amount += row.amount
 			scaled_rows.append(row)
 		tax.tax_amount = tax_amount
