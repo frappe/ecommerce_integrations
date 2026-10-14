@@ -7,7 +7,12 @@ frappe.pages["shopify-import-products"].on_page_load = function (wrapper) {
 		single_column: true,
 	});
 	// eslint-disable-next-line no-undef
-	new shopify.ProductImporter(wrapper);
+	wrapper.importer = new shopify.ProductImporter(wrapper);
+};
+
+// the page is loaded once and then kept: pick up the account of each later visit
+frappe.pages["shopify-import-products"].on_page_show = function (wrapper) {
+	wrapper.importer?.selectAccountFromRoute();
 };
 
 // eslint-disable-next-line no-undef
@@ -63,6 +68,15 @@ shopify.ProductImporter = class {
 				this.reload();
 			},
 		});
+	}
+
+	selectAccountFromRoute() {
+		const account = frappe.route_options?.shopify_account;
+		frappe.route_options = null;
+		if (account && account !== this.shopifyAccount) {
+			// the field's change handler reloads the products
+			this.accountField?.set_value(account);
+		}
 	}
 
 	async reload() {

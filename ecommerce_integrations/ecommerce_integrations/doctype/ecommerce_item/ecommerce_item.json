@@ -46,7 +46,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Shopify Account",
-   "options": "Shopify Account"
+   "options": "Shopify Account",
+   "search_index": 1
   },
   {
    "fieldname": "integration_item_code",
@@ -104,7 +105,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-09 12:00:00.000000",
+ "modified": "2026-10-14 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",

@@ -135,7 +135,7 @@ def _get_webhook_account(req):
 	try:
 		return get_default_account()
 	except frappe.ValidationError as e:
-		create_shopify_log(status="Error", request_data=req.data, exception=e)
+		create_shopify_log(status="Error", request_data=frappe.safe_decode(req.data), exception=e)
 		raise
 
 
@@ -163,5 +163,7 @@ def _validate_request(req, hmac_header, shopify_account):
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(status="Error", request_data=req.data)
+		create_shopify_log(
+			status="Error", request_data=frappe.safe_decode(req.data), shopify_account=shopify_account
+		)
 		frappe.throw(_("Unverified Webhook Data"))
