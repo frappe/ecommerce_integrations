@@ -11,7 +11,7 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils.password import get_decrypted_password, set_encrypted_password
 
 from ecommerce_integrations.patches import migrate_shopify_setting_to_account as migration
-from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, MODULE_NAME
+from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, EVENT_MAPPER, MODULE_NAME
 from ecommerce_integrations.shopify.order import get_tax_account_head
 from ecommerce_integrations.shopify.utils import get_default_account, resolve_account
 
@@ -78,6 +78,9 @@ class TestShopifyAccount(IntegrationTestCase):
 		self.assertEqual(
 			publish_realtime.call_args.args[0], "shopify.key.sync.all.products.one.myshopify.com"
 		)
+
+	def test_short_shop_url_is_completed_to_the_myshopify_domain(self):
+		self.assertEqual(make_account("Short").name, "short.myshopify.com")
 
 	def test_default_account_is_the_only_enabled_one(self):
 		make_account("one.myshopify.com", enabled=1)
@@ -399,10 +402,27 @@ class TestWebhookRouting(IntegrationTestCase):
 	def test_webhook_from_an_unknown_or_disabled_shop_is_refused(self):
 		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		for shop_domain in ("unknown.myshopify.com", "retired.myshopify.com", None):
-			with patch("ecommerce_integrations.shopify.connection.create_shopify_log") as log:
-				self.assertRaises(frappe.ValidationError, _get_webhook_account, self.request(shop_domain))
-				log.assert_called_once()
+		def refused_log(shop_domain):
+			request = self.request(shop_domain)
+			request.headers["X-Shopify-Topic"] = "orders/create"
+			# keep the log in the test transaction
+			with patch.object(frappe.db, "commit"):
+				self.assertRaises(frappe.ValidationError, _get_webhook_account, request)
+			return frappe.get_last_doc("Ecommerce Integration Log", {"integration": MODULE_NAME})
+
+		# a disabled account's request is logged for a retry once the account is enabled again
+		log = refused_log("retired.myshopify.com")
+		self.assertEqual(log.status, "Error")
+		self.assertEqual(log.request_data, '{"id": 1}')
+		self.assertEqual(log.shopify_account, "retired.myshopify.com")
+		self.assertEqual(log.method, EVENT_MAPPER["orders/create"])
+
+		# an unknown shop cannot be attributed, so its request is not offered for retry
+		for shop_domain in ("unknown.myshopify.com", None):
+			log = refused_log(shop_domain)
+			self.assertEqual(log.request_data, '{"id": 1}')
+			self.assertFalse(log.shopify_account)
+			self.assertFalse(log.method)
 
 	def test_signature_is_checked_with_the_secret_of_the_sending_shop(self):
 		from ecommerce_integrations.shopify.connection import _validate_request
@@ -437,10 +457,10 @@ class TestSettingMigration(IntegrationTestCase):
 	def tearDown(self):
 		frappe.db.rollback()
 
-	def seed_legacy_setting(self, shopify_url):
+	def seed_legacy_setting(self, legacy_url):
 		values = {
 			"enable_shopify": "1",
-			"shopify_url": f"https://{shopify_url}",
+			"shopify_url": legacy_url,
 			"shared_secret": "legacy-secret",
 			"company": "_Test Company",
 			"sales_order_series": "SO-LEGACY-",
@@ -479,7 +499,7 @@ class TestSettingMigration(IntegrationTestCase):
 
 	def test_single_becomes_an_account(self):
 		shopify_url = "migration-test.myshopify.com"
-		ecommerce_item = self.seed_legacy_setting(shopify_url)
+		ecommerce_item = self.seed_legacy_setting(f"https://{shopify_url}")
 
 		migration.execute()
 
@@ -495,6 +515,18 @@ class TestSettingMigration(IntegrationTestCase):
 			frappe.db.get_value("Ecommerce Item", ecommerce_item, "shopify_account"), shopify_url
 		)
 		self.assertFalse(frappe.db.sql("select 1 from `tabSingles` where doctype = %s", self.legacy))
+
+	def test_short_shop_url_becomes_the_myshopify_domain(self):
+		# the single accepted the bare shop name, as the Shopify API session completes it
+		self.seed_legacy_setting("short-migration-test")
+
+		migration.execute()
+
+		self.assertTrue(frappe.db.exists(ACCOUNT_DOCTYPE, "short-migration-test.myshopify.com"))
+		self.assertEqual(
+			frappe.db.get_value(ACCOUNT_DOCTYPE, "short-migration-test.myshopify.com", "shopify_url"),
+			"short-migration-test.myshopify.com",
+		)
 
 	def test_without_legacy_configuration_nothing_is_created(self):
 		accounts = frappe.db.count(ACCOUNT_DOCTYPE)
