@@ -197,7 +197,7 @@ def process_request(data, event, shopify_account=None):
 
 def _is_signed_by(req, shopify_account) -> bool:
 	"""Whether the request carries a valid signature made with the account's secret."""
-	secret_key = get_shopify_account(shopify_account).shared_secret
+	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
 	hmac_header = req.headers.get("X-Shopify-Hmac-Sha256")
 	if not secret_key or not hmac_header:
 		return False
