@@ -197,7 +197,10 @@ def _validate_request(req, hmac_header, shopify_account):
 	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
 	if not secret_key:
 		create_shopify_log(
-			status="Error", request_data=req.data, message=_("Webhook secret is not configured")
+			status="Error",
+			request_data=frappe.safe_decode(req.data),
+			message=_("Webhook secret is not configured"),
+			shopify_account=shopify_account,
 		)
 		frappe.throw(_("Unverified Webhook Data"))
 
