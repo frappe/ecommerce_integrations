@@ -159,7 +159,17 @@ def _get_webhook_account(req):
 
 	if not account:
 		message = _("No enabled Shopify Account for shop {0}").format(shop_domain or _("(no shop domain)"))
-		create_shopify_log(status="Error", request_data=req.data, message=message)
+		# A disabled account is recorded, so the request can be retried once it is enabled
+		# again. A request from an unknown shop gets no method: a retry would hand it to
+		# whichever account happens to be the only enabled one.
+		known_account = frappe.db.exists(ACCOUNT_DOCTYPE, shop_domain) if shop_domain else None
+		create_shopify_log(
+			status="Error",
+			request_data=frappe.safe_decode(req.data),
+			message=message,
+			method=EVENT_MAPPER.get(req.headers.get("X-Shopify-Topic")) if known_account else None,
+			shopify_account=known_account,
+		)
 		frappe.throw(message)
 
 	return frappe.get_doc(ACCOUNT_DOCTYPE, account)
@@ -194,5 +204,7 @@ def _validate_request(req, hmac_header, shopify_account):
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(status="Error", request_data=req.data)
+		create_shopify_log(
+			status="Error", request_data=frappe.safe_decode(req.data), shopify_account=shopify_account
+		)
 		frappe.throw(_("Unverified Webhook Data"))

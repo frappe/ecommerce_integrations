@@ -16,7 +16,7 @@ SYNC_JOB_NAME = "shopify.job.sync.all.products"
 REALTIME_KEY = "shopify.key.sync.all.products"
 
 
-def _get_account(shopify_account=None) -> str:
+def _get_account(shopify_account: str | None = None) -> str:
 	"""Account the page works on: the one picked on the page, else the only enabled one.
 
 	The page uses the account's stored credentials, so the caller needs read access to it.
@@ -30,12 +30,12 @@ def _get_account(shopify_account=None) -> str:
 
 
 @frappe.whitelist()
-def get_shopify_products(from_=None, shopify_account=None):
+def get_shopify_products(from_=None, shopify_account: str | None = None):
 	shopify_products = fetch_all_products(from_, shopify_account=_get_account(shopify_account))
 	return shopify_products
 
 
-def fetch_all_products(from_=None, shopify_account=None):
+def fetch_all_products(from_=None, shopify_account: str | None = None):
 	# format shopify collection for datatable
 
 	collection = _fetch_products_from_shopify(from_, shopify_account=shopify_account)
@@ -62,7 +62,7 @@ def fetch_all_products(from_=None, shopify_account=None):
 
 
 @temp_shopify_session
-def _fetch_products_from_shopify(from_=None, limit=20, shopify_account=None):
+def _fetch_products_from_shopify(from_=None, limit=20, shopify_account: str | None = None):
 	if from_:
 		collection = Product.find(from_=from_)
 	else:
@@ -72,7 +72,7 @@ def _fetch_products_from_shopify(from_=None, limit=20, shopify_account=None):
 
 
 @frappe.whitelist()
-def get_product_count(shopify_account=None):
+def get_product_count(shopify_account: str | None = None):
 	shopify_account = _get_account(shopify_account)
 
 	items = frappe.db.get_list("Item", {"variant_of": ["is", "not set"]})
@@ -94,12 +94,12 @@ def get_product_count(shopify_account=None):
 
 
 @temp_shopify_session
-def get_shopify_product_count(shopify_account=None):
+def get_shopify_product_count(shopify_account: str | None = None):
 	return Product.count()
 
 
 @frappe.whitelist()
-def sync_product(product, shopify_account=None):
+def sync_product(product, shopify_account: str | None = None):
 	try:
 		shopify_product = ShopifyProduct(product, shopify_account=_get_account(shopify_account))
 		shopify_product.sync_product()
@@ -111,12 +111,12 @@ def sync_product(product, shopify_account=None):
 
 
 @frappe.whitelist()
-def resync_product(product, shopify_account=None):
+def resync_product(product, shopify_account: str | None = None):
 	return _resync_product(product, shopify_account=_get_account(shopify_account))
 
 
 @temp_shopify_session
-def _resync_product(product, shopify_account=None):
+def _resync_product(product, shopify_account: str | None = None):
 	savepoint = "shopify_resync_product"
 	try:
 		item = Product.find(product)
@@ -132,7 +132,7 @@ def _resync_product(product, shopify_account=None):
 		return False
 
 
-def is_synced(product, shopify_account=None):
+def is_synced(product, shopify_account: str | None = None):
 	account = get_account_name(shopify_account)
 	return ecommerce_item.is_synced(
 		MODULE_NAME,
@@ -142,7 +142,7 @@ def is_synced(product, shopify_account=None):
 
 
 @frappe.whitelist()
-def import_all_products(shopify_account=None):
+def import_all_products(shopify_account: str | None = None):
 	shopify_account = _get_account(shopify_account)
 	frappe.enqueue(
 		queue_sync_all_products,
@@ -152,7 +152,7 @@ def import_all_products(shopify_account=None):
 	)
 
 
-def queue_sync_all_products(*args, shopify_account=None, **kwargs):
+def queue_sync_all_products(*args, shopify_account: str | None = None, **kwargs):
 	start_time = process_time()
 	shopify_account = _get_account(shopify_account)
 
