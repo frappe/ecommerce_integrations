@@ -146,3 +146,50 @@ class TestCopyItemWiseTaxDetails(unittest.TestCase):
 		self.assertEqual(len(rows), 1)
 		self.assertIs(rows[0].tax, tax_b)
 		self.assertAlmostEqual(rows[0].amount, 36.0)
+
+	def test_partially_shipped_row_scales_tax_and_taxable_amount(self):
+		"""A partly fulfilled row records only its own units' tax and taxable value.
+
+		Regression test: the source row's full tax and taxable amount were copied
+		even when fewer units were shipped, so the breakup overstated both and
+		broke rate x taxable_amount = amount.
+		"""
+		source = frappe._dict(
+			taxes=[frappe._dict(name="T1", account_head="GST - TC")],
+			items=[frappe._dict(name="SOI-A", qty=2)],
+			item_wise_tax_details=[
+				frappe._dict(tax_row="T1", item_row="SOI-A", rate=18.0, amount=36.0, taxable_amount=200.0)
+			],
+		)
+		target, (tax_a, _) = self._target([frappe._dict(so_detail="SOI-A", qty=1)])
+
+		with patch("frappe.get_doc", return_value=source):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		row = target._item_wise_tax_details[0]
+		self.assertIs(row.tax, tax_a)
+		self.assertAlmostEqual(row.taxable_amount, 100.0)
+		self.assertAlmostEqual(row.amount, 18.0)
+
+	def test_returned_row_negates_tax_and_taxable_amount(self):
+		"""A return maps negative quantities: both breakup values carry the sign.
+
+		Regression test: the taxable value turned negative on credit notes while
+		the tax amount stayed positive, misstating the return's tax breakup.
+		"""
+		source = frappe._dict(
+			taxes=[frappe._dict(name="T1", account_head="GST - TC")],
+			items=[frappe._dict(name="SOI-A", qty=1)],
+			item_wise_tax_details=[
+				frappe._dict(tax_row="T1", item_row="SOI-A", rate=18.0, amount=18.0, taxable_amount=100.0)
+			],
+		)
+		target, (tax_a, _) = self._target([frappe._dict(so_detail="SOI-A", qty=-1)])
+
+		with patch("frappe.get_doc", return_value=source):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		row = target._item_wise_tax_details[0]
+		self.assertIs(row.tax, tax_a)
+		self.assertAlmostEqual(row.taxable_amount, -100.0)
+		self.assertAlmostEqual(row.amount, -18.0)

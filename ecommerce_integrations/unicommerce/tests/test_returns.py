@@ -26,6 +26,7 @@ from ecommerce_integrations.unicommerce.constants import (
 from ecommerce_integrations.unicommerce.tests.utils import TestCase
 
 CANCELLATION_MODULE = "ecommerce_integrations.unicommerce.cancellation_and_returns"
+SYNC_OLD_ORDERS_MODULE = "ecommerce_integrations.unicommerce.sync_old_orders"
 
 
 class TestRTOReturnSync(TestCase):
@@ -410,6 +411,28 @@ class TestInvoiceForReturnSelection(TestCase):
 				f"{CANCELLATION_MODULE}._get_refunded_qty_by_invoice_row",
 				return_value={"SII-1": 1, "SII-2": 1},
 			),
+		):
+			self.assertIsNone(_get_invoice_for_return("SO-MULTI", set(), {"ITEM-A"}))
+
+	def test_ambiguous_unrefunded_same_sku_invoices_return_none(self):
+		"""Two unrefunded link-less invoices with the same SKU cannot be told apart.
+
+		Regression test: the first one in database order was credited, hitting
+		the wrong package's warehouse, batch and charge rows.
+		"""
+		invoices = ["INV-001", "INV-002"]
+		invoice_item_map = {
+			"INV-001": [
+				{"parent": "INV-001", "name": "SII-1", "so_detail": None, "item_code": "ITEM-A", "qty": 1}
+			],
+			"INV-002": [
+				{"parent": "INV-002", "name": "SII-2", "so_detail": None, "item_code": "ITEM-A", "qty": 1}
+			],
+		}
+
+		with (
+			patch("frappe.get_all", side_effect=self._mock_get_all(invoices, invoice_item_map)),
+			patch(f"{CANCELLATION_MODULE}._get_refunded_qty_by_invoice_row", return_value={}),
 		):
 			self.assertIsNone(_get_invoice_for_return("SO-MULTI", set(), {"ITEM-A"}))
 
@@ -910,6 +933,22 @@ class TestPartialReturns(TestCase):
 		self.assertAlmostEqual(credit_note.items[0].amount, -100.0)
 		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, -18.0)
 
+	def test_partial_return_scales_taxable_amount(self):
+		"""The breakup's taxable value follows the returned qty, not the billed qty.
+
+		Regression test: a partial return kept the invoice's full taxable
+		amount while crediting only some of its units.
+		"""
+		credit_note = self._credit_note(
+			items=[{"item_code": "ITEM-A", "qty": -2.0, "rate": 100.0, "sales_invoice_item": "SI-A"}]
+		)
+		credit_note._item_wise_tax_details[0].taxable_amount = 200.0
+
+		_handle_partial_returns(credit_note, {"SI-A": 1})
+
+		self.assertAlmostEqual(credit_note._item_wise_tax_details[0].taxable_amount, 100.0)
+		self.assertAlmostEqual(credit_note._item_wise_tax_details[0].amount, -18.0)
+
 	def test_breakup_of_only_absent_items_credits_no_tax(self):
 		"""Prevent crash when tax breakup references items absent from credit note."""
 		credit_note = self._credit_note(
@@ -1099,6 +1138,64 @@ class TestPartialReturns(TestCase):
 		self.assertEqual(credit_note._item_wise_tax_details, [row_a1])
 		self.assertAlmostEqual(row_a1.amount, -18.0)
 		self.assertAlmostEqual(credit_note.taxes[0].tax_amount, -18.0)
+
+
+class TestSyncOldReturns(TestCase):
+	"""Test _sync_old_returns orchestrates both return types."""
+
+	def test_calls_both_sync_functions(self):
+		from ecommerce_integrations.unicommerce.sync_old_orders import _sync_old_returns
+
+		detail = {"code": "SO-OLD-001", "returns": []}
+
+		with (
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.sync_customer_initiated_returns") as sync_cir,
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.sync_rto_returns") as sync_rto,
+		):
+			_sync_old_returns(detail, "SO-OLD-001")
+
+		sync_cir.assert_called_once_with(detail, client=None)
+		sync_rto.assert_called_once_with(detail, client=None)
+
+	def test_continues_on_customer_return_failure(self):
+		"""RTO sync still runs when the customer return sync raises."""
+		from ecommerce_integrations.unicommerce.sync_old_orders import _sync_old_returns
+
+		detail = {"code": "SO-OLD-002", "returns": []}
+
+		with (
+			patch(
+				f"{SYNC_OLD_ORDERS_MODULE}.sync_customer_initiated_returns",
+				side_effect=ValueError("Customer return sync failed"),
+			),
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.sync_rto_returns") as sync_rto,
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.create_unicommerce_log") as log,
+		):
+			_sync_old_returns(detail, "SO-OLD-002")
+
+		sync_rto.assert_called_once()
+		log.assert_called_once()
+		self.assertEqual(log.call_args.kwargs["status"], "Error")
+
+	def test_continues_on_rto_failure(self):
+		"""Customer return sync still runs when the RTO sync raises."""
+		from ecommerce_integrations.unicommerce.sync_old_orders import _sync_old_returns
+
+		detail = {"code": "SO-OLD-003", "returns": []}
+
+		with (
+			patch(
+				f"{SYNC_OLD_ORDERS_MODULE}.sync_rto_returns",
+				side_effect=ValueError("RTO sync failed"),
+			),
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.sync_customer_initiated_returns") as sync_cir,
+			patch(f"{SYNC_OLD_ORDERS_MODULE}.create_unicommerce_log") as log,
+		):
+			_sync_old_returns(detail, "SO-OLD-003")
+
+		sync_cir.assert_called_once()
+		log.assert_called_once()
+		self.assertEqual(log.call_args.kwargs["status"], "Error")
 
 
 class TestReturnAPIIntegration(TestCase):

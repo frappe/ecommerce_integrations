@@ -94,19 +94,27 @@ def copy_item_wise_tax_details(target, source_name, source_doctype="Sales Order"
 		if tax.name in source_tax_rows:
 			source_details[tax.account_head].append(breakup_by_tax_row.get(tax.name, []))
 
+	source_qty_by_row = {item.name: flt(item.qty) for item in source.get("items") or []}
+
 	rows = []
 	for tax in target.get("taxes"):
 		queue = source_details.get(tax.account_head)
 		if not queue:
 			continue
 		for item, row in queue.popleft():
+			# a mapped row can carry fewer units than its source row (partial
+			# shipment or return), or negative ones (a credit note): its tax and
+			# taxable value both follow the quantity
+			source_qty = source_qty_by_row.get(row.item_row)
+			target_qty = item.get("qty")
+			quantity_ratio = flt(target_qty) / source_qty if source_qty and target_qty is not None else 1.0
 			rows.append(
 				frappe._dict(
 					item=item,
 					tax=tax,
 					rate=row.rate,
-					amount=row.amount,
-					taxable_amount=row.taxable_amount,
+					amount=flt(row.amount) * quantity_ratio,
+					taxable_amount=flt(row.taxable_amount) * quantity_ratio,
 				)
 			)
 
