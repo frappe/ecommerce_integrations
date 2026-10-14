@@ -402,24 +402,30 @@ class TestWebhookRouting(IntegrationTestCase):
 	def test_webhook_from_an_unknown_or_disabled_shop_is_refused(self):
 		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		def refused_log(shop_domain):
-			request = self.request(shop_domain)
-			request.headers["X-Shopify-Topic"] = "orders/create"
+		def refused_log(shop_domain, secret=None):
+			request = self.request(shop_domain, secret=secret)
+			request.headers["X-Shopify-Topic"] = "orders/cancelled"
 			# keep the log in the test transaction
 			with patch.object(frappe.db, "commit"):
 				self.assertRaises(frappe.ValidationError, _get_webhook_account, request)
 			return frappe.get_last_doc("Ecommerce Integration Log", {"integration": MODULE_NAME})
 
-		# a disabled account's request is logged for a retry once the account is enabled again
-		log = refused_log("retired.myshopify.com")
+		# a request signed by a disabled account is logged for a retry once it is enabled again
+		log = refused_log("retired.myshopify.com", secret="secret-retired")
 		self.assertEqual(log.status, "Error")
 		self.assertEqual(log.request_data, '{"id": 1}')
 		self.assertEqual(log.shopify_account, "retired.myshopify.com")
-		self.assertEqual(log.method, EVENT_MAPPER["orders/create"])
+		self.assertEqual(log.method, EVENT_MAPPER["orders/cancelled"])
 
-		# an unknown shop cannot be attributed, so its request is not offered for retry
-		for shop_domain in ("unknown.myshopify.com", None):
-			log = refused_log(shop_domain)
+		# a retry runs the body unchecked, so unsigned or forged requests are not retryable, and
+		# a request from an unknown shop cannot be attributed to a store
+		for shop_domain, secret in (
+			("retired.myshopify.com", None),
+			("retired.myshopify.com", "forged"),
+			("unknown.myshopify.com", "secret-one"),
+			(None, None),
+		):
+			log = refused_log(shop_domain, secret)
 			self.assertEqual(log.request_data, '{"id": 1}')
 			self.assertFalse(log.shopify_account)
 			self.assertFalse(log.method)
