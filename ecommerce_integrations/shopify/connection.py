@@ -159,16 +159,18 @@ def _get_webhook_account(req):
 
 	if not account:
 		message = _("No enabled Shopify Account for shop {0}").format(shop_domain or _("(no shop domain)"))
-		# A disabled account is recorded, so the request can be retried once it is enabled
-		# again. A request from an unknown shop gets no method: a retry would hand it to
+		# A request signed by a disabled account is recorded for that account, so it can be
+		# retried once the account is enabled again. Any other request gets no method: a retry
+		# runs its body unchecked, and a request from an unknown shop would be handed to
 		# whichever account happens to be the only enabled one.
 		known_account = frappe.db.exists(ACCOUNT_DOCTYPE, shop_domain) if shop_domain else None
+		retryable = bool(known_account) and _is_signed_by(req, known_account)
 		create_shopify_log(
 			status="Error",
 			request_data=frappe.safe_decode(req.data),
 			message=message,
-			method=EVENT_MAPPER.get(req.headers.get("X-Shopify-Topic")) if known_account else None,
-			shopify_account=known_account,
+			method=EVENT_MAPPER.get(req.headers.get("X-Shopify-Topic")) if retryable else None,
+			shopify_account=known_account if retryable else None,
 		)
 		frappe.throw(message)
 
@@ -191,6 +193,17 @@ def process_request(data, event, shopify_account=None):
 			"shopify_account": get_account_name(shopify_account),
 		},
 	)
+
+
+def _is_signed_by(req, shopify_account) -> bool:
+	"""Whether the request carries a valid signature made with the account's secret."""
+	secret_key = get_shopify_account(shopify_account).shared_secret
+	hmac_header = req.headers.get("X-Shopify-Hmac-Sha256")
+	if not secret_key or not hmac_header:
+		return False
+
+	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
+	return hmac.compare_digest(sig, hmac_header.encode())
 
 
 def _validate_request(req, hmac_header, shopify_account):
