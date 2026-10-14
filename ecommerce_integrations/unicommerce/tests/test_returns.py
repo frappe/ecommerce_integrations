@@ -544,10 +544,7 @@ class TestReturnWithChargeItems(TestCase):
 				side_effect=lambda doctype, *args, **kwargs: so if doctype == "Sales Order" else si,
 			),
 			# charge rows are told apart by the configured charge items
-			patch(
-				"ecommerce_integrations.unicommerce.invoice._get_charge_items",
-				return_value=charge_items,
-			),
+			patch(f"{CANCELLATION_MODULE}._get_charge_items", return_value=charge_items),
 			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
 			patch(f"{CANCELLATION_MODULE}.get_return_date_from_package", return_value=(1627900000000, {})),
 			patch(f"{CANCELLATION_MODULE}.create_unicommerce_log"),
@@ -778,7 +775,7 @@ class TestReturnWithChargeItems(TestCase):
 			patch(
 				"frappe.get_doc", side_effect=lambda doctype, *a, **k: so if doctype == "Sales Order" else si
 			),
-			patch("ecommerce_integrations.unicommerce.invoice._get_charge_items", return_value={}),
+			patch(f"{CANCELLATION_MODULE}._get_charge_items", return_value={}),
 			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
 			patch(f"{CANCELLATION_MODULE}._get_refunded_qty_by_invoice_row", return_value={}),
 			patch(f"{CANCELLATION_MODULE}.get_return_date_from_package", return_value=(1627900000000, {})),
@@ -824,7 +821,7 @@ class TestReturnWithChargeItems(TestCase):
 			patch("frappe.db.get_value", return_value="SO-1"),
 			patch("frappe.get_doc", get_doc),
 			patch(
-				"ecommerce_integrations.unicommerce.invoice._get_charge_items",
+				f"{CANCELLATION_MODULE}._get_charge_items",
 				return_value={("cash_on_delivery_charges", 18.0): "COD-CHARGES"},
 			),
 			patch(f"{CANCELLATION_MODULE}._get_invoice_for_return", return_value="SI-1"),
