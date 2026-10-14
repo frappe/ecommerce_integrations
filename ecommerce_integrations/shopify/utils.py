@@ -20,11 +20,16 @@ def create_shopify_log(shopify_account=None, **kwargs):
 
 
 def normalize_shop_url(shopify_url: str | None) -> str:
-	"""Shop domain without scheme, path or surrounding whitespace, e.g. frappe.myshopify.com."""
+	"""The store's myshopify domain, e.g. frappe.myshopify.com for `frappe` or `https://frappe.myshopify.com/`.
+
+	Like the Shopify API session, only the first label is kept: Shopify identifies a store by
+	its myshopify domain, in API requests as well as in the shop domain header of webhooks.
+	"""
 	url = (shopify_url or "").strip().lower()
 	for scheme in ("https://", "http://"):
 		url = url.removeprefix(scheme)
-	return url.split("/")[0]
+	shop = url.split("/")[0].split(":")[0].split(".")[0]
+	return f"{shop}.myshopify.com" if shop else ""
 
 
 def get_account_name(shopify_account) -> str | None:
