@@ -1,2 +1,7 @@
 ecommerce_integrations.patches.update_shopify_custom_fields
 ecommerce_integrations.patches.set_default_amazon_item_fields_map
+<<<<<<< HEAD
+=======
+ecommerce_integrations.patches.set_default_shopify_auth_method
+ecommerce_integrations.patches.update_unicommerce_custom_fields
+>>>>>>> 1ad3e6c (feat(shopify): add OAuth client credentials token module)
