@@ -30,7 +30,7 @@ from ecommerce_integrations.unicommerce.constants import (
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
-from ecommerce_integrations.utils.taxation import get_dummy_tax_category
+from ecommerce_integrations.utils.taxation import ITEM_WISE_TAX_KEY, get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
 
@@ -295,7 +295,12 @@ def get_taxes(line_items, channel_config) -> list:
 
 			tax_map[tax_head] += tax_amount
 
-			item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
+			# Sum across lines sharing an item code so no line's tax is dropped.
+			entry = item_wise_tax_map[tax_head].get(item_code)
+			if entry:
+				entry[1] += tax_amount
+			else:
+				item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
 
 	taxes = []
 
@@ -308,7 +313,7 @@ def get_taxes(line_items, channel_config) -> list:
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
 				"description": tax_head.replace("_", " ").upper(),
-				"item_wise_tax_detail": json.dumps(item_wise_tax_map[tax_head]),
+				ITEM_WISE_TAX_KEY: item_wise_tax_map[tax_head],
 				"dont_recompute_tax": 1,
 			}
 		)

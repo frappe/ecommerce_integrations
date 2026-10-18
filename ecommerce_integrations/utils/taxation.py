@@ -26,29 +26,38 @@ def set_item_wise_tax_details(doc):
 	if not doc.meta.get_field("item_wise_tax_details"):
 		return
 
-	items_by_code = {}
+	items_by_code = defaultdict(list)
 	for item in doc.get("items"):
-		items_by_code.setdefault(item.item_code, item)
+		items_by_code[item.item_code].append(item)
 
 	rows = []
 	for tax in doc.get("taxes"):
 		for item_code, (rate, amount) in (tax.get(ITEM_WISE_TAX_KEY) or {}).items():
-			item = items_by_code.get(item_code)
-			if not item:
+			# Unicommerce splits a qty>1 line into one row per unit; spread the tax across them.
+			items = items_by_code.get(item_code) or []
+			if not items:
 				continue
-
-			rows.append(
-				frappe._dict(
-					item=item,
-					tax=tax,
-					rate=flt(rate),
-					amount=flt(amount),
-					taxable_amount=flt(item.get("net_amount")) or flt(item.qty) * flt(item.rate),
+			for item, share in zip(items, _split_amount(flt(amount), len(items)), strict=True):
+				rows.append(
+					frappe._dict(
+						item=item,
+						tax=tax,
+						rate=flt(rate),
+						amount=share,
+						taxable_amount=flt(item.get("net_amount")) or flt(item.qty) * flt(item.rate),
+					)
 				)
-			)
 
 	if rows:
 		doc._item_wise_tax_details = rows
+
+
+def _split_amount(amount, count):
+	if count <= 1:
+		return [amount]
+
+	share = flt(amount / count, 2)
+	return [share] * (count - 1) + [flt(amount - share * (count - 1), 2)]
 
 
 def copy_item_wise_tax_details(target, source_name):
