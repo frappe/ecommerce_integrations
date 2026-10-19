@@ -15,6 +15,7 @@ from ecommerce_integrations.controllers.setting import (
 )
 from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	ADDRESS_ID_FIELD,
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
@@ -28,18 +29,26 @@ from ecommerce_integrations.shopify.constants import (
 from ecommerce_integrations.shopify.utils import (
 	ensure_old_connector_is_disabled,
 	migrate_from_old_connector,
+	normalize_shop_url,
 )
 
 
-class ShopifySetting(SettingController):
+class ShopifyAccount(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
+
+	def autoname(self):
+		# the account is named after the shop domain Shopify sends with its webhooks,
+		# so normalise the URL before it becomes the name
+		self.shopify_url = normalize_shop_url(self.shopify_url)
+		self.name = self.shopify_url
 
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = self.shopify_url.replace("https://", "")
+			self.shopify_url = normalize_shop_url(self.shopify_url)
+		self._validate_single_enabled_account()
 		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -49,7 +58,23 @@ class ShopifySetting(SettingController):
 
 	def on_update(self):
 		if self.is_enabled() and not self.is_old_data_migrated:
-			migrate_from_old_connector()
+			migrate_from_old_connector(shopify_account=self.name)
+
+	def _validate_single_enabled_account(self):
+		"""Incoming webhooks are attributed to the only enabled account, so a second
+		enabled account would leave the webhooks of both stores unattributable."""
+		if not self.is_enabled():
+			return
+
+		other_account = frappe.db.exists(
+			ACCOUNT_DOCTYPE, {"enable_shopify": 1, "name": ("!=", self.name or "")}
+		)
+		if other_account:
+			frappe.throw(
+				_(
+					"Shopify Account {0} is already enabled. Only one account can be enabled at a time."
+				).format(frappe.bold(other_account))
+			)
 
 	def _handle_webhooks(self):
 		if self.is_enabled() and not self.webhooks:
@@ -79,18 +104,18 @@ class ShopifySetting(SettingController):
 			self.last_inventory_sync = get_datetime("1970-01-01")
 
 	@frappe.whitelist()
-	@connection.temp_shopify_session
 	def update_location_table(self):
 		"""Fetch locations from shopify and add it to child table so user can
 		map it with correct ERPNext warehouse."""
 
 		self.shopify_warehouse_mapping = []
-		for locations in PaginatedIterator(Location.find()):
-			for location in locations:
-				self.append(
-					"shopify_warehouse_mapping",
-					{"shopify_location_id": location.id, "shopify_location_name": location.name},
-				)
+		with connection.shopify_session(self):
+			for locations in PaginatedIterator(Location.find()):
+				for location in locations:
+					self.append(
+						"shopify_warehouse_mapping",
+						{"shopify_location_id": location.id, "shopify_location_name": location.name},
+					)
 
 	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]

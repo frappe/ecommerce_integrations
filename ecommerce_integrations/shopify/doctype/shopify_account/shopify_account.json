@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "autoname": "field:shopify_url",
  "creation": "2021-04-13 13:30:54.909583",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -65,6 +66,8 @@
    "default": "0",
    "fieldname": "enable_shopify",
    "fieldtype": "Check",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Enable Shopify"
   },
   {
@@ -82,7 +85,8 @@
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Shop URL",
-   "mandatory_depends_on": "eval:doc.enable_shopify"
+   "reqd": 1,
+   "unique": 1
   },
   {
    "fieldname": "column_break_3",
@@ -153,6 +157,8 @@
   {
    "fieldname": "company",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Company",
    "mandatory_depends_on": "eval:doc.enable_shopify",
    "options": "Company"
@@ -390,12 +396,13 @@
   }
  ],
  "index_web_pages_for_search": 1,
- "issingle": 1,
+ "issingle": 0,
  "links": [],
- "modified": "2023-10-24 10:38:49.247431",
+ "modified": "2026-10-09 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "shopify",
- "name": "Shopify Setting",
+ "name": "Shopify Account",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {
