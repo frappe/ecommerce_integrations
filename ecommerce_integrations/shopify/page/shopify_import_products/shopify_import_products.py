@@ -221,4 +221,6 @@ def publish(message, synced=False, error=False, done=False, br=True, shopify_acc
 			"message": message + ("<br /><br />" if br else ""),
 			"done": done,
 		},
+		# the job runs as the user who started the import
+		user=frappe.session.user,
 	)
