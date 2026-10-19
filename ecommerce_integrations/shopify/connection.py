@@ -3,6 +3,7 @@ import functools
 import hashlib
 import hmac
 import json
+from contextlib import contextmanager
 
 import frappe
 from frappe import _
@@ -10,16 +11,27 @@ from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	API_VERSION,
 	EVENT_MAPPER,
-	SETTING_DOCTYPE,
+	OAUTH_AUTH_METHOD,
 	WEBHOOK_EVENTS,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import (
+	create_shopify_log,
+	get_account_name,
+	get_default_account,
+	get_shopify_account,
+	normalize_shop_url,
+)
 
 
 def temp_shopify_session(func):
-	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
+	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns.
+
+	The session belongs to the account passed as the `shopify_account` keyword argument
+	(document or name), or to the only enabled account when the caller passes none.
+	"""
 
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
@@ -27,14 +39,42 @@ def temp_shopify_session(func):
 		if frappe.flags.in_test:
 			return func(*args, **kwargs)
 
-		setting = frappe.get_doc(SETTING_DOCTYPE)
+		account = kwargs.get("shopify_account")
+		setting = get_shopify_account(account) if account else get_default_account()
 		if setting.is_enabled():
-			auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
-
-			with Session.temp(*auth_details):
+			with shopify_session(setting):
 				return func(*args, **kwargs)
 
 	return wrapper
+
+
+@contextmanager
+def shopify_session(shopify_account):
+	"""Temporary Shopify API session for one account, for code that holds the account itself."""
+	# no auth in testing
+	if frappe.flags.in_test:
+		yield
+		return
+
+	setting = get_shopify_account(shopify_account)
+	with Session.temp(setting.shopify_url, API_VERSION, get_access_token(setting)):
+		yield
+
+
+def get_access_token(setting) -> str:
+	"""Admin API token of an account: the static token, or a current OAuth token."""
+	if setting.authentication_method == OAUTH_AUTH_METHOD:
+		from ecommerce_integrations.shopify.oauth import get_valid_access_token
+
+		return get_valid_access_token(setting)
+	return setting.get_password("password")
+
+
+def get_webhook_secret(setting) -> str:
+	"""Secret Shopify signs the account's webhooks with: an OAuth app signs with its client secret."""
+	if setting.authentication_method == OAUTH_AUTH_METHOD:
+		return setting.get_password("client_secret", raise_exception=False)
+	return setting.shared_secret
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -91,22 +131,57 @@ def get_callback_url() -> str:
 	return f"https://{url}/api/method/ecommerce_integrations.shopify.connection.store_request_data"
 
 
-@frappe.whitelist(allow_guest=True)
+# Shopify calls this webhook endpoint without a session; every request is verified with
+# the HMAC signature of the store it claims to come from before anything is processed.
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def store_request_data() -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
 
-		_validate_request(frappe.request, hmac_header)
+		shopify_account = _get_webhook_account(frappe.request)
+		_validate_request(frappe.request, hmac_header, shopify_account)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
 
-		process_request(data, event)
+		process_request(data, event, shopify_account)
 
 
-def process_request(data, event):
+def _get_webhook_account(req):
+	"""The account an incoming webhook belongs to, by the shop domain Shopify sends with it.
+
+	A request from a shop without an enabled account is logged and refused.
+	"""
+	shop_domain = normalize_shop_url(req.headers.get("X-Shopify-Shop-Domain"))
+	account = (
+		frappe.db.get_value(ACCOUNT_DOCTYPE, {"name": shop_domain, "enable_shopify": 1}, "name")
+		if shop_domain
+		else None
+	)
+
+	if not account:
+		message = _("No enabled Shopify Account for shop {0}").format(shop_domain or _("(no shop domain)"))
+		# A request signed by a disabled account is recorded for that account, so it can be
+		# retried once the account is enabled again. Any other request gets no method: a retry
+		# runs its body unchecked, and a request from an unknown shop would be handed to
+		# whichever account happens to be the only enabled one.
+		known_account = frappe.db.exists(ACCOUNT_DOCTYPE, shop_domain) if shop_domain else None
+		retryable = bool(known_account) and _is_signed_by(req, known_account)
+		create_shopify_log(
+			status="Error",
+			request_data=frappe.safe_decode(req.data),
+			message=message,
+			method=EVENT_MAPPER.get(req.headers.get("X-Shopify-Topic")) if retryable else None,
+			shopify_account=known_account if retryable else None,
+		)
+		frappe.throw(message)
+
+	return frappe.get_doc(ACCOUNT_DOCTYPE, account)
+
+
+def process_request(data, event, shopify_account=None):
 	# create log
-	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data)
+	log = create_shopify_log(method=EVENT_MAPPER[event], request_data=data, shopify_account=shopify_account)
 
 	# enqueue backround job
 	frappe.enqueue(
@@ -114,16 +189,40 @@ def process_request(data, event):
 		queue="short",
 		timeout=300,
 		is_async=True,
-		**{"payload": data, "request_id": log.name},
+		**{
+			"payload": data,
+			"request_id": log.name,
+			"shopify_account": get_account_name(shopify_account),
+		},
 	)
 
 
-def _validate_request(req, hmac_header):
-	settings = frappe.get_doc(SETTING_DOCTYPE)
-	secret_key = settings.shared_secret
+def _is_signed_by(req, shopify_account) -> bool:
+	"""Whether the request carries a valid signature made with the account's secret."""
+	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
+	hmac_header = req.headers.get("X-Shopify-Hmac-Sha256")
+	if not secret_key or not hmac_header:
+		return False
+
+	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
+	return hmac.compare_digest(sig, hmac_header.encode())
+
+
+def _validate_request(req, hmac_header, shopify_account):
+	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
+	if not secret_key:
+		create_shopify_log(
+			status="Error",
+			request_data=frappe.safe_decode(req.data),
+			message=_("Webhook secret is not configured"),
+			shopify_account=shopify_account,
+		)
+		frappe.throw(_("Unverified Webhook Data"))
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
 	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(status="Error", request_data=req.data)
+		create_shopify_log(
+			status="Error", request_data=frappe.safe_decode(req.data), shopify_account=shopify_account
+		)
 		frappe.throw(_("Unverified Webhook Data"))
