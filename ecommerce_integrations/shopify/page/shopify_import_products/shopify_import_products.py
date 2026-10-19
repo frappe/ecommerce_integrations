@@ -30,7 +30,7 @@ def _get_account(shopify_account: str | None = None) -> str:
 
 
 @frappe.whitelist()
-def get_shopify_products(from_=None, shopify_account: str | None = None):
+def get_shopify_products(from_: str | None = None, shopify_account: str | None = None):
 	shopify_products = fetch_all_products(from_, shopify_account=_get_account(shopify_account))
 	return shopify_products
 
@@ -98,8 +98,8 @@ def get_shopify_product_count(shopify_account: str | None = None):
 	return Product.count()
 
 
-@frappe.whitelist()
-def sync_product(product, shopify_account: str | None = None):
+@frappe.whitelist(methods=["POST"])
+def sync_product(product: str | int, shopify_account: str | None = None):
 	try:
 		shopify_product = ShopifyProduct(product, shopify_account=_get_account(shopify_account))
 		shopify_product.sync_product()
@@ -110,8 +110,8 @@ def sync_product(product, shopify_account: str | None = None):
 		return False
 
 
-@frappe.whitelist()
-def resync_product(product, shopify_account: str | None = None):
+@frappe.whitelist(methods=["POST"])
+def resync_product(product: str | int, shopify_account: str | None = None):
 	return _resync_product(product, shopify_account=_get_account(shopify_account))
 
 
@@ -141,7 +141,7 @@ def is_synced(product, shopify_account: str | None = None):
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def import_all_products(shopify_account: str | None = None):
 	shopify_account = _get_account(shopify_account)
 	frappe.enqueue(
@@ -221,4 +221,6 @@ def publish(message, synced=False, error=False, done=False, br=True, shopify_acc
 			"message": message + ("<br /><br />" if br else ""),
 			"done": done,
 		},
+		# the job runs as the user who started the import
+		user=frappe.session.user,
 	)

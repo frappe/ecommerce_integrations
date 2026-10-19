@@ -78,6 +78,7 @@ class TestShopifyAccount(IntegrationTestCase):
 		self.assertEqual(
 			publish_realtime.call_args.args[0], "shopify.key.sync.all.products.one.myshopify.com"
 		)
+		self.assertEqual(publish_realtime.call_args.kwargs["user"], frappe.session.user)
 
 	def test_short_shop_url_is_completed_to_the_myshopify_domain(self):
 		self.assertEqual(make_account("Short").name, "short.myshopify.com")
