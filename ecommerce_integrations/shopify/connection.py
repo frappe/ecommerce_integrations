@@ -114,7 +114,9 @@ def get_callback_url() -> str:
 	return f"https://{url}/api/method/ecommerce_integrations.shopify.connection.store_request_data"
 
 
-@frappe.whitelist(allow_guest=True)
+# Shopify calls this webhook endpoint without a session; every request is verified with
+# the HMAC signature of the store it claims to come from before anything is processed.
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def store_request_data() -> None:
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
