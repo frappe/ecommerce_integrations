@@ -157,15 +157,12 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
 			rate = _get_item_price(shopify_item, taxes_inclusive)
-			# 100% discount forces the rate to 0; a bare 0 rate gets back-filled from the price list
-			is_free_item = flt(rate) <= 0
 			items.append(
 				{
 					"item_code": item_code,
 					"item_name": shopify_item.get("name"),
 					"rate": rate,
-					"is_free_item": 1 if is_free_item else 0,
-					"discount_percentage": 100 if is_free_item else 0,
+					**_get_free_item_fields(rate),
 					"delivery_date": delivery_date,
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
@@ -196,6 +193,12 @@ def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 		total_taxes += flt(tax.get("price"))
 
 	return price - (total_taxes + total_discount) / qty
+
+
+def _get_free_item_fields(rate) -> dict:
+	# 100% discount forces the rate to 0; a bare 0 rate gets back-filled from the price list
+	is_free_item = flt(rate) <= 0
+	return {"is_free_item": 1 if is_free_item else 0, "discount_percentage": 100 if is_free_item else 0}
 
 
 def _get_total_discount(line_item) -> float:
@@ -315,6 +318,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					{
 						"item_code": setting.shipping_item,
 						"rate": shipping_charge_amount,
+						**_get_free_item_fields(shipping_charge_amount),
 						"delivery_date": items[-1]["delivery_date"] if items else nowdate(),
 						"qty": 1,
 						"stock_uom": "Nos",
