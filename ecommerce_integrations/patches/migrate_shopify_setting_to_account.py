@@ -9,6 +9,7 @@ to the account. Afterwards the single is removed.
 
 import frappe
 from frappe.model import table_fields
+from frappe.query_builder.functions import IfNull
 
 from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, MODULE_NAME
 from ecommerce_integrations.shopify.utils import normalize_shop_url
@@ -65,12 +66,13 @@ def create_account(shopify_url: str, values: dict) -> None:
 
 def move_child_rows(shopify_url: str) -> None:
 	for child_doctype in CHILD_DOCTYPES:
-		frappe.db.sql(
-			f"""update `tab{child_doctype}`
-			set parent = %(account)s, parenttype = %(account_doctype)s
-			where parenttype = %(legacy)s""",
-			{"account": shopify_url, "account_doctype": ACCOUNT_DOCTYPE, "legacy": LEGACY_SETTING_DOCTYPE},
-		)
+		table = frappe.qb.DocType(child_doctype)
+		(
+			frappe.qb.update(table)
+			.set(table.parent, shopify_url)
+			.set(table.parenttype, ACCOUNT_DOCTYPE)
+			.where(table.parenttype == LEGACY_SETTING_DOCTYPE)
+		).run()
 
 
 def move_passwords(shopify_url: str) -> None:
@@ -84,9 +86,10 @@ def move_passwords(shopify_url: str) -> None:
 
 def link_existing_records(shopify_url: str) -> None:
 	for doctype in ("Ecommerce Item", "Ecommerce Integration Log"):
-		frappe.db.sql(
-			f"""update `tab{doctype}`
-			set shopify_account = %(account)s
-			where integration = %(integration)s and coalesce(shopify_account, '') = ''""",
-			{"account": shopify_url, "integration": MODULE_NAME},
-		)
+		table = frappe.qb.DocType(doctype)
+		(
+			frappe.qb.update(table)
+			.set(table.shopify_account, shopify_url)
+			.where(table.integration == MODULE_NAME)
+			.where(IfNull(table.shopify_account, "") == "")
+		).run()
