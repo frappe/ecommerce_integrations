@@ -466,7 +466,7 @@ def upload_erpnext_item(doc, method=None):
 				reference_name=account,
 			)
 			msgprint(
-				_("Could not upload {0} to Shopify Account {1}: {2}").format(item.name, account, e),
+				_("Could not upload {0} to Shopify Account {1}: {2}").format(item.name, account, str(e)),
 				indicator="orange",
 			)
 

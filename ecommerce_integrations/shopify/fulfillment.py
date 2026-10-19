@@ -74,10 +74,9 @@ def get_fulfillment_items(dn_items, fulfillment_items, setting, location_id=None
 	def find_matching_fullfilement_item(dn_item):
 		nonlocal fulfillment_items
 
-		for item in fulfillment_items:
+		for idx, item in enumerate(fulfillment_items):
 			if get_item_code(item, setting) == dn_item.item_code:
-				fulfillment_items.remove(item)
-				return item
+				return fulfillment_items.pop(idx)
 
 	for dn_item in dn_items:
 		if shopify_item := find_matching_fullfilement_item(dn_item):
