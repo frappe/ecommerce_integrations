@@ -1,6 +1,8 @@
 # Copyright (c) 2021, Frappe and contributors
 # For license information, please see LICENSE
 
+from collections.abc import Callable
+
 import frappe
 import requests
 from frappe import _
@@ -18,7 +20,6 @@ from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import (
 	ADDRESS_ID_FIELD,
 	AUTH_METHOD_OAUTH,
-	AUTH_METHOD_STATIC,
 	CUSTOMER_ID_FIELD,
 	FULLFILLMENT_ID_FIELD,
 	ITEM_SELLING_RATE_FIELD,
@@ -27,6 +28,11 @@ from ecommerce_integrations.shopify.constants import (
 	ORDER_NUMBER_FIELD,
 	ORDER_STATUS_FIELD,
 	SUPPLIER_ID_FIELD,
+)
+from ecommerce_integrations.shopify.oauth import (
+	get_valid_access_token,
+	normalize_shopify_url,
+	refresh_oauth_token,
 )
 from ecommerce_integrations.shopify.utils import (
 	create_shopify_log,
@@ -39,129 +45,39 @@ class ShopifySetting(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
 
-	def _get_password_safe(self, fieldname: str) -> str:
-		"""Return a stored secret, or an empty string for a new/missing value."""
-		if not self.name or self.is_new():
-			return ""
-
-		return self.get_password(fieldname, raise_exception=False) or ""
-
-	def _get_secret(self, fieldname: str) -> str:
-		"""
-		Return the plaintext secret for a Password field.
-
-		Uses the in-memory value when it is freshly entered (new or edited doc),
-		otherwise reads the decrypted value from the encrypted store. Frappe masks
-		saved Password fields to a dummy '*****' placeholder, so a naive
-		``self.field or fallback`` would leak the dummy as the real secret on any
-		re-save where the user did not retype it.
-		"""
-		value = self.get(fieldname)
-		if value and not self.is_dummy_password(value):
-			return value
-		return self._get_password_safe(fieldname)
-
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			from ecommerce_integrations.shopify.oauth import normalize_shopify_url
-
 			self.shopify_url = normalize_shopify_url(self.shopify_url)
 
-		self._set_default_authentication_method()
 		self._validate_authentication_fields()
-		self._preserve_managed_oauth_token()
-		self._handle_webhooks()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
+		self._handle_webhooks()  # last: it calls Shopify
 
 		if self.is_enabled():
 			setup_custom_fields()
 
-	def on_update(self):
-		if self.is_enabled() and not self.is_old_data_migrated:
-			migrate_from_old_connector()
-
-	# --- Authentication helpers ---
-
-	def _set_default_authentication_method(self):
-		"""Set default authentication method for existing documents."""
-		if not self.authentication_method:
-			self.authentication_method = AUTH_METHOD_STATIC
-
-	def _validate_authentication_fields(self):
-		"""Validate that required fields are present based on authentication method."""
-		if not self.is_enabled():
-			return
-
-		if self.authentication_method == AUTH_METHOD_STATIC:
-			password = self._get_secret("password")
-			if not password:
-				frappe.throw(_("Password / Access Token is required for Static Token authentication"))
-
-			if not self.shared_secret:
-				frappe.throw(_("Shared secret / API Secret is required for Static Token authentication"))
-
-		elif self.authentication_method == AUTH_METHOD_OAUTH:
-			if not self.client_id:
-				frappe.throw(_("Client ID is required for OAuth 2.0 authentication"))
-
-			client_secret = self._get_secret("client_secret")
-			if not client_secret:
-				frappe.throw(_("Client Secret is required for OAuth 2.0 authentication"))
-
-	def _preserve_managed_oauth_token(self):
-		"""Keep _save_passwords from deleting the OAuth token from the encrypted store.
-
-		oauth.refresh_oauth_token writes oauth_access_token directly to __Auth and
-		never sets the field on this document, so the in-memory value is always
-		empty. Document._save_passwords (which runs after validate/before_save)
-		removes any Password field whose in-memory value is empty — wiping the
-		token on every save that did not mint a new one.
-		"""
-		if self.authentication_method != AUTH_METHOD_OAUTH:
-			return
-
-		ignored = self.flags.ignore_save_passwords
-		if ignored is True:
-			return
-
-		ignored = list(ignored or [])
-		if "oauth_access_token" not in ignored:
-			ignored.append("oauth_access_token")
-		self.flags.ignore_save_passwords = ignored
-
 	def before_save(self):
-		"""Pre-generate OAuth token on save for better UX."""
-		if not self.is_enabled():
-			return
+		if (
+			self.is_enabled()
+			and self.authentication_method == AUTH_METHOD_OAUTH
+			and not self.flags.oauth_token_refreshed_during_save
+		):
+			self._pregenerate_oauth_token()
 
-		if self.authentication_method != AUTH_METHOD_OAUTH:
-			return
+		self._preserve_stored_oauth_token()
 
-		if self.flags.get("oauth_token_refreshed_during_save"):
-			return
-
-		credentials_changed = self.has_value_changed("client_id") or self.has_value_changed("client_secret")
-		client_secret_raw = self._get_secret("client_secret")
-
+	def _pregenerate_oauth_token(self):
+		"""Mint the OAuth token on save so credential mistakes surface immediately."""
 		try:
-			if credentials_changed:
-				from ecommerce_integrations.shopify.oauth import refresh_oauth_token
+			self._get_or_generate_oauth_token()
+		except (frappe.ValidationError, requests.exceptions.RequestException) as e:
+			# rejected new credentials must block the save; a Shopify outage must not
+			if isinstance(e, frappe.ValidationError) and self._oauth_credentials_changed():
+				raise
 
-				refresh_oauth_token(self, client_secret=client_secret_raw)
-			elif not self._get_password_safe("oauth_access_token"):
-				self._get_or_generate_oauth_token()
-		except frappe.ValidationError:
-			if credentials_changed:
-				raise  # Bad credentials on rotation must block save
-			create_shopify_log(
-				status="Warning",
-				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
-				message=_("Token pre-generation failed on save; will retry on first sync."),
-			)
-		except Exception as e:
 			create_shopify_log(
 				status="Warning",
 				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
@@ -169,90 +85,134 @@ class ShopifySetting(SettingController):
 				exception=str(e),
 			)
 
+	def on_update(self):
+		if self.is_enabled() and not self.is_old_data_migrated:
+			migrate_from_old_connector()
+
+	# --- Authentication ---
+
+	def _validate_authentication_fields(self):
+		"""Fail before any Shopify call: mandatory_depends_on is only checked after validate()."""
+		if not self.is_enabled():
+			return
+
+		if self.authentication_method == AUTH_METHOD_OAUTH:
+			if not self.client_id:
+				frappe.throw(_("Client ID is required for OAuth 2.0 authentication"))
+			if not self.get_password("client_secret", raise_exception=False):
+				frappe.throw(_("Client Secret is required for OAuth 2.0 authentication"))
+		else:
+			if not self.get_password("password", raise_exception=False):
+				frappe.throw(_("Password / Access Token is required for Static Token authentication"))
+			if not self.shared_secret:
+				frappe.throw(_("Shared secret / API Secret is required for Static Token authentication"))
+
+	def _preserve_stored_oauth_token(self):
+		"""A token stored by a background refresh is not in memory; _save_passwords would delete it."""
+		ignored = self.flags.ignore_save_passwords
+		if self.authentication_method != AUTH_METHOD_OAUTH or self.oauth_access_token or ignored is True:
+			return
+
+		self.flags.ignore_save_passwords = list({*(ignored or []), "oauth_access_token"})
+
+	def _oauth_credentials_changed(self) -> bool:
+		"""A token is issued for one app and one shop, so changing either invalidates it."""
+		return any(self.has_value_changed(f) for f in ("client_id", "client_secret", "shopify_url"))
+
+	def _get_or_generate_oauth_token(self) -> str:
+		# persist=False: _save_passwords stores a new token only if this save succeeds
+		if self._oauth_credentials_changed():
+			return refresh_oauth_token(self, persist=False)
+		return get_valid_access_token(self, persist=False)
+
+	def _get_api_token(self) -> str | None:
+		if self.authentication_method == AUTH_METHOD_OAUTH:
+			return self._get_or_generate_oauth_token()
+		return self.get_password("password", raise_exception=False)
+
 	# --- Webhooks ---
 
 	def _handle_webhooks(self):
-		"""Handle webhook registration/unregistration. Uses appropriate token based on auth method."""
-		if self.is_enabled() and not self.webhooks:
-			if self.authentication_method == AUTH_METHOD_OAUTH:
-				password = self._get_or_generate_oauth_token()
-			else:
-				password = self._get_secret("password")
+		if not self.is_enabled():
+			if self.webhooks:
+				self._unregister_webhooks(self.shopify_url, self._get_api_token)
+				self.webhooks = []
+			return
 
-			try:
-				new_webhooks = connection.register_webhooks(self.shopify_url, password)
-			except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-				create_shopify_log(
-					status="Warning",
-					method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting._handle_webhooks",
-					message=_(
-						"Webhook registration failed due to network error. Disable and re-enable to retry."
-					),
-					exception=str(e),
-				)
-				return
+		if self.webhooks and self._webhook_owner_changed():
+			self._move_webhooks_to_new_owner()
+		elif not self.webhooks:
+			self._register_webhooks()
 
-			if not new_webhooks:
-				msg = _("Failed to register webhooks with Shopify.") + "<br>"
-				msg += _("Please check credentials and retry.") + " "
-				msg += _("Disabling and re-enabling the integration might also help.")
-				frappe.throw(msg)
+	def _move_webhooks_to_new_owner(self):
+		"""Webhooks are signed with the registering app's secret, so they must move with the app.
 
-			for webhook in new_webhooks:
-				self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
+		The new app is registered first: if Shopify rejects it, the save aborts and the
+		old subscriptions keep delivering.
+		"""
+		previous = self.get_doc_before_save()
+		token_field = (
+			"oauth_access_token" if previous.authentication_method == AUTH_METHOD_OAUTH else "password"
+		)
+		previous_token = previous.get_password(token_field, raise_exception=False)
 
-		elif not self.is_enabled() and self.webhooks:
-			try:
-				if self.authentication_method == AUTH_METHOD_OAUTH:
-					password = self._get_or_generate_oauth_token()
-				else:
-					password = self._get_password_safe("password")
+		previous_ids = [w.webhook_id for w in self.webhooks]
 
-				if password:
-					connection.unregister_webhooks(self.shopify_url, password)
-			except Exception as e:
-				# Local disable must succeed even when Shopify cannot be reached. The
-				# webhook endpoint rejects subsequent deliveries while disabled.
-				create_shopify_log(
-					status="Warning",
-					method=(
-						"ecommerce_integrations.shopify.doctype.shopify_setting."
-						"shopify_setting._handle_webhooks"
-					),
-					message=_("Shopify was disabled, but remote webhooks could not be removed."),
-					exception=str(e),
-				)
+		self.webhooks = []
+		self._register_webhooks()
 
-			self.webhooks = list()
+		self._unregister_webhooks(previous.shopify_url, lambda: previous_token, webhook_ids=previous_ids)
 
-	def _get_or_generate_oauth_token(self) -> str:
-		"""Get existing valid OAuth token, or generate a new one."""
-		from ecommerce_integrations.shopify.oauth import is_token_valid, refresh_oauth_token
+	def _webhook_owner_changed(self) -> bool:
+		if not self.get_doc_before_save():
+			return False
+		return any(self.has_value_changed(f) for f in ("authentication_method", "client_id", "shopify_url"))
 
-		current_token = self._get_password_safe("oauth_access_token")
-		token_expiry = self.token_expires_at
-
-		credentials_changed = self.has_value_changed("client_id") or self.has_value_changed("client_secret")
-		if current_token and is_token_valid(token_expiry) and not credentials_changed:
-			return current_token
-
-		# Pass in-memory plaintext during validate/before_save (not yet in encrypted store)
-		client_secret_raw = self._get_secret("client_secret")
-
+	def _register_webhooks(self):
 		try:
-			new_token = refresh_oauth_token(self, client_secret=client_secret_raw)
-			return new_token
-		except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-			raise
-		except frappe.ValidationError:
-			raise
-		except Exception as e:
+			new_webhooks = connection.register_webhooks(self.shopify_url, self._get_api_token())
+		except requests.exceptions.RequestException as e:
 			frappe.throw(
-				_("Failed to generate OAuth token: {0}").format(str(e)),
-				title=_("OAuth Authentication Error"),
+				_("Could not reach Shopify to register webhooks. Please try again. ({0})").format(str(e)),
+				title=_("Shopify Connection Error"),
 			)
 
-	# --- Existing methods (unchanged) ---
+		if not new_webhooks:
+			msg = _("Failed to register webhooks with Shopify.") + "<br>"
+			msg += _("Please check credentials and retry.") + " "
+			msg += _("Disabling and re-enabling the integration might also help.")
+			frappe.throw(msg)
+
+		for webhook in new_webhooks:
+			self.append("webhooks", {"webhook_id": webhook.id, "method": webhook.topic})
+
+	def _unregister_webhooks(
+		self, shopify_url: str, get_token: Callable[[], str | None], webhook_ids: list[str] | None = None
+	):
+		"""Runs only once this save commits: a remote deletion cannot be rolled back.
+
+		Best effort: an unreachable Shopify must not block disabling or switching apps.
+		"""
+
+		def unregister():
+			try:
+				if not (token := get_token()):
+					return
+				if webhook_ids:
+					connection.delete_webhooks(shopify_url, token, webhook_ids)
+				else:
+					connection.unregister_webhooks(shopify_url, token)
+			except Exception as e:
+				create_shopify_log(
+					status="Warning",
+					method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting._unregister_webhooks",
+					message=_("Old Shopify webhooks could not be removed."),
+					exception=str(e),
+				)
+
+		frappe.db.after_commit.add(unregister)
+
+	# --- Warehouses ---
 
 	def _validate_warehouse_links(self):
 		for wh_map in self.shopify_warehouse_mapping:

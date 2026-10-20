@@ -6,6 +6,7 @@ import json
 
 import frappe
 from frappe import _
+from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import Webhook
 from shopify.session import Session
 
@@ -16,6 +17,7 @@ from ecommerce_integrations.shopify.constants import (
 	SETTING_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
+from ecommerce_integrations.shopify.oauth import get_valid_access_token
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
@@ -44,37 +46,14 @@ def temp_shopify_session(func):
 	return wrapper
 
 
-def _get_access_token(setting):
-	"""
-	Get the appropriate access token based on authentication method.
-	For OAuth, ensures token is valid and refreshes if needed.
-	"""
+def _get_access_token(setting) -> str:
 	if setting.authentication_method == AUTH_METHOD_OAUTH:
-		# Import here to avoid circular dependency
-		from ecommerce_integrations.shopify.oauth import get_valid_access_token
+		return get_valid_access_token(setting)
 
-		try:
-			return get_valid_access_token(setting)
-		except Exception as e:
-			create_shopify_log(
-				status="Error",
-				method="ecommerce_integrations.shopify.connection._get_access_token",
-				message=_("Failed to get valid OAuth access token"),
-				exception=str(e),
-			)
-			frappe.throw(
-				_("Failed to authenticate with Shopify using OAuth 2.0: {0}").format(str(e)),
-				title=_("Authentication Error"),
-			)
-	else:
-		# Static Token authentication (legacy / pre-Jan 2026 apps)
-		token = setting.get_password("password", raise_exception=False)
-		if not token:
-			frappe.throw(
-				_("Shopify access token is not configured"),
-				title=_("Authentication Error"),
-			)
-		return token
+	token = setting.get_password("password", raise_exception=False)
+	if not token:
+		frappe.throw(_("Shopify access token is not configured"), title=_("Authentication Error"))
+	return token
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -108,6 +87,16 @@ def unregister_webhooks(shopify_url: str, password: str) -> None:
 		for webhook in Webhook.find():
 			if url in webhook.address:
 				webhook.destroy()
+
+
+def delete_webhooks(shopify_url: str, password: str, webhook_ids: list[str]) -> None:
+	"""Delete exactly these webhooks; ones already removed are ignored."""
+	with Session.temp(shopify_url, API_VERSION, password):
+		for webhook_id in webhook_ids:
+			try:
+				Webhook({"id": webhook_id}).destroy()
+			except ResourceNotFound:
+				pass
 
 
 def get_current_domain_name() -> str:
