@@ -10,7 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import frappe
 import requests
+from frappe.tests import IntegrationTestCase
 from frappe.utils import now_datetime
+from frappe.utils.password import get_decrypted_password
 
 
 class TestIsTokenValid(unittest.TestCase):
@@ -126,7 +128,7 @@ class TestGenerateOauthToken(unittest.TestCase):
 			mock_resp.raise_for_status.return_value = None
 		return mock_resp
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_success_returns_token_data(self, mock_post, mock_log):
 		mock_post.return_value = self._mock_response()
@@ -144,9 +146,9 @@ class TestGenerateOauthToken(unittest.TestCase):
 		payload = call_kwargs[1]["data"]
 		self.assertEqual(payload["grant_type"], "client_credentials")
 		self.assertEqual(payload["client_id"], "client_id_1")
-		self.assertNotIn("client_secret_1", str(mock_log.call_args))  # secret not in logs
+		mock_log.assert_not_called()  # a log commits mid-transaction in background jobs
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_http_401_raises_validation_error(self, mock_post, mock_log):
 		mock_post.return_value = self._mock_response(
@@ -157,7 +159,7 @@ class TestGenerateOauthToken(unittest.TestCase):
 		with self.assertRaises(frappe.exceptions.ValidationError):
 			generate_oauth_token("example.myshopify.com", "bad_id", "bad_secret")
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_shop_not_permitted_explains_same_organization_requirement(self, mock_post, mock_log):
 		mock_post.return_value = self._mock_response(
@@ -181,19 +183,22 @@ class TestGenerateOauthToken(unittest.TestCase):
 		with self.assertRaises(requests.exceptions.Timeout):
 			generate_oauth_token("example.myshopify.com", "client_id_1", "client_secret_1")
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
-	def test_client_secret_never_logged(self, mock_post, mock_log):
-		"""Client secret must never appear in log calls."""
-		mock_post.return_value = self._mock_response()
+	def test_failure_is_logged_without_secret_or_commit(self, mock_post, mock_log):
+		"""The refresh runs inside callers' transactions (e.g. order import): logging must not commit."""
+		mock_post.return_value = self._mock_response(status_code=401, json_data={"error": "invalid_client"})
 		generate_oauth_token = self._import()
 
-		generate_oauth_token("example.myshopify.com", "client_id_1", "SUPER_SECRET_DO_NOT_LOG")
+		with patch.object(frappe.db, "commit") as mock_commit, self.assertRaises(frappe.ValidationError):
+			generate_oauth_token("example.myshopify.com", "client_id_1", "SUPER_SECRET_DO_NOT_LOG")
 
-		for call in mock_log.call_args_list:
-			self.assertNotIn("SUPER_SECRET_DO_NOT_LOG", str(call))
+		mock_commit.assert_not_called()
+		mock_log.assert_called_once()
+		self.assertTrue(mock_log.call_args.kwargs["defer_insert"])
+		self.assertNotIn("SUPER_SECRET_DO_NOT_LOG", str(mock_log.call_args))
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_malformed_200_without_token_raises(self, mock_post, mock_log):
 		"""A 200 response with valid JSON but no access_token must raise, not KeyError later."""
@@ -221,7 +226,7 @@ class TestGetValidAccessToken(unittest.TestCase):
 		setting.name = "Shopify Setting"
 		return setting
 
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	def test_valid_cached_token_no_http_call(self, mock_log):
 		"""Fresh cached token must be returned without any HTTP request."""
 		from ecommerce_integrations.shopify.oauth import get_valid_access_token
@@ -237,7 +242,7 @@ class TestGetValidAccessToken(unittest.TestCase):
 
 	@patch("ecommerce_integrations.shopify.oauth.set_encrypted_password")
 	@patch("frappe.db.set_value")
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_expired_token_triggers_refresh(self, mock_post, mock_log, mock_db_set, mock_encrypt):
 		"""Token past expiry must trigger a new HTTP call."""
@@ -260,7 +265,7 @@ class TestGetValidAccessToken(unittest.TestCase):
 
 	@patch("ecommerce_integrations.shopify.oauth.set_encrypted_password")
 	@patch("frappe.db.set_value")
-	@patch("ecommerce_integrations.shopify.oauth.create_shopify_log")
+	@patch("frappe.log_error")
 	@patch("requests.post")
 	def test_missing_token_triggers_fetch(self, mock_post, mock_log, mock_db_set, mock_encrypt):
 		"""No cached token at all must trigger a fresh fetch."""
@@ -289,13 +294,14 @@ class TestGetValidAccessToken(unittest.TestCase):
 				side_effect=[requests.exceptions.Timeout("timed out"), "fresh_token"],
 			) as mock_refresh,
 			patch("ecommerce_integrations.shopify.oauth.time.sleep") as mock_sleep,
-			patch("ecommerce_integrations.shopify.oauth.create_shopify_log"),
+			patch.object(frappe.db, "commit") as mock_commit,
 		):
 			result = get_valid_access_token(setting)
 
 		self.assertEqual(result, "fresh_token")
 		self.assertEqual(mock_refresh.call_count, 2)
 		mock_sleep.assert_called_once_with(1)
+		mock_commit.assert_not_called()  # retry warning must not commit the caller's work
 
 
 class TestValidateRequestHmac(unittest.TestCase):
@@ -405,6 +411,15 @@ class TestStoreRequestData(unittest.TestCase):
 
 
 class TestShopifySettingOauthLifecycle(unittest.TestCase):
+	def setUp(self):
+		# webhook removal is queued for after commit; never leak it into another test
+		self.addCleanup(frappe.db.after_commit.reset)
+
+	def _save(self, setting):
+		"""Run webhook handling as a successful save would, including its commit."""
+		setting._handle_webhooks()
+		frappe.db.after_commit.run()
+
 	def _make_setting(self, **values):
 		from ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting import (
 			ShopifySetting,
@@ -421,14 +436,15 @@ class TestShopifySettingOauthLifecycle(unittest.TestCase):
 				**values,
 			}
 		)
-		setting._get_password_safe = lambda fieldname: ""
 		return setting
 
 	def test_before_save_reuses_token_minted_during_validate(self):
 		setting = self._make_setting()
 		setting.flags.oauth_token_refreshed_during_save = True
 
-		with patch("ecommerce_integrations.shopify.oauth.refresh_oauth_token") as mock_refresh:
+		with patch(
+			"ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.refresh_oauth_token"
+		) as mock_refresh:
 			setting.before_save()
 
 		mock_refresh.assert_not_called()
@@ -440,7 +456,7 @@ class TestShopifySettingOauthLifecycle(unittest.TestCase):
 		setting.webhooks = [frappe._dict(webhook_id="1")]
 		setting._get_or_generate_oauth_token = MagicMock(return_value="fresh-token")
 
-		setting._handle_webhooks()
+		self._save(setting)
 
 		setting._get_or_generate_oauth_token.assert_called_once()
 		mock_unregister.assert_called_once_with(setting.shopify_url, "fresh-token")
@@ -455,7 +471,7 @@ class TestShopifySettingOauthLifecycle(unittest.TestCase):
 			side_effect=requests.exceptions.Timeout("Shopify unavailable")
 		)
 
-		setting._handle_webhooks()
+		self._save(setting)
 
 		mock_unregister.assert_not_called()
 		mock_log.assert_called_once()
@@ -463,16 +479,201 @@ class TestShopifySettingOauthLifecycle(unittest.TestCase):
 
 	def test_oauth_method_marks_token_as_server_managed(self):
 		# _save_passwords deletes Password fields whose in-memory value is empty;
-		# the OAuth token only lives in __Auth, so validate() must shield it.
+		# a background-refreshed token lives only in __Auth, so it must be shielded.
 		setting = self._make_setting()
 
-		setting._preserve_managed_oauth_token()
+		setting._preserve_stored_oauth_token()
 
 		self.assertEqual(setting.flags.ignore_save_passwords, ["oauth_access_token"])
 
 	def test_static_method_leaves_token_unshielded(self):
 		setting = self._make_setting(authentication_method="Static Token")
 
-		setting._preserve_managed_oauth_token()
+		setting._preserve_stored_oauth_token()
 
 		self.assertNotIn("oauth_access_token", setting.flags.ignore_save_passwords or [])
+
+	def test_token_minted_during_save_is_not_shielded(self):
+		# a token refreshed in this save is in memory and must be stored by _save_passwords
+		setting = self._make_setting(oauth_access_token="shpat_new")
+
+		setting._preserve_stored_oauth_token()
+
+		self.assertNotIn("oauth_access_token", setting.flags.ignore_save_passwords or [])
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	def test_token_timeout_blocks_enabling(self, mock_register):
+		setting = self._make_setting()
+		setting._get_or_generate_oauth_token = MagicMock(side_effect=requests.exceptions.Timeout("timed out"))
+
+		with self.assertRaises(frappe.ValidationError):
+			setting._handle_webhooks()
+
+		mock_register.assert_not_called()
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_rejected_save_never_removes_old_webhooks(self, mock_delete, mock_register):
+		mock_register.return_value = [MagicMock(id="2", topic="orders/create")]
+		setting, _previous = self._make_app_switch(client_id="old-client-id")
+
+		setting._handle_webhooks()
+		mock_delete.assert_not_called()  # queued, not run: the save may still fail
+
+		frappe.db.after_commit.reset()  # what a rollback does to the queue
+		mock_delete.assert_not_called()
+
+	def test_invalid_warehouse_row_fails_before_shopify_is_called(self):
+		setting = self._make_setting(shopify_warehouse_mapping=[{"shopify_location_id": "1"}])
+		setting._handle_webhooks = MagicMock()
+
+		with self.assertRaises(frappe.ValidationError):
+			setting.validate()
+
+		setting._handle_webhooks.assert_not_called()
+
+	def _make_app_switch(self, **changed):
+		previous = self._make_setting(**changed)
+		previous.get_password = MagicMock(return_value="old-token")
+
+		setting = self._make_setting()
+		setting.webhooks = [frappe._dict(webhook_id="1", method="orders/create")]
+		setting._doc_before_save = previous
+		setting._get_or_generate_oauth_token = MagicMock(return_value="new-token")
+		return setting, previous
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_app_switch_registers_new_before_removing_old(self, mock_delete, mock_register):
+		calls = MagicMock()
+		calls.attach_mock(mock_register, "register")
+		calls.attach_mock(mock_delete, "delete")
+		mock_register.return_value = [MagicMock(id="2", topic="orders/create")]
+		setting, previous = self._make_app_switch(authentication_method="Static Token", client_id=None)
+
+		self._save(setting)
+
+		previous.get_password.assert_called_once_with("password", raise_exception=False)
+		self.assertEqual(
+			[c[0] for c in calls.mock_calls], ["register", "delete"], "old webhooks removed too early"
+		)
+		mock_register.assert_called_once_with(setting.shopify_url, "new-token")
+		mock_delete.assert_called_once_with(previous.shopify_url, "old-token", ["1"])
+		self.assertEqual([w.webhook_id for w in setting.webhooks], ["2"])
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_rejected_new_app_keeps_old_webhooks(self, mock_delete, mock_register):
+		setting, _previous = self._make_app_switch(client_id="old-client-id")
+		setting._get_or_generate_oauth_token.side_effect = frappe.ValidationError("invalid_client")
+
+		with self.assertRaises(frappe.ValidationError):
+			setting._handle_webhooks()
+
+		mock_register.assert_not_called()
+		mock_delete.assert_not_called()
+
+	@patch("ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.create_shopify_log")
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_network_failure_on_switch_keeps_old_webhooks(self, mock_delete, mock_register, mock_log):
+		mock_register.side_effect = requests.exceptions.Timeout("Shopify unavailable")
+		setting, _previous = self._make_app_switch(client_id="old-client-id")
+
+		with self.assertRaises(frappe.ValidationError):
+			setting._handle_webhooks()
+
+		mock_delete.assert_not_called()
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_shop_switch_removes_webhooks_from_old_shop(self, mock_delete, mock_register):
+		mock_register.return_value = [MagicMock(id="2", topic="orders/create")]
+		setting, previous = self._make_app_switch(shopify_url="old-store.myshopify.com")
+
+		self._save(setting)
+
+		previous.get_password.assert_called_once_with("oauth_access_token", raise_exception=False)
+		mock_delete.assert_called_once_with("old-store.myshopify.com", "old-token", ["1"])
+		mock_register.assert_called_once()
+
+	@patch("ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.create_shopify_log")
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_old_webhook_cleanup_failure_still_registers_new(self, mock_delete, mock_register, mock_log):
+		mock_delete.side_effect = requests.exceptions.Timeout("old shop unreachable")
+		mock_register.return_value = [MagicMock(id="2", topic="orders/create")]
+		setting, _previous = self._make_app_switch(client_id="old-client-id")
+
+		self._save(setting)
+
+		mock_log.assert_called_once()
+		mock_register.assert_called_once()
+		self.assertEqual([w.webhook_id for w in setting.webhooks], ["2"])
+
+	@patch("ecommerce_integrations.shopify.connection.register_webhooks")
+	@patch("ecommerce_integrations.shopify.connection.delete_webhooks")
+	def test_unchanged_app_keeps_webhooks(self, mock_delete, mock_register):
+		setting, _previous = self._make_app_switch()
+
+		self._save(setting)
+
+		mock_delete.assert_not_called()
+		mock_register.assert_not_called()
+		self.assertEqual([w.webhook_id for w in setting.webhooks], ["1"])
+
+
+class TestOauthTokenPersistence(IntegrationTestCase):
+	"""Real saves against the database: the token lives only in __Auth and must survive them."""
+
+	def setUp(self):
+		self.addCleanup(frappe.db.rollback)
+
+		setting = frappe.get_doc("Shopify Setting")
+		setting.update(
+			{
+				# disabled: no webhook registration or Shopify calls; the save path
+				# that deleted the token runs regardless of this flag
+				"enable_shopify": 0,
+				"shopify_url": "test-store.myshopify.com",
+				"authentication_method": "OAuth 2.0 Client Credentials",
+				"client_id": "client-id",
+				"client_secret": "client-secret",
+			}
+		)
+		setting.save()
+
+	def _stored_token(self):
+		return get_decrypted_password(
+			"Shopify Setting", "Shopify Setting", "oauth_access_token", raise_exception=False
+		)
+
+	@patch("frappe.log_error")
+	@patch("ecommerce_integrations.shopify.oauth.generate_oauth_token")
+	def test_token_survives_repeated_saves(self, mock_generate, mock_log):
+		from ecommerce_integrations.shopify.oauth import refresh_oauth_token
+
+		mock_generate.return_value = {"access_token": "shpat_db_token", "expires_in": 86399}
+		refresh_oauth_token(frappe.get_doc("Shopify Setting"))
+		self.assertEqual(self._stored_token(), "shpat_db_token")
+
+		frappe.get_doc("Shopify Setting").save()
+		frappe.get_doc("Shopify Setting").save()
+
+		self.assertEqual(self._stored_token(), "shpat_db_token")
+		mock_generate.assert_called_once()
+
+	@patch("frappe.log_error")
+	@patch("ecommerce_integrations.shopify.oauth.generate_oauth_token")
+	def test_new_app_token_is_stored_only_by_a_successful_save(self, mock_generate, mock_log):
+		mock_generate.return_value = {"access_token": "shpat_new_app", "expires_in": 86399}
+		setting = frappe.get_doc("Shopify Setting")
+		setting.load_doc_before_save()
+		setting.client_id = "new-client-id"
+
+		# what a save does mid-validate; a commit at this point must not keep the new token
+		setting._get_or_generate_oauth_token()
+		self.assertIsNone(self._stored_token())
+
+		setting.save()
+		self.assertEqual(self._stored_token(), "shpat_new_app")

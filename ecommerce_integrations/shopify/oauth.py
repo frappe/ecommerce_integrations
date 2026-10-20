@@ -21,11 +21,10 @@ from urllib.parse import urlsplit
 import frappe
 import requests
 from frappe import _
-from frappe.utils import get_datetime, get_datetime_str, now_datetime
+from frappe.utils import cint, get_datetime, get_datetime_str, now_datetime
 from frappe.utils.password import set_encrypted_password
 
 from ecommerce_integrations.shopify.constants import AUTH_METHOD_OAUTH, SETTING_DOCTYPE
-from ecommerce_integrations.shopify.utils import create_shopify_log
 
 SHOPIFY_HOST_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*\.myshopify\.com$")
 
@@ -105,23 +104,16 @@ def generate_oauth_token(shopify_url: str, client_id: str, client_secret: str) -
 
 		token_data = response.json()
 
-		# Guard a malformed 200 (valid JSON but no token) so callers don't KeyError later
 		if not token_data.get("access_token"):
 			frappe.throw(
 				_("Shopify returned a response without an access token"),
 				title=_("OAuth Authentication Error"),
 			)
 
-		create_shopify_log(
-			status="Success",
-			method="ecommerce_integrations.shopify.oauth.generate_oauth_token",
-			message=_("OAuth token generated successfully"),
-		)
-
+		# no success log: create_shopify_log commits, which would split a background job's transaction
 		return token_data
 
 	except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-		# Preserve transient failures so get_valid_access_token can retry them.
 		raise
 	except requests.exceptions.RequestException as e:
 		error_message = str(e)
@@ -147,13 +139,16 @@ def generate_oauth_token(shopify_url: str, client_id: str, client_secret: str) -
 		sanitized_payload = payload.copy()
 		sanitized_payload["client_secret"] = "***REDACTED***"
 
-		create_shopify_log(
-			status="Error",
-			method="ecommerce_integrations.shopify.oauth.generate_oauth_token",
-			message=_("Failed to generate OAuth token"),
-			exception=error_message,
-			request_data=sanitized_payload,
-			response_data=error_response,
+		# defer_insert: a token refresh runs inside callers' transactions (e.g. order import),
+		# which create_shopify_log would commit
+		frappe.log_error(
+			title=_("Shopify OAuth token request failed"),
+			message=json.dumps(
+				{"error": error_message, "request": sanitized_payload, "response": error_response},
+				indent=4,
+				default=str,
+			),
+			defer_insert=True,
 		)
 
 		frappe.throw(
@@ -183,17 +178,11 @@ def calculate_token_expiry(expires_in_seconds: int):
 	return now_datetime() + timedelta(seconds=expires_in_seconds)
 
 
-def refresh_oauth_token(setting, client_secret=None) -> str:
-	"""
-	Generate a fresh OAuth token and persist it encrypted in Shopify Setting.
+def refresh_oauth_token(setting, *, persist: bool = True) -> str:
+	"""Generate a fresh OAuth token and set it on `setting`.
 
-	Args:
-	    setting: ShopifySetting document instance
-	    client_secret: Optional — pass directly during save cycle when
-	                   the password hasn't been committed to DB yet.
-
-	Returns:
-	    The new access token string
+	persist=False is for the setting's own save: the token is then stored only if that
+	save succeeds, since create_shopify_log commits mid-save.
 	"""
 	if setting.authentication_method != AUTH_METHOD_OAUTH:
 		frappe.throw(
@@ -201,11 +190,7 @@ def refresh_oauth_token(setting, client_secret=None) -> str:
 			title=_("Invalid Authentication Method"),
 		)
 
-	# If client_secret not passed, read from DB (raise_exception=False so the
-	# guard below produces a clean message instead of an AuthenticationError)
-	if not client_secret:
-		client_secret = setting.get_password("client_secret", raise_exception=False)
-
+	client_secret = setting.get_password("client_secret", raise_exception=False)
 	if not client_secret:
 		frappe.throw(
 			_("Client Secret is missing. Please re-enter and save."),
@@ -218,42 +203,24 @@ def refresh_oauth_token(setting, client_secret=None) -> str:
 		client_secret,
 	)
 
-	# Shopify may send expires_in as null or a string; coerce defensively
-	try:
-		expires_in = int(token_data.get("expires_in") or 86399)
-	except (TypeError, ValueError):
-		expires_in = 86399
-	expires_at = calculate_token_expiry(expires_in)
+	token = token_data["access_token"]
+	expires_at = get_datetime_str(calculate_token_expiry(cint(token_data.get("expires_in")) or 86399))
 
-	# Store token encrypted (same mechanism as the password field)
-	set_encrypted_password(
-		SETTING_DOCTYPE,
-		setting.name,
-		token_data["access_token"],
-		fieldname="oauth_access_token",
-	)
-
-	frappe.db.set_value(
-		SETTING_DOCTYPE,
-		setting.name,
-		"token_expires_at",
-		get_datetime_str(expires_at),
-		update_modified=False,
-	)
-
-	# Sync only the field we wrote — full reload() would discard in-memory changes
-	# made earlier in the same validate() call (e.g. the shopify_url https-strip)
-	setting.token_expires_at = get_datetime_str(expires_at)
-
+	setting.oauth_access_token = token
+	setting.token_expires_at = expires_at
 	# _handle_webhooks can refresh during validate. before_save must reuse it.
-	# (_save_passwords is kept away from oauth_access_token by the controller,
-	# in ShopifySetting._preserve_managed_oauth_token.)
 	setting.flags.oauth_token_refreshed_during_save = True
 
-	return token_data["access_token"]
+	if persist:
+		set_encrypted_password(SETTING_DOCTYPE, setting.name, token, fieldname="oauth_access_token")
+		frappe.db.set_value(
+			SETTING_DOCTYPE, setting.name, "token_expires_at", expires_at, update_modified=False
+		)
+
+	return token
 
 
-def get_valid_access_token(setting) -> str:
+def get_valid_access_token(setting, *, persist: bool = True) -> str:
 	"""
 	Return a valid OAuth access token, auto-refreshing if needed.
 
@@ -265,22 +232,15 @@ def get_valid_access_token(setting) -> str:
 			title=_("Invalid Authentication Method"),
 		)
 
-	# Fast path: cached token is still valid
 	if is_token_valid(setting.token_expires_at):
 		current_token = setting.get_password("oauth_access_token", raise_exception=False)
 		if current_token:
 			return current_token
 
-	# Token missing or expired — refresh, with a single retry for transient network errors only.
-	# Permanent errors (bad credentials, missing secret) are NOT retried.
 	try:
-		return refresh_oauth_token(setting)
+		return refresh_oauth_token(setting, persist=persist)
 	except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-		create_shopify_log(
-			status="Warning",
-			method="ecommerce_integrations.shopify.oauth.get_valid_access_token",
-			message=_("Token refresh failed due to network error, retrying once..."),
-			exception=str(e),
-		)
+		# file log, not create_shopify_log: that would commit the caller's transaction
+		frappe.logger("shopify").warning(f"OAuth token refresh failed, retrying once: {e}")
 		time.sleep(1)
-		return refresh_oauth_token(setting)  # Let this raise if it still fails
+		return refresh_oauth_token(setting, persist=persist)
