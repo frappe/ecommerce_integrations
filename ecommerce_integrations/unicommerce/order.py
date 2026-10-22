@@ -29,10 +29,17 @@ from ecommerce_integrations.unicommerce.constants import (
 )
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
-from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
+from ecommerce_integrations.unicommerce.utils import (
+	create_unicommerce_log,
+	get_unicommerce_date,
+	set_item_wise_tax_details,
+)
 from ecommerce_integrations.utils.taxation import ITEM_WISE_TAX_KEY, get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
+
+# {(tax head, tax rate): item code} for charges billed as invoice items
+ChargeItems = dict[tuple[str, float], str]
 
 
 def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
@@ -230,6 +237,8 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 		}
 	)
 
+	set_item_wise_tax_details(so)
+
 	so.flags.raw_data = order
 	so.save()
 	so.submit()
@@ -270,8 +279,12 @@ def _get_line_items(
 	return so_items
 
 
-def get_taxes(line_items, channel_config) -> list:
+def get_taxes(line_items, channel_config, charge_items: ChargeItems | None = None) -> list:
+	"""Build taxes for an order / invoice. Charges in charge_items are billed as items, not tax rows."""
+
 	taxes = []
+	charge_items = charge_items or {}
+	billed_as_item = get_charge_tax_heads(charge_items)
 
 	# Note: Tax details are NOT available during SO stage.
 	# Fields are also different hence during SO stage this function won't capture GST.
@@ -288,19 +301,24 @@ def get_taxes(line_items, channel_config) -> list:
 		item_code = ecommerce_item.get_erpnext_item_code(
 			integration=MODULE_NAME, integration_item_code=item["itemSku"]
 		)
+		line_tax_rate = get_tax_rate(item)
+
 		for tax_head, unicommerce_field in TAX_FIELDS_MAPPING.items():
+			if tax_head in billed_as_item:
+				continue
+
 			tax_amount = flt(item.get(unicommerce_field)) or 0.0
 			tax_rate_field = TAX_RATE_FIELDS_MAPPING.get(tax_head, "")
 			tax_rate = item.get(tax_rate_field, 0.0)
 
 			tax_map[tax_head] += tax_amount
 
-			# Sum across lines sharing an item code so no line's tax is dropped.
-			entry = item_wise_tax_map[tax_head].get(item_code)
-			if entry:
-				entry[1] += tax_amount
-			else:
-				item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
+			charge_taxes = _get_charge_taxes(item, tax_rate, line_tax_rate, charge_items)
+			item_taxes = (*charge_taxes.items(), (item_code, tax_amount - sum(charge_taxes.values())))
+
+			item_wise_tax = item_wise_tax_map[tax_head]
+			for code, amount in item_taxes:
+				item_wise_tax[code] = _add_item_tax(item_wise_tax.get(code), tax_rate, amount)
 
 	taxes = []
 
@@ -313,12 +331,53 @@ def get_taxes(line_items, channel_config) -> list:
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
 				"description": tax_head.replace("_", " ").upper(),
-				ITEM_WISE_TAX_KEY: item_wise_tax_map[tax_head],
 				"dont_recompute_tax": 1,
+				ITEM_WISE_TAX_KEY: item_wise_tax_map[tax_head],
 			}
 		)
 
 	return taxes
+
+
+def _add_item_tax(existing: list | None, tax_rate, tax_amount) -> list:
+	"""Get an item's tax breakup entry with a line's tax added, adding up lines of the same item."""
+
+	existing_rate, existing_amount = existing or (tax_rate, 0.0)
+	return [tax_rate or existing_rate, flt(existing_amount + tax_amount, 2)]
+
+
+def _get_charge_taxes(
+	line_item, tax_rate, line_tax_rate: float, charge_items: ChargeItems
+) -> dict[str, float]:
+	"""Get tax on a line's charges billed as items, as {charge item: tax amount}."""
+
+	charge_taxes = defaultdict(float)
+
+	if not tax_rate:
+		return charge_taxes
+
+	for (tax_head, rate), charge_item in charge_items.items():
+		if rate != line_tax_rate:
+			continue
+
+		charge = flt(line_item.get(TAX_FIELDS_MAPPING[tax_head]))
+		if charge:
+			charge_taxes[charge_item] += flt(charge * tax_rate / 100, 2)
+
+	return charge_taxes
+
+
+def get_tax_rate(line_item) -> float:
+	"""Get total tax rate of a Unicommerce line."""
+
+	return sum(flt(line_item.get(rate_field)) for rate_field in TAX_RATE_FIELDS_MAPPING.values())
+
+
+def get_charge_tax_heads(charge_items: ChargeItems) -> tuple[str, ...]:
+	"""Get tax heads of charges billed as invoice items."""
+
+	configured = {tax_head for tax_head, _rate in charge_items}
+	return tuple(tax_head for tax_head in TAX_FIELDS_MAPPING if tax_head in configured)
 
 
 def _get_facility_code(line_items) -> str:

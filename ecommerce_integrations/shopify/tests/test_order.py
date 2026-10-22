@@ -1,13 +1,18 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See LICENSE
 
-from unittest.mock import patch
+import unittest
+from unittest.mock import MagicMock, patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.shopify.order import get_order_items
-from ecommerce_integrations.utils.taxation import ITEM_WISE_TAX_KEY, set_item_wise_tax_details
+from ecommerce_integrations.utils.taxation import (
+	ITEM_WISE_TAX_KEY,
+	copy_item_wise_tax_details,
+	set_item_wise_tax_details,
+)
 
 
 class TestOrder(IntegrationTestCase):
@@ -88,3 +93,103 @@ class TestOrder(IntegrationTestCase):
 		set_item_wise_tax_details(so)
 
 		self.assertFalse(so.get("_item_wise_tax_details"))
+
+
+class TestCopyItemWiseTaxDetails(unittest.TestCase):
+	"""A doc mapped from another transaction keeps each tax row's own breakup."""
+
+	@staticmethod
+	def _source():
+		"""One tax row per line item, all on the same account (Shopify without tax consolidation)."""
+		return frappe._dict(
+			taxes=[
+				frappe._dict(name="T1", account_head="GST - TC"),
+				frappe._dict(name="T2", account_head="GST - TC"),
+			],
+			item_wise_tax_details=[
+				frappe._dict(tax_row="T1", item_row="SOI-A", rate=18.0, amount=18.0, taxable_amount=100.0),
+				frappe._dict(tax_row="T2", item_row="SOI-B", rate=18.0, amount=36.0, taxable_amount=200.0),
+			],
+		)
+
+	@staticmethod
+	def _target(items):
+		tax_rows = [
+			frappe._dict(name="DT1", account_head="GST - TC"),
+			frappe._dict(name="DT2", account_head="GST - TC"),
+		]
+		target = MagicMock()
+		target.get.side_effect = {"items": items, "taxes": tax_rows}.get
+		return target, tax_rows
+
+	def test_copies_each_rows_breakup_to_its_own_tax_row(self):
+		target, (tax_a, tax_b) = self._target(
+			[frappe._dict(so_detail="SOI-A"), frappe._dict(so_detail="SOI-B")]
+		)
+
+		with patch("frappe.get_doc", return_value=self._source()):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		rows = target._item_wise_tax_details
+		self.assertEqual([row.tax for row in rows], [tax_a, tax_b])
+		self.assertAlmostEqual(rows[0].amount, 18.0)
+		self.assertAlmostEqual(rows[1].amount, 36.0)
+
+	def test_row_of_an_absent_item_keeps_its_queue_slot(self):
+		"""Shipping only item B must not move B's breakup onto item A's tax row."""
+		target, (tax_a, tax_b) = self._target([frappe._dict(so_detail="SOI-B")])
+
+		with patch("frappe.get_doc", return_value=self._source()):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		rows = target._item_wise_tax_details
+		self.assertEqual(len(rows), 1)
+		self.assertIs(rows[0].tax, tax_b)
+		self.assertAlmostEqual(rows[0].amount, 36.0)
+
+	def test_partially_shipped_row_scales_tax_and_taxable_amount(self):
+		"""A partly fulfilled row records only its own units' tax and taxable value.
+
+		Regression test: the source row's full tax and taxable amount were copied
+		even when fewer units were shipped, so the breakup overstated both and
+		broke rate x taxable_amount = amount.
+		"""
+		source = frappe._dict(
+			taxes=[frappe._dict(name="T1", account_head="GST - TC")],
+			items=[frappe._dict(name="SOI-A", qty=2)],
+			item_wise_tax_details=[
+				frappe._dict(tax_row="T1", item_row="SOI-A", rate=18.0, amount=36.0, taxable_amount=200.0)
+			],
+		)
+		target, (tax_a, _) = self._target([frappe._dict(so_detail="SOI-A", qty=1)])
+
+		with patch("frappe.get_doc", return_value=source):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		row = target._item_wise_tax_details[0]
+		self.assertIs(row.tax, tax_a)
+		self.assertAlmostEqual(row.taxable_amount, 100.0)
+		self.assertAlmostEqual(row.amount, 18.0)
+
+	def test_returned_row_negates_tax_and_taxable_amount(self):
+		"""A return maps negative quantities: both breakup values carry the sign.
+
+		Regression test: the taxable value turned negative on credit notes while
+		the tax amount stayed positive, misstating the return's tax breakup.
+		"""
+		source = frappe._dict(
+			taxes=[frappe._dict(name="T1", account_head="GST - TC")],
+			items=[frappe._dict(name="SOI-A", qty=1)],
+			item_wise_tax_details=[
+				frappe._dict(tax_row="T1", item_row="SOI-A", rate=18.0, amount=18.0, taxable_amount=100.0)
+			],
+		)
+		target, (tax_a, _) = self._target([frappe._dict(so_detail="SOI-A", qty=-1)])
+
+		with patch("frappe.get_doc", return_value=source):
+			copy_item_wise_tax_details(target, "SO-1")
+
+		row = target._item_wise_tax_details[0]
+		self.assertIs(row.tax, tax_a)
+		self.assertAlmostEqual(row.taxable_amount, -100.0)
+		self.assertAlmostEqual(row.amount, -18.0)
