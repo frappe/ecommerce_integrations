@@ -88,3 +88,32 @@ class TestOrder(IntegrationTestCase):
 		set_item_wise_tax_details(so)
 
 		self.assertFalse(so.get("_item_wise_tax_details"))
+
+	def test_untaxed_items_in_mixed_order_get_nil_rated(self):
+		# Mixed order: items with no GST must be flagged Nil-Rated, else IC blocks the order.
+		if not frappe.get_meta("Item Tax Template").has_field("gst_treatment"):
+			self.skipTest("India Compliance not installed")
+		template = frappe.db.get_value("Item Tax Template", {"gst_treatment": "Nil-Rated"}, "name")
+		if not template:
+			self.skipTest("India Compliance Nil-Rated template not available")
+
+		so = frappe.new_doc("Sales Order")
+		so.company = frappe.db.get_value("Item Tax Template", template, "company")
+		so.append("items", {"item_code": "SHOPIFY-TAX", "qty": 1, "rate": 100})
+		so.append("items", {"item_code": "SHOPIFY-ZERO", "qty": 1, "rate": 100})
+		so.append(
+			"taxes",
+			{
+				"charge_type": "Actual",
+				"account_head": "CGST",
+				"tax_amount": 9,
+				"dont_recompute_tax": 1,
+				ITEM_WISE_TAX_KEY: {"SHOPIFY-TAX": [9, 9]},
+			},
+		)
+
+		set_item_wise_tax_details(so)
+
+		by_item = {item.item_code: item for item in so.items}
+		self.assertFalse(by_item["SHOPIFY-TAX"].item_tax_template)
+		self.assertEqual(by_item["SHOPIFY-ZERO"].item_tax_template, template)
