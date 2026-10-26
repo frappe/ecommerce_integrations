@@ -391,7 +391,10 @@ shopify.ProductImporter = class {
 			frappe.msgprint(__("Select a Shopify Account."));
 			return;
 		}
+		const account = this.shopifyAccount;
 		await this.checkSyncStatus();
+		// another account was selected meanwhile: do not import it unasked
+		if (account !== this.shopifyAccount) return;
 
 		if (this.syncRunning) {
 			frappe.msgprint(__("Sync already in progress"));
