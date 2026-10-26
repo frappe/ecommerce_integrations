@@ -301,9 +301,10 @@ class TestSharedProducts(IntegrationTestCase):
 		frappe.db.rollback()
 
 	def product(self, *skus, option="Size"):
+		options = [option] if isinstance(option, str) else option
 		return {
 			"id": 2,
-			"options": [{"name": option, "values": ["S", "M"]}],
+			"options": [{"name": name, "values": ["S", "M"]} for name in options],
 			"variants": [{"id": 20 + i, "sku": sku} for i, sku in enumerate(skus)],
 		}
 
@@ -337,8 +338,31 @@ class TestSharedProducts(IntegrationTestCase):
 
 		self.assertEqual(self.links(), [])
 
+		# an option the template lacks keeps the product apart too
+		product._link_existing_template(self.product("SHARED-S", "SHARED-M", option=("Size", "Colour")))
+		self.assertEqual(self.links(), [])
+
 		# option names are matched case-insensitively
 		product._link_existing_template(self.product("SHARED-S", "SHARED-M", option="size"))
+		self.assertEqual(len(self.links()), 3)
+
+	def test_template_options_match_in_any_order(self):
+		from ecommerce_integrations.shopify.product import ShopifyProduct
+
+		frappe.get_doc(
+			{
+				"doctype": "Item Variant Attribute",
+				"parent": "SHARED-TPL",
+				"parenttype": "Item",
+				"parentfield": "attributes",
+				"attribute": "Colour",
+				"idx": 2,
+			}
+		).db_insert()
+
+		product = ShopifyProduct(2, shopify_account="second.myshopify.com")
+		product._link_existing_template(self.product("SHARED-S", "SHARED-M", option=("Colour", "Size")))
+
 		self.assertEqual(len(self.links()), 3)
 
 	def test_known_variants_are_linked_when_others_are_new(self):
