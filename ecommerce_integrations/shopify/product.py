@@ -117,14 +117,14 @@ class ShopifyProduct:
 
 		# new variants are created with this product's option names as attributes, which
 		# must be the template's attributes; otherwise the product keeps its own template
-		option_names = [cstr(option.get("name")).lower() for option in product_dict.get("options") or []]
+		# (in any order: variant attributes are matched by name)
+		option_names = {cstr(option.get("name")).lower() for option in product_dict.get("options") or []}
 		template_attributes = frappe.get_all(
 			"Item Variant Attribute",
 			filters={"parenttype": "Item", "parent": template},
 			pluck="attribute",
-			order_by="idx",
 		)
-		if option_names != [cstr(attribute).lower() for attribute in template_attributes]:
+		if option_names != {cstr(attribute).lower() for attribute in template_attributes}:
 			return
 
 		product_id = cstr(product_dict["id"])
