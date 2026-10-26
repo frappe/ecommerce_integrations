@@ -57,9 +57,12 @@ class ShopifyAccount(SettingController):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = normalize_shop_url(self.shopify_url)
+			# a bare shop name is completed to its myshopify domain, then the URL is
+			# validated strictly
+			self.shopify_url = normalize_shopify_url(normalize_shop_url(self.shopify_url))
+
 		self._validate_single_enabled_account()
-		self._handle_webhooks()
+		self._validate_authentication_fields()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
 		self._handle_webhooks()  # last: it calls Shopify
@@ -88,7 +91,8 @@ class ShopifyAccount(SettingController):
 
 			create_shopify_log(
 				status="Warning",
-				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
+				method="ecommerce_integrations.shopify.doctype.shopify_account.shopify_account.before_save",
+				shopify_account=self.name,
 				message=_("Token pre-generation failed on save; will retry on first sync."),
 				exception=str(e),
 			)
@@ -229,7 +233,8 @@ class ShopifyAccount(SettingController):
 			except Exception as e:
 				create_shopify_log(
 					status="Warning",
-					method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting._unregister_webhooks",
+					method="ecommerce_integrations.shopify.doctype.shopify_account.shopify_account._unregister_webhooks",
+					shopify_account=self.name,
 					message=_("Old Shopify webhooks could not be removed."),
 					exception=str(e),
 				)
