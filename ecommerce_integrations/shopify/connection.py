@@ -7,18 +7,22 @@ from contextlib import contextmanager
 
 import frappe
 from frappe import _
+from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
+	AUTH_METHOD_OAUTH,
 	EVENT_MAPPER,
 	WEBHOOK_EVENTS,
 )
+from ecommerce_integrations.shopify.oauth import get_valid_access_token
 from ecommerce_integrations.shopify.utils import (
 	create_shopify_log,
 	get_account_name,
 	get_default_account,
+	get_enabled_accounts,
 	get_shopify_account,
 )
 
@@ -54,8 +58,18 @@ def shopify_session(shopify_account):
 		return
 
 	setting = get_shopify_account(shopify_account)
-	with Session.temp(setting.shopify_url, API_VERSION, setting.get_password("password")):
+	with Session.temp(setting.shopify_url, API_VERSION, _get_access_token(setting)):
 		yield
+
+
+def _get_access_token(setting) -> str:
+	if setting.authentication_method == AUTH_METHOD_OAUTH:
+		return get_valid_access_token(setting)
+
+	token = setting.get_password("password", raise_exception=False)
+	if not token:
+		frappe.throw(_("Shopify access token is not configured"), title=_("Authentication Error"))
+	return token
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -91,6 +105,16 @@ def unregister_webhooks(shopify_url: str, password: str) -> None:
 				webhook.destroy()
 
 
+def delete_webhooks(shopify_url: str, password: str, webhook_ids: list[str]) -> None:
+	"""Delete exactly these webhooks; ones already removed are ignored."""
+	with Session.temp(shopify_url, API_VERSION, password):
+		for webhook_id in webhook_ids:
+			try:
+				Webhook({"id": webhook_id}).destroy()
+			except ResourceNotFound:
+				pass
+
+
 def get_current_domain_name() -> str:
 	"""Get current site domain name. E.g. test.erpnext.com
 
@@ -116,10 +140,13 @@ def get_callback_url() -> str:
 # the HMAC signature of the store it claims to come from before anything is processed.
 @frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def store_request_data() -> None:
+	"""Validate and enqueue webhooks of the account they belong to."""
 	if frappe.request:
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
 
 		shopify_account = _get_webhook_account(frappe.request)
+		if not shopify_account:
+			return
 		_validate_request(frappe.request, hmac_header, shopify_account)
 
 		data = json.loads(frappe.request.data)
@@ -132,8 +159,12 @@ def _get_webhook_account(req):
 	"""The account an incoming webhook belongs to.
 
 	Webhooks are accepted while exactly one account is enabled; with more, the request
-	cannot be attributed to a store and is logged and refused.
+	cannot be attributed to a store and is logged and refused. While no account is enabled,
+	deliveries are ignored.
 	"""
+	if not get_enabled_accounts():
+		return None
+
 	try:
 		return get_default_account()
 	except frappe.ValidationError as e:
@@ -159,13 +190,39 @@ def process_request(data, event, shopify_account=None):
 	)
 
 
+def get_webhook_secret(setting) -> str | None:
+	"""Secret Shopify signs the account's webhooks with: an OAuth app signs with its client secret."""
+	if setting.authentication_method == AUTH_METHOD_OAUTH:
+		return setting.get_password("client_secret", raise_exception=False)
+	return setting.shared_secret
+
+
 def _validate_request(req, hmac_header, shopify_account):
-	secret_key = get_shopify_account(shopify_account).shared_secret
+	"""Verify the raw webhook body with the account's signing secret."""
+	secret_key = get_webhook_secret(get_shopify_account(shopify_account))
+	request_data = frappe.safe_decode(req.data)
+
+	if not secret_key:
+		create_shopify_log(
+			status="Error",
+			request_data=request_data,
+			exception="Secret key not configured",
+			shopify_account=shopify_account,
+		)
+		frappe.throw(_("Webhook validation failed: Secret key not configured"))
+
+	if not hmac_header:
+		create_shopify_log(
+			status="Error",
+			request_data=request_data,
+			exception="Missing HMAC header",
+			shopify_account=shopify_account,
+		)
+		frappe.throw(_("Unverified Webhook Data"))
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
-	if sig != bytes(hmac_header.encode()):
-		create_shopify_log(
-			status="Error", request_data=frappe.safe_decode(req.data), shopify_account=shopify_account
-		)
+	# Timing-safe comparison to prevent signature timing attacks
+	if not hmac.compare_digest(sig, hmac_header.encode()):
+		create_shopify_log(status="Error", request_data=request_data, shopify_account=shopify_account)
 		frappe.throw(_("Unverified Webhook Data"))

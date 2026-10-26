@@ -434,6 +434,28 @@ class TestSettingMigration(IntegrationTestCase):
 		)
 		self.assertFalse(frappe.db.sql("select 1 from `tabSingles` where doctype = %s", self.legacy))
 
+	def test_oauth_configuration_moves_to_the_account(self):
+		shopify_url = "oauth-migration-test.myshopify.com"
+		self.seed_legacy_setting(shopify_url)
+		for field, value in (
+			("authentication_method", "OAuth 2.0 Client Credentials"),
+			("client_id", "legacy-client-id"),
+		):
+			frappe.db.sql(
+				"insert into `tabSingles` (doctype, field, value) values (%s, %s, %s)",
+				(self.legacy, field, value),
+			)
+		set_encrypted_password(self.legacy, self.legacy, "legacy-client-secret", "client_secret")
+
+		migration.execute()
+
+		account = frappe.get_doc(ACCOUNT_DOCTYPE, shopify_url)
+		self.assertEqual(account.authentication_method, "OAuth 2.0 Client Credentials")
+		self.assertEqual(account.client_id, "legacy-client-id")
+		self.assertEqual(
+			get_decrypted_password(ACCOUNT_DOCTYPE, shopify_url, "client_secret"), "legacy-client-secret"
+		)
+
 	def test_short_shop_url_becomes_the_myshopify_domain(self):
 		# the single accepted the bare shop name, as the Shopify API session completes it
 		self.seed_legacy_setting("short-migration-test")
