@@ -93,7 +93,8 @@ class ShopifyProduct:
 		"""Link a product with variants to the ERPNext template another store already sells.
 
 		Variants whose SKU is already known are linked to their existing items, provided they
-		all belong to one template and the product has no other template in this store; the regular sync then finds them linked and creates only
+		all belong to one template whose attributes match the product's options, and the
+		product has no other template in this store; the regular sync then finds them linked and creates only
 		the remaining variants under that template. Existing links are kept, so a re-sync
 		after Shopify added a variant only adds what is missing.
 		"""
@@ -113,6 +114,18 @@ class ShopifyProduct:
 		if len(templates) != 1 or not next(iter(templates)):
 			return
 		template = templates.pop()
+
+		# new variants are created with this product's option names as attributes, which
+		# must be the template's attributes; otherwise the product keeps its own template
+		option_names = [cstr(option.get("name")).lower() for option in product_dict.get("options") or []]
+		template_attributes = frappe.get_all(
+			"Item Variant Attribute",
+			filters={"parenttype": "Item", "parent": template},
+			pluck="attribute",
+			order_by="idx",
+		)
+		if option_names != [cstr(attribute).lower() for attribute in template_attributes]:
+			return
 
 		product_id = cstr(product_dict["id"])
 		# a product keeps the template it already has in this store; linking another
