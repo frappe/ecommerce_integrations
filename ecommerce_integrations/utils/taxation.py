@@ -50,7 +50,9 @@ def set_item_wise_tax_details(doc):
 
 	if rows:
 		doc._item_wise_tax_details = rows
-		set_nil_rated_for_untaxed_items(doc, {row.item.item_code for row in rows})
+		# A [0, 0] row carries no tax, so the item still counts as untaxed.
+		taxed = {row.item.item_code for row in rows if row.rate or row.amount}
+		set_nil_rated_for_untaxed_items(doc, taxed)
 
 
 def set_nil_rated_for_untaxed_items(doc, taxed_item_codes):
@@ -68,7 +70,10 @@ def set_nil_rated_for_untaxed_items(doc, taxed_item_codes):
 		return
 
 	template = frappe.db.get_value(
-		"Item Tax Template", {"company": doc.get("company"), "gst_treatment": "Nil-Rated"}, "name"
+		"Item Tax Template",
+		{"company": doc.get("company"), "gst_treatment": "Nil-Rated", "disabled": 0},
+		"name",
+		order_by="creation asc",
 	)
 	if not template:
 		return

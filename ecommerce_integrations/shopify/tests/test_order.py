@@ -108,7 +108,8 @@ class TestOrder(IntegrationTestCase):
 				"account_head": "CGST",
 				"tax_amount": 9,
 				"dont_recompute_tax": 1,
-				ITEM_WISE_TAX_KEY: {"SHOPIFY-TAX": [9, 9]},
+				# SHOPIFY-ZERO carries an explicit [0, 0] row: still untaxed.
+				ITEM_WISE_TAX_KEY: {"SHOPIFY-TAX": [9, 9], "SHOPIFY-ZERO": [0, 0]},
 			},
 		)
 
