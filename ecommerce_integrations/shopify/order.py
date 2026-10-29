@@ -162,9 +162,7 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 					"item_code": item_code,
 					"item_name": shopify_item.get("name"),
 					"rate": rate,
-					# a fully discounted line nets to 0; flag it free so ERPNext keeps
-					# the rate at 0 instead of back-filling it from the price list
-					"is_free_item": 1 if flt(rate) <= 0 else 0,
+					**_get_free_item_fields(rate),
 					"delivery_date": delivery_date,
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
@@ -195,6 +193,14 @@ def _get_item_price(line_item, taxes_inclusive: bool) -> float:
 		total_taxes += flt(tax.get("price"))
 
 	return price - (total_taxes + total_discount) / qty
+
+
+def _get_free_item_fields(rate) -> dict:
+	# a fully discounted line nets to 0; flag it free and pin its price list rate to 0,
+	# else ERPNext back-fills the price list rate and replaces the 0 rate with it
+	if flt(rate) > 0:
+		return {"is_free_item": 0}
+	return {"is_free_item": 1, "price_list_rate": 0}
 
 
 def _get_total_discount(line_item) -> float:
@@ -314,6 +320,7 @@ def update_taxes_with_shipping_lines(taxes, shipping_lines, setting, items, taxe
 					{
 						"item_code": setting.shipping_item,
 						"rate": shipping_charge_amount,
+						**_get_free_item_fields(shipping_charge_amount),
 						"delivery_date": items[-1]["delivery_date"] if items else nowdate(),
 						"qty": 1,
 						"stock_uom": "Nos",
