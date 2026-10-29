@@ -5,22 +5,21 @@ from frappe.utils import cint, cstr, getdate, nowdate
 from ecommerce_integrations.shopify.constants import (
 	ORDER_ID_FIELD,
 	ORDER_NUMBER_FIELD,
-	SETTING_DOCTYPE,
 )
-from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.shopify.utils import create_shopify_log, resolve_account
 from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
-def prepare_sales_invoice(payload, request_id=None):
+def prepare_sales_invoice(payload, request_id=None, shopify_account=None):
 	from ecommerce_integrations.shopify.order import get_sales_order
 
 	order = payload
 
 	frappe.set_user("Administrator")
-	setting = frappe.get_doc(SETTING_DOCTYPE)
 	frappe.flags.request_id = request_id
 
 	try:
+		setting = resolve_account(shopify_account, request_id)
 		sales_order = get_sales_order(cstr(order["id"]))
 		if sales_order:
 			create_sales_invoice(order, setting, sales_order)
