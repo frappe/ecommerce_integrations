@@ -24,7 +24,7 @@ from frappe import _
 from frappe.utils import cint, get_datetime, get_datetime_str, now_datetime
 from frappe.utils.password import set_encrypted_password
 
-from ecommerce_integrations.shopify.constants import AUTH_METHOD_OAUTH, SETTING_DOCTYPE
+from ecommerce_integrations.shopify.constants import AUTH_METHOD_OAUTH
 
 SHOPIFY_HOST_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*\.myshopify\.com$")
 
@@ -212,9 +212,9 @@ def refresh_oauth_token(setting, *, persist: bool = True) -> str:
 	setting.flags.oauth_token_refreshed_during_save = True
 
 	if persist:
-		set_encrypted_password(SETTING_DOCTYPE, setting.name, token, fieldname="oauth_access_token")
+		set_encrypted_password(setting.doctype, setting.name, token, fieldname="oauth_access_token")
 		frappe.db.set_value(
-			SETTING_DOCTYPE, setting.name, "token_expires_at", expires_at, update_modified=False
+			setting.doctype, setting.name, "token_expires_at", expires_at, update_modified=False
 		)
 
 	return token
