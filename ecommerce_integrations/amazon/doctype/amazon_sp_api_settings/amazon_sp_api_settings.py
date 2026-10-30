@@ -83,12 +83,9 @@ class AmazonSPAPISettings(Document):
 		)
 
 		validate_amazon_sp_api_credentials(
-			iam_arn=self.get("iam_arn"),
 			client_id=self.get("client_id"),
 			client_secret=self.get_password("client_secret"),
 			refresh_token=self.get("refresh_token"),
-			aws_access_key=self.get("aws_access_key"),
-			aws_secret_key=self.get_password("aws_secret_key"),
 			country=self.get("country"),
 		)
 
