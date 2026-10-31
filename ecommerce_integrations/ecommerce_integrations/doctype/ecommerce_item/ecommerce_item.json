@@ -45,7 +45,6 @@
    "in_list_view": 1,
    "label": "Integration Item Code",
    "read_only": 1,
-   "reqd": 1,
    "search_index": 1
   },
   {
@@ -95,7 +94,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2022-11-15 11:36:04.733227",
+ "modified": "2024-05-02 04:05:06.871568",
  "modified_by": "Administrator",
  "module": "Ecommerce Integrations",
  "name": "Ecommerce Item",
