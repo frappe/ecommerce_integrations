@@ -1,0 +1,15 @@
+name: Pre-build assets
+
+on:
+  push:
+    branches: [develop, main, version-15, version-16]
+
+jobs:
+  assets:
+    name: Pre-build assets
+    uses: frappe/pilot/.github/workflows/app-assets.yml@develop
+    with:
+      # main is the version-15 release line (semantic-release); its name does not tell the Frappe branch.
+      frappe-branch: ${{ github.ref_name == 'main' && 'version-15' || '' }}
+    permissions:
+      contents: write
