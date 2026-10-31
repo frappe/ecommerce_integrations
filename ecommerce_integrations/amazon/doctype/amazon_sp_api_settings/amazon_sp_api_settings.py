@@ -158,7 +158,17 @@ def setup_custom_fields():
 				fieldname="amazon_order_id",
 				label="Amazon Order ID",
 				fieldtype="Data",
-				insert_after="title",
+				insert_after="order_type",
+				read_only=1,
+				print_hide=1,
+			)
+		],
+		"Sales Invoice": [
+			dict(
+				fieldname="amazon_order_id",
+				label="Amazon Order ID",
+				fieldtype="Data",
+				insert_after="remarks",
 				read_only=1,
 				print_hide=1,
 			)
