@@ -12,7 +12,7 @@ from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
 def prepare_sales_invoice(payload, request_id=None):
-	from ecommerce_integrations.shopify.order import get_sales_order
+	from ecommerce_integrations.shopify.order import get_sales_order, sync_sales_order
 
 	order = payload
 
@@ -22,6 +22,10 @@ def prepare_sales_invoice(payload, request_id=None):
 
 	try:
 		sales_order = get_sales_order(cstr(order["id"]))
+		if not sales_order:
+			sync_sales_order(order, request_id)
+			sales_order = get_sales_order(cstr(order["id"]))
+
 		if sales_order:
 			create_sales_invoice(order, setting, sales_order)
 			create_shopify_log(status="Success")
