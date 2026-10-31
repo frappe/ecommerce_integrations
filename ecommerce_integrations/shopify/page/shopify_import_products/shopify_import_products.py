@@ -7,7 +7,7 @@ from shopify.resources import Product
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 from ecommerce_integrations.shopify.connection import temp_shopify_session
 from ecommerce_integrations.shopify.constants import MODULE_NAME
-from ecommerce_integrations.shopify.product import ShopifyProduct
+from ecommerce_integrations.shopify.product import ShopifyProduct, complete_variants, fetch_all_variants
 
 # constants
 SYNC_JOB_NAME = "shopify.job.sync.all.products"
@@ -100,10 +100,14 @@ def _resync_product(product):
 	savepoint = "shopify_resync_product"
 	try:
 		item = Product.find(product)
+		# The inline list stops at 100 variants. Walk the full list, so a product imported before
+		# that was handled gets its missing variants: the first one not yet synced fetches the
+		# product again and creates them; variants that already exist are skipped.
+		variants = complete_variants(item.to_dict(), lambda: fetch_all_variants(product))["variants"]
 
 		frappe.db.savepoint(savepoint)
-		for variant in item.variants:
-			shopify_product = ShopifyProduct(product, variant_id=variant.id)
+		for variant in variants:
+			shopify_product = ShopifyProduct(product, variant_id=variant["id"])
 			shopify_product.sync_product()
 
 		return True
