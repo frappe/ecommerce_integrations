@@ -543,6 +543,13 @@ def setup_custom_fields(update=True):
 				read_only=1,
 			),
 			dict(
+				fieldname=ORDER_DISPLAY_CODE_FIELD,
+				label="Unicommerce Display Order No.",
+				fieldtype="Data",
+				insert_after=ORDER_CODE_FIELD,
+				read_only=1,
+			),
+			dict(
 				fieldname=UNICOMMERCE_SHIPPING_ID,
 				label="Unicommerce Shipment Id",
 				fieldtype="Data",
