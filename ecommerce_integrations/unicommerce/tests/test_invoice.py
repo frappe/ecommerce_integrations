@@ -155,7 +155,9 @@ class TestUnicommerceInvoice(TestCaseApiClient):
 			},
 		)
 		self.assertEqual(len(attachments), 1, msg=f"Expected 1 attachment, found: {attachments!s}")
-		content = frappe.get_doc("File", attachments[0].name).get_content()
+		file_doc = frappe.get_doc("File", attachments[0].name)
+		with open(file_doc.get_full_path(), "rb") as f:
+			content = f.read()
 		self.assertTrue(content.startswith(b"%PDF"))
 		self.assertFalse(pdf_contains_js(content))
 
