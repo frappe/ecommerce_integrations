@@ -60,7 +60,8 @@ def sync_new_orders(client: UnicommerceAPIClient = None, force=False):
 	for order in new_orders:
 		sales_order = create_order(order, client=client)
 
-		if settings.only_sync_completed_orders:
+		# create_order logs its own failure and returns None; skip invoicing that order
+		if settings.only_sync_completed_orders and sales_order:
 			_create_sales_invoices(order, sales_order, client)
 
 
