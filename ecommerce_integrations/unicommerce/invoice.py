@@ -32,6 +32,7 @@ from ecommerce_integrations.unicommerce.utils import (
 	create_unicommerce_log,
 	get_unicommerce_date,
 	remove_non_alphanumeric_chars,
+	strip_pdf_javascript,
 )
 
 JsonDict = dict[str, Any]
@@ -51,9 +52,7 @@ INVOICED_STATE = ["PACKED", "READY_TO_SHIP", "DISPATCHED", "MANIFESTED", "SHIPPE
 
 
 @frappe.whitelist()
-def generate_unicommerce_invoices(
-	sales_orders: list[SOCode], warehouse_allocation: WHAllocation | None = None
-):
+def generate_unicommerce_invoices(sales_orders: Any, warehouse_allocation: Any = None):
 	"""Request generation of invoice to Unicommerce and sync that invoice.
 
 	1. Get shipping package details using get_sale_order
@@ -139,6 +138,8 @@ def bulk_generate_invoices(
 
 	failed_orders = []
 	for so_code in sales_orders:
+		# a failure rolls back only this order, not the batch
+		frappe.db.savepoint("bulk_generate_invoices")
 		try:
 			so = frappe.get_doc("Sales Order", so_code)
 			channel = so.get(CHANNEL_ID_FIELD)
@@ -146,13 +147,17 @@ def bulk_generate_invoices(
 			wh_allocation = warehouse_allocation.get(so_code) if warehouse_allocation else None
 			_generate_invoice(client, so, channel_config, warehouse_allocation=wh_allocation)
 		except Exception as e:
-			create_unicommerce_log(status="Failure", exception=e, rollback=True, make_new=True)
+			frappe.db.rollback(save_point="bulk_generate_invoices")
+			create_unicommerce_log(status="Failure", exception=e, make_new=True)
 			failed_orders.append(so_code)
 
 	_log_invoice_generation(sales_orders, failed_orders)
 
 
 def _log_invoice_generation(sales_orders, failed_orders):
+	if not sales_orders:
+		return
+
 	failed_orders = set(failed_orders)
 	failed_orders.update(_get_orders_with_missing_invoice(sales_orders))
 	successful_orders = list(set(sales_orders) - set(failed_orders))
@@ -162,7 +167,7 @@ def _log_invoice_generation(sales_orders, failed_orders):
 	failure_message = "\n".join(
 		[
 			f"generate invoices: {percent_success:.3%} invoices successful\n",
-			f"Failred orders = {', '.join(failed_orders)}",
+			f"Failed orders = {', '.join(failed_orders)}",
 			f"Requested orders = {', '.join(sales_orders)}",
 		]
 	)
@@ -170,7 +175,8 @@ def _log_invoice_generation(sales_orders, failed_orders):
 	update_invoicing_status(failed_orders, "Failed")
 	update_invoicing_status(successful_orders, "Success")
 
-	status = {0.0: "Failure", 100.0: "Success"}.get(percent_success) or "Partial Success"
+	# percent_success is a fraction, so the all-succeeded key is 1.0.
+	status = {0.0: "Failure", 1.0: "Success"}.get(percent_success) or "Partial Success"
 	create_unicommerce_log(status=status, message=failure_message)
 
 
@@ -189,6 +195,9 @@ def _get_orders_with_missing_invoice(sales_orders):
 def update_invoicing_status(sales_orders: list[str], status: str) -> None:
 	if not sales_orders:
 		return
+
+	# `in %s` needs a list/tuple; a set renders as its Python repr and breaks the query.
+	sales_orders = list(sales_orders)
 
 	frappe.db.sql(
 		f"""update `tabSales Order`
@@ -410,32 +419,27 @@ def attach_unicommerce_docs(
 ) -> None:
 	"""Attach invoice and label to specified sales invoice.
 
-	Both invoice and label are base64 encoded PDFs.
+	Both invoice and label are base64 encoded PDFs. JavaScript is stripped
+	before saving: frappe refuses to store PDFs containing scripts.
 
 	File names are generated using specified invoice and shipping package code."""
 
-	invoice_code = remove_non_alphanumeric_chars(invoice_code)
-	package_code = remove_non_alphanumeric_chars(package_code)
+	attachments = (
+		("unicommerce-invoice", invoice, invoice_code),
+		("unicommerce-label", label, package_code),
+	)
 
-	if invoice:
-		save_file(
-			f"unicommerce-invoice-{invoice_code}.pdf",
-			invoice,
-			"Sales Invoice",
-			sales_invoice,
-			decode=True,
-			is_private=1,
-		)
+	for prefix, content, code in attachments:
+		if not content:
+			continue
+		file_name = f"{prefix}-{remove_non_alphanumeric_chars(code or '')}.pdf"
 
-	if label:
-		save_file(
-			f"unicommerce-label-{package_code}.pdf",
-			label,
-			"Sales Invoice",
-			sales_invoice,
-			decode=True,
-			is_private=1,
-		)
+		sanitized = strip_pdf_javascript(content)
+		if sanitized is None:
+			frappe.throw(_("{0} could not be read as a PDF").format(file_name))
+
+		# sanitized is raw PDF bytes, not base64
+		save_file(file_name, sanitized, "Sales Invoice", sales_invoice, is_private=1)
 
 
 def _get_line_items(
