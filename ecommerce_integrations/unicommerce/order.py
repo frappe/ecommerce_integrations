@@ -134,10 +134,8 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 		# propagate it onto the invoices / delivery notes already made from this order.
 		display_order_code = order.get("displayOrderCode")
 		if display_order_code and not so.get(ORDER_DISPLAY_CODE_FIELD):
-			# Backfill invoices / delivery notes first, then flag the order last so a
-			# failed backfill leaves it un-flagged for the next re-sync to retry.
-			_backfill_display_order_code(order["code"], display_order_code)
-			so.db_set(ORDER_DISPLAY_CODE_FIELD, display_order_code, update_modified=False)
+			backfill_display_order_code(order["code"], display_order_code)
+			so.reload()
 		return so
 
 	# If a sales order already exists, then every time it's executed
@@ -165,10 +163,14 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 		return order
 
 
-def _backfill_display_order_code(uni_order_code: str, display_order_code: str) -> None:
-	"""Copy the display order no. onto Sales Invoices / Delivery Notes of an order
+def backfill_display_order_code(uni_order_code: str, display_order_code: str | None) -> None:
+	"""Copy the display order no. onto an order and its Sales Invoices / Delivery Notes
 	that were created before the field existed (they carry the same order code)."""
-	for doctype in ("Sales Invoice", "Delivery Note"):
+	if not display_order_code:
+		return
+
+	# Order last, so a failed backfill leaves it blank for the next re-sync to retry.
+	for doctype in ("Sales Invoice", "Delivery Note", "Sales Order"):
 		dt = frappe.qb.DocType(doctype)
 		(
 			frappe.qb.update(dt)
