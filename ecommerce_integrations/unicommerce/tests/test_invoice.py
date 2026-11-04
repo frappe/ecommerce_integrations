@@ -15,8 +15,8 @@ from ecommerce_integrations.unicommerce.constants import (
 	INVOICE_CODE_FIELD,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
-	ORDER_INVOICE_STATUS_FIELD,
 	ORDER_DISPLAY_CODE_FIELD,
+	ORDER_INVOICE_STATUS_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.invoice import bulk_generate_invoices, create_sales_invoice
