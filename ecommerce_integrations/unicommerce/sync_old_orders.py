@@ -40,7 +40,7 @@ def _validate_date_range(from_date, to_date):
 	return from_date, to_date
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def enqueue_sync_old_orders(from_date: str, to_date: str):
 	"""Run the old-order sync in the background `long` queue"""
 	frappe.only_for("System Manager")
