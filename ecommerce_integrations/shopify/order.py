@@ -157,14 +157,15 @@ def get_order_items(order_items, setting, delivery_date, taxes_inclusive):
 		if all_product_exists:
 			item_code = get_item_code(shopify_item)
 			rate = _get_item_price(shopify_item, taxes_inclusive)
+			# 100% discount forces the rate to 0; a bare 0 rate gets back-filled from the price list
+			is_free_item = flt(rate) <= 0
 			items.append(
 				{
 					"item_code": item_code,
 					"item_name": shopify_item.get("name"),
 					"rate": rate,
-					# a fully discounted line nets to 0; flag it free so ERPNext keeps
-					# the rate at 0 instead of back-filling it from the price list
-					"is_free_item": 1 if flt(rate) <= 0 else 0,
+					"is_free_item": 1 if is_free_item else 0,
+					"discount_percentage": 100 if is_free_item else 0,
 					"delivery_date": delivery_date,
 					"qty": shopify_item.get("quantity"),
 					"stock_uom": shopify_item.get("uom") or "Nos",
