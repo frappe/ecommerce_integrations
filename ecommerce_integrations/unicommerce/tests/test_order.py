@@ -1,5 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
+from unittest.mock import patch
 
 import frappe
 from frappe.test_runner import make_test_records
@@ -15,6 +16,7 @@ from ecommerce_integrations.unicommerce.order import (
 	_get_line_items,
 	_sync_order_items,
 	create_order,
+	sync_new_orders,
 )
 from ecommerce_integrations.unicommerce.tests.test_client import TestCaseApiClient
 
@@ -68,6 +70,24 @@ class TestUnicommerceOrder(TestCaseApiClient):
 
 		self.assertEqual(item_to_qty["MC-100"], 11)
 		self.assertAlmostEqual(total_price, 7028.0)
+
+	def test_sync_new_orders_skips_invoices_for_failed_order(self):
+		"""An order that fails to sync must not stop invoicing of the next orders."""
+		settings = frappe._dict(is_enabled=lambda: True, only_sync_completed_orders=1)
+		orders = [{"code": "SO-FAILED"}, {"code": "SO-SYNCED"}]
+		synced_so = frappe._dict(name="SO-SYNCED")
+		module = "ecommerce_integrations.unicommerce.order"
+
+		with (
+			patch(f"{module}.frappe.get_cached_doc", return_value=settings),
+			patch(f"{module}._get_new_orders", return_value=iter(orders)),
+			patch(f"{module}.create_order", side_effect=[None, synced_so]) as create_order_mock,
+			patch(f"{module}._create_sales_invoices") as create_invoices_mock,
+		):
+			sync_new_orders(client=self.client, force=True)
+
+		self.assertEqual(create_order_mock.call_count, 2)
+		create_invoices_mock.assert_called_once_with(orders[1], synced_so, self.client)
 
 	def test_get_taxes(self):
 		pass
