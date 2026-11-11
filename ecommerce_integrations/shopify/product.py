@@ -58,6 +58,7 @@ class ShopifyProduct:
 		if not self.is_synced():
 			shopify_product = Product.find(self.product_id)
 			product_dict = shopify_product.to_dict()
+			complete_variants(product_dict, lambda: fetch_all_variants(self.product_id))
 			self._make_item(product_dict)
 
 	def _make_item(self, product_dict):
@@ -252,6 +253,33 @@ def _add_weight_details(product_dict):
 	if variants:
 		product_dict["weight"] = variants[0]["weight"]
 		product_dict["weight_unit"] = variants[0]["weight_unit"]
+
+
+SHOPIFY_INLINE_VARIANT_LIMIT = 100
+
+
+def complete_variants(product_dict, fetch_all):
+	"""Make sure product_dict carries every variant of the product.
+
+	The REST product resource includes at most 100 variants. A product with more was created
+	with only the first 100 - silently - and an order line pointing at a later variant then
+	failed with "relevant records were not found in the shopify Product master". At the limit,
+	the paginated variant list replaces the inline one.
+	"""
+	variants = product_dict.get("variants") or []
+	if len(variants) >= SHOPIFY_INLINE_VARIANT_LIMIT:
+		product_dict["variants"] = fetch_all()
+	return product_dict
+
+
+def fetch_all_variants(product_id):
+	"""Every variant of a Shopify product, page by page."""
+	from shopify.collection import PaginatedIterator
+
+	variants = []
+	for page in PaginatedIterator(Variant.find(product_id=product_id, limit=250)):
+		variants.extend(variant.to_dict() for variant in page)
+	return variants
 
 
 def _has_variants(product_dict) -> bool:
