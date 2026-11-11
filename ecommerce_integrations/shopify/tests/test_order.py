@@ -41,8 +41,11 @@ class TestOrder(IntegrationTestCase):
 
 		self.assertEqual(items[0]["rate"], 0)
 		self.assertEqual(items[0]["is_free_item"], 1)
+		# 100% discount forces the computed rate to 0 even if a price list rate is fetched
+		self.assertEqual(items[0]["discount_percentage"], 100)
 		self.assertEqual(items[1]["rate"], 9.0)
 		self.assertEqual(items[1]["is_free_item"], 0)
+		self.assertEqual(items[1]["discount_percentage"], 0)
 
 	def test_set_item_wise_tax_details_builds_item_wise_details(self):
 		# dont_recompute rows must seed the item-wise breakup, else IC rejects the order.
