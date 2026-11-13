@@ -18,6 +18,7 @@ from ecommerce_integrations.controllers.setting import (
 )
 from ecommerce_integrations.shopify import connection
 from ecommerce_integrations.shopify.constants import (
+	ACCOUNT_DOCTYPE,
 	ADDRESS_ID_FIELD,
 	AUTH_METHOD_OAUTH,
 	CUSTOMER_ID_FIELD,
@@ -38,19 +39,29 @@ from ecommerce_integrations.shopify.utils import (
 	create_shopify_log,
 	ensure_old_connector_is_disabled,
 	migrate_from_old_connector,
+	normalize_shop_url,
 )
 
 
-class ShopifySetting(SettingController):
+class ShopifyAccount(SettingController):
 	def is_enabled(self) -> bool:
 		return bool(self.enable_shopify)
+
+	def autoname(self):
+		# the account is named after the shop domain Shopify sends with its webhooks,
+		# so normalise the URL before it becomes the name
+		self.shopify_url = normalize_shop_url(self.shopify_url)
+		self.name = self.shopify_url
 
 	def validate(self):
 		ensure_old_connector_is_disabled()
 
 		if self.shopify_url:
-			self.shopify_url = normalize_shopify_url(self.shopify_url)
+			# a bare shop name is completed to its myshopify domain, then the URL is
+			# validated strictly
+			self.shopify_url = normalize_shopify_url(normalize_shop_url(self.shopify_url))
 
+		self._validate_single_enabled_account()
 		self._validate_authentication_fields()
 		self._validate_warehouse_links()
 		self._initalize_default_values()
@@ -80,14 +91,31 @@ class ShopifySetting(SettingController):
 
 			create_shopify_log(
 				status="Warning",
-				method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting.before_save",
+				method="ecommerce_integrations.shopify.doctype.shopify_account.shopify_account.before_save",
+				shopify_account=self.name,
 				message=_("Token pre-generation failed on save; will retry on first sync."),
 				exception=str(e),
 			)
 
 	def on_update(self):
 		if self.is_enabled() and not self.is_old_data_migrated:
-			migrate_from_old_connector()
+			migrate_from_old_connector(shopify_account=self.name)
+
+	def _validate_single_enabled_account(self):
+		"""Incoming webhooks are attributed to the only enabled account, so a second
+		enabled account would leave the webhooks of both stores unattributable."""
+		if not self.is_enabled():
+			return
+
+		other_account = frappe.db.exists(
+			ACCOUNT_DOCTYPE, {"enable_shopify": 1, "name": ("!=", self.name or "")}
+		)
+		if other_account:
+			frappe.throw(
+				_(
+					"Shopify Account {0} is already enabled. Only one account can be enabled at a time."
+				).format(frappe.bold(other_account))
+			)
 
 	# --- Authentication ---
 
@@ -205,7 +233,8 @@ class ShopifySetting(SettingController):
 			except Exception as e:
 				create_shopify_log(
 					status="Warning",
-					method="ecommerce_integrations.shopify.doctype.shopify_setting.shopify_setting._unregister_webhooks",
+					method="ecommerce_integrations.shopify.doctype.shopify_account.shopify_account._unregister_webhooks",
+					shopify_account=self.name,
 					message=_("Old Shopify webhooks could not be removed."),
 					exception=str(e),
 				)
@@ -224,18 +253,18 @@ class ShopifySetting(SettingController):
 			self.last_inventory_sync = get_datetime("1970-01-01")
 
 	@frappe.whitelist()
-	@connection.temp_shopify_session
 	def update_location_table(self):
 		"""Fetch locations from shopify and add it to child table so user can
 		map it with correct ERPNext warehouse."""
 
 		self.shopify_warehouse_mapping = []
-		for locations in PaginatedIterator(Location.find()):
-			for location in locations:
-				self.append(
-					"shopify_warehouse_mapping",
-					{"shopify_location_id": location.id, "shopify_location_name": location.name},
-				)
+		with connection.shopify_session(self):
+			for locations in PaginatedIterator(Location.find()):
+				for location in locations:
+					self.append(
+						"shopify_warehouse_mapping",
+						{"shopify_location_id": location.id, "shopify_location_name": location.name},
+					)
 
 	def get_erpnext_warehouses(self) -> list[ERPNextWarehouse]:
 		return [wh_map.erpnext_warehouse for wh_map in self.shopify_warehouse_mapping]

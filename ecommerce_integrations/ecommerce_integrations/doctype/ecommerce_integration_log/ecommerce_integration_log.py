@@ -47,6 +47,7 @@ def create_log(
 	method=None,
 	message=None,
 	make_new=False,
+	fields=None,
 ):
 	make_new = make_new or not bool(frappe.flags.request_id)
 
@@ -71,6 +72,8 @@ def create_log(
 	log.request_data = request_data or log.request_data
 	log.traceback = log.traceback or frappe.get_traceback()
 	log.status = status
+	if fields:
+		log.update(fields)
 	log.save(ignore_permissions=True)
 
 	frappe.db.commit()
