@@ -1,6 +1,6 @@
 import frappe
 
-from ecommerce_integrations.shopify.constants import SETTING_DOCTYPE
+from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, AUTH_METHOD_STATIC
 
 
 def execute():
@@ -8,12 +8,14 @@ def execute():
 	Migration patch: set default authentication method for existing Shopify installations.
 	Ensures backward compatibility when introducing OAuth 2.0 support.
 
-	Existing installs get "Static Token" so their current setup continues working.
+	Existing accounts get "Static Token" so their current setup continues working. It runs
+	after the `Shopify Setting` single was migrated into a `Shopify Account`.
 	"""
-	frappe.reload_doc("shopify", "doctype", "shopify_setting")
+	frappe.reload_doc("shopify", "doctype", "shopify_account")
 
-	if frappe.db.exists("DocType", SETTING_DOCTYPE):
-		settings = frappe.get_doc(SETTING_DOCTYPE)
-
-		if not settings.authentication_method:
-			settings.db_set("authentication_method", "Static Token", update_modified=False)
+	account = frappe.qb.DocType(ACCOUNT_DOCTYPE)
+	(
+		frappe.qb.update(account)
+		.set(account.authentication_method, AUTH_METHOD_STATIC)
+		.where(account.authentication_method.isnull() | (account.authentication_method == ""))
+	).run()

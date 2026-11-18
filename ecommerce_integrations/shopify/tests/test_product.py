@@ -94,25 +94,25 @@ class TestProduct(TestCase):
 
 		self.assertEqual(
 			map_erpnext_variant_to_shopify_variant(
-				shopify_product, variant_LG, {"option1": "L", "option2": "Green"}
+				shopify_product, variant_LG, {"option1": "L", "option2": "Green"}, self.shopify_account
 			),
 			"39845261705369",
 		)
 		self.assertEqual(
 			map_erpnext_variant_to_shopify_variant(
-				shopify_product, variant_LR, {"option1": "L", "option2": "Red"}
+				shopify_product, variant_LR, {"option1": "L", "option2": "Red"}, self.shopify_account
 			),
 			"39845261639833",
 		)
 		self.assertEqual(
 			map_erpnext_variant_to_shopify_variant(
-				shopify_product, variant_MG, {"option1": "M", "option2": "Green"}
+				shopify_product, variant_MG, {"option1": "M", "option2": "Green"}, self.shopify_account
 			),
 			"39845261607065",
 		)
 		self.assertEqual(
 			map_erpnext_variant_to_shopify_variant(
-				shopify_product, variant_MR, {"option1": "M", "option2": "Red"}
+				shopify_product, variant_MR, {"option1": "M", "option2": "Red"}, self.shopify_account
 			),
 			"39845261541529",
 		)
