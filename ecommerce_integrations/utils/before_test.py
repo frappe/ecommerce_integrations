@@ -34,8 +34,6 @@ def before_tests():
 	enable_all_roles_and_domains()
 	create_tax_account()
 
-	frappe.db.commit()
-
 
 def create_tax_account():
 	company = "Wind Power LLC"

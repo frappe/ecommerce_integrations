@@ -17,7 +17,7 @@ frappe.ui.form.on("Sales Invoice", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 	},

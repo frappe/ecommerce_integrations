@@ -1,10 +1,10 @@
 import copy
 import json
 import os
-import unittest
 from typing import ClassVar
 
 import frappe
+from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.unicommerce.constants import PRODUCT_CATEGORY_FIELD, SETTINGS_DOCTYPE
 from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce_settings import (
@@ -12,7 +12,7 @@ from ecommerce_integrations.unicommerce.doctype.unicommerce_settings.unicommerce
 )
 
 
-class TestCase(unittest.TestCase):
+class TestCase(IntegrationTestCase):
 	config: ClassVar = {
 		"is_enabled": 1,
 		"enable_inventory_sync": 1,
@@ -27,6 +27,10 @@ class TestCase(unittest.TestCase):
 
 	@classmethod
 	def setUpClass(cls):
+		# Call parent first to auto-generate standard test records
+		super().setUpClass()
+
+		# Now configure Unicommerce settings
 		settings = frappe.get_doc(SETTINGS_DOCTYPE)
 
 		# remember config
@@ -53,6 +57,11 @@ class TestCase(unittest.TestCase):
 		setup_custom_fields()
 		_setup_test_item_categories()
 		frappe.db.set_value("Stock Settings", None, "allow_negative_stock", 1)
+
+		# A new Item's item_defaults.default_warehouse is auto-filled from the frappe GLOBAL
+		# default warehouse, which the standard erpnext test companies set to a foreign company's
+		# warehouse -> item_defaults company/warehouse mismatch aborts item creation. Clear it.
+		frappe.db.set_default("default_warehouse", "")
 
 	@classmethod
 	def tearDownClass(cls):

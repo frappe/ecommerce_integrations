@@ -1,7 +1,11 @@
 import frappe
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
-from ecommerce_integrations.unicommerce.constants import ORDER_CODE_FIELD, SETTINGS_DOCTYPE
+from ecommerce_integrations.unicommerce.constants import (
+	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
+	SETTINGS_DOCTYPE,
+)
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log
 
 
@@ -47,14 +51,19 @@ def prepare_delivery_note():
 
 def create_delivery_note(so, sales_invoice):
 	# Create the delivery note
-	from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+	from erpnext.selling.doctype.sales_order.mapper import make_delivery_note
 
 	res = make_delivery_note(source_name=so.name)
 	res.unicommerce_order_code = sales_invoice.unicommerce_order_code
+	# Prefer the Sales Order (authoritative, backfilled) and fall back to the invoice.
+	res.set(
+		ORDER_DISPLAY_CODE_FIELD,
+		so.get(ORDER_DISPLAY_CODE_FIELD) or sales_invoice.get(ORDER_DISPLAY_CODE_FIELD),
+	)
 	res.unicommerce_shipment_id = sales_invoice.unicommerce_shipping_package_code
 	res.save()
 	res.submit()
-	log = create_unicommerce_log(method="create_delevery_note", make_new=True)
+	log = create_unicommerce_log(method="create_delivery_note", make_new=True)
 	frappe.flags.request_id = log.name
 	create_unicommerce_log(status="Success")
 	frappe.flags.request_id = None

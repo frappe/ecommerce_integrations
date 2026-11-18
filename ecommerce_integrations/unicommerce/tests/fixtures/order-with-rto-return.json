@@ -1,0 +1,50 @@
+{
+  "code": "SO-RTO-001",
+  "displayOrderCode": "SO-RTO-001",
+  "channel": "RAINFOREST",
+  "status": "COMPLETE",
+  "created": 1625049926000,
+  "updated": 1625049926000,
+  "currencyCode": "INR",
+  "addresses": [
+    {
+      "id": "24005",
+      "name": "Test Customer",
+      "addressLine1": "123 Test St",
+      "city": "Mumbai",
+      "state": "MH",
+      "country": "IN",
+      "pincode": "400001",
+      "phone": "9999999999"
+    }
+  ],
+  "shippingPackages": [
+    {
+      "code": "PKG-RTO-001",
+      "status": "DISPATCHED",
+      "facilityCode": "Test-123"
+    }
+  ],
+  "saleOrderItems": [
+    {
+      "code": "TEST-ITEM-001",
+      "itemSku": "TEST-ITEM",
+      "itemName": "Test Item",
+      "totalPrice": 1000.0,
+      "sellingPrice": 1000.0,
+      "quantity": 1,
+      "statusCode": "CREATED",
+      "facilityCode": "Test-123",
+      "shippingPackageCode": "PKG-RTO-001"
+    }
+  ],
+  "returns": [
+    {
+      "code": "PKG-RTO-001",
+      "type": "Courier Returned",
+      "status": "COMPLETE",
+      "created": 1625136326000,
+      "returnDate": 1625136326000
+    }
+  ]
+}

@@ -2,8 +2,9 @@
 # See license.txt
 
 # import frappe
-import unittest
+
+from frappe.tests import IntegrationTestCase
 
 
-class TestZenotiCategory(unittest.TestCase):
+class TestZenotiCategory(IntegrationTestCase):
 	pass

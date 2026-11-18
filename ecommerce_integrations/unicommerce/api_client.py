@@ -37,6 +37,24 @@ class UnicommerceAPIClient:
 
 		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
 
+	def _refresh_auth(self):
+		"""Fetch a fresh access token after a 401 and rebuild the auth header."""
+		self.settings.update_tokens(grant_type="refresh_token")
+		self.access_token = self.settings.access_token
+		self._auth_headers = {"Authorization": f"Bearer {self.access_token}"}
+
+		# Persisting the token (to share it with other clients) is best-effort: a save
+		# failure must not block the retry, which already has the new token in-memory.
+		try:
+			# Background jobs lack write permission on Unicommerce Settings; bypass is
+			# intentional so token sharing works without a logged-in session user.
+			self.settings.flags.ignore_permissions = True
+			self.settings.flags.ignore_custom_fields = True
+			self.settings.save()
+		except Exception:
+			# Best-effort only — log so repeated failures are visible without blocking the retry.
+			frappe.log_error("Unicommerce: failed to persist refreshed access token")
+
 	def request(
 		self,
 		endpoint: str,
@@ -58,6 +76,17 @@ class UnicommerceAPIClient:
 			response = requests.request(
 				url=url, method=method, headers=headers, json=body, params=params, files=files
 			)
+			# Token expired mid-run -> refresh once and retry the call.
+			# File uploads are NOT retried: `requests` has already streamed the file
+			# object into the first request's body, so the handle is at EOF and
+			# replaying it would silently send an empty body. Such calls fall through
+			# and fail loudly instead, so the upload can be re-run intact.
+			if response.status_code == 401 and not files:
+				self._refresh_auth()
+				headers.update(self._auth_headers)
+				response = requests.request(
+					url=url, method=method, headers=headers, json=body, params=params, files=files
+				)
 			# unicommerce gives useful info in response text, show it in error logs
 			response.reason = cstr(response.reason) + cstr(response.text)
 			response.raise_for_status()
@@ -148,6 +177,9 @@ class UnicommerceAPIClient:
 
 		if status and "elements" in search_results:
 			return search_results["elements"]
+		else:
+			frappe.log_error("Failed to search sales orders:", search_results)
+			return []
 
 	def get_inventory_snapshot(
 		self, sku_codes: list[str], facility_code: str, updated_since: int = 1430
@@ -420,6 +452,53 @@ class UnicommerceAPIClient:
 
 		if statuses and "elements" in search_results:
 			return search_results["elements"]
+		else:
+			frappe.log_error("Failed to search shipping packages:", search_results)
+			return []
+
+	def get_return_details(
+		self,
+		reverse_pickup_code: str | None = None,
+		shipment_code: str | None = None,
+		facility_code: str | None = None,
+	) -> JsonDict | None:
+		"""Get return details using reverse pickup code or shipping package code.
+
+		Provides accurate return creation date via returnSaleOrderValue.returnCreatedDate.
+		Requires Facility header for authentication.
+
+		Args:
+			reverse_pickup_code: Reverse pickup code for CIR returns
+			shipment_code: Shipping package code for RTO returns
+			facility_code: Facility code (required for Return API header)
+
+		Returns:
+			Return details including returnSaleOrderValue with returnCreatedDate,
+			or None if API call fails
+
+		ref: https://documentation.unicommerce.com/docs/return-get.html
+		"""
+		body = {}
+
+		# Only include the parameter we're actually using (not null)
+		if reverse_pickup_code:
+			body["reversePickupCode"] = reverse_pickup_code
+		if shipment_code:
+			body["shipmentCode"] = shipment_code
+
+		# Facility header is required for Return API
+		extra_headers = {}
+		if facility_code:
+			extra_headers["Facility"] = facility_code
+
+		response, status = self.request(
+			endpoint="/services/rest/v1/oms/return/get",
+			body=body,
+			headers=extra_headers,
+		)
+
+		if status:
+			return response
 
 	def create_import_job(
 		self,

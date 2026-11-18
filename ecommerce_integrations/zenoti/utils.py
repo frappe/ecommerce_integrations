@@ -3,7 +3,7 @@ import math
 
 import frappe
 import requests
-from erpnext.controllers.accounts_controller import add_taxes_from_tax_template
+from erpnext.accounts.services.taxes import add_taxes_from_tax_template
 from frappe import _
 from frappe.utils import cint, flt
 

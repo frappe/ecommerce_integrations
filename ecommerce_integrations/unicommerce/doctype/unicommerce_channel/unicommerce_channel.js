@@ -23,7 +23,7 @@ frappe.ui.form.on("Unicommerce Channel", {
 					is_group: 0,
 					disabled: 0,
 				},
-			}))
+			})),
 		);
 
 		const tax_accounts = [

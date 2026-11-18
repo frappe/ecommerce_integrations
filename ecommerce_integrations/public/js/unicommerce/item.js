@@ -17,7 +17,7 @@ frappe.ui.form.on("Item", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 	},

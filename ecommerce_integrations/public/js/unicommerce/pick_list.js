@@ -2,7 +2,7 @@ frappe.ui.form.on("Pick List", {
 	refresh(frm) {
 		if (frm.doc.order_details) {
 			frm.add_custom_button(__("Generate Invoice"), () =>
-				frm.trigger("generate_invoice")
+				frm.trigger("generate_invoice"),
 			);
 		}
 	},
@@ -34,7 +34,7 @@ frappe.ui.form.on("Pick List", {
 			});
 			sales_orders.push(so);
 			warehouse_allocation[so] = item_details.filter(
-				(value) => Object.keys(value).length !== 0
+				(value) => Object.keys(value).length !== 0,
 			);
 		});
 		frappe.call({

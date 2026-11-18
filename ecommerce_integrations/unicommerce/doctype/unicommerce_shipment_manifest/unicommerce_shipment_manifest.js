@@ -21,7 +21,7 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 		if (frm.doc.docstatus != 0) {
@@ -37,8 +37,8 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 			) {
 				frappe.msgprint(
 					__(
-						"Please select Channel, Shipping method and Shipping provider first"
-					)
+						"Please select Channel, Shipping method and Shipping provider first",
+					),
 				);
 				return;
 			}
@@ -97,7 +97,7 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 					search_term: frm.doc.scan_barcode,
 					shipper: frm.doc.shipping_provider_code,
 					channel: frm.doc.channel_id,
-				}
+				},
 			)
 			.then((invoice) => {
 				if (!invoice) {
@@ -111,7 +111,7 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 				let cur_grid = frm.fields_dict.manifest_items.grid;
 
 				const already_exists = frm.doc.manifest_items.find(
-					(d) => d.sales_invoice === invoice
+					(d) => d.sales_invoice === invoice,
 				);
 				if (already_exists) {
 					frappe.show_alert({
@@ -124,14 +124,14 @@ frappe.ui.form.on("Unicommerce Shipment Manifest", {
 				let new_row = frappe.model.add_child(
 					frm.doc,
 					cur_grid.doctype,
-					"manifest_items"
+					"manifest_items",
 				);
 
 				frappe.model.set_value(
 					new_row.doctype,
 					new_row.name,
 					"sales_invoice",
-					invoice
+					invoice,
 				);
 			})
 			.finally(() => {

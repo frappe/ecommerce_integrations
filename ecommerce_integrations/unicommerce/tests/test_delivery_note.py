@@ -9,6 +9,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	FACILITY_CODE_FIELD,
 	INVOICE_CODE_FIELD,
 	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
 	SHIPPING_PACKAGE_CODE_FIELD,
 )
 from ecommerce_integrations.unicommerce.delivery_note import create_delivery_note
@@ -63,3 +64,43 @@ class TestDeliveryNote(TestCaseApiClient):
 		si = frappe.get_doc("Sales Invoice", sales_invoice_code)
 		dn = create_delivery_note(so, si)
 		self.assertEqual(dn.unicommerce_order_code, so.unicommerce_order_code)
+		self.assertEqual(dn.get(ORDER_DISPLAY_CODE_FIELD), so.get(ORDER_DISPLAY_CODE_FIELD))
+
+	def test_backfill_display_order_code_on_resync(self):
+		"""Re-syncing an order backfills the display order no. on the order and on the
+		invoices / delivery notes already made from it before the field existed."""
+		from erpnext.selling.doctype.sales_order.mapper import make_delivery_note, make_sales_invoice
+
+		# order-SO5905 is not invoiced by other tests, so this stays isolated.
+		order = self.load_fixture("order-SO5905")["saleOrderDTO"]
+		display_code = order["displayOrderCode"]
+
+		so = create_order(order, client=self.client)
+
+		# An invoice and delivery note that predate the field (no display order no. yet).
+		si = make_sales_invoice(so.name)
+		si.insert(ignore_permissions=True)
+
+		dn = make_delivery_note(so.name)
+		dn.unicommerce_order_code = so.unicommerce_order_code
+		dn.insert(ignore_permissions=True)
+
+		linked = (
+			("Sales Order", so.name),
+			("Sales Invoice", si.name),
+			("Delivery Note", dn.name),
+		)
+
+		# Simulate the pre-patch state: no display order no. anywhere.
+		for doctype, name in linked:
+			frappe.db.set_value(doctype, name, ORDER_DISPLAY_CODE_FIELD, "")
+
+		# Re-sync the same order; the payload now carries displayOrderCode.
+		create_order(order, client=self.client)
+
+		for doctype, name in linked:
+			self.assertEqual(
+				frappe.db.get_value(doctype, name, ORDER_DISPLAY_CODE_FIELD),
+				display_code,
+				msg=f"{doctype} {name}: display order no. not backfilled",
+			)

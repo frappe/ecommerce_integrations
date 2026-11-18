@@ -18,7 +18,7 @@ frappe.ui.form.on("Sales Order", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 		if (
@@ -59,7 +59,7 @@ frappe.ui.form.on("Sales Order", {
 						},
 					});
 				},
-				__("Unicommerce")
+				__("Unicommerce"),
 			);
 		}
 	},

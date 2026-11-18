@@ -1,14 +1,13 @@
 # Copyright (c) 2021, Frappe and Contributors
 # See LICENSE
 
-import unittest
-
 import frappe
+from frappe.tests import IntegrationTestCase
 
 from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_item import ecommerce_item
 
 
-class TestEcommerceItem(unittest.TestCase):
+class TestEcommerceItem(IntegrationTestCase):
 	def tearDown(self):
 		for d in frappe.get_list("Ecommerce Item"):
 			frappe.get_doc("Ecommerce Item", d.name).delete()

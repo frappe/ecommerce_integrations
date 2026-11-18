@@ -10,6 +10,7 @@ UNICOMMERCE_SKU_PATTERN = re.compile(r"[A-Za-z0-9._\-/]{3,45}")
 # Custom fields
 ITEM_SYNC_CHECKBOX = "sync_with_unicommerce"
 ORDER_CODE_FIELD = "unicommerce_order_code"
+ORDER_DISPLAY_CODE_FIELD = "unicommerce_display_order_code"
 CHANNEL_ID_FIELD = "unicommerce_channel_id"
 ORDER_STATUS_FIELD = "unicommerce_order_status"
 ORDER_INVOICE_STATUS_FIELD = "unicommerce_invoicing_status"
@@ -332,7 +333,7 @@ UNICOMMERCE_INDIAN_STATES_MAPPING = {
 	"MZ": "Mizoram",
 	"NL": "Nagaland",
 	"OR": "Odisha",
-	"PY": "Pondicherry",
+	"PY": "Puducherry",
 	"PB": "Punjab",
 	"RJ": "Rajasthan",
 	"SK": "Sikkim",

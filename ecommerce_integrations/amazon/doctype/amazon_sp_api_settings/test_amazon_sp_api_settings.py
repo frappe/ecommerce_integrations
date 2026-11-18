@@ -5,12 +5,12 @@
 import json
 import os
 import time
-import unittest
 from typing import ClassVar
 
 import frappe
 import responses
 from frappe.exceptions import ValidationError
+from frappe.tests import IntegrationTestCase
 from requests import request
 from requests.exceptions import HTTPError
 
@@ -224,7 +224,7 @@ class TestAmazonSettings:
 		self.warehouse = get_warehouse()
 		self.parent_item_group = get_item_group()
 		self.price_list = "Standard Selling"
-		self.customer_group = "All Customer Groups"
+		self.customer_group = "Individual"
 		self.territory = "All Territories"
 		self.customer_type = "Individual"
 		self.market_place_account_group = "Accounts Receivable - ATC"
@@ -272,7 +272,7 @@ class TestAmazonRepository(AmazonRepository):
 		return TestCatalogItems(**self.instance_params)
 
 
-class TestAmazon(unittest.TestCase):
+class TestAmazon(IntegrationTestCase):
 	def setUp(self):
 		frappe.set_user("Administrator")
 		setup_custom_fields()

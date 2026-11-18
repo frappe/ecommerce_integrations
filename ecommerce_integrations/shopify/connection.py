@@ -6,20 +6,28 @@ import json
 
 import frappe
 from frappe import _
+from pyactiveresource.connection import ResourceNotFound
 from shopify.resources import Webhook
 from shopify.session import Session
 
 from ecommerce_integrations.shopify.constants import (
 	API_VERSION,
+	AUTH_METHOD_OAUTH,
 	EVENT_MAPPER,
 	SETTING_DOCTYPE,
 	WEBHOOK_EVENTS,
 )
+from ecommerce_integrations.shopify.oauth import get_valid_access_token
 from ecommerce_integrations.shopify.utils import create_shopify_log
 
 
 def temp_shopify_session(func):
-	"""Any function that needs to access shopify api needs this decorator. The decorator starts a temp session that's destroyed when function returns."""
+	"""Any function that needs to access shopify api needs this decorator.
+	The decorator starts a temp session that's destroyed when function returns.
+
+	Supports both Static Token and OAuth 2.0 Client Credentials authentication.
+	For OAuth, automatically refreshes token if expired or expiring soon.
+	"""
 
 	@functools.wraps(func)
 	def wrapper(*args, **kwargs):
@@ -29,12 +37,23 @@ def temp_shopify_session(func):
 
 		setting = frappe.get_doc(SETTING_DOCTYPE)
 		if setting.is_enabled():
-			auth_details = (setting.shopify_url, API_VERSION, setting.get_password("password"))
+			access_token = _get_access_token(setting)
+			auth_details = (setting.shopify_url, API_VERSION, access_token)
 
 			with Session.temp(*auth_details):
 				return func(*args, **kwargs)
 
 	return wrapper
+
+
+def _get_access_token(setting) -> str:
+	if setting.authentication_method == AUTH_METHOD_OAUTH:
+		return get_valid_access_token(setting)
+
+	token = setting.get_password("password", raise_exception=False)
+	if not token:
+		frappe.throw(_("Shopify access token is not configured"), title=_("Authentication Error"))
+	return token
 
 
 def register_webhooks(shopify_url: str, password: str) -> list[Webhook]:
@@ -70,6 +89,16 @@ def unregister_webhooks(shopify_url: str, password: str) -> None:
 				webhook.destroy()
 
 
+def delete_webhooks(shopify_url: str, password: str, webhook_ids: list[str]) -> None:
+	"""Delete exactly these webhooks; ones already removed are ignored."""
+	with Session.temp(shopify_url, API_VERSION, password):
+		for webhook_id in webhook_ids:
+			try:
+				Webhook({"id": webhook_id}).destroy()
+			except ResourceNotFound:
+				pass
+
+
 def get_current_domain_name() -> str:
 	"""Get current site domain name. E.g. test.erpnext.com
 
@@ -91,12 +120,18 @@ def get_callback_url() -> str:
 	return f"https://{url}/api/method/ecommerce_integrations.shopify.connection.store_request_data"
 
 
-@frappe.whitelist(allow_guest=True)
+# Shopify cannot provide a Frappe session; raw-body HMAC verification authenticates the request.
+@frappe.whitelist(allow_guest=True)  # nosemgrep: frappe-semgrep-rules.rules.security.guest-whitelisted-method
 def store_request_data() -> None:
+	"""Validate and enqueue webhooks only while the integration is enabled."""
 	if frappe.request:
+		settings = frappe.get_doc(SETTING_DOCTYPE)
+		if not settings.is_enabled():
+			return
+
 		hmac_header = frappe.get_request_header("X-Shopify-Hmac-Sha256")
 
-		_validate_request(frappe.request, hmac_header)
+		_validate_request(frappe.request, hmac_header, settings=settings)
 
 		data = json.loads(frappe.request.data)
 		event = frappe.request.headers.get("X-Shopify-Topic")
@@ -118,12 +153,29 @@ def process_request(data, event):
 	)
 
 
-def _validate_request(req, hmac_header):
-	settings = frappe.get_doc(SETTING_DOCTYPE)
-	secret_key = settings.shared_secret
+def _validate_request(req, hmac_header, settings=None):
+	"""Verify the raw webhook body with the configured signing secret."""
+	settings = settings or frappe.get_doc(SETTING_DOCTYPE)
+
+	# Get the appropriate secret key based on authentication method
+	if settings.authentication_method == AUTH_METHOD_OAUTH:
+		# For OAuth apps, use client_secret for HMAC validation
+		secret_key = settings.get_password("client_secret", raise_exception=False)
+	else:
+		# For static token apps, use shared_secret
+		secret_key = settings.shared_secret
+
+	if not secret_key:
+		create_shopify_log(status="Error", request_data=req.data, exception="Secret key not configured")
+		frappe.throw(_("Webhook validation failed: Secret key not configured"))
+
+	if not hmac_header:
+		create_shopify_log(status="Error", request_data=req.data, exception="Missing HMAC header")
+		frappe.throw(_("Unverified Webhook Data"))
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
-	if sig != bytes(hmac_header.encode()):
+	# Timing-safe comparison to prevent signature timing attacks
+	if not hmac.compare_digest(sig, hmac_header.encode()):
 		create_shopify_log(status="Error", request_data=req.data)
 		frappe.throw(_("Unverified Webhook Data"))

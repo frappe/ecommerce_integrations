@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 import frappe
-from erpnext.selling.doctype.sales_order.sales_order import make_delivery_note
+from erpnext.selling.doctype.sales_order.mapper import make_delivery_note
 from frappe.utils import cint, cstr, getdate
 
 from ecommerce_integrations.shopify.constants import (
@@ -12,6 +12,7 @@ from ecommerce_integrations.shopify.constants import (
 )
 from ecommerce_integrations.shopify.order import get_sales_order
 from ecommerce_integrations.shopify.utils import create_shopify_log
+from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
 def prepare_delivery_note(payload, request_id=None):
@@ -52,6 +53,7 @@ def create_delivery_note(shopify_order, setting, so):
 				dn.items, fulfillment.get("line_items"), fulfillment.get("location_id")
 			)
 			dn.flags.ignore_mandatory = True
+			copy_item_wise_tax_details(dn, so.name)
 			dn.save()
 			dn.submit()
 

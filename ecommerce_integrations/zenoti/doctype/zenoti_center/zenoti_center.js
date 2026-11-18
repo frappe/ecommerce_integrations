@@ -20,7 +20,7 @@ frappe.ui.form.on("Zenoti Center", {
 					},
 				});
 			},
-			__("Sync")
+			__("Sync"),
 		);
 
 		frm.add_custom_button(
@@ -40,7 +40,7 @@ frappe.ui.form.on("Zenoti Center", {
 					},
 				});
 			},
-			__("Sync")
+			__("Sync"),
 		);
 
 		frm.add_custom_button(
@@ -60,7 +60,7 @@ frappe.ui.form.on("Zenoti Center", {
 					},
 				});
 			},
-			__("Sync")
+			__("Sync"),
 		);
 
 		frm.add_custom_button(
@@ -80,7 +80,7 @@ frappe.ui.form.on("Zenoti Center", {
 					},
 				});
 			},
-			__("Sync")
+			__("Sync"),
 		);
 
 		frm.add_custom_button(
@@ -125,7 +125,7 @@ frappe.ui.form.on("Zenoti Center", {
 				});
 				d.show();
 			},
-			__("Sync")
+			__("Sync"),
 		);
 
 		frm.add_custom_button(
@@ -163,7 +163,7 @@ frappe.ui.form.on("Zenoti Center", {
 				});
 				d.show();
 			},
-			__("Sync")
+			__("Sync"),
 		);
 	},
 
