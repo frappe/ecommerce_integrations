@@ -33,6 +33,7 @@ ITEM_HEIGHT_FIELD = "unicommerce_item_height"
 ITEM_BATCH_GROUP_FIELD = "unicommerce_batch_group_code"
 SHIPPING_PACKAGE_STATUS_FIELD = "unicommerce_shipping_package_status"
 IS_COD_CHECKBOX = "unicommerce_is_cod"
+IS_CHARGE_ROW_FIELD = "unicommerce_is_charge"
 SHIPPING_METHOD_FIELD = "unicommerce_shipping_method"
 UNICOMMERCE_SHIPPING_ID = "unicommerce_shipment_id"
 PICKLIST_ORDER_DETAILS_FIELD = "order_details"
@@ -72,6 +73,13 @@ CHANNEL_TAX_ACCOUNT_FIELD_MAP = {
 	"gift_wrap_charges": "gift_wrap_account",
 	"shipping_charges": "fnf_account",
 	"shipping_method_charges": "fnf_account",
+}
+
+# Unicommerce Charge Item charge -> tax heads it covers
+CHARGE_TAX_HEADS_MAP = {
+	"Cash On Delivery Charges": ("cash_on_delivery_charges",),
+	"Gift Wrap Charges": ("gift_wrap_charges",),
+	"Shipping Charges": ("shipping_charges", "shipping_method_charges"),
 }
 
 

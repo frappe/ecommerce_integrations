@@ -5,21 +5,26 @@ from datetime import date, datetime
 import frappe
 from erpnext.accounts.doctype.sales_invoice.mapper import make_sales_return
 from erpnext.accounts.services.child_item_update import update_child_qty_rate
-from frappe.utils import now_datetime
+from frappe.query_builder.functions import Abs, Sum
+from frappe.utils import cint, flt, now_datetime, parse_json
 
 from ecommerce_integrations.unicommerce.api_client import UnicommerceAPIClient
 from ecommerce_integrations.unicommerce.constants import (
 	CHANNEL_ID_FIELD,
 	FACILITY_CODE_FIELD,
+	IS_CHARGE_ROW_FIELD,
 	ORDER_CODE_FIELD,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
 	RETURN_CODE_FIELD,
+	SETTINGS_DOCTYPE,
 	SHIPPING_PACKAGE_CODE_FIELD,
 	SHIPPING_PROVIDER_CODE,
 	TRACKING_CODE_FIELD,
 )
+from ecommerce_integrations.unicommerce.invoice import _get_charge_items
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
+from ecommerce_integrations.utils.taxation import copy_item_wise_tax_details
 
 
 def fully_cancel_orders(unicommerce_order_codes: list[str]) -> None:
@@ -268,6 +273,9 @@ def get_return_date_from_package(client, return_code=None, facility_code=None, s
 
 def create_credit_note(invoice_name, posting_date=None):
 	credit_note = make_sales_return(invoice_name)
+
+	copy_item_wise_tax_details(credit_note, invoice_name, source_doctype="Sales Invoice")
+
 	facility_code = credit_note.get(FACILITY_CODE_FIELD)
 	return_warehouse = get_return_warehouse(facility_code)
 
@@ -278,13 +286,6 @@ def create_credit_note(invoice_name, posting_date=None):
 
 	for item in credit_note.items:
 		item.warehouse = return_warehouse or item.warehouse
-
-	for tax in credit_note.taxes:
-		if hasattr(tax, "item_wise_tax_detail") and tax.item_wise_tax_detail:
-			tax.item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
-			for _item, tax_distribution in tax.item_wise_tax_detail.items():
-				tax_distribution[1] *= -1
-			tax.item_wise_tax_detail = json.dumps(tax.item_wise_tax_detail)
 
 	return credit_note
 
@@ -326,7 +327,7 @@ def sync_customer_initiated_returns(so_data, client=None):
 			)
 
 
-def _get_invoice_for_return(order_code, returned_so_items):
+def _get_invoice_for_return(order_code, returned_so_items, returned_item_codes=None):
 	"""Find the invoice containing the returned items.
 
 	An order with multiple packages has multiple invoices. Picking the wrong one
@@ -344,17 +345,91 @@ def _get_invoice_for_return(order_code, returned_so_items):
 	all_si_items = frappe.get_all(
 		"Sales Invoice Item",
 		filters={"parent": ["in", invoices]},
-		fields=["parent", "so_detail"],
+		fields=["name", "parent", "so_detail", "item_code", "qty"],
 	)
 
-	invoice_items = {}
+	invoice_rows = defaultdict(set)
+	invoice_item_codes = defaultdict(set)
+	invoice_items = defaultdict(list)
 	for item in all_si_items:
-		invoice_items.setdefault(item["parent"], set()).add(item["so_detail"])
+		invoice_rows[item["parent"]].add(item["so_detail"])
+		invoice_item_codes[item["parent"]].add(item["item_code"])
+		invoice_items[item["parent"]].append(item)
 
 	for invoice_name in invoices:
-		si_so_details = invoice_items.get(invoice_name, set())
-		if returned_so_items and returned_so_items <= si_so_details:
+		if returned_so_items and returned_so_items <= invoice_rows[invoice_name]:
 			return invoice_name
+
+	candidates = [
+		invoice_name
+		for invoice_name in invoices
+		if invoice_rows[invoice_name] == {None}
+		and returned_item_codes
+		and returned_item_codes <= invoice_item_codes[invoice_name]
+	]
+
+	if len(candidates) > 1:
+		unrefunded_candidates = [
+			invoice_name
+			for invoice_name in candidates
+			if _has_unrefunded_rows(invoice_name, invoice_items[invoice_name], returned_item_codes)
+		]
+		if len(unrefunded_candidates) != 1:
+			return None
+		return unrefunded_candidates[0]
+
+	return candidates[0] if candidates else None
+
+
+def _get_refunded_qty_by_invoice_row(invoice_name: str, for_update: bool = True) -> dict[str, float]:
+	"""Quantity already credited on each invoice row by non-cancelled credit notes.
+
+	Rows are locked only on MariaDB; Postgres forbids FOR UPDATE with GROUP BY.
+	for_update=False is used while only comparing invoices to pick one.
+	"""
+
+	sales_invoice = frappe.qb.DocType("Sales Invoice")
+	sales_invoice_item = frappe.qb.DocType("Sales Invoice Item")
+
+	refunded_rows = (
+		frappe.qb.from_(sales_invoice_item)
+		.inner_join(sales_invoice)
+		.on(sales_invoice_item.parent == sales_invoice.name)
+		.select(
+			sales_invoice_item.sales_invoice_item,
+			Abs(Sum(sales_invoice_item.qty)).as_("refunded_qty"),
+		)
+		.where(
+			(sales_invoice.return_against == invoice_name)
+			& (sales_invoice.is_return == 1)
+			& (sales_invoice.docstatus < 2)
+			& sales_invoice_item.sales_invoice_item.isnotnull()
+		)
+		.groupby(sales_invoice_item.sales_invoice_item)
+	)
+
+	if for_update and frappe.db.db_type == "mariadb":
+		refunded_rows = refunded_rows.for_update()
+
+	refunded = refunded_rows.run(as_dict=True)
+
+	return {row.sales_invoice_item: row.refunded_qty for row in refunded}
+
+
+def _has_unrefunded_rows(invoice_name, invoice_items, returned_item_codes) -> bool:
+	"""True when the invoice still has rows for the returned items to credit."""
+	refunded = _get_refunded_qty_by_invoice_row(invoice_name, for_update=False)
+	return any(
+		refunded.get(item["name"], 0) < item["qty"]
+		for item in invoice_items
+		if item["item_code"] in returned_item_codes
+	)
+
+
+def _is_charge_row(item, charge_item_codes) -> bool:
+	"""A charge row is marked on the invoice when it is billed; the configured
+	charge items only cover invoices created before the mark existed."""
+	return item.get(IS_CHARGE_ROW_FIELD) or getattr(item, "item_code", None) in charge_item_codes
 
 
 def create_cir_credit_note(so_data, return_data, client=None):
@@ -370,11 +445,15 @@ def create_cir_credit_note(so_data, return_data, client=None):
 
 	# Get items from SO which are returned, map SO item -> SI item with linked rows.
 	so_item_code_map = {item.get(ORDER_ITEM_CODE_FIELD): item.name for item in so.items}
+	so_item_code_by_name = {item.name: getattr(item, "item_code", None) for item in so.items}
 
-	returned_so_codes = [item.get("saleOrderItemCode") for item in return_data.get("returnItems") or []]
-	returned_so_items = {so_item_code_map.get(code) for code in returned_so_codes} - {None}
+	returned_qty_by_so_item = defaultdict(int)
+	for return_item in return_data.get("returnItems") or []:
+		if so_item := so_item_code_map.get(return_item.get("saleOrderItemCode")):
+			returned_qty_by_so_item[so_item] += cint(return_item.get("quantity") or 1)
 
-	invoice_name = _get_invoice_for_return(so_data["code"], returned_so_items)
+	returned_item_codes = {so_item_code_by_name[so_item] for so_item in returned_qty_by_so_item}
+	invoice_name = _get_invoice_for_return(so_data["code"], set(returned_qty_by_so_item), returned_item_codes)
 	if not invoice_name:
 		# no invoice, or the returned rows span more than one package's invoice
 		create_unicommerce_log(
@@ -383,20 +462,32 @@ def create_cir_credit_note(so_data, return_data, client=None):
 			method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
 		)
 		return
-	si = frappe.get_doc("Sales Invoice", invoice_name)
-	so_si_item_map = {item.so_detail: item.name for item in si.items}
+	si = frappe.get_doc("Sales Invoice", invoice_name, for_update=True)
+
+	charge_item_codes = set(_get_charge_items(frappe.get_cached_doc(SETTINGS_DOCTYPE)).values())
+
+	so_si_items_map = defaultdict(list)
+	rows_by_item_code = defaultdict(list)
+	for item in si.items:
+		if item.so_detail:
+			so_si_items_map[item.so_detail].append(item)
+		elif not _is_charge_row(item, charge_item_codes):
+			rows_by_item_code[getattr(item, "item_code", None)].append(item)
 
 	facility_code = si.get(FACILITY_CODE_FIELD)
 
-	# Initialize client if not provided
 	if not client:
-		client = UnicommerceAPIClient()
+		create_unicommerce_log(
+			status="Invalid",
+			message=f"Client not provided for return {return_data['code']}",
+			method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
+		)
+		return
 
 	return_timestamp, return_details = get_return_date_from_package(
 		client, return_code=return_data["code"], facility_code=facility_code
 	)
 
-	# Use shipping package return date
 	if not return_timestamp:
 		create_unicommerce_log(
 			status="Invalid",
@@ -413,10 +504,41 @@ def create_cir_credit_note(so_data, return_data, client=None):
 	credit_note.set(TRACKING_CODE_FIELD, return_data.get("trackingNumber"))
 	credit_note.set(SHIPPING_PROVIDER_CODE, return_data.get("shippingProvider"))
 
-	returned_si_items = [so_si_item_map.get(so_item) for so_item in returned_so_items]
+	previously_refunded_qty = _get_refunded_qty_by_invoice_row(si.name)
 
-	if set(returned_si_items) != set(so_si_item_map.values()):
-		_handle_partial_returns(credit_note, returned_si_items)
+	refunded_qty_by_row: dict[str, float] = {}
+	for so_item_name, returned_qty in returned_qty_by_so_item.items():
+		rows = so_si_items_map.get(so_item_name)
+		if not rows:
+			rows = rows_by_item_code.get(so_item_code_by_name.get(so_item_name), ())
+		units_left = returned_qty
+		for row in rows:
+			if units_left <= 0:
+				break
+			unrefunded = (
+				row.qty - previously_refunded_qty.get(row.name, 0) - refunded_qty_by_row.get(row.name, 0)
+			)
+			if unrefunded <= 0:
+				continue
+			credited = min(units_left, unrefunded)
+			refunded_qty_by_row[row.name] = refunded_qty_by_row.get(row.name, 0) + credited
+			units_left -= credited
+
+	# refund the charges only once: on the return that fully returns the invoice
+	product_items = [
+		item for item in si.items if item.so_detail or not _is_charge_row(item, charge_item_codes)
+	]
+	if product_items and all(
+		previously_refunded_qty.get(item.name, 0) + refunded_qty_by_row.get(item.name, 0) >= item.qty
+		for item in product_items
+	):
+		for item in si.items:
+			if _is_charge_row(item, charge_item_codes) and item.name not in previously_refunded_qty:
+				refunded_qty_by_row[item.name] = item.qty
+
+	is_full_return = all(refunded_qty_by_row.get(item.name) == item.qty for item in si.items)
+	if not is_full_return:
+		_handle_partial_returns(credit_note, refunded_qty_by_row)
 
 	credit_note.save()
 
@@ -424,49 +546,85 @@ def create_cir_credit_note(so_data, return_data, client=None):
 		status="Success",
 		message="Customer return credit note created successfully",
 		method="ecommerce_integrations.unicommerce.cancellation_and_returns.create_cir_credit_note",
-		request_data=return_details,  # Full Unicommerce Return API response
+		request_data=return_details,
 	)
 
 	return credit_note
 
 
-def _handle_partial_returns(credit_note, returned_items: list[str]) -> None:
-	"""Remove non-returned items from credit note and update taxes."""
+def _carries_tax_account(item, account_head) -> bool:
+	"""True when the item's stored tax rates include this tax account."""
+	rates = parse_json(getattr(item, "item_tax_rate", None)) or {}
+	return account_head in rates
 
-	item_code_to_qty_map = defaultdict(float)
+
+def _handle_partial_returns(credit_note, refunded_qty_by_row: dict[str, float]) -> None:
+	"""Remove non-returned items, reduce partially returned ones, and update taxes.
+
+	Charge rows are added by the caller, only on the fully returning credit note.
+	"""
+
+	def net_amount(item):
+		return abs(flt(getattr(item, "amount", None)) or flt(item.qty) * flt(item.rate))
+
+	breakup = getattr(credit_note, "_item_wise_tax_details", None) or []
+
+	# each row's billed qty before it is reduced, keyed by its invoice row
+	original_qty_by_row = {item.sales_invoice_item: abs(item.qty) for item in credit_note.items}
+	total_amount = sum(net_amount(item) for item in credit_note.items)
+	# each account's billed amount, snapshotted before rows are reduced in place
+	taxed_total_by_account = defaultdict(float)
 	for item in credit_note.items:
-		item_code_to_qty_map[item.item_code] += item.qty
+		for account_head in parse_json(getattr(item, "item_tax_rate", None)) or {}:
+			taxed_total_by_account[account_head] += net_amount(item)
 
-	# remove non-returned items
-	credit_note.items = [item for item in credit_note.items if item.sales_invoice_item in returned_items]
+	credit_note.items = [item for item in credit_note.items if item.sales_invoice_item in refunded_qty_by_row]
 
-	returned_qty_map = defaultdict(float)
+	# credit only the returned qty, keeping the row's sign
 	for item in credit_note.items:
-		returned_qty_map[item.item_code] += item.qty
+		refunded_qty = refunded_qty_by_row[item.sales_invoice_item]
+		item.qty = -refunded_qty if item.qty < 0 else refunded_qty
+		item.amount = flt(item.qty * item.rate)
 
+	if not breakup:
+		returned_amount = sum(net_amount(item) for item in credit_note.items)
+		if not total_amount:
+			return
+		for tax in credit_note.taxes:
+			account_head = getattr(tax, "account_head", None)
+			taxed_total = taxed_total_by_account.get(account_head)
+			if taxed_total:
+				taxed_returned = sum(
+					net_amount(item) for item in credit_note.items if _carries_tax_account(item, account_head)
+				)
+				share = taxed_returned / taxed_total
+			else:
+				share = returned_amount / total_amount
+			tax.tax_amount = flt(flt(tax.tax_amount) * share)
+		return
+
+	return_percent_by_row = {
+		item.sales_invoice_item: abs(item.qty) / original_qty_by_row[item.sales_invoice_item]
+		for item in credit_note.items
+		if original_qty_by_row.get(item.sales_invoice_item)
+	}
+
+	# the breakup is parent-level rows, one per invoice row and tax
+	scaled_rows = []
 	for tax in credit_note.taxes:
-		# reduce total value
-		if not (hasattr(tax, "item_wise_tax_detail") and tax.item_wise_tax_detail):
+		tax_rows = [row for row in breakup if row.tax is tax]
+		# a tax row without a breakup is left alone
+		if not tax_rows:
 			continue
-
-		item_wise_tax_detail = json.loads(tax.item_wise_tax_detail)
-		new_tax_amt = 0.0
-
-		for item_code, tax_distribution in item_wise_tax_detail.items():
-			# item_code: [rate, amount]
-			if not tax_distribution[1]:
-				# Ignore 0 values
+		tax_amount = 0.0
+		for row in tax_rows:
+			# each row keeps its own tax; a removed item's rows are dropped
+			return_percent = return_percent_by_row.get(row.item.sales_invoice_item)
+			if return_percent is None:
 				continue
-
-			# the breakup can name an item that isn't on this credit note
-			original_qty = item_code_to_qty_map.get(item_code) or 0.0
-			if not original_qty:
-				tax_distribution[1] = 0.0
-				continue
-
-			return_percent = returned_qty_map.get(item_code, 0.0) / original_qty
-			tax_distribution[1] *= return_percent
-			new_tax_amt += tax_distribution[1]
-
-		tax.tax_amount = new_tax_amt
-		tax.item_wise_tax_detail = json.dumps(item_wise_tax_detail)
+			row.amount = flt(row.amount) * return_percent
+			row.taxable_amount = flt(row.taxable_amount) * return_percent
+			tax_amount += row.amount
+			scaled_rows.append(row)
+		tax.tax_amount = tax_amount
+	credit_note._item_wise_tax_details = scaled_rows

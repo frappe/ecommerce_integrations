@@ -21,6 +21,9 @@
   "item_sync_settings_section",
   "upload_item_to_unicommerce",
   "default_item_group",
+  "charges_settings_section",
+  "add_charges_as_items",
+  "charge_items",
   "sales_order_syncing_section",
   "only_sync_completed_orders",
   "order_sync_frequency",
@@ -122,6 +125,26 @@
    "fieldtype": "Link",
    "label": "Default Item Group",
    "options": "Item Group"
+  },
+  {
+   "fieldname": "charges_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Charge Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "add_charges_as_items",
+   "fieldtype": "Check",
+   "label": "Add Charges as Items in Invoice"
+  },
+  {
+   "depends_on": "add_charges_as_items",
+   "description": "One item per charge and tax rate. A charge takes the tax rate of the items it is charged on, so the same charge at 5% and 18% needs two items. Invoices fail if a charge has no item.",
+   "fieldname": "charge_items",
+   "fieldtype": "Table",
+   "label": "Charge Items",
+   "mandatory_depends_on": "add_charges_as_items",
+   "options": "Unicommerce Charge Item"
   },
   {
    "fieldname": "sales_order_syncing_section",

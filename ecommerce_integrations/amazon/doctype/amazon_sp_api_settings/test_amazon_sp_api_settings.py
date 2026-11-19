@@ -205,6 +205,7 @@ class TestAmazonSettings:
 					{
 						"doctype": "Item Group",
 						"item_group_name": "Amazon Test Warehouse",
+						"is_group": 1,
 					}
 				)
 				item_group.insert(ignore_permissions=True)

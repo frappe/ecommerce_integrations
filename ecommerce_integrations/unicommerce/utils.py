@@ -1,8 +1,10 @@
 import base64
 import datetime
+from collections import defaultdict
 from io import BytesIO
 
 import frappe
+from frappe.utils import flt
 from frappe.utils.file_manager import check_max_file_size
 from frappe.utils.pdf import pdf_contains_js
 from pypdf import PdfReader, PdfWriter
@@ -11,6 +13,7 @@ from ecommerce_integrations.ecommerce_integrations.doctype.ecommerce_integration
 	create_log,
 )
 from ecommerce_integrations.unicommerce.constants import MODULE_NAME
+from ecommerce_integrations.utils.taxation import set_item_wise_tax_details as seed_item_wise_tax_details
 
 SYNC_METHODS = {
 	"Items": "ecommerce_integrations.unicommerce.product.upload_new_items",
@@ -124,3 +127,52 @@ def _remove_javascript(obj, visited: set[int] | None = None) -> bool:
 				del obj[index]
 
 	return True
+
+
+def set_item_wise_tax_details(doc) -> None:
+	"""Split each item's tax across its lines in proportion to their value.
+
+	The shared seeding splits evenly, which is wrong when one item is billed on
+	several lines of different values. Totals are unchanged.
+	"""
+
+	seed_item_wise_tax_details(doc)
+
+	rows = doc.get("_item_wise_tax_details") or []
+	if not rows:
+		return
+
+	# value of each line, per item
+	lines_by_code = defaultdict(list)
+	total_by_code = defaultdict(float)
+	for item in doc.get("items"):
+		worth = _get_amount(item)
+		lines_by_code[item.item_code].append((item, worth))
+		total_by_code[item.item_code] += worth
+
+	# the seed writes one row per line; fold them into one total per (tax, item)
+	tax_total = {}
+	for row in rows:
+		entry = tax_total.setdefault((id(row.tax), row.item.item_code), [row, 0.0])
+		entry[1] += row.amount
+
+	split_rows = []
+	for entry_row, item_tax in tax_total.values():
+		item_code = entry_row.item.item_code
+		lines = lines_by_code[item_code]
+		total = total_by_code[item_code]
+		for item, worth in lines:
+			# fully discounted item: nothing to split by, so split evenly
+			amount = item_tax * worth / total if total else item_tax / len(lines)
+			split_rows.append(
+				frappe._dict({**entry_row, "item": item, "amount": flt(amount), "taxable_amount": worth})
+			)
+
+	doc._item_wise_tax_details = split_rows
+	doc.update_item_wise_tax_details = True
+
+
+def _get_amount(item) -> float:
+	"""Value of a line; totals are unset before the doc is saved."""
+
+	return flt(item.get("net_amount")) or flt(item.get("amount")) or flt(item.rate) * flt(item.qty)
