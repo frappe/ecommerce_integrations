@@ -1,6 +1,9 @@
 # Copyright (c) 2026, Frappe and Contributors
 # See LICENSE
 
+import base64
+import hashlib
+import hmac
 from unittest.mock import patch
 
 import frappe
@@ -8,7 +11,7 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils.password import get_decrypted_password, set_encrypted_password
 
 from ecommerce_integrations.patches import migrate_shopify_setting_to_account as migration
-from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, MODULE_NAME
+from ecommerce_integrations.shopify.constants import ACCOUNT_DOCTYPE, EVENT_MAPPER, MODULE_NAME
 from ecommerce_integrations.shopify.order import get_tax_account_head
 from ecommerce_integrations.shopify.utils import get_default_account, resolve_account
 
@@ -52,6 +55,31 @@ class TestShopifyAccount(IntegrationTestCase):
 		self.assertEqual(account.name, "named.myshopify.com")
 		self.assertEqual(account.shopify_url, "named.myshopify.com")
 
+	def test_shop_url_stays_the_account_name(self):
+		# webhooks are routed by the domain the account is named after, so the URL is
+		# read-only after creation, and a changed value never diverges from the name
+		self.assertTrue(frappe.get_meta(ACCOUNT_DOCTYPE).get_field("shopify_url").set_only_once)
+
+		account = make_account("fixed.myshopify.com")
+		account.shopify_url = "other.myshopify.com"
+		account.save()
+
+		self.assertEqual(account.name, "fixed.myshopify.com")
+		self.assertEqual(account.shopify_url, "fixed.myshopify.com")
+
+	def test_import_progress_is_published_per_account(self):
+		from ecommerce_integrations.shopify.page.shopify_import_products.shopify_import_products import (
+			publish,
+		)
+
+		with patch("frappe.publish_realtime") as publish_realtime:
+			publish("Syncing", shopify_account="one.myshopify.com")
+
+		self.assertEqual(
+			publish_realtime.call_args.args[0], "shopify.key.sync.all.products.one.myshopify.com"
+		)
+		self.assertEqual(publish_realtime.call_args.kwargs["user"], frappe.session.user)
+
 	def test_short_shop_url_is_completed_to_the_myshopify_domain(self):
 		self.assertEqual(make_account("Short").name, "short.myshopify.com")
 
@@ -66,10 +94,28 @@ class TestShopifyAccount(IntegrationTestCase):
 
 		self.assertRaises(frappe.ValidationError, get_default_account)
 
-	def test_only_one_account_can_be_enabled(self):
+	def test_several_accounts_can_be_enabled(self):
 		make_account("one.myshopify.com", enabled=1)
+		make_account("two.myshopify.com", enabled=1)
 
-		self.assertRaises(frappe.ValidationError, make_account, "two.myshopify.com", enabled=1)
+		# without a named account, nothing can pick one of them
+		self.assertRaises(frappe.ValidationError, get_default_account)
+
+	def test_disabling_does_not_depend_on_shopify_accepting_the_credentials(self):
+		account = make_account("one.myshopify.com", enabled=1)
+		account.append("webhooks", {"webhook_id": "1", "method": "orders/create"})
+		account.db_update_all()
+		account.reload()
+
+		account.enable_shopify = 0
+		with patch(
+			"ecommerce_integrations.shopify.connection.unregister_webhooks",
+			side_effect=Exception("401 Unauthorized"),
+		):
+			account.save()
+
+		self.assertEqual(account.enable_shopify, 0)
+		self.assertFalse(account.webhooks)
 
 	def test_resolve_account_prefers_the_account_of_the_log(self):
 		make_account("one.myshopify.com", enabled=1)
@@ -375,37 +421,80 @@ class TestSharedProducts(IntegrationTestCase):
 		self.assertRaises(frappe.ValidationError, _get_account, "first.myshopify.com")
 
 
-class TestWebhookAccount(IntegrationTestCase):
+class TestWebhookRouting(IntegrationTestCase):
+	"""Incoming webhooks are attributed to the account of the shop that sent them."""
+
 	def setUp(self):
 		for name in frappe.get_all(ACCOUNT_DOCTYPE, {"enable_shopify": 1}, pluck="name"):
 			frappe.db.set_value(ACCOUNT_DOCTYPE, name, "enable_shopify", 0)
+		make_account("one.myshopify.com", enabled=1, shared_secret="secret-one")
+		make_account("two.myshopify.com", enabled=1, shared_secret="secret-two")
+		make_account("retired.myshopify.com", shared_secret="secret-retired")
 
 	def tearDown(self):
 		frappe.db.rollback()
 
-	def test_webhook_is_refused_while_its_store_is_ambiguous(self):
+	def request(self, shop_domain, secret=None, body=b'{"id": 1}'):
+		headers = {"X-Shopify-Shop-Domain": shop_domain} if shop_domain else {}
+		if secret:
+			digest = hmac.new(secret.encode(), body, hashlib.sha256).digest()
+			headers["X-Shopify-Hmac-Sha256"] = base64.b64encode(digest).decode()
+		return frappe._dict(data=body, headers=headers)
+
+	def test_webhook_is_attributed_to_the_sending_shop(self):
 		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		make_account("one.myshopify.com", enabled=1)
-		# a second enabled account cannot be saved, but data may still end up that way
-		make_account("two.myshopify.com")
-		frappe.db.set_value(ACCOUNT_DOCTYPE, "two.myshopify.com", "enable_shopify", 1)
+		self.assertEqual(_get_webhook_account(self.request("two.myshopify.com")).name, "two.myshopify.com")
+		self.assertEqual(_get_webhook_account(self.request("One.MyShopify.com")).name, "one.myshopify.com")
 
-		request = frappe._dict(data=b'{"id": 1}')
-		# the refusal is logged with the raw request; keep the log in the test transaction
-		with patch.object(frappe.db, "commit"):
-			self.assertRaises(frappe.ValidationError, _get_webhook_account, request)
+	def test_webhook_from_an_unknown_or_disabled_shop_is_refused(self):
+		from ecommerce_integrations.shopify.connection import _get_webhook_account
 
-		log = frappe.get_last_doc("Ecommerce Integration Log", {"integration": MODULE_NAME})
+		def refused_log(shop_domain, secret=None):
+			request = self.request(shop_domain, secret=secret)
+			request.headers["X-Shopify-Topic"] = "orders/cancelled"
+			# keep the log in the test transaction
+			with patch.object(frappe.db, "commit"):
+				self.assertRaises(frappe.ValidationError, _get_webhook_account, request)
+			return frappe.get_last_doc("Ecommerce Integration Log", {"integration": MODULE_NAME})
+
+		# a request signed by a disabled account is logged for a retry once it is enabled again
+		log = refused_log("retired.myshopify.com", secret="secret-retired")
 		self.assertEqual(log.status, "Error")
 		self.assertEqual(log.request_data, '{"id": 1}')
+		self.assertEqual(log.shopify_account, "retired.myshopify.com")
+		self.assertEqual(log.method, EVENT_MAPPER["orders/cancelled"])
 
-	def test_webhook_belongs_to_the_only_enabled_account(self):
-		from ecommerce_integrations.shopify.connection import _get_webhook_account
+		# a retry runs the body unchecked, so unsigned or forged requests are not retryable, and
+		# a request from an unknown shop cannot be attributed to a store
+		for shop_domain, secret in (
+			("retired.myshopify.com", None),
+			("retired.myshopify.com", "forged"),
+			("unknown.myshopify.com", "secret-one"),
+			(None, None),
+		):
+			log = refused_log(shop_domain, secret)
+			self.assertEqual(log.request_data, '{"id": 1}')
+			self.assertFalse(log.shopify_account)
+			self.assertFalse(log.method)
 
-		make_account("one.myshopify.com", enabled=1)
+	def test_signature_is_checked_with_the_secret_of_the_sending_shop(self):
+		from ecommerce_integrations.shopify.connection import _validate_request
 
-		self.assertEqual(_get_webhook_account(frappe._dict(data=b"{}")).name, "one.myshopify.com")
+		account = frappe.get_doc(ACCOUNT_DOCTYPE, "two.myshopify.com")
+
+		valid = self.request("two.myshopify.com", secret="secret-two")
+		_validate_request(valid, valid.headers["X-Shopify-Hmac-Sha256"], account)
+
+		signed_by_other_shop = self.request("two.myshopify.com", secret="secret-one")
+		with patch("ecommerce_integrations.shopify.connection.create_shopify_log"):
+			self.assertRaises(
+				frappe.ValidationError,
+				_validate_request,
+				signed_by_other_shop,
+				signed_by_other_shop.headers["X-Shopify-Hmac-Sha256"],
+				account,
+			)
 
 
 class TestSettingMigration(IntegrationTestCase):
