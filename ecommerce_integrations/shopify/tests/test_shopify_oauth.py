@@ -324,8 +324,11 @@ class TestValidateRequestHmac(unittest.TestCase):
 	def _make_setting(self, auth_method, shared_secret=None, client_secret=None):
 		setting = MagicMock()
 		setting.authentication_method = auth_method
-		setting.shared_secret = shared_secret
-		setting.get_password.return_value = client_secret
+
+		def get_password(fieldname, raise_exception=True):
+			return {"shared_secret": shared_secret, "client_secret": client_secret}[fieldname]
+
+		setting.get_password.side_effect = get_password
 		return setting
 
 	@patch("ecommerce_integrations.shopify.connection.create_shopify_log")

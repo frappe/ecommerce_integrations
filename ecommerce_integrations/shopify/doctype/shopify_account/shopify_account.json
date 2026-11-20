@@ -115,7 +115,7 @@
   },
   {
    "fieldname": "shared_secret",
-   "fieldtype": "Data",
+   "fieldtype": "Password",
    "label": "Shared secret / API Secret",
    "mandatory_depends_on": "eval:doc.enable_shopify && doc.authentication_method=='Static Token'",
    "depends_on": "eval:doc.authentication_method=='Static Token'"
@@ -446,7 +446,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 0,
  "links": [],
- "modified": "2026-10-26 15:00:00.000000",
+ "modified": "2026-11-20 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "shopify",
  "name": "Shopify Account",

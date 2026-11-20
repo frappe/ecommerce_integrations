@@ -115,7 +115,7 @@ class ShopifyAccount(SettingController):
 		else:
 			if not self.get_password("password", raise_exception=False):
 				frappe.throw(_("Password / Access Token is required for Static Token authentication"))
-			if not self.shared_secret:
+			if not self.get_password("shared_secret", raise_exception=False):
 				frappe.throw(_("Shared secret / API Secret is required for Static Token authentication"))
 
 	def _preserve_stored_oauth_token(self):
