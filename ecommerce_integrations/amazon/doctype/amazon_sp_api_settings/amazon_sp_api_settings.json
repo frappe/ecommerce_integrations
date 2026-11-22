@@ -33,6 +33,7 @@
   "section_break_3",
   "after_date",
   "taxes_charges",
+  "submit_credit_note",
   "sync_orders",
   "column_break_4",
   "enable_sync",
@@ -254,10 +255,17 @@
    "fieldname": "create_item_if_not_exists",
    "fieldtype": "Check",
    "label": "Create Item If Not Exists"
+  },
+  {
+   "default": "0",
+   "description": "Check this to submit the Credit Note for the Return Order",
+   "fieldname": "submit_credit_note",
+   "fieldtype": "Check",
+   "label": "Submit Credit Note"
   }
  ],
  "links": [],
- "modified": "2023-07-31 17:20:21.492153",
+ "modified": "2025-02-14 17:27:24.072514",
  "modified_by": "Administrator",
  "module": "Amazon",
  "name": "Amazon SP API Settings",
