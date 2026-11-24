@@ -610,3 +610,62 @@ class TestSettingMigration(IntegrationTestCase):
 		migration.execute()
 
 		self.assertEqual(frappe.db.count(ACCOUNT_DOCTYPE), accounts)
+
+
+class TestSharedSecretEncryption(IntegrationTestCase):
+	"""The patch moves a legacy plaintext shared secret into encrypted storage."""
+
+	def tearDown(self):
+		frappe.db.rollback()
+
+	def seed_unencrypted_account(self, shopify_url, secret=None):
+		"""A row as a legacy upgrade left it: the plaintext in the column, nothing in __Auth."""
+		account = frappe.new_doc(ACCOUNT_DOCTYPE)
+		account.name = shopify_url
+		account.shopify_url = shopify_url
+		if secret:
+			account.shared_secret = secret
+		account.db_insert()
+
+	def signed_request(self, secret, body=b'{"id": 1}'):
+		digest = hmac.new(secret.encode(), body, hashlib.sha256).digest()
+		return frappe._dict(data=body, headers={"X-Shopify-Hmac-Sha256": base64.b64encode(digest).decode()})
+
+	def test_plaintext_secret_is_encrypted_and_webhooks_still_validate(self):
+		from ecommerce_integrations.patches import encrypt_shopify_shared_secret as encryption
+		from ecommerce_integrations.shopify.connection import _validate_request
+
+		self.seed_unencrypted_account("plain.myshopify.com", "plaintext-secret")
+
+		encryption.execute()
+
+		self.assertEqual(
+			get_decrypted_password(ACCOUNT_DOCTYPE, "plain.myshopify.com", "shared_secret"),
+			"plaintext-secret",
+		)
+		# the column keeps only the dummy mask of asterisks
+		stored = frappe.db.get_value(ACCOUNT_DOCTYPE, "plain.myshopify.com", "shared_secret")
+		self.assertEqual(set(stored), {"*"})
+
+		# the secret is no longer readable in the column, yet HMAC validation still resolves it
+		request = self.signed_request("plaintext-secret")
+		_validate_request(request, request.headers["X-Shopify-Hmac-Sha256"], "plain.myshopify.com")
+
+	def test_patch_is_idempotent_and_skips_accounts_without_a_secret(self):
+		from ecommerce_integrations.patches import encrypt_shopify_shared_secret as encryption
+
+		self.seed_unencrypted_account("plain.myshopify.com", "plaintext-secret")
+		self.seed_unencrypted_account("bare.myshopify.com")
+
+		encryption.execute()
+		encryption.execute()
+
+		self.assertEqual(
+			get_decrypted_password(ACCOUNT_DOCTYPE, "plain.myshopify.com", "shared_secret"),
+			"plaintext-secret",
+		)
+		self.assertIsNone(
+			get_decrypted_password(
+				ACCOUNT_DOCTYPE, "bare.myshopify.com", "shared_secret", raise_exception=False
+			)
+		)

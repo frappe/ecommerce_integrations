@@ -208,7 +208,7 @@ def get_webhook_secret(setting) -> str | None:
 	"""Secret Shopify signs the account's webhooks with: an OAuth app signs with its client secret."""
 	if setting.authentication_method == AUTH_METHOD_OAUTH:
 		return setting.get_password("client_secret", raise_exception=False)
-	return setting.shared_secret
+	return setting.get_password("shared_secret", raise_exception=False)
 
 
 def _is_signed_by(req, shopify_account) -> bool:
