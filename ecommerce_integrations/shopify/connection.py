@@ -121,7 +121,7 @@ def process_request(data, event):
 
 def _validate_request(req, hmac_header):
 	settings = frappe.get_doc(SETTING_DOCTYPE)
-	secret_key = settings.shared_secret
+	secret_key = settings.get_password("shared_secret")
 
 	sig = base64.b64encode(hmac.new(secret_key.encode("utf8"), req.data, hashlib.sha256).digest())
 
