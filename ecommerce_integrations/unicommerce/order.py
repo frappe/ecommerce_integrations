@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import Any, NewType
 
 import frappe
+from frappe.query_builder.functions import Coalesce
 from frappe.utils import add_to_date, flt
 
 from ecommerce_integrations.controllers.scheduling import need_to_run
@@ -17,6 +18,7 @@ from ecommerce_integrations.unicommerce.constants import (
 	IS_COD_CHECKBOX,
 	MODULE_NAME,
 	ORDER_CODE_FIELD,
+	ORDER_DISPLAY_CODE_FIELD,
 	ORDER_ITEM_BATCH_NO,
 	ORDER_ITEM_CODE_FIELD,
 	ORDER_STATUS_FIELD,
@@ -28,7 +30,7 @@ from ecommerce_integrations.unicommerce.constants import (
 from ecommerce_integrations.unicommerce.customer import sync_customer
 from ecommerce_integrations.unicommerce.product import import_product_from_unicommerce
 from ecommerce_integrations.unicommerce.utils import create_unicommerce_log, get_unicommerce_date
-from ecommerce_integrations.utils.taxation import get_dummy_tax_category
+from ecommerce_integrations.utils.taxation import ITEM_WISE_TAX_KEY, get_dummy_tax_category
 
 UnicommerceOrder = NewType("UnicommerceOrder", dict[str, Any])
 
@@ -128,6 +130,12 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 	existing_so = frappe.db.get_value("Sales Order", {ORDER_CODE_FIELD: order["code"]})
 	if existing_so:
 		so = frappe.get_doc("Sales Order", existing_so)
+		# Backfill display order no. on orders synced before the field existed, and
+		# propagate it onto the invoices / delivery notes already made from this order.
+		display_order_code = order.get("displayOrderCode")
+		if display_order_code and not so.get(ORDER_DISPLAY_CODE_FIELD):
+			backfill_display_order_code(order["code"], display_order_code)
+			so.reload()
 		return so
 
 	# If a sales order already exists, then every time it's executed
@@ -153,6 +161,23 @@ def create_order(payload: UnicommerceOrder, request_id: str | None = None, clien
 		create_unicommerce_log(status="Success")
 		frappe.flags.request_id = None
 		return order
+
+
+def backfill_display_order_code(uni_order_code: str, display_order_code: str | None) -> None:
+	"""Copy the display order no. onto an order and its Sales Invoices / Delivery Notes
+	that were created before the field existed (they carry the same order code)."""
+	if not display_order_code:
+		return
+
+	# Order last, so a failed backfill leaves it blank for the next re-sync to retry.
+	for doctype in ("Sales Invoice", "Delivery Note", "Sales Order"):
+		dt = frappe.qb.DocType(doctype)
+		(
+			frappe.qb.update(dt)
+			.set(dt[ORDER_DISPLAY_CODE_FIELD], display_order_code)
+			.where(dt[ORDER_CODE_FIELD] == uni_order_code)
+			.where(Coalesce(dt[ORDER_DISPLAY_CODE_FIELD], "") == "")
+		).run()
 
 
 def _sync_order_items(order: UnicommerceOrder, client: UnicommerceAPIClient) -> set[str]:
@@ -185,6 +210,7 @@ def _create_order(order: UnicommerceOrder, customer) -> None:
 			"customer": customer.name,
 			"naming_series": channel_config.sales_order_series or settings.sales_order_series,
 			ORDER_CODE_FIELD: order["code"],
+			ORDER_DISPLAY_CODE_FIELD: order.get("displayOrderCode"),
 			ORDER_STATUS_FIELD: order["status"],
 			CHANNEL_ID_FIELD: order["channel"],
 			FACILITY_CODE_FIELD: facility_code,
@@ -269,7 +295,12 @@ def get_taxes(line_items, channel_config) -> list:
 
 			tax_map[tax_head] += tax_amount
 
-			item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
+			# Sum across lines sharing an item code so no line's tax is dropped.
+			entry = item_wise_tax_map[tax_head].get(item_code)
+			if entry:
+				entry[1] += tax_amount
+			else:
+				item_wise_tax_map[tax_head][item_code] = [tax_rate, tax_amount]
 
 	taxes = []
 
@@ -282,7 +313,7 @@ def get_taxes(line_items, channel_config) -> list:
 				"account_head": tax_account_map[tax_head],
 				"tax_amount": value,
 				"description": tax_head.replace("_", " ").upper(),
-				"item_wise_tax_detail": json.dumps(item_wise_tax_map[tax_head]),
+				ITEM_WISE_TAX_KEY: item_wise_tax_map[tax_head],
 				"dont_recompute_tax": 1,
 			}
 		)

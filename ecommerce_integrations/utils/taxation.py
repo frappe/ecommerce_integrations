@@ -1,7 +1,13 @@
+from collections import defaultdict, deque
+
 import frappe
 from frappe import _
+from frappe.utils import flt
 
 DUMMY_TAX_CATEGORY = "Ecommerce Integrations - Ignore"
+
+# Internal per-tax-row carrier for {item_code: [rate, amount]}.
+ITEM_WISE_TAX_KEY = "_item_wise_tax"
 
 
 def get_dummy_tax_category() -> str:
@@ -12,6 +18,110 @@ def get_dummy_tax_category() -> str:
 	if not frappe.db.exists("Tax Category", DUMMY_TAX_CATEGORY):
 		frappe.get_doc(doctype="Tax Category", title=DUMMY_TAX_CATEGORY).insert()
 	return DUMMY_TAX_CATEGORY
+
+
+def set_item_wise_tax_details(doc):
+	"""Seed `_item_wise_tax_details` for our dont_recompute rows (ERPNext v15+ won't build it)."""
+
+	if not doc.meta.get_field("item_wise_tax_details"):
+		return
+
+	items_by_code = defaultdict(list)
+	for item in doc.get("items"):
+		items_by_code[item.item_code].append(item)
+
+	rows = []
+	for tax in doc.get("taxes"):
+		for item_code, (rate, amount) in (tax.get(ITEM_WISE_TAX_KEY) or {}).items():
+			# Unicommerce splits a qty>1 line into one row per unit; spread the tax across them.
+			items = items_by_code.get(item_code) or []
+			if not items:
+				continue
+			for item, share in zip(items, _split_amount(flt(amount), len(items)), strict=True):
+				rows.append(
+					frappe._dict(
+						item=item,
+						tax=tax,
+						rate=flt(rate),
+						amount=share,
+						taxable_amount=flt(item.get("net_amount")) or flt(item.qty) * flt(item.rate),
+					)
+				)
+
+	if rows:
+		doc._item_wise_tax_details = rows
+		# A [0, 0] row carries no tax, so the item still counts as untaxed.
+		taxed = {row.item.item_code for row in rows if row.rate or row.amount}
+		set_nil_rated_for_untaxed_items(doc, taxed)
+
+
+def set_nil_rated_for_untaxed_items(doc, taxed_item_codes):
+	"""In a mixed order, flag items with no GST as Nil-Rated; else India Compliance treats them as Taxable and blocks the order."""
+
+	if not frappe.get_meta("Item Tax Template").has_field("gst_treatment"):
+		return
+
+	untaxed = [
+		item
+		for item in doc.get("items")
+		if item.item_code not in taxed_item_codes and not item.item_tax_template
+	]
+	if not untaxed:
+		return
+
+	template = frappe.db.get_value(
+		"Item Tax Template",
+		{"company": doc.get("company"), "gst_treatment": "Nil-Rated", "disabled": 0},
+		"name",
+		order_by="creation asc",
+	)
+	if not template:
+		return
+
+	for item in untaxed:
+		item.item_tax_template = template
+
+
+def _split_amount(amount, count):
+	if count <= 1:
+		return [amount]
+
+	share = flt(amount / count, 2)
+	return [share] * (count - 1) + [flt(amount - share * (count - 1), 2)]
+
+
+def copy_item_wise_tax_details(target, source_name):
+	"""Rebuild item-wise tax on a doc mapped from a Sales Order (SI/DN); the SO->SI mapper drops it."""
+
+	if not target.meta.get_field("item_wise_tax_details"):
+		return
+
+	source = frappe.get_doc("Sales Order", source_name)
+	item_code_by_row = {row.name: row.item_code for row in source.items}
+
+	# {source tax row -> {item_code: [rate, amount]}}, keeping each row's own breakup
+	detail_by_tax_row = {}
+	for row in source.get("item_wise_tax_details") or []:
+		item_code = item_code_by_row.get(row.item_row)
+		if item_code:
+			detail_by_tax_row.setdefault(row.tax_row, {})[item_code] = [row.rate, row.amount]
+
+	if not detail_by_tax_row:
+		return
+
+	# Source rows carrying a breakup, queued per account in order; the mapper preserves
+	# order, so the k-th target row of an account maps to the k-th source row.
+	source_details = defaultdict(deque)
+	for tax in source.taxes:
+		if tax.name in detail_by_tax_row:
+			source_details[tax.account_head].append(detail_by_tax_row[tax.name])
+
+	for tax in target.get("taxes"):
+		queue = source_details.get(tax.account_head)
+		if queue:
+			tax.set(ITEM_WISE_TAX_KEY, queue.popleft())
+
+	set_item_wise_tax_details(target)
 
 
 def validate_tax_template(doc, method=None):
